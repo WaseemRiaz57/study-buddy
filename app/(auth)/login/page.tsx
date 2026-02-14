@@ -2,7 +2,9 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, Mail, Lock, Sparkles, Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { ArrowLeft, Mail, Lock, Sparkles, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState } from "react";
 
 const fadeInUp = {
@@ -25,7 +27,36 @@ const scaleIn = {
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError("Invalid email or password. Try password123 with any email.");
+      } else if (result?.ok) {
+        router.push("/dashboard");
+      }
+    } catch {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <main className="relative min-h-screen bg-background text-foreground flex items-center justify-center px-6 py-16 overflow-hidden">
@@ -137,7 +168,19 @@ export default function LoginPage() {
           {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
 
-          <form className="relative space-y-6">
+          <form className="relative space-y-6" onSubmit={handleSubmit}>
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-4"
+              >
+                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </motion.div>
+            )}
+
             {/* Email Input */}
             <motion.div variants={fadeInUp}>
               <label className="block text-sm font-bold text-foreground mb-2">
@@ -150,7 +193,10 @@ export default function LoginPage() {
                 <input
                   type="email"
                   placeholder="scholar@studybuddy.com"
-                  className="w-full rounded-2xl border border-border bg-background/50 pl-12 pr-4 py-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full rounded-2xl border border-border bg-background/50 pl-12 pr-4 py-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50 disabled:opacity-50"
                 />
               </div>
             </motion.div>
@@ -175,12 +221,16 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  className="w-full rounded-2xl border border-border bg-background/50 pl-12 pr-12 py-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full rounded-2xl border border-border bg-background/50 pl-12 pr-12 py-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50 disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  disabled={isLoading}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" strokeWidth={2} />
@@ -195,18 +245,28 @@ export default function LoginPage() {
             <motion.div variants={fadeInUp}>
               <motion.button
                 type="submit"
-                whileHover={prefersReducedMotion ? {} : { scale: 1.02 }}
-                whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-                className="group relative w-full overflow-hidden rounded-2xl bg-primary px-6 py-4 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30"
+                disabled={isLoading}
+                whileHover={prefersReducedMotion || isLoading ? {} : { scale: 1.02 }}
+                whileTap={prefersReducedMotion || isLoading ? {} : { scale: 0.98 }}
+                className="group relative w-full overflow-hidden rounded-2xl bg-primary px-6 py-4 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="relative flex items-center justify-center gap-2">
-                  Enter StudyBuddy
-                  <motion.div
-                    animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  >
-                    <ArrowLeft className="h-5 w-5 rotate-180" strokeWidth={2} />
-                  </motion.div>
+                  {isLoading ? (
+                    <>
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      Enter StudyBuddy
+                      <motion.div
+                        animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        <ArrowLeft className="h-5 w-5 rotate-180" strokeWidth={2} />
+                      </motion.div>
+                    </>
+                  )}
                 </span>
               </motion.button>
             </motion.div>
@@ -246,7 +306,7 @@ export default function LoginPage() {
           variants={fadeInUp}
           className="mt-8 text-center text-xs text-muted-foreground"
         >
-          By continuing, you agree to StudyBuddy's{" "}
+          By continuing, you agree to StudyBuddy&apos;s{" "}
           <Link href="/terms" className="text-primary hover:underline font-semibold">
             Terms of Service
           </Link>{" "}

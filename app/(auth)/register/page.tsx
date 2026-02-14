@@ -1,271 +1,230 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, Mail, Lock, Sparkles, Eye, EyeOff, User } from "lucide-react";
+import { ArrowLeft, GraduationCap, Sparkles, CheckCircle, User, Mail, Lock, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 },
-};
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const scaleIn = {
-  initial: { opacity: 0, scale: 0.95 },
-  animate: { opacity: 1, scale: 1 },
-};
+// 1. Updated Interface to include missing props
+interface RoleCardProps {
+  role: "student" | "mentor";
+  selectedRole: "student" | "mentor";
+  onSelect: (role: "student" | "mentor") => void;
+  title: string;
+  description: string;
+  icon: any;
+  primaryColor: string;
+  hoverColor: string;
+  bgColor: string;
+  shadowColor: string;
+  iconBg: string;      // Added this
+  checkColor: string;  // Added this
+}
 
 export default function RegisterPage() {
-  const [showPassword, setShowPassword] = useState(false);
-  const prefersReducedMotion = useReducedMotion();
+  const [role, setRole] = useState<"student" | "mentor">("student");
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+  });
+
+  // Role Configuration Object
+  const roleConfig = {
+    student: {
+      title: "Scholar",
+      description: "I want to learn, join rooms, and track progress.",
+      icon: GraduationCap,
+      primaryColor: "border-primary bg-primary/5",
+      hoverColor: "hover:border-primary/50",
+      bgColor: "bg-primary",
+      shadowColor: "shadow-[0_0_30px_rgba(140,48,232,0.15)]",
+      buttonBg: "bg-primary shadow-primary/30",
+      iconBg: "bg-primary text-white",
+      checkColor: "text-primary",
+    },
+    mentor: {
+      title: "Mentor",
+      description: "I want to guide others, host sessions, and earn.",
+      icon: Sparkles,
+      primaryColor: "border-accent-mint bg-accent-mint/5",
+      hoverColor: "hover:border-accent-mint/50",
+      bgColor: "bg-accent-mint text-slate-900",
+      shadowColor: "shadow-[0_0_30px_rgba(0,255,163,0.15)]",
+      buttonBg: "bg-gradient-to-r from-emerald-500 to-accent-mint text-slate-900 shadow-emerald-500/20",
+      iconBg: "bg-accent-mint text-slate-900",
+      checkColor: "text-accent-mint",
+    },
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    console.log("Registering User:", { ...formData, role });
+    setTimeout(() => setIsLoading(false), 2000);
+  };
+
+  // 2. Reusable RoleCard Component (No changes needed, interface fixed above)
+  const RoleCard = ({ 
+    role: cardRole, 
+    selectedRole, 
+    onSelect, 
+    title, 
+    description, 
+    icon: Icon,
+    primaryColor,
+    hoverColor,
+    shadowColor,
+    iconBg,
+    checkColor
+  }: RoleCardProps) => {
+    const isSelected = selectedRole === cardRole;
+    
+    return (
+      <div 
+        onClick={() => onSelect(cardRole)}
+        className={`relative cursor-pointer p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-3 group ${
+          isSelected 
+            ? `${primaryColor} ${shadowColor} scale-[1.02]` 
+            : `border-border/50 ${hoverColor} hover:bg-slate-50 dark:hover:bg-white/5 opacity-70 hover:opacity-100`
+        }`}
+      >
+        {isSelected && (
+          <div className={`absolute top-3 right-3 ${checkColor}`}>
+            <CheckCircle size={20} fill="currentColor" className="text-white dark:text-black" />
+          </div>
+        )}
+        <div className={`p-4 rounded-full transition-colors ${
+          isSelected ? iconBg : "bg-slate-100 dark:bg-white/10 text-slate-500 group-hover:text-primary"
+        }`}>
+          <Icon size={28} />
+        </div>
+        <div>
+          <h3 className="font-bold text-lg">{title}</h3>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <main className="relative min-h-screen bg-background text-foreground flex items-center justify-center px-6 py-16 overflow-hidden">
+    <main className="min-h-screen bg-background text-foreground px-4 py-12 flex flex-col items-center justify-center transition-colors duration-300 relative overflow-hidden">
       
-      {/* Animated Background Glows */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <motion.div 
-          className="absolute left-1/4 top-1/4 h-[500px] w-[500px] rounded-full bg-primary/15 blur-[120px]"
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.15, 0.2, 0.15],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        <motion.div 
-          className="absolute right-1/4 bottom-1/4 h-[400px] w-[400px] rounded-full bg-primary/10 blur-[100px]"
-          animate={{
-            scale: [1, 1.15, 1],
-            opacity: [0.1, 0.15, 0.1],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
+      {/* Background Ambience */}
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent-mint/10 rounded-full blur-[120px]" />
       </div>
 
       {/* Back Button */}
-      <Link 
-        href="/" 
-        className="absolute top-8 left-8 flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors group"
-      >
-        <motion.div
-          whileHover={{ x: -4 }}
-          transition={{ duration: 0.2 }}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </motion.div>
-        Back to Home
+      <Link href="/" className="absolute top-8 left-8 flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors z-20">
+        <ArrowLeft size={18} /> Back
       </Link>
 
       <motion.div
-        initial="initial"
-        animate="animate"
-        variants={staggerContainer}
-        className="w-full max-w-md"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="glass-panel mx-auto w-full max-w-2xl rounded-[2rem] p-8 md:p-12 shadow-2xl relative overflow-hidden"
       >
-        {/* Header Section */}
-        <motion.div
-          variants={fadeInUp}
-          className="mb-8 text-center"
-        >
-          {/* Animated Icon */}
-          <motion.div
-            variants={scaleIn}
-            className="mb-6 inline-flex"
-          >
-            <motion.div
-              className="relative"
-              whileHover={prefersReducedMotion ? {} : { 
-                rotate: [0, -10, 10, -10, 0],
-                scale: 1.05
-              }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
-              <div className="relative rounded-2xl bg-gradient-to-br from-primary/15 to-primary/10 p-5 backdrop-blur-xl border border-primary/20">
-                <Sparkles className="h-8 w-8 text-primary" strokeWidth={2} />
-              </div>
-            </motion.div>
-          </motion.div>
+        <div className="text-center mb-8">
+          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-bold mb-3">
+            Choose Your Path
+          </p>
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-foreground">
+            Join StudyBuddy as...
+          </h1>
+        </div>
 
-          <motion.p
-            variants={fadeInUp}
-            className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-bold mb-4"
-          >
-            Start the Ritual
-          </motion.p>
+        <form onSubmit={handleRegister} className="space-y-8">
           
-          <motion.h1
-            variants={fadeInUp}
-            className="text-4xl font-black tracking-tight sm:text-5xl mb-3"
+          {/* Role Selection Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.keys(roleConfig).map((key) => {
+              const r = key as "student" | "mentor";
+              const config = roleConfig[r];
+              return (
+                <RoleCard
+                  key={r}
+                  role={r}
+                  selectedRole={role}
+                  onSelect={setRole}
+                  {...config}
+                />
+              );
+            })}
+          </div>
+
+          {/* Input Fields */}
+          <div className="space-y-4 pt-6 border-t border-border/50">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-focus-within:text-primary" />
+                <input 
+                  type="text" 
+                  placeholder="First Name" 
+                  required
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                />
+              </div>
+              <div className="relative group">
+                 <input 
+                  type="text" 
+                  placeholder="Last Name" 
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="relative group">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-focus-within:text-primary" />
+              <input 
+                type="email" 
+                placeholder="email@university.edu" 
+                required
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+              />
+            </div>
+
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-focus-within:text-primary" />
+              <input 
+                type="password" 
+                placeholder="Create Password" 
+                required
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 ${roleConfig[role].buttonBg}`}
           >
-            Create Your{" "}
-            <span className="text-primary">
-              StudyBuddy
-            </span>
-          </motion.h1>
-          
-          <motion.p
-            variants={fadeInUp}
-            className="text-base text-muted-foreground max-w-sm mx-auto"
-          >
-            Join thousands of scholars on their journey to academic excellence
-          </motion.p>
-        </motion.div>
+            {isLoading ? (
+              <>
+                <Loader2 className="animate-spin h-5 w-5" /> Creating Account...
+              </>
+            ) : (
+              `Join as ${roleConfig[role].title}`
+            )}
+          </button>
 
-        {/* Form Card */}
-        <motion.div
-          variants={scaleIn}
-          className="relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-card/90 to-card/50 p-8 backdrop-blur-xl shadow-2xl"
-        >
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-
-          <form className="relative space-y-6">
-            {/* Name Input */}
-            <motion.div variants={fadeInUp}>
-              <label className="block text-sm font-bold text-foreground mb-2">
-                Full Name
-              </label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
-                  <User className="h-5 w-5" strokeWidth={2} />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Enter your name"
-                  className="w-full rounded-2xl border border-border bg-background/50 pl-12 pr-4 py-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50"
-                />
-              </div>
-            </motion.div>
-
-            {/* Email Input */}
-            <motion.div variants={fadeInUp}>
-              <label className="block text-sm font-bold text-foreground mb-2">
-                Email Address
-              </label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
-                  <Mail className="h-5 w-5" strokeWidth={2} />
-                </div>
-                <input
-                  type="email"
-                  placeholder="scholar@studybuddy.com"
-                  className="w-full rounded-2xl border border-border bg-background/50 pl-12 pr-4 py-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50"
-                />
-              </div>
-            </motion.div>
-
-            {/* Password Input */}
-            <motion.div variants={fadeInUp}>
-              <label className="block text-sm font-bold text-foreground mb-2">
-                Password
-              </label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
-                  <Lock className="h-5 w-5" strokeWidth={2} />
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Create a strong password"
-                  className="w-full rounded-2xl border border-border bg-background/50 pl-12 pr-12 py-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" strokeWidth={2} />
-                  ) : (
-                    <Eye className="h-5 w-5" strokeWidth={2} />
-                  )}
-                </button>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Must be at least 8 characters long
-              </p>
-            </motion.div>
-
-            {/* Submit Button */}
-            <motion.div variants={fadeInUp}>
-              <motion.button
-                type="submit"
-                whileHover={prefersReducedMotion ? {} : { scale: 1.02 }}
-                whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-                className="group relative w-full overflow-hidden rounded-2xl bg-primary px-6 py-4 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30"
-              >
-                <span className="relative flex items-center justify-center gap-2">
-                  Join the Cohort
-                  <motion.div
-                    animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  >
-                    <Sparkles className="h-5 w-5" strokeWidth={2} />
-                  </motion.div>
-                </span>
-              </motion.button>
-            </motion.div>
-
-            {/* Terms */}
-            <motion.div variants={fadeInUp}>
-              <p className="text-xs text-center text-muted-foreground">
-                By signing up, you agree to our{" "}
-                <Link href="/terms" className="text-primary hover:underline font-semibold">
-                  Terms
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-primary hover:underline font-semibold">
-                  Privacy Policy
-                </Link>
-              </p>
-            </motion.div>
-
-            {/* Divider */}
-            <motion.div variants={fadeInUp} className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-4 text-muted-foreground font-semibold">
-                  Already a Scholar?
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Login Link */}
-            <motion.div variants={fadeInUp} className="text-center">
-              <Link 
-                href="/login" 
-                className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors group"
-              >
-                Sign in to your account
-                <motion.div
-                  animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
-                >
-                  <ArrowLeft className="h-4 w-4 rotate-180" strokeWidth={2} />
-                </motion.div>
-              </Link>
-            </motion.div>
-          </form>
-        </motion.div>
+          <div className="text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link href="/login" className="text-primary hover:underline font-bold">
+              Log in
+            </Link>
+          </div>
+        </form>
       </motion.div>
     </main>
   );

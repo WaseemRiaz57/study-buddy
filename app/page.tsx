@@ -4,20 +4,16 @@ import { motion, useReducedMotion, Variants, useInView } from "framer-motion";
 import Link from "next/link";
 import { 
   ArrowRight, 
-  Zap, 
   Globe, 
   Shield, 
   LucideIcon, 
-  Sparkles, 
-  Target, 
-  TrendingUp,
+  Sparkles,
   Users,
   BookOpen,
   Video,
   MessageSquare,
   Brain,
-  Clock,
-  School
+  Clock
 } from "lucide-react";
 import { memo, useState, useEffect, useRef } from "react";
 
