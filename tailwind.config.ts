@@ -27,6 +27,8 @@ const config: Config = {
           mint: "var(--accent-mint)",
           gold: "var(--accent-gold)",
         },
+        "sidebar-dark": "#0d1117",
+        "electric-mint": "#00FFA3",
       },
       keyframes: {
         float: {
@@ -37,10 +39,18 @@ const config: Config = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.6" },
         },
+        liquid: {
+          "0%": { backgroundPosition: "0% 50%", transform: "scaleY(1)" },
+          "25%": { transform: "scaleY(1.1)" },
+          "50%": { backgroundPosition: "100% 50%", transform: "scaleY(0.95)" },
+          "75%": { transform: "scaleY(1.05)" },
+          "100%": { backgroundPosition: "0% 50%", transform: "scaleY(1)" },
+        },
       },
       animation: {
         float: "float 6s ease-in-out infinite",
         pulse: "pulse 2.5s ease-in-out infinite",
+        liquid: "liquid 3s ease-in-out infinite",
       },
     },
   },

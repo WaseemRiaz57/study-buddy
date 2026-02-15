@@ -1,208 +1,269 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Search, Bell, TrendingUp, Clock, FileText, BookOpen, CheckSquare, Plus, Download, MessageCircle, Play } from "lucide-react";
+import { Search, Bell, TrendingUp, Clock, FileText, BookOpen, CheckSquare, Upload, Download, MessageCircle, Plus, Sparkles, Zap, BarChart3, Target, Award, Flame, Coins, ArrowRight, Users, Brain, Timer, Star, Trophy, BookMarked, Lock } from "lucide-react";
+
+const fadeIn = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.3 }
+};
 
 export function StudentDashboard() {
   return (
-    <div className="space-y-6">
-      {/* TOP HEADER: Welcome & Search */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-            Welcome, Scholar! <span className="text-2xl">👋</span>
-          </h1>
-          <p className="text-gray-400 text-sm">Ready to achieve your goals today?</p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              className="bg-[#1a1625] border border-white/10 rounded-full pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary w-64"
-            />
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      
+      {/* HEADER WITH STATS */}
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          {/* Logo & XP Bar */}
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
+                <BookOpen className="text-white" size={20} />
+              </div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">StudyBuddy</h1>
+            </div>
+            
+            {/* XP Progress */}
+            <div className="hidden md:flex flex-col w-48">
+              <div className="flex justify-between text-[10px] font-bold text-primary uppercase tracking-wider mb-1">
+                <span>Scholar Rank</span>
+                <span>4500/5000 XP</span>
+              </div>
+              <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: "90%" }}
+                  transition={{ duration: 1, delay: 0.2 }}
+                  className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full relative"
+                >
+                    <div className="absolute inset-0 bg-white/30 animate-pulse" />
+                </motion.div>
+              </div>
+            </div>
           </div>
-          <button className="p-2.5 bg-[#1a1625] border border-white/10 rounded-full text-white hover:bg-white/5 transition-colors relative">
-            <Bell size={20} />
-            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#1a1625]"></span>
-          </button>
+
+          {/* Stats & Profile */}
+          <div className="flex items-center gap-4">
+            {/* Streak */}
+            <div className="flex items-center gap-1.5 bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
+              <Flame className="text-orange-500" size={16} />
+              <span className="font-bold text-orange-600 dark:text-orange-400 text-sm">12</span>
+            </div>
+            
+            {/* Coins */}
+            <div className="flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20">
+              <Coins className="text-yellow-600 dark:text-yellow-400" size={16} />
+              <span className="font-bold text-yellow-700 dark:text-yellow-400 text-sm">1,240</span>
+            </div>
+
+            {/* Notifications */}
+            <button className="relative p-2 hover:bg-primary/10 rounded-lg transition-colors">
+              <Bell className="text-muted-foreground" size={20} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-background" />
+            </button>
+
+            {/* Profile */}
+            <div className="flex items-center gap-3 pl-4 border-l border-border/50">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-bold leading-none">Master Scholar</p>
+                <p className="text-xs text-muted-foreground mt-1">Level 14</p>
+              </div>
+              <div className="relative cursor-pointer group">
+                <div className="w-10 h-10 rounded-full ring-2 ring-background ring-offset-2 ring-offset-primary/20 overflow-hidden bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                  AS
+                </div>
+                <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-background shadow-sm text-black">14</div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* MAIN GRID LAYOUT */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* MAIN CONTENT */}
+      <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
         
-        {/* CARD 1: Study Progress */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-panel p-6 rounded-[1.5rem] bg-gradient-to-br from-[#2a1d3d] to-[#15101d] border border-white/5 relative overflow-hidden"
-        >
-          <div className="flex justify-between items-start mb-6">
-            <h3 className="font-bold text-white text-lg">Study Progress</h3>
-            <TrendingUp className="text-emerald-400" size={20} />
-          </div>
+        {/* HERO SECTION */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          <div className="mb-6">
-            <div className="flex justify-between text-sm text-gray-400 mb-2">
-              <span>Weekly Progress</span>
-              <span>75%</span>
-            </div>
-            <div className="w-full bg-black/30 h-3 rounded-full overflow-hidden">
-              <div className="bg-gradient-to-r from-primary to-purple-400 h-full w-[75%] rounded-full shadow-[0_0_15px_rgba(140,48,232,0.5)]" />
-            </div>
-          </div>
-
-          <div className="bg-[#1e192b]/50 p-4 rounded-xl border border-white/5">
-            <h4 className="text-3xl font-bold text-white">24.5 hrs</h4>
-            <p className="text-sm text-gray-400">Total Study Hours</p>
-          </div>
-        </motion.div>
-
-        {/* CARD 2: Upcoming Sessions */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-panel p-6 rounded-[1.5rem] bg-[#1a1424]/60 border border-white/5"
-        >
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-white text-lg">Upcoming Sessions</h3>
-            <Clock className="text-blue-400" size={18} />
-          </div>
-
-          <div className="space-y-3">
-            {[
-              { name: "Dr. Sarah Johnson", sub: "Mathematics", time: "Today, 3:00 PM", color: "bg-purple-500/10 text-purple-400" },
-              { name: "Prof. Mike Chen", sub: "Physics", time: "Tomorrow, 10:00 AM", color: "bg-blue-500/10 text-blue-400" },
-              { name: "Dr. Emily Davis", sub: "Chemistry", time: "Wed, 2:00 PM", color: "bg-pink-500/10 text-pink-400" },
-            ].map((session, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-[#231e2e] hover:bg-white/5 transition-colors group">
-                <div>
-                  <h4 className="font-semibold text-white text-sm">{session.name}</h4>
-                  <p className="text-xs text-gray-400">{session.sub} • <span className={session.color}>{session.time}</span></p>
-                </div>
-                <button className="px-3 py-1.5 text-xs font-bold bg-primary/20 text-primary rounded-lg hover:bg-primary hover:text-white transition-all">
-                  JOIN
+          {/* Level Progress Card */}
+          <motion.div {...fadeIn} className="md:col-span-2 relative overflow-hidden glass-panel rounded-[2rem] p-8 group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full -mr-20 -mt-20 blur-[80px] group-hover:bg-primary/30 transition-all duration-700" />
+            
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="flex-1">
+                <span className="inline-block text-primary font-bold text-xs uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full mb-4">
+                  Progress Milestone
+                </span>
+                <h2 className="text-3xl md:text-4xl font-black mb-3 text-foreground tracking-tight">Level 15 is within reach!</h2>
+                <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+                  You've completed <span className="text-foreground font-bold">85%</span> of your weekly goals. Finish 2 more sessions to ascend to the next tier.
+                </p>
+                <button className="mt-8 inline-flex items-center gap-2 bg-primary text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-1 transition-all">
+                  <span>Continue Journey</span>
+                  <ArrowRight size={18} />
                 </button>
               </div>
-            ))}
-          </div>
-        </motion.div>
 
-        {/* CARD 3: AI Generator (The 4 Buttons) */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="glass-panel p-6 rounded-[1.5rem] bg-[#1a1424]/60 border border-white/5"
-        >
-           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-white text-lg">AI Generator</h3>
-            <FileText className="text-pink-400" size={18} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 h-[200px]">
-            <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-[#2a1d3d] border border-white/5 hover:border-primary/50 transition-all group">
-              <div className="p-2 bg-blue-500/20 text-blue-400 rounded-lg group-hover:scale-110 transition-transform"><FileText size={20} /></div>
-              <span className="text-xs font-medium text-gray-300">Generate Notes</span>
-            </button>
-            <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-[#2a1d3d] border border-white/5 hover:border-primary/50 transition-all group">
-              <div className="p-2 bg-purple-500/20 text-purple-400 rounded-lg group-hover:scale-110 transition-transform"><BookOpen size={20} /></div>
-              <span className="text-xs font-medium text-gray-300">Summarize</span>
-            </button>
-            <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-[#2a1d3d] border border-white/5 hover:border-primary/50 transition-all group">
-              <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg group-hover:scale-110 transition-transform"><CheckSquare size={20} /></div>
-              <span className="text-xs font-medium text-gray-300">Quiz Me</span>
-            </button>
-            <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-[#2a1d3d] border border-white/5 hover:border-primary/50 transition-all group">
-              <div className="p-2 bg-orange-500/20 text-orange-400 rounded-lg group-hover:scale-110 transition-transform"><Plus size={20} /></div>
-              <span className="text-xs font-medium text-gray-300">Upload File</span>
-            </button>
-          </div>
-        </motion.div>
-
-        {/* CARD 4: To-Do List */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="glass-panel p-6 rounded-[1.5rem] bg-[#1a1424]/60 border border-white/5"
-        >
-           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-white text-lg">To-Do List</h3>
-            <button className="text-primary hover:bg-primary/10 p-1 rounded"><Plus size={18} /></button>
-          </div>
-          <div className="space-y-3">
-             <div className="flex items-center gap-3 p-3 bg-[#231e2e] rounded-xl border border-white/5">
-                <div className="w-5 h-5 border-2 border-gray-500 rounded flex items-center justify-center cursor-pointer hover:border-primary"></div>
-                <span className="text-sm text-gray-300">Complete Math Assignment Ch. 5</span>
-             </div>
-             <div className="flex items-center gap-3 p-3 bg-[#231e2e]/50 rounded-xl border border-white/5 opacity-60">
-                <div className="w-5 h-5 bg-primary rounded flex items-center justify-center text-black font-bold text-xs">✓</div>
-                <span className="text-sm text-gray-400 line-through">Review Physics Notes</span>
-             </div>
-          </div>
-        </motion.div>
-
-        {/* CARD 5: Community Highlights */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="glass-panel p-6 rounded-[1.5rem] bg-[#1a1424]/60 border border-white/5"
-        >
-           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-white text-lg">Community Highlights</h3>
-            <MessageCircle className="text-cyan-400" size={18} />
-          </div>
-          <div className="space-y-3">
-            <div className="p-3 bg-[#231e2e] rounded-xl border border-white/5 cursor-pointer hover:border-primary/30 transition-colors">
-              <div className="flex justify-between items-start mb-1">
-                 <h4 className="text-sm font-semibold text-white">Best study techniques for exams?</h4>
-                 <span className="bg-orange-500/20 text-orange-400 text-[10px] px-2 py-0.5 rounded-full">🔥 Trending</span>
+              {/* Circular Progress */}
+              <div className="relative w-40 h-40 flex-shrink-0">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle className="text-muted-foreground/10" cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="10" />
+                  <motion.circle 
+                    initial={{ strokeDashoffset: 439.8 }}
+                    animate={{ strokeDashoffset: 65.97 }}
+                    transition={{ duration: 1.5, delay: 0.3 }}
+                    className="text-primary" 
+                    cx="80" 
+                    cy="80" 
+                    r="70" 
+                    fill="transparent" 
+                    stroke="currentColor" 
+                    strokeWidth="10"
+                    strokeDasharray="439.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-5xl font-black text-foreground tracking-tighter">14</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Level</span>
+                </div>
               </div>
-              <p className="text-xs text-gray-400">24 replies • 2 hours ago</p>
             </div>
-            <div className="p-3 bg-[#231e2e] rounded-xl border border-white/5 cursor-pointer hover:border-primary/30 transition-colors">
-                 <h4 className="text-sm font-semibold text-white">Looking for study group - Calculus</h4>
-                 <p className="text-xs text-gray-400">8 replies • 5 hours ago</p>
+          </motion.div>
+
+          {/* Next Session Card */}
+          <motion.div {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel rounded-[2rem] p-6 bg-gradient-to-br from-blue-500/5 to-purple-500/5 border border-primary/10 flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute inset-0 bg-primary/5 opacity-0 hover:opacity-100 transition-opacity" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="text-primary" size={18} />
+                <span className="font-bold text-sm text-primary">Up Next Session</span>
+              </div>
+              <h3 className="text-xl font-bold text-foreground leading-tight">Deep Work:<br/>Organic Chemistry</h3>
+              <p className="text-sm text-muted-foreground mt-3 flex items-center gap-2">
+                <Users size={14} /> Join 12 others in Study Room A
+              </p>
             </div>
-          </div>
-        </motion.div>
 
-        {/* CARD 6: Recent Resources */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="glass-panel p-6 rounded-[1.5rem] bg-[#1a1424]/60 border border-white/5"
-        >
-           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-white text-lg">Recent Resources</h3>
-            <BookOpen className="text-purple-400" size={18} />
-          </div>
-          <div className="space-y-3">
-            {[
-              { name: "Math Notes - Chapter 5", type: "PDF" },
-              { name: "Physics Quiz - Kinematics", type: "Quiz" },
-            ].map((item, i) => (
-               <div key={i} className="flex items-center justify-between p-3 bg-[#231e2e] rounded-xl border border-white/5 group hover:bg-white/5">
-                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white/5 rounded-lg text-gray-400"><FileText size={16} /></div>
-                    <div>
-                      <h4 className="text-sm font-medium text-white">{item.name}</h4>
-                      <p className="text-[10px] text-gray-500">{item.type} • 2 hours ago</p>
-                    </div>
-                 </div>
-                 <button className="text-gray-500 hover:text-white transition-colors"><Download size={16} /></button>
-               </div>
-            ))}
-          </div>
-        </motion.div>
+            <div className="mt-6 relative z-10">
+              <p className="text-xs font-bold text-muted-foreground uppercase mb-3 tracking-wider">Starts In</p>
+              <div className="flex gap-2">
+                <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
+                  <span className="block text-2xl font-black text-foreground">14</span>
+                  <span className="text-[10px] font-bold text-muted-foreground">MIN</span>
+                </div>
+                <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
+                  <span className="block text-2xl font-black text-foreground">02</span>
+                  <span className="text-[10px] font-bold text-muted-foreground">SEC</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
 
+        {/* SECTION 2: QUESTS & NOTES */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          
+          {/* Daily Quests */}
+          <motion.div {...fadeIn} transition={{ delay: 0.2 }} className="space-y-6">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                 Daily Quests <Target className="text-primary" size={20} />
+              </h2>
+              <button className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">Refresh</button>
+            </div>
+
+            <div className="space-y-3">
+              {/* Quest 1 - Completed */}
+              <div className="flex items-center justify-between p-4 glass-panel rounded-2xl hover:border-primary/50 transition-all cursor-pointer group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Timer className="text-emerald-500" size={20} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-foreground">Complete 1 Pomodoro</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">+50 XP • +10 Coins</p>
+                  </div>
+                </div>
+                <button className="bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 transition-transform">
+                  Claim
+                </button>
+              </div>
+
+              {/* Quest 2 - In Progress */}
+              <div className="flex items-center justify-between p-4 glass-panel rounded-2xl hover:border-primary/50 transition-all cursor-pointer group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <BookMarked className="text-purple-500" size={20} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-foreground">Review AI Flashcards</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">15/20 Reviewed</p>
+                  </div>
+                </div>
+                <button className="bg-primary/10 text-primary px-4 py-1.5 rounded-lg text-xs font-bold group-hover:bg-primary group-hover:text-white transition-all">
+                  Resume
+                </button>
+              </div>
+
+              {/* Quest 3 - Locked */}
+              <div className="flex items-center justify-between p-4 glass-panel rounded-2xl opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-not-allowed">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                    <Users className="text-muted-foreground" size={20} />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-foreground">Join a Peer Session</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">+100 XP • Reward Case</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground bg-muted px-3 py-1.5 rounded-lg">
+                   <Lock size={12} /> Locked
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* AI Notes Carousel - SCROLLBAR HIDDEN */}
+          <motion.div {...fadeIn} transition={{ delay: 0.3 }} className="xl:col-span-2 space-y-6">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                Recent AI Notes <Sparkles className="text-primary" size={20} />
+              </h2>
+              <button className="flex items-center gap-1 text-primary text-sm font-bold hover:gap-2 transition-all">
+                See All <ArrowRight size={16} />
+              </button>
+            </div>
+
+            <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {[
+                { title: "Photosynthesis Deep Dive", subject: "Biology", time: "2m ago", gradient: "from-indigo-500 to-purple-600", icon: Brain },
+                { title: "Quantum Mechanics Intro", subject: "Physics", time: "1h ago", gradient: "from-emerald-500 to-teal-600", icon: Zap },
+                { title: "Macroeconomics Ch. 4", subject: "Economics", time: "5h ago", gradient: "from-orange-500 to-red-600", icon: TrendingUp },
+                { title: "The Industrial Revolution", subject: "History", time: "1d ago", gradient: "from-blue-500 to-cyan-600", icon: BookOpen },
+              ].map((note, i) => (
+                <div key={i} className="min-w-[260px] glass-panel rounded-[1.5rem] p-5 hover:-translate-y-2 transition-all cursor-pointer group relative overflow-hidden">
+                  <div className={`aspect-[4/3] rounded-2xl mb-4 overflow-hidden relative bg-gradient-to-br ${note.gradient} flex items-center justify-center shadow-inner`}>
+                    <div className="absolute inset-0 bg-black/10" />
+                    <note.icon className="text-white/60 group-hover:scale-110 transition-transform duration-500" size={48} />
+                  </div>
+                  <h4 className="font-bold text-base mb-2 text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                    {note.title}
+                  </h4>
+                  <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-3">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      {note.subject}
+                    </p>
+                    <p className="text-[10px] font-bold text-muted-foreground">{note.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+        </div>
       </div>
     </div>
   );

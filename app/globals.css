@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -9,6 +11,8 @@
   --color-accent-foreground: #ffffff;
   --color-accent-mint: #00FFA3;
   --color-accent-gold: #FFD700;
+  --color-sidebar-dark: #0d1117;
+  --color-electric-mint: #00FFA3;
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-muted: var(--muted);
@@ -27,6 +31,30 @@
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+  }
+
+  /* Liquid progress bar animation */
+  --animate-liquid: liquid 3s ease-in-out infinite;
+
+  @keyframes liquid {
+    0% {
+      background-position: 0% 50%;
+      transform: scaleY(1);
+    }
+    25% {
+      transform: scaleY(1.1);
+    }
+    50% {
+      background-position: 100% 50%;
+      transform: scaleY(0.95);
+    }
+    75% {
+      transform: scaleY(1.05);
+    }
+    100% {
+      background-position: 0% 50%;
+      transform: scaleY(1);
+    }
   }
 }
 
