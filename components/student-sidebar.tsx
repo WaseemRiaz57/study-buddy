@@ -42,7 +42,7 @@ const menuItems: MenuItem[] = [
   { icon: Users, label: "Mentorship", href: "/dashboard/mentorship" },
   { icon: Video, label: "Study Room", href: "/dashboard/study-room" },
   { icon: Headphones, label: "Focus Rooms", href: "/dashboard/focus-rooms" },
-  { icon: UserPlus, label: "Study with Buddy", href: "/dashboard/buddy" },
+  { icon: UserPlus, label: "Study with Buddy", href: "/dashboard/study-buddy" },
   { icon: MessageSquare, label: "Community", href: "/dashboard/community" },
   { icon: Library, label: "Resource Hub", href: "/dashboard/resources" },
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
