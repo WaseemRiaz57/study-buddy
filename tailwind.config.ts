@@ -8,6 +8,8 @@ const config: Config = {
       colors: {
         background: "var(--background)", 
         foreground: "var(--foreground)", 
+        obsidian: "#0f0a15",
+        mint: "#4fd1c5",
         card: {
           DEFAULT: "var(--card)",
           foreground: "var(--card-foreground)",
@@ -18,8 +20,8 @@ const config: Config = {
         },
         border: "var(--border)",
         primary: {
-          DEFAULT: "var(--primary)",
-          foreground: "var(--primary-foreground)",
+          DEFAULT: "#8c30e8",
+          foreground: "#ffffff",
         },
         accent: {
           DEFAULT: "#ec4899",

@@ -40,7 +40,7 @@ const menuItems: MenuItem[] = [
     badge: "AI",
   },
   { icon: Users, label: "Mentorship", href: "/dashboard/mentorship" },
-  { icon: Video, label: "Study Room", href: "/dashboard/study-room" },
+  { icon: Video, label: "Study Room", href: "/dashboard/study-rooms" },
   { icon: Headphones, label: "Focus Rooms", href: "/dashboard/focus-rooms" },
   { icon: UserPlus, label: "Study with Buddy", href: "/dashboard/study-buddy" },
   { icon: MessageSquare, label: "Community", href: "/dashboard/community" },

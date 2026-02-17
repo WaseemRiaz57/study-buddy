@@ -25,7 +25,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: FileText, label: "Content Generator", href: "/dashboard/content-generator" },
   { icon: Users, label: "Mentorship System", href: "/dashboard/mentorship" },
-  { icon: Video, label: "Study Room", href: "/dashboard/study-room" },
+  { icon: Video, label: "Study Room", href: "/dashboard/study-rooms" },
   { icon: Headphones, label: "Focus Rooms", href: "/dashboard/focus-rooms" },
   { icon: UserPlus, label: "Study with Buddy", href: "/dashboard/buddy" },
   { icon: MessageSquare, label: "Community", href: "/dashboard/community" },
