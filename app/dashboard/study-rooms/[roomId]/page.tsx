@@ -1,13 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, use } from "react";
+// ✨ Added missing import for animations
+import { motion, AnimatePresence } from "framer-motion"; 
 import {
-  Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff,
-  MessageSquare, PenTool, FileText, MoreVertical, 
-  Send, Paperclip, Clock, Maximize2, Minimize2,
-  Users, UserPlus, X, ChevronRight, Layout,
-  FolderOpen
+  GraduationCap,
+  Trophy,
+  Timer,
+  Mic,
+  Video,
+  MonitorUp,
+  PhoneOff,
+  Send,
+  FolderOpen,
+  MessageSquare,
+  Clock,
+  PenTool,
+  FileText,
+  VideoOff,
+  MicOff
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -31,7 +42,10 @@ const PARTICIPANTS: Participant[] = [
   },
 ];
 
-export default function StudyRoomSessionPage({ params }: { params: { roomId: string } }) {
+export default function StudyRoomSessionPage({ params }: { params: Promise<{ roomId: string }> }) {
+  // Unwrap params
+  const { roomId } = use(params);
+  
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"chat" | "vault">("chat");
   const [isMuted, setIsMuted] = useState(false);
@@ -79,7 +93,7 @@ export default function StudyRoomSessionPage({ params }: { params: { roomId: str
             </div>
             <div>
               <h2 className="text-sm font-bold flex items-center gap-2">
-                Study Room {params.roomId}
+                Study Room {roomId}
                 <span className="px-1.5 py-0.5 rounded text-[10px] border font-mono transition-colors
                   bg-red-50 text-red-500 border-red-200
                   dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">LIVE</span>
@@ -98,12 +112,12 @@ export default function StudyRoomSessionPage({ params }: { params: { roomId: str
           </div>
         </div>
 
-        {/* Center: Tabs (Moved to Header for cleaner look) */}
+        {/* Center: Tabs */}
         <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-1 p-1 rounded-xl border shadow-sm transition-colors
           bg-white border-slate-200
           dark:bg-[#1a1524] dark:border-white/10">
           <button 
-            onClick={() => setActiveTab("chat")} // Just for demo, usually this switches main view
+            onClick={() => setActiveTab("chat")} 
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
               activeTab === 'chat' 
               ? 'bg-slate-100 text-slate-900 shadow-sm dark:bg-white/10 dark:text-white' 

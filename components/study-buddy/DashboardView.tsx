@@ -19,8 +19,8 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 30 }, // Niche se shuru
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } }, // Upar slide karega
+  hidden: { opacity: 0, y: 30 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 50 } },
 };
 
 export default function DashboardView({ onStartMatching }: DashboardViewProps) {
