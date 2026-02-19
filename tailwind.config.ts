@@ -48,11 +48,21 @@ const config: Config = {
           "75%": { transform: "scaleY(1.05)" },
           "100%": { backgroundPosition: "0% 50%", transform: "scaleY(1)" },
         },
+        "border-pulse": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.3" },
+        },
+        "glow-slide": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "100%": { backgroundPosition: "200% 50%" },
+        },
       },
       animation: {
         float: "float 6s ease-in-out infinite",
         pulse: "pulse 2.5s ease-in-out infinite",
         liquid: "liquid 3s ease-in-out infinite",
+        "border-pulse": "border-pulse 3s ease-in-out infinite",
+        "glow-slide": "glow-slide 3s linear infinite",
       },
     },
   },

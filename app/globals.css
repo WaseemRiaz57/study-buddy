@@ -41,6 +41,20 @@
   /* Liquid progress bar animation */
   --animate-liquid: liquid 3s ease-in-out infinite;
 
+  /* Elite modal animations */
+  --animate-border-pulse: border-pulse 3s ease-in-out infinite;
+  --animate-glow-slide: glow-slide 3s linear infinite;
+
+  @keyframes border-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  @keyframes glow-slide {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
   @keyframes liquid {
     0% {
       background-position: 0% 50%;
@@ -171,6 +185,11 @@
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 /* Study-buddy loader animations */
