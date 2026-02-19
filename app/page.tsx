@@ -1,655 +1,997 @@
 "use client";
 
-import { motion, useReducedMotion, Variants, useInView } from "framer-motion";
+import {
+  motion,
+  useReducedMotion,
+  useInView,
+  useSpring,
+  AnimatePresence,
+  Variants,
+} from "framer-motion";
 import Link from "next/link";
-import { 
-  ArrowRight, 
-  Globe, 
-  Shield, 
-  LucideIcon, 
+import {
+  ArrowRight,
+  LucideIcon,
   Sparkles,
   Users,
   BookOpen,
-  Video,
   MessageSquare,
   Brain,
-  Clock
+  Clock,
+  Trophy,
+  Store,
+  GraduationCap,
+  Zap,
+  Star,
+  Check,
+  X,
+  Target,
+  Flame,
 } from "lucide-react";
 import { memo, useState, useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { Reveal } from "@/components/landing/Reveal";
 
 // ============================================================================
-// TYPE DEFINITIONS
+// TYPES
 // ============================================================================
-
 interface Feature {
   icon: LucideIcon;
   title: string;
   description: string;
+  glow: string;
+  badge?: string;
+  badgeColor?: string;
 }
-
-interface WorkflowStep {
-  step: string;
+interface PricingPlan {
   title: string;
-  detail: string;
+  monthlyPrice: string;
+  yearlyPrice: string;
+  monthlyPkr: string;
+  yearlyPkr: string;
+  desc: string;
+  highlight?: boolean;
+  ctaText: string;
+  features: string[];
+  excluded?: string[];
 }
+interface WorkflowStep { step: string; title: string; detail: string; }
 
 // ============================================================================
 // DATA
 // ============================================================================
+const GLOW: Record<string, { icon: string; ring: string; bg: string }> = {
+  purple:  { icon: "text-purple-400",  ring: "ring-purple-500/40",  bg: "bg-purple-500/10" },
+  yellow:  { icon: "text-yellow-400",  ring: "ring-yellow-500/40",  bg: "bg-yellow-500/10" },
+  blue:    { icon: "text-blue-400",    ring: "ring-blue-500/40",    bg: "bg-blue-500/10" },
+  emerald: { icon: "text-emerald-400", ring: "ring-emerald-500/40", bg: "bg-emerald-500/10" },
+  pink:    { icon: "text-pink-400",    ring: "ring-pink-500/40",    bg: "bg-pink-500/10" },
+  violet:  { icon: "text-violet-400",  ring: "ring-violet-500/40",  bg: "bg-violet-500/10" },
+  sky:     { icon: "text-sky-400",     ring: "ring-sky-500/40",     bg: "bg-sky-500/10" },
+  amber:   { icon: "text-amber-400",   ring: "ring-amber-500/40",   bg: "bg-amber-500/10" },
+  teal:    { icon: "text-teal-400",    ring: "ring-teal-500/40",    bg: "bg-teal-500/10" },
+};
 
 const features: Feature[] = [
-  {
-    icon: Brain,
-    title: "AI Content Generator",
-    description: "Transform study materials into notes, summaries, and quizzes automatically.",
-  },
-  {
-    icon: Users,
-    title: "Study With Buddy",
-    description: "Connect with peers who share your learning goals and study together.",
-  },
-  {
-    icon: Video,
-    title: "Mentorship System",
-    description: "Book free sessions with expert mentors for personalized guidance.",
-  },
-  {
-    icon: Clock,
-    title: "Focus Room",
-    description: "Distraction-free environment with Pomodoro technique for productivity.",
-  },
-  {
-    icon: Globe,
-    title: "Study Rooms",
-    description: "Virtual collaborative spaces for group learning and real-time discussion.",
-  },
-  {
-    icon: MessageSquare,
-    title: "Community Forums",
-    description: "Share knowledge, ask questions, and engage with learning community.",
-  },
-  {
-    icon: BookOpen,
-    title: "Resource Hub",
-    description: "Access and share quality study materials created by the community.",
-  },
-  {
-    icon: Shield,
-    title: "Admin Dashboard",
-    description: "Comprehensive platform management and user moderation tools.",
-  },
-  {
-    icon: Sparkles,
-    title: "Gamification",
-    description: "Track progress with XP, levels, badges, and achievement system.",
-  },
+  { icon: Brain,        title: "AI Content Generator",  description: "Generate comprehensive notes, summaries, and quizzes from any topic in seconds.", glow: "purple", badge: "Most Used", badgeColor: "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30" },
+  { icon: Trophy,       title: "Gamified Challenges",   description: "Earn XP, badges, and climb leaderboards through interactive quizzes and streaks.", glow: "yellow", badge: "Popular", badgeColor: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30" },
+  { icon: Users,        title: "Live Study Rooms",      description: "Join virtual rooms to collaborate with peers in real-time with video and chat.", glow: "blue" },
+  { icon: Store,        title: "Teacher Marketplace",   description: "Find expert tutors or sell your own high-quality study materials.", glow: "emerald", badge: "New", badgeColor: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  { icon: Clock,        title: "Focus Room",            description: "Distraction-free environment with Pomodoro timer, ambient sounds, and deep-work tracking.", glow: "pink" },
+  { icon: MessageSquare,title: "Community Forums",      description: "Ask questions, share insights, and engage with thousands of motivated learners.", glow: "violet" },
+  { icon: BookOpen,     title: "Resource Hub",          description: "A shared digital library of notes, PDFs, and guides rated by the community.", glow: "sky" },
+  { icon: GraduationCap,title: "Mentorship Network",   description: "Connect with experienced mentors who guide you through tough subjects one-on-one.", glow: "amber" },
+  { icon: Zap,          title: "Smart Analytics",       description: "Track your study hours, weak areas, and progress with AI-powered dashboards.", glow: "teal" },
 ];
 
 const workflow: WorkflowStep[] = [
-  {
-    step: "01",
-    title: "Set the ritual",
-    detail: "Pick a duration, mood, and focus goal to anchor each session.",
-  },
-  {
-    step: "02",
-    title: "Enter the room",
-    detail: "Drop into a guided environment built for the task in front of you.",
-  },
-  {
-    step: "03",
-    title: "Close the loop",
-    detail: "Reflect, capture outcomes, and queue the next milestone.",
-  },
-];
-
-const launchKitFeatures = [
-  "Guided onboarding ritual",
-  "Personal focus playlist",
-  "Weekly insight recap",
-  "AI-powered study recommendations",
+  { step: "01", title: "Set the ritual",  detail: "Pick a duration, mood, and focus goal to anchor each session." },
+  { step: "02", title: "Enter the room",  detail: "Drop into a guided environment built for the task in front of you." },
+  { step: "03", title: "Close the loop",  detail: "Reflect, capture outcomes, and queue the next milestone." },
 ];
 
 const stats = [
-  { value: "50K+", label: "Active Scholars" },
-  { value: "1M+", label: "Study Hours" },
-  { value: "98%", label: "Success Rate" },
-  { value: "4.9/5", label: "User Rating" },
+  { value: "50K+",  label: "Active Scholars", icon: Users  },
+  { value: "1M+",   label: "Study Hours",     icon: Clock  },
+  { value: "98%",   label: "Success Rate",    icon: Target },
+  { value: "4.9/5", label: "User Rating",     icon: Star   },
+];
+
+const testimonials = [
+  { name: "Sarah L.",  role: "University Student",  avatar: "SL", color: "bg-purple-600",  quote: "StudyBuddy's AI notes saved me hours of work. I can finally focus on understanding concepts instead of just transcribing lectures. It's a total game-changer for my exam prep!", stars: 5 },
+  { name: "David C.",  role: "High School Teacher", avatar: "DC", color: "bg-fuchsia-600", quote: "I use the marketplace to share my supplemental materials. It's a great way to help more students and earn some extra income. The platform is intuitive and easy to use.", stars: 5 },
+  { name: "Maria G.",  role: "College Sophomore",   avatar: "MG", color: "bg-pink-600",    quote: "The focus room and study streaks are brilliant! They keep me accountable and motivated. I've been more consistent with my studies than ever before.", stars: 5 },
+];
+
+const pricingPlans: PricingPlan[] = [
+  {
+    title: "Community Plan", monthlyPrice: "$0", yearlyPrice: "$0",
+    monthlyPkr: "Free Forever", yearlyPkr: "Free Forever",
+    desc: "Everything you need to study smart — free, forever.", ctaText: "Get Started",
+    features: ["AI Notes Generator (10/day)","Flashcards & Quizzes (5/day)","Study Rooms (Unlimited)","Focus Room & Pomodoro","Resource Hub (Download)"],
+    excluded: ["AI Study Assistant (Chatbot)","Upload to Marketplace","Advanced Analytics","Priority Support"],
+  },
+  {
+    title: "Pro Plan", monthlyPrice: "$7", yearlyPrice: "$5",
+    monthlyPkr: "PKR 1,500 /mo", yearlyPkr: "PKR 14,400 /yr",
+    desc: "Unlock smarter studying with premium power.", highlight: true, ctaText: "Upgrade to Pro",
+    features: ["Unlimited AI Notes & Flashcards","Smart Planner with AI","Emergency Study Mode","AI Study Assistant (30/day)","Sell Resources (20/mo)","No Ads"],
+    excluded: ["Unlimited AI Voice Assistant","Sell Unlimited Resources","Custom AI Tutor Training"],
+  },
+  {
+    title: "Elite Plan", monthlyPrice: "$15", yearlyPrice: "$12",
+    monthlyPkr: "PKR 3,200 /mo", yearlyPkr: "PKR 30,700 /yr",
+    desc: "Study, earn, and teach without limits.", ctaText: "Go Elite",
+    features: ["Everything in Pro, PLUS:","Unlimited AI Voice Tutor","Sell Unlimited Resources","Advanced Seller Analytics","AI Tutor Bot (Custom Trained)","Priority Support & Badge"],
+  },
 ];
 
 // ============================================================================
 // ANIMATION VARIANTS
 // ============================================================================
+const ease = [0.22, 1, 0.36, 1] as const;
 
-const fadeInUp: Variants = {
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 },
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 40 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.7, ease } },
 };
-
-const fadeInScale: Variants = {
-  initial: { opacity: 0, scale: 0.9 },
-  animate: { opacity: 1, scale: 1 },
-};
-
-const staggerContainer: Variants = {
-  animate: {
-    transition: {
-      staggerChildren: 0.08,
-    },
-  },
+const stagger: Variants = {
+  hidden: {},
+  show:   { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
 };
 
 // ============================================================================
-// MEMOIZED COMPONENTS
+// FLOATING PARTICLES
 // ============================================================================
+const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
+  id: i,
+  x: (i * 37 + 11) % 100,
+  y: (i * 53 + 7) % 100,
+  size: (i % 3) + 1.5,
+  duration: 12 + (i % 8),
+  delay: (i % 5) * 1.2,
+  driftX: ((i % 5) - 2) * 10,
+}));
 
-const BackgroundGlow = memo(function BackgroundGlow() {
+const FloatingParticles = memo(function FloatingParticles() {
   return (
-    <>
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
-        <motion.div 
-          className="absolute left-1/4 top-0 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-primary/20 blur-[140px]"
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.2, 0.25, 0.2],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {PARTICLES.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full bg-purple-400/20"
+          style={{ left: `${p.x}%`, top: `${p.y}%`, width: p.size, height: p.size }}
+          animate={{ y: [0, -40, 0], x: [0, p.driftX, 0], opacity: [0.1, 0.45, 0.1] }}
+          transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: "easeInOut" }}
         />
-        <motion.div 
-          className="absolute right-1/4 top-1/3 h-[500px] w-[500px] translate-x-1/2 rounded-full bg-primary/15 blur-[120px]"
-          animate={{
-            scale: [1, 1.15, 1],
-            opacity: [0.15, 0.2, 0.15],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
-        <motion.div 
-          className="absolute left-1/2 bottom-0 h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-primary/10 blur-[100px]"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.1, 0.15, 0.1],
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2
-          }}
-        />
-      </div>
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" aria-hidden="true" />
-    </>
+      ))}
+    </div>
   );
 });
 
-interface FeatureCardProps {
-  feature: Feature;
-  index: number;
-}
-
-const FeatureCard = memo(function FeatureCard({ feature, index }: FeatureCardProps) {
-  const Icon = feature.icon;
-  const prefersReducedMotion = useReducedMotion();
-
+// ============================================================================
+// SECTION BADGE
+// ============================================================================
+function SectionBadge({ color, icon: Icon, label }: { color: string; icon: LucideIcon; label: string }) {
   return (
     <motion.div
-      variants={fadeInUp}
-      transition={{
-        duration: 0.6,
-        ease: [0.22, 1, 0.36, 1],
-        delay: prefersReducedMotion ? 0 : index * 0.08,
+      initial={{ opacity: 0, scale: 0.75, y: 12 }}
+      whileInView={{ opacity: 1, scale: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, ease, type: "spring", stiffness: 200 }}
+      className={`mb-4 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest ${color}`}
+    >
+      <Icon className="h-3 w-3" /> {label}
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// ANIMATED SECTION HEADING (word by word)
+// ============================================================================
+function SectionHeading({ children, className = "" }: { children: string; className?: string }) {
+  const words = children.split(" ");
+  return (
+    <motion.h2
+      className={`text-4xl md:text-5xl font-bold text-foreground ${className}`}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: "-60px" }}
+      variants={stagger}
+    >
+      {words.map((word, i) => (
+        <motion.span
+          key={i}
+          variants={fadeUp}
+          className="inline-block mr-[0.28em] last:mr-0"
+        >
+          {word}
+        </motion.span>
+      ))}
+    </motion.h2>
+  );
+}
+
+// ============================================================================
+// FADE-OUT GRADIENT TEXT
+// ============================================================================
+function FadeOutGradientText({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        backgroundImage: "linear-gradient(90deg, #a855f7 0%, #c084fc 40%, #d8b4fe 65%, rgba(216,180,254,0.18) 100%)",
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        color: "transparent",
+        display: "inline",
       }}
-      whileHover={prefersReducedMotion ? {} : { y: -8, scale: 1.02 }}
-      className="group relative overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-br from-card/90 to-card/50 p-8 backdrop-blur-xl transition-all hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/20"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-      <div className="relative">
-        <motion.div 
-          className="mb-5 inline-flex rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 p-4 transition-all group-hover:scale-110 group-hover:from-primary/30 group-hover:to-primary/10"
-          whileHover={prefersReducedMotion ? {} : {
-            rotate: [0, -5, 5, -5, 0],
-          }}
-          transition={{ duration: 0.5 }}
-        >
-          <Icon className="h-7 w-7 text-primary" aria-hidden="true" />
-        </motion.div>
-        <h3 className="mb-3 text-xl font-bold text-foreground">{feature.title}</h3>
-        <p className="text-base leading-relaxed text-muted-foreground">{feature.description}</p>
-      </div>
-    </motion.div>
+      {children}
+    </span>
   );
-});
-
-interface WorkflowCardProps {
-  item: WorkflowStep;
 }
 
-const WorkflowCard = memo(function WorkflowCard({ item }: WorkflowCardProps) {
-  const prefersReducedMotion = useReducedMotion();
-
+// ============================================================================
+// ANIMATED DIVIDER
+// ============================================================================
+function AnimatedDivider() {
   return (
     <motion.div
-      variants={fadeInUp}
-      whileHover={prefersReducedMotion ? {} : { x: 12 }}
-      className="group flex gap-6 transition-all"
-    >
-      <div className="flex-shrink-0">
-        <motion.div 
-          className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/20 to-primary/5 font-mono text-base font-bold text-primary shadow-lg shadow-primary/10 transition-all group-hover:scale-110 group-hover:border-primary/50 group-hover:shadow-xl group-hover:shadow-primary/20"
-          whileHover={prefersReducedMotion ? {} : {
-            rotate: [0, -5, 5, 0],
-          }}
-          transition={{ duration: 0.5 }}
-        >
-          {item.step}
-        </motion.div>
-      </div>
-      <div className="flex-1 pb-10">
-        <h3 className="mb-3 text-xl font-bold text-foreground">{item.title}</h3>
-        <p className="text-base leading-relaxed text-muted-foreground">{item.detail}</p>
-      </div>
-    </motion.div>
+      initial={{ scaleX: 0, opacity: 0 }}
+      whileInView={{ scaleX: 1, opacity: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 1.1, ease }}
+      className="mx-auto h-px w-full max-w-2xl bg-gradient-to-r from-transparent via-purple-500/40 to-transparent"
+    />
   );
-});
+}
 
-const StatCard = memo(function StatCard({ value, label, index }: { value: string; label: string; index: number }) {
-  const prefersReducedMotion = useReducedMotion();
+// ============================================================================
+// STAT CARD
+// ============================================================================
+const StatCard = memo(function StatCard({
+  value, label, icon: Icon, index,
+}: { value: string; label: string; icon: LucideIcon; index: number }) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-  // Extract number from value (e.g., "50K+" -> 50)
-  const getTargetNumber = (val: string) => {
-    const num = parseFloat(val.replace(/[^0-9.]/g, ''));
-    return num;
-  };
-
-  // Get suffix (e.g., "K+", "M+", "%", "/5")
-  const getSuffix = (val: string) => {
-    return val.replace(/[0-9.]/g, '');
-  };
-
-  const targetNumber = getTargetNumber(value);
-  const suffix = getSuffix(value);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const target = parseFloat(value.replace(/[^0-9.]/g, ""));
+  const suffix = value.replace(/[0-9.]/g, "");
 
   useEffect(() => {
     if (!isInView) return;
-
-    const duration = 2000; // 2 seconds
     const steps = 60;
-    const increment = targetNumber / steps;
-    let current = 0;
-    
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= targetNumber) {
-        setCount(targetNumber);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(current));
-      }
-    }, duration / steps);
-
-    return () => clearInterval(timer);
-  }, [isInView, targetNumber]);
+    const inc = target / steps;
+    let cur = 0;
+    const t = setInterval(() => {
+      cur += inc;
+      if (cur >= target) { setCount(target); clearInterval(t); }
+      else setCount(Math.floor(cur));
+    }, 2000 / steps);
+    return () => clearInterval(t);
+  }, [isInView, target]);
 
   return (
     <motion.div
       ref={ref}
-      variants={fadeInScale}
-      transition={{
-        duration: 0.5,
-        delay: prefersReducedMotion ? 0 : index * 0.1,
-      }}
-      whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
-      className="text-center"
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6, ease, delay: index * 0.1 }}
+      whileHover={{ y: -6, scale: 1.04 }}
+      className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card/50 p-6 md:p-8
+                 hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/[0.05] transition-all duration-300"
     >
-      <div className="mb-2 text-4xl font-bold text-primary">
+      <motion.div
+        className="mb-3 rounded-xl bg-purple-500/10 p-3"
+        whileHover={{ rotate: [0, -12, 12, 0] }}
+        transition={{ duration: 0.4 }}
+      >
+        <Icon className="h-5 w-5 text-purple-400" />
+      </motion.div>
+      <div className="mb-1 text-3xl md:text-4xl font-black text-foreground tabular-nums">
         {count}{suffix}
       </div>
-      <div className="text-sm text-muted-foreground">{label}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
     </motion.div>
   );
 });
 
 // ============================================================================
-// MAIN COMPONENT
+// FEATURE CARD
 // ============================================================================
-
-export default function Home() {
-  const prefersReducedMotion = useReducedMotion();
+const FeatureCard = memo(function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
+  const Icon = feature.icon;
+  const g = GLOW[feature.glow] ?? GLOW.purple;
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
-      <BackgroundGlow />
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 50 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, ease, delay: (index % 3) * 0.1 + Math.floor(index / 3) * 0.12 }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      className="group relative overflow-hidden rounded-2xl border border-border bg-card/50 p-7
+                 hover:border-foreground/20 hover:bg-card hover:shadow-xl hover:shadow-purple-500/[0.05]
+                 transition-colors duration-300 cursor-pointer"
+    >
+      {/* Shine sweep on hover */}
+      <div className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
+           style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent)" }} />
 
-      {/* Hero Section */}
-      <section className="relative px-4 pb-16 pt-40 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <motion.div
-            initial="initial"
-            animate="animate"
-            variants={staggerContainer}
-            className="text-center"
-          >
-            {/* Heading */}
-            <motion.h1
-              variants={fadeInUp}
-              className="mb-8 text-6xl font-black leading-tight tracking-tight sm:text-7xl lg:text-8xl"
-            >
-               Studying made social.
-              <br />
-              <span className="inline-block bg-gradient-to-r from-primary/100 via-primary/60 to-primary/20 bg-clip-text text-transparent">
-                Success made certain.
-              </span>
-            </motion.h1>
+      {feature.badge && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={inView ? { opacity: 1, scale: 1 } : {}}
+          transition={{ delay: (index % 3) * 0.1 + 0.35, duration: 0.4, type: "spring" }}
+          className={`absolute right-4 top-4 rounded-full border px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider ${feature.badgeColor}`}
+        >
+          {feature.badge}
+        </motion.div>
+      )}
 
-            {/* Description */}
-            <motion.p
-              variants={fadeInUp}
-              className="mx-auto mb-12 max-w-3xl text-xl leading-relaxed text-muted-foreground sm:text-2xl"
-            >
-              Where learning meets innovation. Build knowledge, connect with mentors, 
-              and achieve your goals in a community that never stops growing.
-            </motion.p>
-
-            {/* CTA Buttons */}
-            <motion.div
-              variants={fadeInUp}
-              className="flex flex-col items-center justify-center gap-5 sm:flex-row mb-12"
-            >
-              <motion.div
-                whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
-                whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-              >
-                <Link
-                  href="/session"
-                  className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-primary px-10 py-5 font-bold text-primary-foreground shadow-2xl shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-3xl hover:shadow-primary/40 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
-                >
-                  <span className="relative">Begin a session</span>
-                  <motion.div
-                    animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  >
-                    <ArrowRight className="relative h-5 w-5" />
-                  </motion.div>
-                </Link>
-              </motion.div>
-
-              <motion.div
-                whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
-                whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-              >
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center gap-3 rounded-full border-2 border-border bg-card/50 px-10 py-5 font-bold text-foreground backdrop-blur-xl transition-all hover:border-primary/40 hover:bg-card/80 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
-                >
-                  View dashboard
-                </Link>
-              </motion.div>
-            </motion.div>
-
-            {/* Stats Section */}
-            <motion.div
-              variants={staggerContainer}
-              className="grid grid-cols-2 gap-8 sm:grid-cols-4"
-            >
-              {stats.map((stat, i) => (
-                <StatCard key={stat.label} {...stat} index={i} />
-              ))}
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="relative px-4 py-24 sm:px-6 lg:px-8" aria-labelledby="features-heading">
-        <div className="mx-auto max-w-7xl">
-          <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-            className="mb-16 text-center"
-          >
-            <motion.h2
-              id="features-heading"
-              variants={fadeInUp}
-              className="mb-6 text-5xl font-black tracking-tight sm:text-6xl"
-            >
-              Everything you need to{" "}
-              <span className="text-primary">
-                excel
-              </span>
-            </motion.h2>
-            <motion.p
-              variants={fadeInUp}
-              className="mx-auto max-w-2xl text-xl text-muted-foreground"
-            >
-              Nine powerful modules designed to transform your study experience
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-            className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {features.map((feature, i) => (
-              <FeatureCard key={feature.title} feature={feature} index={i} />
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Workflow Section */}
-      <section
-        className="relative px-4 py-24 sm:px-6 lg:px-8"
-        aria-labelledby="workflow-heading"
+      <motion.div
+        className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-full ring-2 ${g.ring} ${g.bg}`}
+        whileHover={{ rotate: 360, scale: 1.1 }}
+        transition={{ duration: 0.55, ease: "easeInOut" }}
       >
-        <div className="mx-auto max-w-5xl">
+        <Icon className={`h-5 w-5 ${g.icon}`} />
+      </motion.div>
+
+      <h3 className="mb-2 text-lg font-bold text-foreground">{feature.title}</h3>
+      <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
+    </motion.div>
+  );
+});
+
+// ============================================================================
+// ANIMATED PROGRESS BAR
+// ============================================================================
+function AnimatedProgressBar({ pct, color = "from-purple-500 to-violet-500" }: { pct: number; color?: string }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+  return (
+    <div ref={ref} className="h-2 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
+      <motion.div
+        className={`h-full rounded-full bg-gradient-to-r ${color}`}
+        initial={{ width: 0 }}
+        animate={inView ? { width: `${pct}%` } : {}}
+        transition={{ duration: 1.3, ease, delay: 0.35 }}
+      />
+    </div>
+  );
+}
+
+// ============================================================================
+// PRICING CARD
+// ============================================================================
+const PricingCard = memo(function PricingCard({
+  plan, isYearly, index,
+}: { plan: PricingPlan; isYearly: boolean; index: number }) {
+  const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+  const pkr   = isYearly ? plan.yearlyPkr   : plan.monthlyPkr;
+  const [hovered, setHovered] = useState(false);
+  const isActive = hovered || plan.highlight;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.65, ease, delay: index * 0.13 }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+      whileHover={{ y: -10, scale: 1.025 }}
+      className={`relative flex flex-col rounded-2xl border p-8 h-full cursor-pointer transition-all duration-300 ${
+        plan.highlight
+          ? "border-purple-500/60 bg-purple-50 dark:bg-purple-950/20 shadow-[0_0_50px_rgba(140,48,232,0.18)]"
+          : hovered
+          ? "border-purple-400/50 bg-purple-50/40 dark:bg-purple-950/10 shadow-[0_0_35px_rgba(140,48,232,0.10)]"
+          : "border-border bg-card/50"
+      }`}
+    >
+      <AnimatePresence>
+        {isActive && (
           <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-purple-500/[0.05] via-transparent to-fuchsia-500/[0.04]"
+          />
+        )}
+      </AnimatePresence>
+
+      {plan.highlight && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.13 + 0.3, type: "spring", stiffness: 280 }}
+          className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-fuchsia-600 to-purple-600 px-5 py-1 text-[11px] font-bold text-white uppercase tracking-wider shadow-lg"
+        >
+          Most Popular
+        </motion.div>
+      )}
+
+      <div className="mb-8">
+        <h3 className={`mb-2 text-xl font-bold transition-colors duration-300 ${isActive ? "text-purple-700 dark:text-purple-300" : "text-foreground"}`}>
+          {plan.title}
+        </h3>
+        <div className="flex items-baseline gap-1">
+          <motion.span
+            key={price}
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease }}
+            className={`text-5xl font-black transition-colors duration-300 ${isActive ? "text-fuchsia-600 dark:text-fuchsia-400" : "text-foreground/90"}`}
           >
-            {/* Section Header */}
-            <div className="mb-20 text-center">
-              <motion.div variants={fadeInUp} className="mb-6 inline-flex">
-                <span className="rounded-full bg-primary/10 px-6 py-2 text-base font-bold text-primary shadow-lg">
-                  Hybrid workflow
-                </span>
-              </motion.div>
-
-              <motion.h2
-                id="workflow-heading"
-                variants={fadeInUp}
-                className="mb-6 text-5xl font-black tracking-tight sm:text-6xl"
-              >
-                A study ritual that adapts to{" "}
-                <span className="text-primary">
-                  your mind
-                </span>
-              </motion.h2>
-
-              <motion.p
-                variants={fadeInUp}
-                className="mx-auto max-w-3xl text-xl leading-relaxed text-muted-foreground"
-              >
-                Every session blends intention setting, guided environment shifts, and reflective
-                review. Your routine stays consistent while the interface adapts to the moment.
-              </motion.p>
-            </div>
-
-            {/* Workflow Steps */}
-            <div className="relative">
-              <div
-                className="absolute left-8 top-8 bottom-8 w-1 bg-gradient-to-b from-primary via-primary/50 to-transparent rounded-full"
-                aria-hidden="true"
-              />
-
-              {workflow.map((item) => (
-                <WorkflowCard key={item.step} item={item} />
-              ))}
-            </div>
-          </motion.div>
+            {price}
+          </motion.span>
+          {price !== "$0" && (
+            <span className="text-sm text-muted-foreground">/{isYearly ? "yr" : "mo"}</span>
+          )}
         </div>
-      </section>
+        <p className="mt-2 text-sm text-muted-foreground font-medium">{pkr}</p>
+        <p className="mt-5 text-sm text-muted-foreground border-b border-border pb-6">{plan.desc}</p>
+      </div>
 
-      {/* Community Section */}
-      <section className="relative px-4 py-24 sm:px-6 lg:px-8" aria-labelledby="community-heading">
-        <div className="mx-auto max-w-6xl">
+      <div className="flex-1 space-y-3.5 mb-8">
+        {plan.features.map((feat, i) => (
           <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-            className="overflow-hidden rounded-[2rem] border-2 border-border/40 bg-gradient-to-br from-card via-card/95 to-card/80 p-12 shadow-2xl backdrop-blur-xl sm:p-16 lg:p-20"
-          >
-            <div className="grid gap-16 lg:grid-cols-2 lg:gap-20">
-              {/* Content */}
-              <div>
-                <motion.h2
-                  id="community-heading"
-                  variants={fadeInUp}
-                  className="mb-8 text-5xl font-black tracking-tight sm:text-6xl"
-                >
-                  Build momentum{" "}
-                  <span className="text-primary">
-                    together
-                  </span>
-                </motion.h2>
-
-                <motion.p
-                  variants={fadeInUp}
-                  className="mb-10 text-xl leading-relaxed text-muted-foreground"
-                >
-                  Join mentor circles, live focus sessions, and accountability pods that match your
-                  learning style. StudyBuddy keeps the energy calm and the progress visible.
-                </motion.p>
-
-                <motion.div variants={fadeInUp}>
-                  <motion.div
-                    whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
-                    whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-                  >
-                    <Link
-                      href="/signup"
-                      className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-foreground px-10 py-5 font-bold text-background shadow-2xl transition-all hover:shadow-3xl focus:outline-none focus:ring-2 focus:ring-foreground focus:ring-offset-2 focus:ring-offset-card"
-                    >
-                      <span className="relative">Claim your seat</span>
-                      <motion.div
-                        animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      >
-                        <ArrowRight className="relative h-5 w-5" />
-                      </motion.div>
-                    </Link>
-                  </motion.div>
-                </motion.div>
-              </div>
-
-              {/* Launch Kit Features */}
-              <div>
-                <motion.h3
-                  variants={fadeInUp}
-                  className="mb-8 text-sm font-bold uppercase tracking-widest text-muted-foreground"
-                >
-                  Launch kit features
-                </motion.h3>
-
-                <motion.ul
-                  variants={staggerContainer}
-                  className="space-y-5"
-                  role="list"
-                  aria-label="Launch kit features"
-                >
-                  {launchKitFeatures.map((text, i) => (
-                    <motion.li
-                      key={i}
-                      variants={fadeInUp}
-                      className="flex items-start gap-4 group"
-                    >
-                      <motion.div
-                        className="mt-1.5 flex-shrink-0 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 p-2 transition-transform group-hover:scale-110"
-                        aria-hidden="true"
-                        whileHover={prefersReducedMotion ? {} : {
-                          rotate: 360,
-                        }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <div className="h-3 w-3 rounded-full bg-primary" />
-                      </motion.div>
-                      <span className="text-lg leading-relaxed text-foreground font-medium">{text}</span>
-                    </motion.li>
-                  ))}
-                </motion.ul>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Final CTA Section */}
-      <section className="relative px-4 py-32 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center">
-          <motion.div
-            initial="initial"
-            whileInView="animate"
+            key={feat}
+            initial={{ opacity: 0, x: -10 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            variants={staggerContainer}
+            transition={{ delay: i * 0.06 + index * 0.08, duration: 0.4, ease }}
+            className="flex items-start gap-3"
           >
-            <motion.h2
-              variants={fadeInUp}
-              className="mb-8 text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl"
-            >
-              Ready to transform your{" "}
-              <span className="text-primary">
-                study journey?
-              </span>
-            </motion.h2>
-            
-            <motion.p
-              variants={fadeInUp}
-              className="mb-12 text-xl text-muted-foreground"
-            >
-              Join thousands of scholars already achieving their goals
-            </motion.p>
+            <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors duration-300 ${isActive ? "bg-emerald-500/30" : "bg-emerald-500/20"}`}>
+              <Check className="h-3 w-3 text-emerald-400" />
+            </div>
+            <span className={`text-sm transition-colors duration-300 ${isActive ? "text-foreground" : "text-foreground/80"}`}>{feat}</span>
+          </motion.div>
+        ))}
+        {plan.excluded?.map((feat) => (
+          <div key={feat} className="flex items-start gap-3 opacity-40">
+            <X className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground line-through">{feat}</span>
+          </div>
+        ))}
+      </div>
 
-            <motion.div variants={fadeInUp}>
-              <motion.div
-                whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
-                whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-              >
-                <Link
-                  href="/signup"
-                  className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-primary px-12 py-6 text-lg font-bold text-primary-foreground shadow-2xl shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-3xl hover:shadow-primary/40 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
+      <Link
+        href="/register"
+        className={`block w-full rounded-xl py-3.5 text-center text-sm font-bold transition-all duration-300 ${
+          isActive
+            ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25 hover:bg-purple-700 hover:shadow-xl"
+            : "border border-border bg-card text-foreground hover:bg-muted"
+        }`}
+      >
+        {plan.ctaText}
+      </Link>
+    </motion.div>
+  );
+});
+
+// ============================================================================
+// TESTIMONIALS MARQUEE
+// ============================================================================
+const TestimonialsMarquee = memo(function TestimonialsMarquee({ isMobile }: { isMobile: boolean }) {
+  const tripled = [...testimonials, ...testimonials, ...testimonials];
+  return (
+    <div className="relative flex w-full overflow-hidden py-8">
+      <motion.div
+        className="flex gap-6"
+        animate={isMobile ? {} : { x: ["0%", "-33.333%"] }}
+        transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
+      >
+        {tripled.map((t, i) => (
+          <motion.div
+            key={i}
+            whileHover={{ y: -6, scale: 1.02 }}
+            transition={{ duration: 0.3, ease }}
+            className="w-[380px] shrink-0 rounded-2xl border border-border bg-card/50 p-7 flex flex-col justify-between hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/[0.06] transition-all duration-300"
+          >
+            <div>
+              <div className="mb-4 flex gap-1 text-yellow-400">
+                {Array.from({ length: t.stars }).map((_, j) => (
+                  <Star key={j} size={15} fill="currentColor" />
+                ))}
+              </div>
+              <p className="mb-8 text-sm italic leading-relaxed text-muted-foreground">&ldquo;{t.quote}&rdquo;</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-white ${t.color}`}>{t.avatar}</div>
+              <div>
+                <div className="text-sm font-bold text-foreground">{t.name}</div>
+                <div className="text-xs text-muted-foreground">{t.role}</div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </motion.div>
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-background to-transparent" />
+    </div>
+  );
+});
+
+// ============================================================================
+// MAIN
+// ============================================================================
+export default function Home() {
+  const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
+  const [isYearly, setIsYearly] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (isMobile || prefersReducedMotion) return;
+    const onMove = (e: MouseEvent) => setMousePos({
+      x: (e.clientX / window.innerWidth - 0.5) * 2,
+      y: (e.clientY / window.innerHeight - 0.5) * 2,
+    });
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [isMobile, prefersReducedMotion]);
+
+  const springX = useSpring(mousePos.x * 30, { stiffness: 40, damping: 20 });
+  const springY = useSpring(mousePos.y * 20, { stiffness: 40, damping: 20 });
+
+  return (
+    <div className="relative min-h-screen bg-background text-foreground overflow-hidden font-sans">
+
+      {/* ── BACKGROUND ORBS ── */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0 bg-background" />
+        <motion.div
+          className="absolute left-1/4 top-0 h-[650px] w-[650px] -translate-x-1/2 rounded-full bg-purple-600/[0.08] blur-[140px]"
+          style={{ x: springX, y: springY }}
+          animate={{ scale: [1, 1.06, 1] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute right-1/4 top-1/3 h-[500px] w-[500px] translate-x-1/2 rounded-full bg-fuchsia-600/[0.07] blur-[140px]"
+          animate={{ scale: [1, 1.1, 1], opacity: [0.07, 0.11, 0.07] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        />
+        <motion.div
+          className="absolute left-1/2 bottom-0 h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-violet-600/[0.06] blur-[120px]"
+          animate={{ scale: [1, 1.12, 1] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+        />
+        <FloatingParticles />
+      </div>
+
+      {/* ══════════════ HERO ══════════════ */}
+      <section className="relative px-6 pb-20 pt-40 text-center">
+        <motion.div initial="hidden" animate="show" variants={stagger} className="mx-auto max-w-5xl">
+
+          {/* Headline — 3D flip-in per word */}
+          <motion.h1
+            className="mb-8 text-6xl md:text-8xl font-extrabold tracking-tight leading-[1.05]"
+            initial="hidden"
+            animate="show"
+            variants={stagger}
+          >
+            <motion.span className="block" variants={stagger}>
+              {["Studying", "made", "social."].map((w, i) => (
+                <motion.span
+                  key={i}
+                  variants={{
+                    hidden: { opacity: 0, y: 60, rotateX: -25 },
+                    show:   { opacity: 1, y: 0,  rotateX: 0, transition: { duration: 0.75, ease, delay: i * 0.1 } },
+                  }}
+                  className="inline-block mr-[0.22em] last:mr-0"
+                  style={{ display: "inline-block" }}
                 >
-                  <span className="relative">Get started for free</span>
-                  <motion.div
-                    className="relative"
-                    animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  >
-                    <ArrowRight className="h-6 w-6" />
-                  </motion.div>
-                </Link>
-              </motion.div>
+                  {w}
+                </motion.span>
+              ))}
+            </motion.span>
+            <motion.span
+              className="block"
+              variants={{
+                hidden: { opacity: 0, y: 60 },
+                show:   { opacity: 1, y: 0, transition: { duration: 0.8, ease, delay: 0.38 } },
+              }}
+            >
+              <FadeOutGradientText>Success made certain.</FadeOutGradientText>
+            </motion.span>
+          </motion.h1>
+
+          <motion.p
+            variants={fadeUp}
+            className="mx-auto mb-12 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed"
+          >
+            Where learning meets innovation. Build knowledge, connect with mentors, and achieve your goals in a community that never stops growing.
+          </motion.p>
+
+          <motion.div variants={fadeUp} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
+              <Link href="/register"
+                className="group inline-flex items-center gap-2 rounded-full bg-purple-600 px-10 py-4 text-base font-bold text-white shadow-xl shadow-purple-600/25 transition-all hover:bg-purple-700 hover:shadow-2xl hover:shadow-purple-600/35"
+              >
+                Begin a session
+                <motion.span className="inline-flex" animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
+                  <ArrowRight className="h-4 w-4" />
+                </motion.span>
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
+              <Link href="/dashboard"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-10 py-4 text-base font-bold text-foreground transition-all hover:bg-muted hover:border-foreground/20"
+              >
+                View dashboard
+              </Link>
             </motion.div>
           </motion.div>
+
+          <motion.p variants={fadeUp} className="mt-8 text-sm text-muted-foreground font-medium">
+            No credit card required&nbsp;&bull;&nbsp;Free forever plan
+          </motion.p>
+        </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div className="mt-16 flex justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}>
+          <motion.div
+            className="flex flex-col items-center gap-1"
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <div className="h-8 w-[1px] bg-gradient-to-b from-transparent to-purple-400/40" />
+            <div className="h-1 w-1 rounded-full bg-purple-400/40" />
+          </motion.div>
+        </motion.div>
+
+        {/* Stats */}
+        <div className="mx-auto mt-20 max-w-5xl">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {stats.map((s, i) => <StatCard key={i} {...s} index={i} />)}
+          </div>
         </div>
+      </section>
+
+      <AnimatedDivider />
+
+      {/* ══════════════ PROBLEM ══════════════ */}
+      <section className="relative px-6 py-28 overflow-hidden">
+        {/* Subtle animated grid */}
+        <motion.div
+          className="pointer-events-none absolute inset-0 opacity-[0.015]"
+          style={{
+            backgroundImage: "linear-gradient(#a855f7 1px,transparent 1px),linear-gradient(90deg,#a855f7 1px,transparent 1px)",
+            backgroundSize: "60px 60px",
+          }}
+          animate={{ backgroundPosition: ["0px 0px", "60px 60px"] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        />
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-14 text-center">
+            <SectionBadge color="border-red-500/30 bg-red-500/10 text-red-400" icon={Flame} label="The Old Way" />
+            <SectionHeading className="mb-4">Sound Familiar?</SectionHeading>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.25, ease }}
+              className="text-muted-foreground max-w-xl mx-auto"
+            >
+              Traditional studying is broken. These are the three biggest traps students fall into.
+            </motion.p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              { icon: Sparkles, title: "Scattered Materials", desc: "Notes across 5 apps, PDFs in random folders, and that one lecture recording you can never find when you need it." },
+              { icon: Users,    title: "Studying Alone",      desc: "No study group, no accountability partner, and no one to explain concepts you don't understand at 2 AM." },
+              { icon: Flame,    title: "Burnout & Overwhelm", desc: "Cramming at midnight, missing deadlines, and the constant feeling that you're falling behind every single day." },
+            ].map((p, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 45, rotateY: -8 }}
+                whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.65, ease, delay: i * 0.13 }}
+                whileHover={{ y: -8, scale: 1.02 }}
+                className="rounded-2xl border border-red-500/10 bg-red-500/[0.03] p-7 hover:border-red-500/25 hover:shadow-lg hover:shadow-red-500/[0.04] transition-all duration-300 h-full"
+              >
+                <motion.div
+                  className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-full ring-2 ring-red-500/40 bg-red-500/10"
+                  whileHover={{ rotate: [0, -15, 15, 0] }} transition={{ duration: 0.5 }}
+                >
+                  <p.icon className="h-5 w-5 text-red-400" />
+                </motion.div>
+                <h3 className="mb-2 text-lg font-bold text-foreground">{p.title}</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">{p.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <AnimatedDivider />
+
+      {/* ══════════════ FEATURES ══════════════ */}
+      <section id="features" className="relative px-6 py-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-16 text-center">
+            <SectionBadge color="border-purple-500/30 bg-purple-500/10 text-purple-400" icon={Zap} label="Core Features" />
+            <SectionHeading className="mb-4">Everything You Need to Succeed</SectionHeading>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.25, ease }}
+              className="text-muted-foreground max-w-xl mx-auto"
+            >
+              Nine powerful modules working together so you never study the hard way again.
+            </motion.p>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((f, i) => <FeatureCard key={i} feature={f} index={i} />)}
+          </div>
+        </div>
+      </section>
+
+      <AnimatedDivider />
+
+      {/* ══════════════ WORKFLOW ══════════════ */}
+      <section id="workflow" className="relative px-6 py-28 bg-muted/40 border-y border-border overflow-hidden">
+        <motion.div
+          className="pointer-events-none absolute -right-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-violet-500/[0.05] blur-[100px]"
+          animate={{ scale: [1, 1.18, 1], opacity: [0.05, 0.09, 0.05] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <div className="mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <SectionBadge color="border-violet-500/30 bg-violet-500/10 text-violet-400" icon={Target} label="How It Works" />
+            <SectionHeading className="mb-4">A Ritual Built For Deep Work</SectionHeading>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2, ease }}
+              className="text-muted-foreground max-w-xl mx-auto"
+            >
+              Three simple steps. One powerful system. Focus on what matters.
+            </motion.p>
+          </div>
+
+          <div className="grid gap-12 lg:grid-cols-2 items-center">
+            {/* Steps */}
+            <div className="space-y-8">
+              {workflow.map((step, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ duration: 0.65, ease, delay: i * 0.15 }}
+                  className="flex gap-5 group"
+                >
+                  <div className="flex flex-col items-center">
+                    <motion.div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 font-mono text-sm font-bold transition-all duration-300 group-hover:bg-purple-500/25 group-hover:border-purple-500/50"
+                      whileHover={{ scale: 1.15, rotate: 6 }}
+                    >
+                      {step.step}
+                    </motion.div>
+                    {i < workflow.length - 1 && (
+                      <motion.div
+                        className="mt-2 h-full w-px"
+                        initial={{ scaleY: 0 }}
+                        whileInView={{ scaleY: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.7, delay: i * 0.15 + 0.4, ease }}
+                        style={{ background: "linear-gradient(to bottom, rgba(168,85,247,0.4), transparent)", transformOrigin: "top" }}
+                      />
+                    )}
+                  </div>
+                  <div className="pb-4">
+                    <h3 className="text-xl font-bold text-foreground mb-1 transition-colors duration-300 group-hover:text-purple-600 dark:group-hover:text-purple-400">
+                      {step.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{step.detail}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Timer mockup */}
+            <motion.div
+              initial={{ opacity: 0, x: 60, scale: 0.93 }}
+              whileInView={{ opacity: 1, x: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.8, ease, delay: 0.2 }}
+              whileHover={{ y: -6 }}
+              className="rounded-[1.75rem] border border-border bg-card/60 p-8 shadow-2xl shadow-purple-500/[0.06] backdrop-blur-sm"
+            >
+              <div className="mb-8 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    className="h-3 w-3 rounded-full bg-emerald-500"
+                    animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
+                    transition={{ duration: 1.8, repeat: Infinity }}
+                    style={{ boxShadow: "0 0 10px rgba(16,185,129,0.6)" }}
+                  />
+                  <span className="text-sm font-bold text-foreground/80">Focus Mode Active</span>
+                </div>
+                <span className="rounded-lg bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">Session 2 / 4</span>
+              </div>
+
+              {/* Animated ring */}
+              <div className="flex justify-center mb-8">
+                <div className="relative w-48 h-48">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
+                    <circle cx="100" cy="100" r="85" strokeWidth="7" className="fill-none stroke-foreground/[0.06]" />
+                    <motion.circle
+                      cx="100" cy="100" r="85" strokeWidth="7" strokeLinecap="round"
+                      className="fill-none stroke-purple-500"
+                      strokeDasharray="534"
+                      initial={{ strokeDashoffset: 534 }}
+                      whileInView={{ strokeDashoffset: 181 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 1.6, ease, delay: 0.5 }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-5xl font-bold font-mono text-foreground tracking-wider">25:00</span>
+                    <span className="text-[11px] text-muted-foreground mt-1 uppercase tracking-widest">remaining</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6 rounded-xl bg-purple-500/[0.08] border border-purple-500/20 p-5">
+                <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-purple-400">Current Task</div>
+                <div className="text-xl font-bold text-foreground">Data Structures Review</div>
+                <div className="mt-1 text-sm text-muted-foreground">Binary Trees &amp; Graphs</div>
+              </div>
+
+              <div className="mb-6">
+                <div className="mb-2 flex justify-between text-xs font-bold text-muted-foreground">
+                  <span>Session Progress</span>
+                  <motion.span
+                    className="text-purple-400"
+                    initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+                    transition={{ delay: 1.1 }}
+                  >66%</motion.span>
+                </div>
+                <AnimatedProgressBar pct={66} />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { val: "7d",  label: "Streak", color: "text-yellow-500 dark:text-yellow-400" },
+                  { val: "12",  label: "Notes",  color: "text-purple-500 dark:text-purple-400" },
+                  { val: "94",  label: "XP",     color: "text-foreground/90" },
+                ].map((item, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.75 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.9 + i * 0.1, type: "spring", stiffness: 280 }}
+                    whileHover={{ scale: 1.08, y: -2 }}
+                    className="rounded-xl bg-muted/50 border border-border p-4 text-center hover:border-purple-500/20 transition-colors duration-300"
+                  >
+                    <div className={`text-2xl font-bold ${item.color}`}>{item.val}</div>
+                    <div className="text-[10px] text-muted-foreground font-semibold mt-1 uppercase tracking-wider">{item.label}</div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <AnimatedDivider />
+
+      {/* ══════════════ TESTIMONIALS ══════════════ */}
+      <section className="relative py-28 overflow-hidden">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mb-12 text-center">
+            <SectionBadge color="border-yellow-500/30 bg-yellow-500/10 text-yellow-400" icon={Star} label="Reviews" />
+            <SectionHeading>Loved by Students and Teachers</SectionHeading>
+          </div>
+        </div>
+        <TestimonialsMarquee isMobile={isMobile} />
+      </section>
+
+      <AnimatedDivider />
+
+      {/* ══════════════ PRICING ══════════════ */}
+      <section id="pricing" className="relative px-6 py-28 bg-muted/40 border-y border-border overflow-hidden">
+        <motion.div
+          className="pointer-events-none absolute -left-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-fuchsia-500/[0.05] blur-[100px]"
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-16 text-center">
+            <SectionHeading className="mb-6">Invest In Your Grades</SectionHeading>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.25, ease }}
+              className="flex items-center justify-center gap-4 text-sm font-bold"
+            >
+              <span className={!isYearly ? "text-foreground" : "text-muted-foreground"}>Monthly</span>
+              <button
+                onClick={() => setIsYearly(v => !v)}
+                className="relative w-14 h-7 rounded-full bg-muted border border-border flex items-center p-1 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+              >
+                <motion.div
+                  className="w-5 h-5 rounded-full bg-purple-500 shadow-lg shadow-purple-500/30"
+                  animate={{ x: isYearly ? 26 : 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              </button>
+              <span className={`flex items-center gap-2 ${isYearly ? "text-foreground" : "text-muted-foreground"}`}>
+                Annually
+                <motion.span
+                  animate={isYearly ? { scale: [1, 1.12, 1] } : {}}
+                  transition={{ duration: 0.3 }}
+                  className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400 uppercase tracking-wider"
+                >
+                  Save 20%
+                </motion.span>
+              </span>
+            </motion.div>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3 items-stretch">
+            {pricingPlans.map((plan, i) => (
+              <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <AnimatedDivider />
+
+      {/* ══════════════ FINAL CTA ══════════════ */}
+      <section className="relative px-6 py-36 text-center overflow-hidden">
+        {/* Breathing glow */}
+        <motion.div
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          animate={{ opacity: [0.3, 0.65, 0.3] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <div className="h-[400px] w-[700px] rounded-full bg-purple-500/[0.06] blur-[120px]" />
+        </motion.div>
+
+        <motion.div initial="hidden" whileInView="show" viewport={{ once: true }} variants={stagger} className="mx-auto max-w-3xl relative">
+          <motion.div variants={fadeUp} className="mb-4">
+            <SectionBadge color="border-purple-500/30 bg-purple-500/10 text-purple-400" icon={Sparkles} label="Get Started Free" />
+          </motion.div>
+
+          {/* CTA heading word by word */}
+          <motion.h2 className="mb-6 text-5xl md:text-6xl font-black leading-[1.1]" initial="hidden" whileInView="show" viewport={{ once: true }} variants={stagger}>
+            {["Stop", "Procrastinating."].map((w, i) => (
+              <motion.span key={i} variants={fadeUp} className="inline-block mr-3">{w}</motion.span>
+            ))}
+            <br />
+            {["Start", "Achieving."].map((w, i) => (
+              <motion.span key={i} variants={fadeUp} className="inline-block mr-3 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-fuchsia-400">
+                {w}
+              </motion.span>
+            ))}
+          </motion.h2>
+
+          <motion.p variants={fadeUp} className="mb-10 text-lg text-muted-foreground">
+            Join the smartest study community today. Setup takes less than 60 seconds.
+          </motion.p>
+
+          <motion.div variants={fadeUp}>
+            <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.97 }} className="inline-block">
+              <Link href="/register"
+                className="inline-flex items-center gap-3 rounded-full bg-foreground px-10 py-4 text-lg font-bold text-background shadow-[0_0_50px_rgba(0,0,0,0.12)] dark:shadow-[0_0_50px_rgba(255,255,255,0.12)] hover:shadow-2xl transition-shadow"
+              >
+                Create Free Account
+                <motion.span className="inline-flex" animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
+                  <ArrowRight className="h-5 w-5" />
+                </motion.span>
+              </Link>
+            </motion.div>
+            <p className="mt-5 text-sm font-medium text-muted-foreground">
+              Free forever plan&nbsp;&bull;&nbsp;No credit card required
+            </p>
+          </motion.div>
+        </motion.div>
       </section>
     </div>
   );

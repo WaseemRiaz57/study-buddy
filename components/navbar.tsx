@@ -3,6 +3,7 @@
 import { Sparkles, Menu, X, Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
@@ -13,34 +14,18 @@ const navItems = [
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // 👇 FIX 1: Mounted state add kiya
   const [mounted, setMounted] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "dark";
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return savedTheme || (prefersDark ? "dark" : "light");
-  });
-
-  // Update DOM when theme changes
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
-
-  // 👇 FIX 2: Component mount hone ke baad true set karein
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Toggle theme
   const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
+
+  const isDark = resolvedTheme === "dark";
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl transition-colors">
@@ -141,7 +126,7 @@ export function Navbar() {
                 <div className="h-4 w-4" /> 
             ) : (
                 <AnimatePresence mode="wait" initial={false}>
-                {theme === "dark" ? (
+                {isDark ? (
                     <motion.div
                     key="sun"
                     initial={{ rotate: -90, opacity: 0 }}
@@ -167,19 +152,18 @@ export function Navbar() {
           </motion.button>
         </div>
 
-        {/* Mobile Theme Toggle (Also Fixed) */}
+        {/* Mobile Theme Toggle */}
         <motion.button
           onClick={toggleTheme}
           whileTap={{ scale: 0.9 }}
           className="md:hidden rounded-full p-2 bg-card border border-border ml-2"
           aria-label="Toggle theme"
         >
-          {/* 👇 FIX 4: Mobile button par bhi check lagaya */}
           {!mounted ? (
              <div className="h-4 w-4" /> 
           ) : (
             <AnimatePresence mode="wait" initial={false}>
-                {theme === "dark" ? (
+                {isDark ? (
                 <motion.div
                     key="sun"
                     initial={{ rotate: -90, opacity: 0 }}
