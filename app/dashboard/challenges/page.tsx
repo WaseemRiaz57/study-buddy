@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useState } from "react";
 // Imports check kar lijiyega export name ke hisab se
@@ -615,9 +616,12 @@ export default function ChallengesDashboard() {
                   </span>
                 </div>
 
-                <button className="w-full mt-5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2.5 rounded-xl shadow-lg shadow-red-500/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-1.5">
-                  <Zap size={14} /> Join Study Jam
-                </button>
+                <Link 
+  href="/dashboard/challenges/global-event" 
+  className="w-full mt-5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2.5 rounded-xl shadow-lg shadow-red-500/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-1.5"
+>
+  <Zap size={14} /> Join Study Jam
+</Link>
               </div>
             </motion.div>
 
