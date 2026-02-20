@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Key, Trophy, Star, Shield, Coins, X } from "lucide-react";
 
+import { useRouter } from "next/navigation";
+
 interface EliteUnlockModalProps {
   isOpen: boolean;
   onClose: () => void; // Error yahan tha: onCloseAction ki jagah onClose kar diya
@@ -67,6 +69,7 @@ export default function EliteUnlockModal({
   onClose, // Yahan bhi update kiya
   onUnlockAction,
 }: EliteUnlockModalProps) {
+    const router = useRouter();
   /* lock body scroll while open */
   useEffect(() => {
     if (isOpen) document.body.style.overflow = "hidden";
@@ -198,6 +201,7 @@ export default function EliteUnlockModal({
                 onClick={() => {
                   onUnlockAction?.();
                   onClose(); // Optional: Unlock karne ke baad modal close karna
+                  router.push('/dashboard/upgrade');
                 }}
                 className="relative w-full max-w-xs overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 bg-[length:200%_100%] px-8 py-3 text-base font-bold text-[#0f0b15] shadow-[0_0_30px_rgba(255,215,0,0.35)] transition-shadow hover:shadow-[0_0_50px_rgba(255,215,0,0.5)]"
               >

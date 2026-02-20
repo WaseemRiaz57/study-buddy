@@ -78,8 +78,9 @@ const buildNavItems = (isCommunity: boolean): NavItem[] => [
   { icon: Award,           label: "Badges",         href: "/dashboard/badges",             roles: ["STUDENT", "MENTOR"] },
   { icon: MessageSquare,   label: "Community",      href: "/dashboard/community",          roles: ["STUDENT", "MENTOR"] },
   
-  // ── 6. Business (Mentor Only) ──
-  { icon: DollarSign,      label: "Earnings",       href: "/dashboard/earnings",           roles: ["MENTOR"], locked: isCommunity },
+ // ── 6. Business & Upgrades ──
+{ icon: DollarSign,      label: "Earnings",       href: "/dashboard/earnings",           roles: ["MENTOR"], locked: isCommunity },
+{ icon: Sparkles,        label: "Upgrade to Pro", href: "/dashboard/upgrade",            roles: ["STUDENT", "MENTOR"], badge: "NEW" },
 ];
 /* ------------------------------------------------------------------ */
 /* Sidebar component                                                 */
