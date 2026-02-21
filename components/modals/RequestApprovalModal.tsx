@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation"; // <-- NAYI LINE: Router import
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   X,
@@ -101,6 +102,14 @@ export default function RequestApprovalModal({
   onClose,
   studentData,
 }: RequestApprovalModalProps) {
+  const router = useRouter(); // <-- NAYI LINE: Router hook
+
+  /* Navigation handler for message button */
+  const handleMessageClick = () => {
+    onClose(); // Pehle modal band karein
+    router.push("/dashboard/messages"); // Phir chat screen par le jayen
+  };
+
   /* lock body scroll */
   useEffect(() => {
     if (isOpen) document.body.style.overflow = "hidden";
@@ -158,7 +167,7 @@ export default function RequestApprovalModal({
                 </div>
               </div>
               <button
-                onClick={onClose}
+                onClick={onClose} // <-- YAHAN BHI CLOSE LOGIC ADD KI
                 className="p-2 rounded-lg hover:bg-slate-200/60 dark:hover:bg-white/10 transition-colors"
                 aria-label="Close panel"
               >
@@ -289,7 +298,10 @@ export default function RequestApprovalModal({
             {/* ── Sticky Footer ── */}
             <div className="px-6 py-4 border-t border-border bg-slate-50/80 dark:bg-white/5 space-y-3">
               {/* Accept button */}
-              <button className="relative w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-shadow overflow-hidden">
+              <button 
+                onClick={onClose} // <-- YAHAN ONCLICK ADD KIYA
+                className="relative w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-shadow overflow-hidden"
+              >
                 {/* Shine */}
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[glow-slide_3s_linear_infinite]" />
                 <CheckCircle size={16} />
@@ -298,11 +310,17 @@ export default function RequestApprovalModal({
 
               {/* Secondary row */}
               <div className="flex gap-3">
-                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors">
+                <button 
+                  onClick={onClose} // <-- YAHAN ONCLICK ADD KIYA
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+                >
                   <XCircle size={15} />
                   Decline
                 </button>
-                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border text-foreground bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
+                <button 
+                  onClick={handleMessageClick} // <-- YAHAN CHAT PAR BHEJNE KA LOGIC ADD KIYA
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border text-foreground bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
+                >
                   <MessageCircle size={15} />
                   Message
                 </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react"; // <-- IMPORT ADDED
 import { motion } from "framer-motion";
 import { 
   BookOpen, Bell, TrendingUp, Clock, Users, DollarSign, 
@@ -7,8 +8,10 @@ import {
   BarChart3, Wallet, CreditCard, Star, ArrowRight,
   MessageCircle, Video, Settings, Target, Coins, Plus, Menu
 } from "lucide-react";
+import RequestApprovalModal from "@/components/modals/RequestApprovalModal"; // <-- MODAL IMPORT ADDED
 
 // 👇 DYNAMIC DATA OBJECT (Ready for Backend Integration)
+// 👇 DYNAMIC DATA OBJECT (Updated with Modal Details)
 const MENTOR_DATA = {
   profile: {
     name: "Mentor Elias",
@@ -30,9 +33,54 @@ const MENTOR_DATA = {
     nextPayout: "Friday, Oct 27"
   },
   requests: [
-    { id: 1, name: "Alex J.", subject: "Advanced Calculus", tags: ["Exam Prep", "60 mins"], time: "15m ago", initials: "AJ" },
-    { id: 2, name: "Sarah K.", subject: "UI Design Principles", tags: ["Project Review", "45 mins"], time: "1h ago", initials: "SK" },
-    { id: 3, name: "Marcus T.", subject: "Python Fundamentals", tags: ["Debug Help", "30 mins"], time: "3h ago", initials: "MT" },
+    { 
+      id: 1, 
+      name: "Alex J.", 
+      subject: "Advanced Calculus", 
+      tags: ["Exam Prep", "60 mins"], 
+      time: "15m ago", 
+      initials: "AJ",
+      // 👇 Modal ke liye naya data
+      tagline: "Seeking wisdom to unravel the mysteries of the vector space.",
+      focusScore: 88,
+      subjects: [
+        { subject: "Calculus II", grade: "A-", progress: 92 },
+        { subject: "Physics", grade: "B+", progress: 85 }
+      ],
+      personalMessage: "I am struggling with Linear Algebra concepts, specifically eigenvalues, and I need your guidance to reach the Sage rank. Your approach to abstract concepts really resonates with my learning style."
+    },
+    { 
+      id: 2, 
+      name: "Sarah K.", 
+      subject: "UI Design Principles", 
+      tags: ["Project Review", "45 mins"], 
+      time: "1h ago", 
+      initials: "SK",
+      // 👇 Modal ke liye naya data
+      tagline: "Aspiring designer looking for pixel-perfect guidance.",
+      focusScore: 94,
+      subjects: [
+        { subject: "UI/UX Design", grade: "A", progress: 96 },
+        { subject: "Web Development", grade: "A-", progress: 88 }
+      ],
+      personalMessage: "Could you review my latest Figma prototype? I want to make sure the user flow makes sense before I start coding."
+    },
+    { 
+      id: 3, 
+      name: "Marcus T.", 
+      subject: "Python Fundamentals", 
+      tags: ["Debug Help", "30 mins"], 
+      time: "3h ago", 
+      initials: "MT",
+      // 👇 Modal ke liye naya data
+      tagline: "Debugging my way through life.",
+      focusScore: 76,
+      subjects: [
+        { subject: "Python", grade: "C+", progress: 65 },
+        { subject: "Data Structures", grade: "B-", progress: 72 }
+      ],
+      personalMessage: "I keep getting a RecursionError in my binary tree traversal. Can we hop on a quick call to go over it?"
+    },
   ]
 };
 
@@ -44,9 +92,18 @@ const fadeIn = {
 
 export function MentorDashboard() {
   const { profile, earnings, requests } = MENTOR_DATA;
+  
+  // 👇 MODAL STATE ADDED
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+
+  // 👇 FUNCTION TO HANDLE CLICK
+  const handleOpenRequest = (request: any) => {
+    setSelectedRequest(request);
+    setIsRequestModalOpen(true);
+  };
 
   return (
-    // 👇 FIX: Removed bg-gray-50, using bg-background for proper dark mode support
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       
       {/* HEADER */}
@@ -188,9 +245,10 @@ export function MentorDashboard() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + i * 0.1 }}
-                  className="glass-panel p-5 rounded-2xl hover:border-primary/30 transition-all"
+                  className="glass-panel p-5 rounded-2xl hover:border-primary/30 transition-all cursor-pointer" // <-- ADDED CURSOR
+                  onClick={() => handleOpenRequest(request)} // <-- ADDED ONCLICK
                 >
-                  <div className="flex items-start gap-4 mb-4">
+                  <div className="flex items-start gap-4 mb-4 pointer-events-none"> {/* <-- ADDED POINTER EVENTS NONE */}
                     <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
                       {request.initials}
                     </div>
@@ -209,10 +267,17 @@ export function MentorDashboard() {
                   </div>
                   
                   <div className="flex gap-3">
-                    <button className="flex-1 py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+                    {/* Buttons trigger the same modal for now for smooth UX */}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleOpenRequest(request); }} 
+                      className="flex-1 py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                    >
                       Accept
                     </button>
-                    <button className="px-4 py-2.5 bg-muted text-muted-foreground text-sm font-bold rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-all">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleOpenRequest(request); }}
+                      className="px-4 py-2.5 bg-muted text-muted-foreground text-sm font-bold rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-all"
+                    >
                       Decline
                     </button>
                   </div>
@@ -359,6 +424,16 @@ export function MentorDashboard() {
           <p className="text-xs text-muted-foreground">© 2024 StudyBuddy Education Inc. All sessions are monitored for quality assurance.</p>
         </div>
       </footer>
+
+      {/* 👇 MODAL RENDERED HERE */}
+      {selectedRequest && (
+        <RequestApprovalModal 
+          isOpen={isRequestModalOpen} 
+          onClose={() => setIsRequestModalOpen(false)} 
+          studentData={selectedRequest} 
+        />
+      )}
+
     </div>
   );
 }

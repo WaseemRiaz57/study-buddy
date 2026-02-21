@@ -31,6 +31,8 @@ const config: Config = {
         },
         "sidebar-dark": "#0d1117",
         "electric-mint": "#00FFA3",
+        "surface-dark": "#231a2e",
+        "surface-light": "#ffffff",
       },
       keyframes: {
         float: {
