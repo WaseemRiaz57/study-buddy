@@ -19,8 +19,8 @@ import {
   CalendarCheck,
   Inbox,
   Clock,
-  MessageSquare, // Community ke liye
-  GraduationCap, // Mentorship ke liye
+  MessageSquare, 
+  GraduationCap, 
   DollarSign,
   Lock,
   LogOut,
@@ -28,6 +28,7 @@ import {
   Sparkles,
   Flame,
   Settings,
+  Send, // <--- Ye raha Send
   type LucideIcon,
 } from "lucide-react";
 import { useUserStore, type Role } from "@/store/useUserStore";
@@ -77,7 +78,7 @@ const buildNavItems = (isCommunity: boolean): NavItem[] => [
   { icon: Swords,          label: "Challenges",     href: "/dashboard/challenges",         roles: ["STUDENT", "MENTOR"] },
   { icon: Award,           label: "Badges",         href: "/dashboard/badges",             roles: ["STUDENT", "MENTOR"] },
   { icon: MessageSquare,   label: "Community",      href: "/dashboard/community",          roles: ["STUDENT", "MENTOR"] },
-  
+  { icon: Send,            label: "Messages",       href: "/dashboard/messages",           roles: ["STUDENT", "MENTOR"] },
  // ── 6. Business & Upgrades ──
 { icon: DollarSign,      label: "Earnings",       href: "/dashboard/earnings",           roles: ["MENTOR"], locked: isCommunity },
 { icon: Sparkles,        label: "Upgrade to Pro", href: "/dashboard/upgrade",            roles: ["STUDENT", "MENTOR"], badge: "NEW" },
