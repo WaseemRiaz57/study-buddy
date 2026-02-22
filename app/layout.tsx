@@ -3,7 +3,7 @@ import { Space_Grotesk, Space_Mono } from "next/font/google";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/components/auth-provider";
+import  AuthProvider  from "@/components/auth-provider";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({

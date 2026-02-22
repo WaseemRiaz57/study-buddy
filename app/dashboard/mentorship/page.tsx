@@ -2,12 +2,14 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import {
   Search,
   Star,
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
+  ArrowRight,
 } from "lucide-react";
 import BookingModal, { type Mentor } from "@/components/mentorship/BookingModal";
 import SuccessView from "@/components/mentorship/SuccessView";
@@ -391,6 +393,38 @@ export default function MentorshipPage() {
             </p>
           </motion.div>
         )}
+
+        {/* ── Become a Mentor CTA ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-12 mb-8 relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-8 text-center"
+        >
+          <div className="pointer-events-none absolute -top-16 -left-16 h-32 w-32 rounded-full bg-primary/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 -right-16 h-32 w-32 rounded-full bg-pink-500/10 blur-3xl" />
+          <h3 className="relative text-xl font-bold text-[var(--foreground)] mb-2">
+            Share Your Knowledge — Become a Mentor
+          </h3>
+          <p className="relative text-sm text-gray-500 dark:text-slate-400 mb-5 max-w-md mx-auto">
+            Set your own rates, build your reputation, and help the next generation of scholars succeed.
+          </p>
+          <div className="relative flex items-center justify-center gap-3">
+            <Link
+              href="/dashboard/settings/mentorship"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary text-white px-6 py-3 text-sm font-bold shadow-lg shadow-primary/30 hover:brightness-110 transition-all"
+            >
+              Apply to Mentor
+              <ArrowRight size={16} />
+            </Link>
+            <Link
+              href="/apply/status"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/10 px-6 py-3 text-sm font-bold text-gray-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+            >
+              Check Application Status
+            </Link>
+          </div>
+        </motion.div>
 
         {/* ── Pagination ── */}
         {filtered.length > 0 && (

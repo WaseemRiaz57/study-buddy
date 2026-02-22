@@ -1,10 +1,11 @@
 "use client";
 
-import { Sparkles, Menu, X, Moon, Sun } from "lucide-react";
+import { Sparkles, Menu, X, Moon, Sun, User, Settings } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react"; // 👈 NextAuth import
 
 const navItems = [
   { href: "#features", label: "Features" },
@@ -16,6 +17,10 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
+  
+  // 👇 Auth Session Check
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
 
   useEffect(() => {
     setMounted(true);
@@ -98,20 +103,45 @@ export function Navbar() {
 
         {/* Right Side Actions */}
         <div className="hidden md:flex md:items-center md:gap-3">
-          <Link
-            href="/login"
-            className="rounded-full px-5 py-2 text-sm font-semibold text-foreground transition-colors hover:text-primary"
-          >
-            Log in
-          </Link>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Link
-              href="/register"
-              className="rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/40"
-            >
-              Join Free
-            </Link>
-          </motion.div>
+          
+          {/* 👇 Auth Conditional Render 👇 */}
+          {isAuthenticated ? (
+            // Logged In View: Settings & Profile
+            <div className="flex items-center gap-4 border-r border-border/50 pr-4">
+              <Link href="/dashboard" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">
+                Dashboard
+              </Link>
+              <Link href="/dashboard/settings" className="p-2 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="Settings">
+                <Settings className="w-5 h-5" />
+              </Link>
+              <Link href="/dashboard/settings" className="size-8 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center hover:scale-105 transition-transform" title="My Profile">
+                 {/* Agar Google Image hai toh yahan image lag sakti hai, warna default user icon */}
+                 {session.user?.image ? (
+                   <img src={session.user.image} alt="Profile" className="size-full rounded-full object-cover" />
+                 ) : (
+                   <User className="w-4 h-4" />
+                 )}
+              </Link>
+            </div>
+          ) : (
+            // Logged Out View: Login & Join Free
+            <>
+              <Link
+                href="/login"
+                className="rounded-full px-5 py-2 text-sm font-semibold text-foreground transition-colors hover:text-primary"
+              >
+                Log in
+              </Link>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link
+                  href="/register"
+                  className="rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/40"
+                >
+                  Join Free
+                </Link>
+              </motion.div>
+            </>
+          )}
           
           {/* Desktop Theme Toggle */}
           <motion.button
@@ -121,7 +151,6 @@ export function Navbar() {
             className="rounded-full p-2.5 bg-card border border-border hover:border-primary/50 transition-all"
             aria-label="Toggle theme"
           >
-            {/* 👇 FIX 3: Agar mounted nahi hai to empty div dikhaye */}
             {!mounted ? (
                 <div className="h-4 w-4" /> 
             ) : (
@@ -217,22 +246,43 @@ export function Navbar() {
                 </motion.div>
               ))}
               
-              {/* Mobile Auth Buttons */}
+              {/* 👇 Mobile Auth Conditional Render 👇 */}
               <div className="mt-4 flex flex-col gap-2 pt-4 border-t border-border/50">
-                <Link
-                  href="/login"
-                  onClick={() => setIsOpen(false)}
-                  className="rounded-lg px-4 py-3 text-sm font-semibold text-center text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setIsOpen(false)}
-                  className="rounded-lg bg-primary px-4 py-3 text-sm font-bold text-center text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90"
-                >
-                  Join Free
-                </Link>
+                {isAuthenticated ? (
+                  <>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsOpen(false)}
+                      className="rounded-lg px-4 py-3 text-sm font-semibold text-center text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/dashboard/settings"
+                      onClick={() => setIsOpen(false)}
+                      className="rounded-lg bg-primary/10 text-primary px-4 py-3 text-sm font-bold text-center transition-all hover:bg-primary hover:text-white"
+                    >
+                      Settings & Profile
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setIsOpen(false)}
+                      className="rounded-lg px-4 py-3 text-sm font-semibold text-center text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setIsOpen(false)}
+                      className="rounded-lg bg-primary px-4 py-3 text-sm font-bold text-center text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90"
+                    >
+                      Join Free
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
