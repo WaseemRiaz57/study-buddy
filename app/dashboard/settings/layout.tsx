@@ -10,12 +10,11 @@ import {
   BookOpen,
   CreditCard,
   Briefcase,
-  Wallet,
   Trash2,
+  ArrowLeft,
   type LucideIcon,
 } from "lucide-react";
 
-// 👇 Zustand store import karein
 import { useUserStore } from "@/store/useUserStore";
 
 /* ------------------------------------------------------------------ */
@@ -32,48 +31,24 @@ interface SettingsNavGroup {
   items: SettingsNavItem[];
 }
 
+// ⚠️ Note: Make sure 'Public Profile' goes to '/dashboard/settings/profile'
 const commonLinks: SettingsNavItem[] = [
-  { icon: User, label: "Public Profile", href: "/dashboard/settings/profile" }, // Updated href
-  {
-    icon: ShieldCheck,
-    label: "Account & Security",
-    href: "/dashboard/settings/security",
-  },
-  {
-    icon: Bell,
-    label: "Notifications",
-    href: "/dashboard/settings/notifications",
-  },
+  { icon: User, label: "Public Profile", href: "/dashboard/settings/profile" },
+  { icon: ShieldCheck, label: "Account & Security", href: "/dashboard/settings/security" },
+  { icon: Bell, label: "Notifications", href: "/dashboard/settings/notifications" },
 ];
 
 const studentOnly: SettingsNavItem[] = [
-  {
-    icon: BookOpen,
-    label: "Study Plan",
-    href: "/dashboard/settings/study-plan",
-  },
+  { icon: BookOpen, label: "Study Plan", href: "/dashboard/settings/study-plan" },
 ];
 
 const mentorOnly: SettingsNavItem[] = [
-  {
-    icon: Briefcase,
-    label: "Mentorship Setup",
-    href: "/dashboard/settings/mentorship",
-  },
+  { icon: Briefcase, label: "Mentorship Setup", href: "/dashboard/settings/mentorship" },
 ];
 
-const billingLinks: SettingsNavItem[] = [
-  {
-    icon: CreditCard,
-    label: "Subscription Plan",
-    href: "/dashboard/settings/subscription",
-  },
-  {
-    icon: Wallet,
-    label: "Billing & Payments",
-    href: "/dashboard/settings/billing",
-  },
-];
+const subscriptionLink: SettingsNavItem = {
+  icon: CreditCard, label: "Subscription Plan", href: "/dashboard/settings/subscription",
+};
 
 function getNavGroups(role: "student" | "mentor"): SettingsNavGroup[] {
   return [
@@ -82,30 +57,26 @@ function getNavGroups(role: "student" | "mentor"): SettingsNavGroup[] {
       title: role === "student" ? "Learning" : "Teaching",
       items: role === "student" ? studentOnly : mentorOnly,
     },
-    { title: "Billing", items: billingLinks },
+    { title: "Billing", items: [subscriptionLink] },
   ];
 }
 
-function flatItems(groups: SettingsNavGroup[]): SettingsNavItem[] {
-  return groups.flatMap((g) => g.items);
-}
-
 /* ------------------------------------------------------------------ */
-/* Mini Profile (sidebar header)                                      */
+/* Mini Profile (Header for the Menu)                                 */
 /* ------------------------------------------------------------------ */
 function MiniProfile({ role }: { role: "student" | "mentor" }) {
   return (
-    <div className="p-6 border-b border-slate-100 dark:border-white/5">
+    <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-[#1f1627] rounded-t-2xl">
       <div className="flex items-center gap-4">
-        <div className="size-12 shrink-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm select-none">
+        <div className="size-14 shrink-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg border-2 border-white dark:border-slate-800 shadow-md">
           WR
         </div>
         <div className="min-w-0">
-          <h3 className="font-bold text-slate-900 dark:text-white leading-tight truncate">
+          <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight truncate">
             Waseem Riaz
           </h3>
-          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20 mt-1 capitalize">
-            {role}
+          <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary ring-1 ring-inset ring-primary/20 mt-1 capitalize">
+            {role} Account
           </span>
         </div>
       </div>
@@ -114,84 +85,7 @@ function MiniProfile({ role }: { role: "student" | "mentor" }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Sidebar Navigation Link                                            */
-/* ------------------------------------------------------------------ */
-function NavLink({
-  item,
-  isActive,
-}: {
-  item: SettingsNavItem;
-  isActive: boolean;
-}) {
-  return (
-    <li>
-      <Link
-        href={item.href}
-        className={`
-          relative group flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg
-          transition-colors
-          ${
-            isActive
-              ? "bg-primary/10 text-primary"
-              : "text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-white/[0.04]"
-          }
-        `}
-      >
-        {isActive && (
-          <motion.div
-            layoutId="settings-active-indicator"
-            className="absolute left-0 w-1 h-5 bg-primary rounded-r-full"
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-          />
-        )}
-        <item.icon size={20} className="shrink-0" />
-        <span>{item.label}</span>
-      </Link>
-    </li>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Mobile Horizontal Scrollable Tab Menu                              */
-/* ------------------------------------------------------------------ */
-function MobileNav({
-  items,
-  pathname,
-}: {
-  items: SettingsNavItem[];
-  pathname: string;
-}) {
-  return (
-    <div className="md:hidden sticky top-0 z-20 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/10">
-      <div className="flex overflow-x-auto scrollbar-none px-4 py-2 gap-1">
-        {items.map((item) => {
-          const active = pathname.includes(item.href);
-          return (
-            <Link key={item.href} href={item.href}>
-              <div
-                className={`
-                  flex items-center gap-2 px-3 py-2 rounded-lg whitespace-nowrap text-xs font-medium
-                  transition-colors shrink-0
-                  ${
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/[0.06]"
-                  }
-                `}
-              >
-                <item.icon size={14} />
-                <span>{item.label}</span>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Settings Layout                                                    */
+/* Settings Layout Engine                                             */
 /* ------------------------------------------------------------------ */
 export default function SettingsLayout({
   children,
@@ -199,66 +93,98 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  
-  // 👇 Get role from Zustand Store
   const { role } = useUserStore();
-  
-  // Convert 'STUDENT' | 'MENTOR' to lowercase 'student' | 'mentor' for our logic
   const normalizedRole = (role?.toLowerCase() || "student") as "student" | "mentor";
-
   const navGroups = getNavGroups(normalizedRole);
-  const allItems = flatItems(navGroups);
 
-  const isActive = (href: string) => {
-    return pathname.includes(href);
-  };
+  // 👇 Ye logic check karegi ke user Menu par hai ya kisi feature k andar
+  const isRootMenu = pathname === "/dashboard/settings" || pathname === "/dashboard/settings/";
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
-        <div className="mb-6 lg:mb-8">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Settings
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Manage your account preferences and configuration
-          </p>
+    // 👇 FIX: min-h-screen ki jagah h-full aur overflow-y-auto laga diya hai
+    <div className="h-full bg-slate-50 dark:bg-slate-950 overflow-y-auto custom-scrollbar">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
+        
+        {/* Dynamic Header: Shows 'Back' button if inside a feature */}
+        <div className="mb-6 lg:mb-8 flex items-center gap-4">
+          {!isRootMenu && (
+            <Link 
+              href="/dashboard/settings" 
+              className="p-2.5 bg-white dark:bg-slate-900 rounded-full shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-all transform hover:-translate-x-1"
+            >
+              <ArrowLeft className="text-slate-700 dark:text-slate-300" size={20} />
+            </Link>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              {isRootMenu ? "Settings Menu" : "Settings"}
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              {isRootMenu ? "Select an option to manage your account" : "Configure your preferences below"}
+            </p>
+          </div>
         </div>
 
-        <MobileNav items={allItems} pathname={pathname} />
+        <div className="flex flex-col w-full pb-10">
+          
+          {/* ── MENUBAR (Only visible when on root /dashboard/settings) ── */}
+          {isRootMenu && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-md mx-auto flex flex-col shrink-0 border border-slate-200 dark:border-white/10 bg-white dark:bg-[#191121] rounded-2xl shadow-xl"
+            >
+              <MiniProfile role={normalizedRole} />
 
-        <div className="flex flex-col md:flex-row">
-          <aside className="w-[280px] hidden md:flex flex-col shrink-0 border-r border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 rounded-l-2xl overflow-y-auto min-h-[600px]">
-            <MiniProfile role={normalizedRole} />
+              <nav className="flex-1 px-4 py-6 space-y-6">
+                {navGroups.map((group) => (
+                  <div key={group.title}>
+                    <h4 className="px-3 text-xs font-bold uppercase tracking-wider text-primary mb-3">
+                      {group.title}
+                    </h4>
+                    <ul className="space-y-1">
+                      {group.items.map((item) => (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            className="flex items-center justify-between px-3 py-3 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary dark:text-slate-300 dark:hover:bg-white/[0.04] transition-all group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <item.icon size={20} className="text-slate-400 group-hover:text-primary transition-colors" />
+                              <span>{item.label}</span>
+                            </div>
+                            {/* Chota sa right arrow icon hint ke liye */}
+                            <span className="text-slate-300 dark:text-slate-600 group-hover:translate-x-1 transition-transform">
+                              ❯
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </nav>
 
-            <nav className="flex-1 px-4 py-6 space-y-8">
-              {navGroups.map((group) => (
-                <div key={group.title}>
-                  <h4 className="px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-                    {group.title}
-                  </h4>
-                  <ul className="space-y-1">
-                    {group.items.map((item) => (
-                      <NavLink
-                        key={item.href}
-                        item={item}
-                        isActive={isActive(item.href)}
-                      />
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </nav>
+              <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-[#1f1627] rounded-b-2xl">
+                <button className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition-colors">
+                  <Trash2 size={18} />
+                  Delete Account
+                </button>
+              </div>
+            </motion.div>
+          )}
 
-            <div className="p-4 border-t border-slate-200 dark:border-white/10 mt-auto">
-              <button className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition-colors">
-                <Trash2 size={18} />
-                Delete Account
-              </button>
-            </div>
-          </aside>
+          {/* ── FEATURE CONTENT AREA (Only visible when a feature is clicked) ── */}
+          {!isRootMenu && (
+            <motion.main 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex-1 w-full"
+            >
+              {children}
+            </motion.main>
+          )}
 
-          <main className="flex-1 min-w-0">{children}</main>
         </div>
       </div>
     </div>
