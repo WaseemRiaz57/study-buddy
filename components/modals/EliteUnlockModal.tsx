@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react"; // 👈 useState import kiya
 import { motion, AnimatePresence } from "framer-motion";
 import { Key, Trophy, Star, Shield, Coins, X } from "lucide-react";
-
 import { useRouter } from "next/navigation";
 
 interface EliteUnlockModalProps {
   isOpen: boolean;
-  onClose: () => void; // Error yahan tha: onCloseAction ki jagah onClose kar diya
+  onClose: () => void; 
   onUnlockAction?: () => void;
 }
 
@@ -66,10 +65,18 @@ function BenefitRow({
 
 export default function EliteUnlockModal({
   isOpen,
-  onClose, // Yahan bhi update kiya
+  onClose, 
   onUnlockAction,
 }: EliteUnlockModalProps) {
-    const router = useRouter();
+  const router = useRouter();
+  
+  // 👈 1. Client-side render check ke liye state add ki
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   /* lock body scroll while open */
   useEffect(() => {
     if (isOpen) document.body.style.overflow = "hidden";
@@ -81,11 +88,11 @@ export default function EliteUnlockModal({
   /* close on Escape */
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose(); // Yahan bhi update kiya
+      if (e.key === "Escape") onClose(); 
     };
     if (isOpen) window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]); // Dependencies update kiye
+  }, [isOpen, onClose]); 
 
   return (
     <AnimatePresence>
@@ -96,7 +103,7 @@ export default function EliteUnlockModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose} // Yahan bhi update kiya
+          onClick={onClose} 
         >
           {/* ── modal card ── */}
           <motion.div
@@ -112,7 +119,7 @@ export default function EliteUnlockModal({
 
             {/* close button */}
             <button
-              onClick={onClose} // Yahan bhi update kiya
+              onClick={onClose} 
               className="absolute right-4 top-4 z-10 rounded-full p-1.5 text-amber-300/50 transition hover:bg-amber-500/10 hover:text-amber-300"
               aria-label="Close"
             >
@@ -121,9 +128,10 @@ export default function EliteUnlockModal({
 
             {/* ── upper hero section ── */}
             <div className="relative flex flex-col items-center px-6 pt-10 pb-6">
-              {/* sparks container */}
+              
+              {/* 👈 2. Yahan array ko {mounted && ...} mein wrap kar diya */}
               <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                {Array.from({ length: 14 }).map((_, i) => (
+                {mounted && Array.from({ length: 14 }).map((_, i) => (
                   <Spark
                     key={i}
                     delay={i * 0.35}
@@ -200,7 +208,7 @@ export default function EliteUnlockModal({
                 whileTap={{ scale: 0.97 }}
                 onClick={() => {
                   onUnlockAction?.();
-                  onClose(); // Optional: Unlock karne ke baad modal close karna
+                  onClose(); 
                   router.push('/dashboard/upgrade');
                 }}
                 className="relative w-full max-w-xs overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 bg-[length:200%_100%] px-8 py-3 text-base font-bold text-[#0f0b15] shadow-[0_0_30px_rgba(255,215,0,0.35)] transition-shadow hover:shadow-[0_0_50px_rgba(255,215,0,0.5)]"
