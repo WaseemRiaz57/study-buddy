@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useTheme } from "next-themes";
+import { useState, useMemo } from "react";
 import {
   Flag,
   AlertOctagon,
@@ -14,325 +13,362 @@ import {
   FileText,
   User,
   Search,
-  SlidersHorizontal,
   ChevronDown,
-  Eye,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
-type Priority    = "high" | "med" | "low";
+// ─── Types ──────────────────────────────────────────────────────────────────────
+type Priority = "high" | "med" | "low";
 type ContentType = "post" | "comment" | "resource" | "user";
-type Status      = "pending" | "resolved";
+type Status = "pending" | "resolved";
 
 interface Report {
-  id:           string;
-  priority:     Priority;
-  count:        number;
-  type:         ContentType;
-  snippet:      string;
-  reason:       string;
-  reporter:     string;
-  others:       number;
-  time:         string;
-  status:       Status;
-  username:     string;
+  id: string;
+  priority: Priority;
+  count: number;
+  type: ContentType;
+  snippet: string;
+  reason: string;
+  reporter: string;
+  others: number;
+  time: string;
+  status: Status;
+  username: string;
 }
 
-// ─── Mock Data ─────────────────────────────────────────────────────────────────
+// ─── Mock Data ──────────────────────────────────────────────────────────────────
 const REPORTS: Report[] = [
-  { id:"r1", priority:"high", count:12, type:"post",     snippet:"Need help hacking into accounts and bypassing 2FA...",         reason:"Harassment",       reporter:"Alex K.",   others:11, time:"2h ago",  status:"pending",  username:"@darkphoenix99"  },
-  { id:"r2", priority:"high", count:8,  type:"resource", snippet:"Sharing copyrighted exam papers and premium course material...", reason:"Copyright",        reporter:"Priya S.",  others:7,  time:"4h ago",  status:"pending",  username:"@resource_king"  },
-  { id:"r3", priority:"med",  count:4,  type:"post",     snippet:"Political propaganda inside a chemistry study thread...",        reason:"Off-Topic",        reporter:"Sam R.",    others:3,  time:"6h ago",  status:"pending",  username:"@politicalbot"   },
-  { id:"r4", priority:"med",  count:3,  type:"comment",  snippet:"Spam and self-promotional content for an external scam site...", reason:"Spam",             reporter:"Jordan L.", others:2,  time:"1d ago",  status:"pending",  username:"@spambot_42"     },
-  { id:"r5", priority:"low",  count:1,  type:"user",     snippet:"Display name contains explicit profanity and offensive slurs...",reason:"Profile Violation",reporter:"Taylor M.", others:0,  time:"3d ago",  status:"resolved", username:"@offensive_usr"  },
-  { id:"r6", priority:"low",  count:2,  type:"comment",  snippet:"Personal attacks on a mentor's teaching across sessions...",     reason:"Harassment",       reporter:"Jamie O.",  others:1,  time:"2d ago",  status:"resolved", username:"@angry_student"  },
+  {
+    id: "r1",
+    priority: "high",
+    count: 12,
+    type: "post",
+    snippet: "Need help hacking into accounts and bypassing 2FA...",
+    reason: "Harassment",
+    reporter: "Alex K.",
+    others: 11,
+    time: "2 hours ago",
+    status: "pending",
+    username: "@darkphoenix99",
+  },
+  {
+    id: "r2",
+    priority: "high",
+    count: 8,
+    type: "resource",
+    snippet: "Sharing copyrighted exam papers and premium course material...",
+    reason: "Copyright",
+    reporter: "Priya S.",
+    others: 7,
+    time: "4 hours ago",
+    status: "pending",
+    username: "@resource_king",
+  },
+  {
+    id: "r3",
+    priority: "med",
+    count: 4,
+    type: "post",
+    snippet: "Political propaganda inside a chemistry study thread...",
+    reason: "Off-Topic",
+    reporter: "Sam R.",
+    others: 3,
+    time: "6 hours ago",
+    status: "pending",
+    username: "@politicalbot",
+  },
+  {
+    id: "r4",
+    priority: "med",
+    count: 3,
+    type: "comment",
+    snippet: "Spam and self-promotional content for an external scam site...",
+    reason: "Spam",
+    reporter: "Jordan L.",
+    others: 2,
+    time: "1 day ago",
+    status: "pending",
+    username: "@spambot_42",
+  },
+  {
+    id: "r5",
+    priority: "low",
+    count: 1,
+    type: "user",
+    snippet: "Display name contains explicit profanity and offensive slurs...",
+    reason: "Profile Violation",
+    reporter: "Taylor M.",
+    others: 0,
+    time: "3 days ago",
+    status: "resolved",
+    username: "@offensive_usr",
+  },
+  {
+    id: "r6",
+    priority: "low",
+    count: 2,
+    type: "comment",
+    snippet: "Personal attacks on a mentor's teaching across sessions...",
+    reason: "Harassment",
+    reporter: "Jamie O.",
+    others: 1,
+    time: "2 days ago",
+    status: "resolved",
+    username: "@angry_student",
+  },
 ];
 
-// ─── Config ────────────────────────────────────────────────────────────────────
-const PRIORITY_CFG = {
-  high: { label:"High",   color:"#ef4444", bg:"rgba(239,68,68,0.12)",  border:"rgba(239,68,68,0.3)"  },
-  med:  { label:"Med",    color:"#f59e0b", bg:"rgba(245,158,11,0.12)", border:"rgba(245,158,11,0.3)" },
-  low:  { label:"Low",    color:"#10b981", bg:"rgba(16,185,129,0.12)", border:"rgba(16,185,129,0.3)" },
+// ─── Priority Config ────────────────────────────────────────────────────────────
+const PRIORITY_CONFIG: Record<
+  Priority,
+  {
+    label: string;
+    dot: string;
+    badge: string;
+    glow?: string;
+  }
+> = {
+  high: {
+    label: "High",
+    dot: "bg-red-500",
+    badge:
+      "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/25",
+    glow: "shadow-[0_0_5px_rgba(239,68,68,0.5)]",
+  },
+  med: {
+    label: "Med",
+    dot: "bg-amber-500",
+    badge:
+      "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/25",
+  },
+  low: {
+    label: "Low",
+    dot: "bg-emerald-500",
+    badge:
+      "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/25",
+  },
 };
 
-const TYPE_CFG: Record<ContentType, { label:string; color:string; Icon: React.ElementType }> = {
-  post:     { label:"Post",     color:"#8b5cf6", Icon: MessageSquare },
-  comment:  { label:"Comment",  color:"#3b82f6", Icon: MessageSquare },
-  resource: { label:"Resource", color:"#06b6d4", Icon: FileText      },
-  user:     { label:"User",     color:"#ec4899", Icon: User          },
+// ─── Content Type Config ────────────────────────────────────────────────────────
+const TYPE_CONFIG: Record<
+  ContentType,
+  { label: string; classes: string; Icon: React.ElementType }
+> = {
+  post: {
+    label: "Post",
+    classes:
+      "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
+    Icon: MessageSquare,
+  },
+  comment: {
+    label: "Comment",
+    classes:
+      "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+    Icon: MessageSquare,
+  },
+  resource: {
+    label: "Resource",
+    classes:
+      "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-400",
+    Icon: FileText,
+  },
+  user: {
+    label: "User",
+    classes:
+      "bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400",
+    Icon: User,
+  },
 };
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
+// ─── Sub-components ─────────────────────────────────────────────────────────────
 
-function PriorityBadge({ priority, count }: { priority: Priority; count: number }) {
-  const c = PRIORITY_CFG[priority];
+function PriorityBadge({
+  priority,
+  count,
+}: {
+  priority: Priority;
+  count: number;
+}) {
+  const cfg = PRIORITY_CONFIG[priority];
   return (
     <span
-      style={{
-        display:"inline-flex", alignItems:"center", gap:5,
-        padding:"4px 9px", borderRadius:20, whiteSpace:"nowrap",
-        background:c.bg, border:`1px solid ${c.border}`, color:c.color,
-        fontSize:11, fontWeight:700,
-      }}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap ${cfg.badge}`}
     >
       <span
-        style={{
-          width:6, height:6, borderRadius:"50%", flexShrink:0,
-          background:c.color,
-          boxShadow: priority === "high" ? `0 0 5px ${c.color}` : "none",
-        }}
+        className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot} ${cfg.glow || ""}`}
       />
-      {c.label}
-      <span style={{ opacity:0.65 }}>· {count}</span>
+      {cfg.label}
+      <span className="opacity-60">· {count}</span>
     </span>
   );
 }
 
 function TypeChip({ type }: { type: ContentType }) {
-  const { label, color, Icon } = TYPE_CFG[type];
+  const { label, classes, Icon } = TYPE_CONFIG[type];
   return (
     <span
-      style={{
-        display:"inline-flex", alignItems:"center", gap:4,
-        padding:"3px 8px", borderRadius:7, whiteSpace:"nowrap", flexShrink:0,
-        background: color + "20", color, fontSize:11, fontWeight:600,
-      }}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap shrink-0 ${classes}`}
     >
       <Icon size={11} /> {label}
     </span>
   );
 }
 
-function GhostBtn({
-  icon: Icon, label, color,
-}: {
-  icon: React.ElementType; label: string; color: "blue"|"green"|"orange"|"red";
-}) {
-  const clr = { blue:"#3b82f6", green:"#10b981", orange:"#f59e0b", red:"#ef4444" }[color];
-  return (
-    <button
-      style={{
-        display:"flex", alignItems:"center", gap:3, padding:"5px 8px",
-        borderRadius:7, background:"transparent", border:"1px solid transparent",
-        color:clr, cursor:"pointer", fontSize:11, fontWeight:600, whiteSpace:"nowrap",
-      }}
-      onMouseEnter={e => (e.currentTarget.style.background = clr + "18")}
-      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-    >
-      <Icon size={12} /> {label}
-    </button>
-  );
-}
-
-function BanBtn() {
-  return (
-    <button
-      style={{
-        display:"flex", alignItems:"center", gap:3, padding:"5px 9px",
-        borderRadius:7, background:"#dc2626", border:"none",
-        color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700,
-        boxShadow:"0 2px 6px rgba(220,38,38,0.4)", whiteSpace:"nowrap",
-      }}
-    >
-      <UserX size={12} /> Ban
-    </button>
-  );
-}
-
-// ─── Main Page ─────────────────────────────────────────────────────────────────
+// ─── Main Page ──────────────────────────────────────────────────────────────────
 export default function ReportsQueuePage() {
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted]   = useState(false);
-  
-  const [tab, setTab]           = useState<Status>("pending");
-  const [selected, setSelected] = useState<string[]>([]);
-  const [filterType, setFilter] = useState("all");
-  const [sort, setSort]         = useState("priority");
-  const [search, setSearch]     = useState("");
+  const [activeTab, setActiveTab] = useState<Status>("pending");
+  const [selectedReports, setSelectedReports] = useState<string[]>([]);
+  const [filterType, setFilterType] = useState("all");
+  const [sort, setSort] = useState("priority");
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // ── Theme tokens (Synced with next-themes) ───────────────────────────────────
-  const isDark = resolvedTheme === "dark";
-  
-  const tk = isDark ? {
-    pageBg:    "transparent", // Let the layout handle the background
-    surface:   "#110e1c",
-    surfaceAlt:"rgba(255,255,255,0.025)",
-    border:    "rgba(255,255,255,0.07)",
-    text:      "#ede9ff",
-    textSub:   "rgba(237,233,255,0.5)",
-    textMuted: "rgba(237,233,255,0.28)",
-    inputBg:   "rgba(255,255,255,0.04)",
-    rowDanger: "rgba(239,68,68,0.07)",
-    rowSel:    "rgba(124,58,237,0.07)",
-    stat: {
-      red:    { bg:"rgba(239,68,68,0.09)",   border:"rgba(239,68,68,0.22)",   icon:"#f87171", text:"#fca5a5" },
-      orange: { bg:"rgba(245,158,11,0.09)",  border:"rgba(245,158,11,0.22)",  icon:"#fbbf24", text:"#fcd34d" },
-      green:  { bg:"rgba(16,185,129,0.09)",  border:"rgba(16,185,129,0.22)",  icon:"#34d399", text:"#6ee7b7" },
-    },
-  } : {
-    pageBg:    "transparent", // Let the layout handle the background
-    surface:   "#ffffff",
-    surfaceAlt:"rgba(0,0,0,0.02)",
-    border:    "rgba(0,0,0,0.08)",
-    text:      "#1a1030",
-    textSub:   "rgba(26,16,48,0.55)",
-    textMuted: "rgba(26,16,48,0.35)",
-    inputBg:   "rgba(0,0,0,0.04)",
-    rowDanger: "rgba(239,68,68,0.05)",
-    rowSel:    "rgba(124,58,237,0.05)",
-    stat: {
-      red:    { bg:"rgba(239,68,68,0.07)",   border:"rgba(239,68,68,0.18)",   icon:"#ef4444", text:"#dc2626" },
-      orange: { bg:"rgba(245,158,11,0.07)",  border:"rgba(245,158,11,0.18)",  icon:"#f59e0b", text:"#d97706" },
-      green:  { bg:"rgba(16,185,129,0.07)",  border:"rgba(16,185,129,0.18)",  icon:"#10b981", text:"#059669" },
-    },
-  };
-
-  // ── Filter / Sort ──────────────────────────────────────────────────────────────
+  // ── Filter / Sort ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    let list = REPORTS.filter(r => r.status === tab);
+    let list = REPORTS.filter((r) => r.status === activeTab);
 
     if (filterType !== "all") {
       const map: Record<string, ContentType> = {
-        posts:"post", comments:"comment", resources:"resource", users:"user",
+        posts: "post",
+        comments: "comment",
+        resources: "resource",
+        users: "user",
       };
-      list = list.filter(r => r.type === map[filterType]);
+      list = list.filter((r) => r.type === map[filterType]);
     }
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(r =>
-        r.snippet.toLowerCase().includes(q)   ||
-        r.reason.toLowerCase().includes(q)    ||
-        r.reporter.toLowerCase().includes(q)  ||
-        r.username.toLowerCase().includes(q)
+      list = list.filter(
+        (r) =>
+          r.snippet.toLowerCase().includes(q) ||
+          r.reason.toLowerCase().includes(q) ||
+          r.reporter.toLowerCase().includes(q) ||
+          r.username.toLowerCase().includes(q)
       );
     }
 
     if (sort === "priority") {
-      const w = (p: Priority) => p==="high"?3:p==="med"?2:1;
-      list = [...list].sort((a,b) => w(b.priority) - w(a.priority) || b.count - a.count);
+      const w = (p: Priority) => (p === "high" ? 3 : p === "med" ? 2 : 1);
+      list = [...list].sort(
+        (a, b) => w(b.priority) - w(a.priority) || b.count - a.count
+      );
     }
 
     return list;
-  }, [tab, filterType, sort, search]);
+  }, [activeTab, filterType, sort, search]);
 
-  const pendingCount = REPORTS.filter(r => r.status === "pending").length;
-  const allSel       = filtered.length > 0 && selected.length === filtered.length;
-  const toggleAll    = () => allSel ? setSelected([]) : setSelected(filtered.map(r => r.id));
-  const toggleOne    = (id: string) =>
-    setSelected(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const pendingCount = REPORTS.filter((r) => r.status === "pending").length;
+  const allSelected =
+    filtered.length > 0 && selectedReports.length === filtered.length;
+  const toggleAll = () =>
+    allSelected
+      ? setSelectedReports([])
+      : setSelectedReports(filtered.map((r) => r.id));
+  const toggleOne = (id: string) =>
+    setSelectedReports((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
 
-  // ── Shared input/select style ──────────────────────────────────────────────────
-  const inputStyle: React.CSSProperties = {
-    padding:"7px 12px", borderRadius:9,
-    border:`1px solid ${tk.border}`, background:tk.inputBg,
-    fontSize:13, color:tk.text, outline:"none",
-    fontFamily:"inherit",
-  };
-
-  // Wait for client to mount to avoid hydration mismatch with inline styles
-  if (!mounted) return <div style={{ minHeight: "100vh" }} />;
-
-  // Responsive: stacked cards for mobile
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 700;
-
-  // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{
-      background:tk.pageBg,
-      padding:"10px 0px", boxSizing:"border-box",
-      transition:"background 0.25s",
-    }}>
+    <div className="space-y-6">
       {/* ════════ HEADER ════════ */}
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:26 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <div style={{
-            width:44, height:44, borderRadius:12, flexShrink:0,
-            display:"flex", alignItems:"center", justifyContent:"center",
-            background:"rgba(124,58,237,0.12)", border:"1px solid rgba(124,58,237,0.22)",
-            color:"#7c3aed",
-          }}>
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center bg-purple-100 border border-purple-200 text-purple-600 dark:bg-purple-500/15 dark:border-purple-500/25 dark:text-purple-400">
             <ShieldAlert size={20} />
           </div>
           <div>
-            <h1 style={{ margin:0, fontSize:20, fontWeight:700, color:tk.text, letterSpacing:"-0.3px" }}>
+            <h1 className="text-xl font-bold text-foreground dark:text-white tracking-tight">
               Reports Queue
             </h1>
-            <p style={{ margin:"2px 0 0", fontSize:13, color:tk.textSub }}>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Triage, review, and resolve user-submitted reports.
             </p>
           </div>
         </div>
-        
-        {/* MANUAL THEME TOGGLE REMOVED - NOW SYNCED WITH NAVBAR */}
       </div>
 
       {/* ════════ STAT CARDS ════════ */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(250px, 1fr))", gap:14, marginBottom:24 }}>
-        {([
-          { s:tk.stat.red,    Icon:AlertOctagon, label:"High Priority Pending", value:5  },
-          { s:tk.stat.orange, Icon:Flag,         label:"Total Pending",         value:24 },
-          { s:tk.stat.green,  Icon:CheckCircle,  label:"Resolved Today",        value:18 },
-        ] as const).map(({ s, Icon, label, value }, i) => (
-          <div key={i} style={{
-            background:s.bg, border:`1px solid ${s.border}`,
-            borderRadius:14, padding:"16px 20px",
-            display:"flex", alignItems:"center", gap:14,
-          }}>
-            <div style={{ color:s.icon, flexShrink:0 }}><Icon size={22} /></div>
-            <div>
-              <div style={{ fontSize:11, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.07em", color:s.text }}>
-                {label}
-              </div>
-              <div style={{ fontSize:26, fontWeight:700, color:tk.text, lineHeight:1.1, marginTop:3 }}>
-                {value}
-              </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* High Priority Pending */}
+        <div className="flex items-center gap-4 rounded-2xl border p-4 bg-red-50/60 border-red-200 dark:bg-red-500/[0.08] dark:border-red-500/20">
+          <div className="text-red-500 dark:text-red-400 shrink-0">
+            <AlertOctagon size={22} />
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">
+              High Priority Pending
+            </div>
+            <div className="text-2xl font-bold text-foreground dark:text-white mt-0.5">
+              5
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* Total Pending */}
+        <div className="flex items-center gap-4 rounded-2xl border p-4 bg-orange-50/60 border-orange-200 dark:bg-orange-500/[0.08] dark:border-orange-500/20">
+          <div className="text-orange-500 dark:text-orange-400 shrink-0">
+            <Flag size={22} />
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+              Total Pending
+            </div>
+            <div className="text-2xl font-bold text-foreground dark:text-white mt-0.5">
+              24
+            </div>
+          </div>
+        </div>
+
+        {/* Resolved Today */}
+        <div className="flex items-center gap-4 rounded-2xl border p-4 bg-emerald-50/60 border-emerald-200 dark:bg-emerald-500/[0.08] dark:border-emerald-500/20">
+          <div className="text-emerald-500 dark:text-emerald-400 shrink-0">
+            <CheckCircle size={22} />
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              Resolved Today
+            </div>
+            <div className="text-2xl font-bold text-foreground dark:text-white mt-0.5">
+              18
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* ════════ CONTROLS ════════ */}
-      <div style={{
-        display:"flex", alignItems:"center", justifyContent:"space-between",
-        flexWrap:"wrap", gap:12, marginBottom:16,
-      }}>
-
-        {/* Left: tabs + bulk actions */}
-        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+      {/* ════════ CONTROLS & FILTERS ════════ */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        {/* Left: Tabs + Bulk */}
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Tab group */}
-          <div style={{
-            display:"flex", background:tk.surfaceAlt, borderRadius:12,
-            padding:4, border:`1px solid ${tk.border}`,
-          }}>
-            {(["pending","resolved"] as Status[]).map(t2 => {
-              const active = tab === t2;
+          <div className="flex p-1 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-border dark:border-white/10">
+            {(["pending", "resolved"] as Status[]).map((t) => {
+              const active = activeTab === t;
               return (
                 <button
-                  key={t2}
-                  onClick={() => { setTab(t2); setSelected([]); }}
-                  style={{
-                    padding:"6px 16px", borderRadius:9, border:"none", outline:"none",
-                    background: active ? "#7c3aed" : "transparent",
-                    color:      active ? "#fff"    : tk.textSub,
-                    fontSize:13, fontWeight:600, cursor:"pointer",
-                    boxShadow: active ? "0 2px 8px rgba(124,58,237,0.3)" : "none",
-                    transition:"all 0.2s", fontFamily:"inherit",
+                  key={t}
+                  onClick={() => {
+                    setActiveTab(t);
+                    setSelectedReports([]);
                   }}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                    active
+                      ? "bg-purple-600 text-white shadow-md shadow-purple-500/30"
+                      : "text-muted-foreground hover:text-foreground dark:hover:text-white"
+                  }`}
                 >
-                  {t2 === "pending" ? "Pending Action" : "Resolved"}
-                  {t2 === "pending" && (
-                    <span style={{
-                      marginLeft:6, padding:"1px 6px", borderRadius:20,
-                      background: active ? "rgba(255,255,255,0.2)" : tk.inputBg,
-                      color:      active ? "#fff" : tk.textMuted,
-                      fontSize:11, fontWeight:700,
-                    }}>{pendingCount}</span>
+                  {t === "pending" ? "Pending Action" : "Resolved"}
+                  {t === "pending" && (
+                    <span
+                      className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${
+                        active
+                          ? "bg-white/20 text-white"
+                          : "bg-slate-200 text-slate-500 dark:bg-white/[0.06] dark:text-slate-500"
+                      }`}
+                    >
+                      {pendingCount}
+                    </span>
                   )}
                 </button>
               );
@@ -340,51 +376,44 @@ export default function ReportsQueuePage() {
           </div>
 
           {/* Bulk actions */}
-          {selected.length > 0 && (
+          {selectedReports.length > 0 && (
             <>
-              <button
-                style={{
-                  display:"flex", alignItems:"center", gap:6, padding:"7px 14px",
-                  borderRadius:9, background:"#059669", color:"#fff", border:"none",
-                  cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"inherit",
-                  boxShadow:"0 2px 8px rgba(5,150,105,0.35)",
-                }}
-              >
-                <CheckCircle size={14}/> Bulk Resolve ({selected.length})
+              <button className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold bg-emerald-600 text-white shadow-md shadow-emerald-500/30 hover:bg-emerald-700 transition-colors">
+                <CheckCircle size={14} /> Bulk Resolve ({selectedReports.length})
               </button>
               <button
-                onClick={() => setSelected([])}
-                style={{
-                  display:"flex", alignItems:"center", gap:5, padding:"7px 11px",
-                  borderRadius:9, background:"transparent", border:`1px solid ${tk.border}`,
-                  color:tk.textSub, cursor:"pointer", fontSize:13, fontFamily:"inherit",
-                }}
+                onClick={() => setSelectedReports([])}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground border border-border dark:border-white/10 hover:text-foreground dark:hover:text-white transition-colors"
               >
-                <X size={13}/> Clear
+                <X size={13} /> Clear
               </button>
             </>
           )}
         </div>
 
-        {/* Right: search + filters */}
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        {/* Right: Search + Filters */}
+        <div className="flex items-center gap-2">
           {/* Search */}
-          <div style={{ position:"relative" }}>
-            <Search size={14} style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", color:tk.textMuted }} />
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
             <input
-              style={{ ...inputStyle, paddingLeft:30, width:190 }}
+              type="text"
               placeholder="Search reports..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 pr-4 py-2 w-48 text-sm rounded-xl border border-border dark:border-white/10 bg-white dark:bg-white/[0.04] text-foreground dark:text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors"
             />
           </div>
 
-          {/* Filter type */}
-          <div style={{ position:"relative" }}>
+          {/* Filter by Type */}
+          <div className="relative">
             <select
-              style={{ ...inputStyle, paddingRight:28, appearance:"none", cursor:"pointer" }}
               value={filterType}
-              onChange={e => setFilter(e.target.value)}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="appearance-none pr-8 pl-3 py-2 text-sm rounded-xl border border-border dark:border-white/10 bg-white dark:bg-white/[0.04] text-foreground dark:text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500/30"
             >
               <option value="all">All Types</option>
               <option value="posts">Posts</option>
@@ -392,185 +421,190 @@ export default function ReportsQueuePage() {
               <option value="resources">Resources</option>
               <option value="users">Users</option>
             </select>
-            <ChevronDown size={13} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", color:tk.textMuted, pointerEvents:"none" }} />
+            <ChevronDown
+              size={13}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
           </div>
 
-          {/* Sort */}
-          <div style={{ position:"relative" }}>
-            <SlidersHorizontal size={13} style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", color:tk.textMuted, pointerEvents:"none" }} />
+          {/* Sort by */}
+          <div className="relative">
+            <SlidersHorizontal
+              size={13}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
             <select
-              style={{ ...inputStyle, paddingLeft:30, paddingRight:28, appearance:"none", cursor:"pointer" }}
               value={sort}
-              onChange={e => setSort(e.target.value)}
+              onChange={(e) => setSort(e.target.value)}
+              className="appearance-none pl-9 pr-8 py-2 text-sm rounded-xl border border-border dark:border-white/10 bg-white dark:bg-white/[0.04] text-foreground dark:text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500/30"
             >
               <option value="priority">Priority: High → Low</option>
               <option value="newest">Newest First</option>
             </select>
-            <ChevronDown size={13} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", color:tk.textMuted, pointerEvents:"none" }} />
+            <ChevronDown
+              size={13}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
           </div>
         </div>
       </div>
 
-      {/* ════════ TABLE / CARD LIST ════════ */}
-      <div style={{
-        background:tk.surface, border:`1px solid ${tk.border}`,
-        borderRadius:16, overflow:"hidden", overflowX: "auto"
-      }}>
-        <div style={{ minWidth: 900 }}>
-          {/* ── Table Head ── */}
-          <div style={{
-            display:"grid",
-            gridTemplateColumns:"36px 120px 280px 130px 160px 80px 1fr",
-            alignItems:"center",
-            padding:"11px 20px",
-            borderBottom:`1px solid ${tk.border}`,
-            background:tk.surfaceAlt,
-            gap:12,
-          }}>
-            {["","PRIORITY","CONTENT","REASON","REPORTER","TIME","ACTIONS"].map((h,i) => (
-              <div key={i} style={{
-                fontSize:10, fontWeight:700, color:tk.textMuted,
-                textTransform:"uppercase", letterSpacing:"0.08em",
-                textAlign: i === 6 ? "right" : "left",
-              }}>
-                {i === 0
-                  ? <input type="checkbox" style={{ width:14, height:14, cursor:"pointer", accentColor:"#7c3aed" }} checked={allSel} onChange={toggleAll} />
-                  : h
-                }
+      {/* ════════ TABLE ════════ */}
+      <div className="rounded-2xl border border-border dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden">
+        <div className="overflow-x-auto">
+          <div className="min-w-[900px]">
+            {/* Table Header */}
+            <div className="grid grid-cols-[36px_120px_1fr_120px_150px_80px_auto] gap-3 items-center px-5 py-3 border-b border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.02]">
+              <div>
+                <input
+                  type="checkbox"
+                  className="w-3.5 h-3.5 cursor-pointer accent-purple-600"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                />
               </div>
-            ))}
-          </div>
-
-          {/* ── Rows ── */}
-          {filtered.length === 0 ? (
-            <div style={{ padding:"52px 20px", textAlign:"center", color:tk.textMuted }}>
-              <CheckCircle size={36} style={{ margin:"0 auto 10px", opacity:0.3 }} />
-              <p style={{ margin:0, fontSize:14 }}>No reports found.</p>
-            </div>
-          ) : (
-            isMobile ? (
-              filtered.map(r => {
-                const isDanger = r.count > 5;
-                const isSel    = selected.includes(r.id);
-                return (
+              {["PRIORITY", "CONTENT", "REASON", "REPORTER", "TIME", "ACTIONS"].map(
+                (h, i) => (
                   <div
-                    key={r.id}
-                    style={{
-                      margin:"12px 0", padding:"16px 14px", borderRadius:12,
-                      border:`1px solid ${tk.border}`,
-                      background: isDanger ? tk.rowDanger : isSel ? tk.rowSel : tk.surfaceAlt,
-                      boxShadow: isDanger ? `0 0 0 3px #ef4444` : undefined,
-                      transition:"background 0.15s, box-shadow 0.15s",
-                      position:"relative",
-                    }}
+                    key={h}
+                    className={`text-[10px] font-bold uppercase tracking-wider text-muted-foreground ${
+                      i === 5 ? "text-right" : ""
+                    }`}
                   >
-                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                      <input
-                        type="checkbox"
-                        style={{ width:14, height:14, cursor:"pointer", accentColor:"#7c3aed" }}
-                        checked={isSel}
-                        onChange={() => toggleOne(r.id)}
-                        aria-label="Select report"
-                      />
-                      <PriorityBadge priority={r.priority} count={r.count} />
-                      <TypeChip type={r.type} />
-                      <span style={{ fontSize:11, color:tk.textMuted, fontFamily:"monospace" }}>{r.username}</span>
-                    </div>
-                    <p style={{ margin:"8px 0 0", fontSize:12, color:tk.textSub, lineHeight:1.4 }}>{r.snippet}</p>
-                    <div style={{ marginTop:8, display:"flex", gap:8, flexWrap:"wrap" }}>
-                      <span style={{ fontSize:11, color:tk.textSub }}>{r.reason}</span>
-                      <span style={{ fontSize:11, color:tk.textSub }}>Reported by {r.reporter}{r.others > 0 ? ` +${r.others} others` : ""}</span>
-                      <span style={{ fontSize:11, color:tk.textMuted }}>{r.time}</span>
-                    </div>
-                    <div style={{ marginTop:10, display:"flex", gap:4, justifyContent:"flex-end" }}>
-                      <GhostBtn icon={Eye} label="View" color="blue" />
-                      <GhostBtn icon={CheckCircle} label="Dismiss" color="green" />
-                      <GhostBtn icon={AlertTriangle} label="Warn" color="orange" />
-                      <GhostBtn icon={Trash2} label="Remove" color="red" />
-                      <BanBtn />
-                    </div>
+                    {h}
                   </div>
-                );
-              })
+                )
+              )}
+            </div>
+
+            {/* Table Rows */}
+            {filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <CheckCircle
+                  size={36}
+                  className="mb-3 text-slate-300 dark:text-slate-600"
+                />
+                <p className="text-sm font-medium">No reports found.</p>
+              </div>
             ) : (
-              filtered.map(r => {
+              filtered.map((r) => {
                 const isDanger = r.count > 5;
-                const isSel    = selected.includes(r.id);
+                const isSel = selectedReports.includes(r.id);
+
                 return (
                   <div
                     key={r.id}
-                    style={{
-                      display:"grid",
-                      gridTemplateColumns:"36px 120px 280px 130px 160px 80px 1fr",
-                      alignItems:"center",
-                      padding:"13px 20px",
-                      borderBottom:`1px solid ${tk.border}`,
-                      borderLeft:`3px solid ${isDanger ? "#ef4444" : isSel ? "#7c3aed" : "transparent"}`,
-                      background: isDanger ? tk.rowDanger : isSel ? tk.rowSel : "transparent",
-                      gap:12,
-                      transition:"background 0.15s",
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = isDanger ? tk.rowDanger : tk.surfaceAlt}
-                    onMouseLeave={e => e.currentTarget.style.background = isDanger ? tk.rowDanger : isSel ? tk.rowSel : "transparent"}
+                    className={`group grid grid-cols-[36px_120px_1fr_120px_150px_80px_auto] gap-3 items-center px-5 py-3.5 border-b last:border-b-0 transition-colors ${
+                      isDanger
+                        ? "bg-red-50/50 dark:bg-red-950/20 border-l-4 border-l-red-500 border-b-slate-100 dark:border-b-white/[0.04]"
+                        : isSel
+                          ? "bg-purple-50/50 dark:bg-purple-950/10 border-l-4 border-l-purple-500 border-b-slate-100 dark:border-b-white/[0.04]"
+                          : "border-l-4 border-l-transparent border-b-slate-100 dark:border-b-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.02]"
+                    }`}
                   >
                     {/* Checkbox */}
                     <div>
                       <input
                         type="checkbox"
-                        style={{ width:14, height:14, cursor:"pointer", accentColor:"#7c3aed" }}
+                        className="w-3.5 h-3.5 cursor-pointer accent-purple-600"
                         checked={isSel}
                         onChange={() => toggleOne(r.id)}
                         aria-label="Select report"
                       />
                     </div>
+
                     {/* Priority */}
                     <div>
                       <PriorityBadge priority={r.priority} count={r.count} />
                     </div>
+
                     {/* Content */}
-                    <div style={{ minWidth:0, overflow:"hidden" }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                    <div className="min-w-0 overflow-hidden">
+                      <div className="flex items-center gap-2 mb-1">
                         <TypeChip type={r.type} />
-                        <span style={{ fontSize:11, color:tk.textMuted, fontFamily:"monospace", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:100 }}>{r.username}</span>
+                        <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[100px]">
+                          {r.username}
+                        </span>
                       </div>
-                      <p style={{ margin:0, fontSize:12, color:tk.textSub, lineHeight:1.4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.snippet}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed truncate m-0">
+                        {r.snippet}
+                      </p>
                     </div>
+
                     {/* Reason */}
                     <div>
-                      <span style={{ display:"inline-block", padding:"3px 9px", borderRadius:7, whiteSpace:"nowrap", background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)", border:`1px solid ${tk.border}`, fontSize:11, fontWeight:600, color:tk.textSub }}>{r.reason}</span>
+                      <span className="inline-block px-2.5 py-1 rounded-lg whitespace-nowrap text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 dark:bg-white/[0.06] dark:text-slate-400 dark:border-white/10">
+                        {r.reason}
+                      </span>
                     </div>
+
                     {/* Reporter */}
                     <div>
-                      <div style={{ fontSize:13, fontWeight:600, color:tk.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.reporter}</div>
-                      {r.others > 0 && (<div style={{ fontSize:11, color:tk.textMuted, marginTop:1 }}>+{r.others} others</div>)}
+                      <div className="text-sm font-semibold text-foreground dark:text-white truncate">
+                        {r.reporter}
+                      </div>
+                      {r.others > 0 && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          +{r.others} others
+                        </div>
+                      )}
                     </div>
+
                     {/* Time */}
-                    <div style={{ fontSize:12, color:tk.textMuted, whiteSpace:"nowrap" }}>{r.time}</div>
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">
+                      {r.time}
+                    </div>
+
                     {/* Actions */}
-                    <div style={{ display:"flex", alignItems:"center", gap:3, justifyContent:"flex-end" }}>
-                      <GhostBtn icon={Eye} label="View" color="blue" tooltip="View report details" />
-                      <GhostBtn icon={CheckCircle} label="Dismiss" color="green" tooltip="Mark as resolved" />
-                      <GhostBtn icon={AlertTriangle} label="Warn" color="orange" tooltip="Warn user" />
-                      <GhostBtn icon={Trash2} label="Remove" color="red" tooltip="Remove content" />
-                      <BanBtn />
+                    <div className="flex items-center gap-1 justify-end">
+                      {/* Dismiss */}
+                      <button
+                        title="Dismiss report"
+                        className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10 border border-transparent hover:border-green-200 dark:hover:border-green-500/20 transition-all whitespace-nowrap"
+                      >
+                        <CheckCircle size={12} /> Dismiss
+                      </button>
+
+                      {/* Warn User */}
+                      <button
+                        title="Warn user"
+                        className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 border border-transparent hover:border-orange-200 dark:hover:border-orange-500/20 transition-all whitespace-nowrap"
+                      >
+                        <AlertTriangle size={12} /> Warn
+                      </button>
+
+                      {/* Remove Content */}
+                      <button
+                        title="Remove content"
+                        className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 transition-all whitespace-nowrap"
+                      >
+                        <Trash2 size={12} /> Remove
+                      </button>
+
+                      {/* Ban User */}
+                      <button
+                        title="Ban user"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-red-600 text-white shadow-md shadow-red-500/30 hover:bg-red-700 transition-all whitespace-nowrap"
+                      >
+                        <UserX size={12} /> Ban
+                      </button>
                     </div>
                   </div>
                 );
               })
-            )
-          )}
+            )}
+          </div>
         </div>
       </div>
 
       {/* ════════ FOOTER ════════ */}
-      <div style={{
-        marginTop:12, display:"flex", justifyContent:"space-between",
-        fontSize:12, color:tk.textMuted,
-      }}>
-        <span>Showing {filtered.length} of {REPORTS.filter(r => r.status === tab).length} reports</span>
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          Showing {filtered.length} of{" "}
+          {REPORTS.filter((r) => r.status === activeTab).length} reports
+        </span>
         <span>StudyBuddy Admin · Last synced just now</span>
       </div>
-
     </div>
   );
 }
