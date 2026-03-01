@@ -10,9 +10,9 @@ export function ConditionalNavbar() {
     return <Navbar />;
   }
 
-  // 🚨 Dekhein: Yahan se maine "/dashboard" nikal diya hai
-  // Ab Navbar sirf Admin aur Auth pages par hide hoga
+  // Hide global marketing navbar on app routes (dashboard & admin)
   const isHidden = 
+    pathname.startsWith("/dashboard") ||
     pathname.startsWith("/admin") || 
     pathname.startsWith("/login") || 
     pathname.startsWith("/register");

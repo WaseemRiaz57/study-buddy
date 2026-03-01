@@ -3,7 +3,7 @@
 import { useState } from "react"; // <-- IMPORT ADDED
 import { motion } from "framer-motion";
 import { 
-  BookOpen, Bell, TrendingUp, Clock, Users, DollarSign, 
+  BookOpen, TrendingUp, Clock, Users, DollarSign, 
   Award, Calendar, FileText, CheckCircle, XCircle, 
   BarChart3, Wallet, CreditCard, Star, ArrowRight,
   MessageCircle, Video, Settings, Target, Coins, Plus, Menu
@@ -105,74 +105,6 @@ export function MentorDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
-      
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          
-          {/* Logo & Nav */}
-          <div className="flex items-center gap-10">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <BookOpen className="text-white" size={20} />
-              </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">StudyBuddy</h1>
-            </div>
-            
-            {/* Nav Links (Desktop) */}
-            <nav className="hidden md:flex items-center gap-6">
-              {['Dashboard', 'Sessions', 'Students', 'Resources'].map((item, i) => (
-                <a 
-                  key={item} 
-                  href="#" 
-                  className={`text-sm font-medium transition-colors ${
-                    i === 0 ? "text-primary font-semibold" : "text-muted-foreground hover:text-primary"
-                  }`}
-                >
-                  {item}
-                </a>
-              ))}
-            </nav>
-          </div>
-
-          {/* Right Side - XP, Gold, Profile */}
-          <div className="flex items-center gap-6">
-            {/* XP Bar */}
-            <div className="hidden lg:flex flex-col items-end">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-primary uppercase tracking-wider">{profile.role}</span>
-                <span className="text-xs font-medium text-muted-foreground">{profile.xp.toLocaleString()} / {profile.maxXp.toLocaleString()} XP</span>
-              </div>
-              <div className="w-48 h-1.5 bg-primary/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(profile.xp / profile.maxXp) * 100}%` }}
-                  transition={{ duration: 1, delay: 0.2 }}
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
-                />
-              </div>
-            </div>
-
-            {/* Gold Balance */}
-            <div className="flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-lg border border-yellow-500/20">
-              <Coins className="text-yellow-600 dark:text-yellow-400" size={16} />
-              <span className="font-bold text-yellow-700 dark:text-yellow-400 text-sm">{profile.gold.toLocaleString()}</span>
-            </div>
-
-            {/* Notifications */}
-            <button className="relative p-2 hover:bg-primary/10 rounded-lg transition-colors">
-              <Bell className="text-muted-foreground" size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-background" />
-            </button>
-
-            {/* Profile */}
-            <div className="w-10 h-10 rounded-full ring-2 ring-primary/20 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold cursor-pointer hover:shadow-lg transition-shadow">
-              {profile.initials}
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* MAIN CONTENT */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         

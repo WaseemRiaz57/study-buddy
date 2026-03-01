@@ -121,8 +121,8 @@ export default function MythicBadgeModal({
             animate="visible"
             exit="exit"
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md mx-4 rounded-3xl border border-purple-500/30
-                       bg-gradient-to-b from-[#1a0533] via-[#0f0a1a] to-[#0a0612]
+            className="relative w-full max-w-md mx-4 rounded-3xl border border-purple-200 dark:border-purple-500/30
+                       bg-white dark:bg-gradient-to-b dark:from-[#1a0533] dark:via-[#0f0a1a] dark:to-[#0a0612]
                        shadow-[0_0_50px_rgba(140,48,232,0.5)] overflow-hidden"
           >
             {/* ---- Ambient glow rings ---- */}
@@ -134,7 +134,7 @@ export default function MythicBadgeModal({
               onClick={onClose} // Yahan theek kar diya hai
               aria-label="Close"
               className="absolute right-4 top-4 z-10 rounded-full p-1.5
-                         text-purple-300/60 transition-colors hover:bg-purple-500/20 hover:text-purple-200"
+                         text-purple-600/60 dark:text-purple-300/60 transition-colors hover:bg-purple-100 dark:hover:bg-purple-500/20 hover:text-purple-700 dark:hover:text-purple-200"
             >
               <X size={20} />
             </button>
@@ -171,7 +171,7 @@ export default function MythicBadgeModal({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35 }}
-                className="mb-1 text-xs font-semibold uppercase tracking-[0.25em] text-purple-300/80"
+                className="mb-1 text-xs font-semibold uppercase tracking-[0.25em] text-purple-700/80 dark:text-purple-300/80"
               >
                 Badge Unlocked
               </motion.p>
@@ -195,7 +195,7 @@ export default function MythicBadgeModal({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.55 }}
-                className="mb-8 max-w-xs text-sm leading-relaxed text-purple-200/70"
+                className="mb-8 max-w-xs text-sm leading-relaxed text-purple-800/70 dark:text-purple-200/70"
               >
                 You have transcended the ordinary. Your dedication has earned you
                 a badge of legend — wear it with pride.
@@ -210,16 +210,16 @@ export default function MythicBadgeModal({
               >
                 {/* XP pill */}
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30
-                             bg-amber-400/10 px-4 py-1.5 text-sm font-semibold text-amber-300"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 dark:border-amber-400/30
+                             bg-amber-100 dark:bg-amber-400/10 px-4 py-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300"
                 >
                   <Zap size={15} className="fill-amber-400 text-amber-400" />
                   +{xpReward} XP
                 </span>
                 {/* Aura pill */}
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-full border border-purple-400/30
-                             bg-purple-500/10 px-4 py-1.5 text-sm font-semibold text-purple-300"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-purple-200 dark:border-purple-400/30
+                             bg-purple-100 dark:bg-purple-500/10 px-4 py-1.5 text-sm font-semibold text-purple-700 dark:text-purple-300"
                 >
                   <Crown size={15} className="text-purple-400" />
                   {auraLabel}

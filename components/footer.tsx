@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Sparkles, Github, Twitter, MessageCircle } from "lucide-react";
 
 const productLinks = [
@@ -22,6 +23,13 @@ const socialLinks = [
 ];
 
 export function Footer() {
+  const pathname = usePathname();
+  
+  // Hide footer on dashboard and admin routes
+  if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <footer className="border-t border-border bg-background text-foreground">
       <div className="mx-auto w-full max-w-7xl px-6 py-12">

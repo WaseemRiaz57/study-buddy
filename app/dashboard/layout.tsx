@@ -1,5 +1,6 @@
 "use client";
 import { Sidebar } from "@/components/sidebar";
+import { DashboardTopbar } from "@/components/DashboardTopbar";
 import { useUserStore } from "@/store/useUserStore";
 
 // Temporary Dev Switcher (Production mein isay hata denge)
@@ -32,6 +33,7 @@ export default function DashboardLayout({
     <div className="flex h-screen bg-background overflow-hidden relative">
       <Sidebar />
       <main className="flex-1 overflow-y-auto transition-all duration-300">
+        <DashboardTopbar />
         {children}
       </main>
       

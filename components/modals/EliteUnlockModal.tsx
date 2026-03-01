@@ -45,17 +45,17 @@ function BenefitRow({
 }) {
   return (
     <motion.div
-      className="flex items-center gap-4 rounded-xl border border-amber-500/20 bg-amber-900/10 px-5 py-4 backdrop-blur-md"
+      className="flex items-center gap-4 rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-100 dark:bg-amber-900/10 px-5 py-4 backdrop-blur-md"
       initial={{ opacity: 0, x: -30 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/30 to-amber-700/30 text-amber-400">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-200 dark:bg-gradient-to-br dark:from-amber-500/30 dark:to-amber-700/30 text-amber-600 dark:text-amber-400">
         {icon}
       </div>
       <div>
-        <p className="font-semibold text-amber-200">{title}</p>
-        <p className="text-sm text-amber-300/60">{description}</p>
+        <p className="font-semibold text-amber-900 dark:text-amber-200">{title}</p>
+        <p className="text-sm text-slate-700 dark:text-amber-300/60">{description}</p>
       </div>
     </motion.div>
   );
@@ -107,7 +107,7 @@ export default function EliteUnlockModal({
         >
           {/* ── modal card ── */}
           <motion.div
-            className="relative mx-4 w-full max-w-lg overflow-hidden rounded-3xl border border-amber-500/30 bg-[#0f0b15] shadow-[0_0_80px_rgba(255,215,0,0.15)]"
+            className="relative mx-4 w-full max-w-lg overflow-hidden rounded-3xl border border-amber-200 dark:border-amber-500/30 bg-white dark:bg-[#0f0b15] shadow-[0_0_80px_rgba(255,215,0,0.15)]"
             initial={{ scale: 0.85, opacity: 0, y: 40 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 40 }}
@@ -160,16 +160,16 @@ export default function EliteUnlockModal({
 
                 <Key
                   size={52}
-                  className="relative z-10 text-amber-400 drop-shadow-[0_0_18px_rgba(255,215,0,0.6)]"
+                  className="relative z-10 text-amber-600 dark:text-amber-400 drop-shadow-[0_0_18px_rgba(255,215,0,0.6)]"
                   strokeWidth={1.5}
                 />
               </motion.div>
 
               {/* headline */}
-              <h2 className="mb-2 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 bg-clip-text text-center text-2xl font-extrabold tracking-tight text-transparent sm:text-3xl">
+              <h2 className="mb-2 text-center text-2xl font-extrabold tracking-tight sm:text-3xl bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 dark:from-amber-300 dark:via-yellow-400 dark:to-amber-500 bg-clip-text text-transparent">
                 Unlock the Path to Mastery
               </h2>
-              <p className="max-w-xs text-center text-sm text-amber-300/50">
+              <p className="max-w-xs text-center text-sm text-slate-700 dark:text-amber-300/50">
                 Gain access to the most prestigious challenges and elevate your
                 rank among the elite.
               </p>
@@ -197,8 +197,8 @@ export default function EliteUnlockModal({
             {/* ── footer ── */}
             <div className="flex flex-col items-center gap-4 px-6 pt-6 pb-8">
               {/* cost badge */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-900/20 px-4 py-1.5 text-sm font-medium text-amber-300">
-                <Coins size={16} className="text-amber-400" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-600 dark:bg-amber-900/20 px-4 py-1.5 text-sm font-medium text-white dark:border-amber-500/30 dark:text-amber-300">
+                <Coins size={16} className="text-white dark:text-amber-400" />
                 Cost: 500 Coins
               </div>
 

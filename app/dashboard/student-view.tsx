@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Search, Bell, TrendingUp, Clock, FileText, BookOpen, CheckSquare, Upload, Download, MessageCircle, Plus, Sparkles, Zap, BarChart3, Target, Award, Flame, Coins, ArrowRight, Users, Brain, Timer, Star, Trophy, BookMarked, Lock } from "lucide-react";
+import { Search, TrendingUp, Clock, FileText, Plus, Sparkles, Zap, BarChart3, Target, Award, CheckSquare, Upload, Download, MessageCircle, BookOpen, Brain, Timer, Star, Trophy, BookMarked, Lock, ArrowRight, Users } from "lucide-react";
 
 const fadeIn = {
   initial: { opacity: 0, y: 10 },
@@ -12,75 +12,6 @@ const fadeIn = {
 export function StudentDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
-      
-      {/* HEADER WITH STATS */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          {/* Logo & XP Bar */}
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-                <BookOpen className="text-white" size={20} />
-              </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">StudyBuddy</h1>
-            </div>
-            
-            {/* XP Progress */}
-            <div className="hidden md:flex flex-col w-48">
-              <div className="flex justify-between text-[10px] font-bold text-primary uppercase tracking-wider mb-1">
-                <span>Scholar Rank</span>
-                <span>4500/5000 XP</span>
-              </div>
-              <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: "90%" }}
-                  transition={{ duration: 1, delay: 0.2 }}
-                  className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full relative"
-                >
-                    <div className="absolute inset-0 bg-white/30 animate-pulse" />
-                </motion.div>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats & Profile */}
-          <div className="flex items-center gap-4">
-            {/* Streak */}
-            <div className="flex items-center gap-1.5 bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
-              <Flame className="text-orange-500" size={16} />
-              <span className="font-bold text-orange-600 dark:text-orange-400 text-sm">12</span>
-            </div>
-            
-            {/* Coins */}
-            <div className="flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20">
-              <Coins className="text-yellow-600 dark:text-yellow-400" size={16} />
-              <span className="font-bold text-yellow-700 dark:text-yellow-400 text-sm">1,240</span>
-            </div>
-
-            {/* Notifications */}
-            <button className="relative p-2 hover:bg-primary/10 rounded-lg transition-colors">
-              <Bell className="text-muted-foreground" size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-background" />
-            </button>
-
-            {/* Profile */}
-            <div className="flex items-center gap-3 pl-4 border-l border-border/50">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold leading-none">Master Scholar</p>
-                <p className="text-xs text-muted-foreground mt-1">Level 14</p>
-              </div>
-              <div className="relative cursor-pointer group">
-                <div className="w-10 h-10 rounded-full ring-2 ring-background ring-offset-2 ring-offset-primary/20 overflow-hidden bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
-                  AS
-                </div>
-                <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-background shadow-sm text-black">14</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
         

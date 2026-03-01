@@ -120,7 +120,7 @@ export default function PlatformSettingsPage() {
     // API
     const [showOpenAI, setShowOpenAI] = useState(false);
     const [showStripe, setShowStripe] = useState(false);
-    const [openAIKey, setOpenAIKey] = useState("sk-proj-a8xHm...........dK9z");
+    const [openAIKey, setOpenAIKey] = useState("sk-...........");
     const [stripeKey, setStripeKey] = useState("sk_live_4eR7y...........nL2x");
 
     useEffect(() => {
@@ -171,6 +171,37 @@ export default function PlatformSettingsPage() {
                         onChange={(e) => setPlatformName(e.target.value)}
                         className="w-full sm:w-64 px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors"
                     />
+                </SettingRow>
+
+                {/* Platform Logo */}
+                <SettingRow
+                    label="Platform Logo"
+                    description="Upload the logo that appears on your marketing site and in the app header."
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-xs font-semibold text-white shadow-sm shadow-purple-500/30 dark:shadow-purple-500/20">
+                            SB
+                        </div>
+                        <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 transition-colors"
+                                >
+                                    Upload Logo
+                                </button>
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/[0.04] transition-colors"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                                PNG or SVG, at least 256×256px. This logo will be used across the website.
+                            </p>
+                        </div>
+                    </div>
                 </SettingRow>
 
                 {/* Support Email */}
