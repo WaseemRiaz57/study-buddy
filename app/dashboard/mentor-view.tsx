@@ -2,6 +2,7 @@
 
 import { useState } from "react"; // <-- IMPORT ADDED
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import { 
   BookOpen, TrendingUp, Clock, Users, DollarSign, 
   Award, Calendar, FileText, CheckCircle, XCircle, 
@@ -14,9 +15,7 @@ import RequestApprovalModal from "@/components/modals/RequestApprovalModal"; // 
 // 👇 DYNAMIC DATA OBJECT (Updated with Modal Details)
 const MENTOR_DATA = {
   profile: {
-    name: "Mentor Elias",
     role: "Senior Mentor",
-    initials: "ME",
     xp: 8450,
     maxXp: 10000,
     gold: 1200,
@@ -91,7 +90,12 @@ const fadeIn = {
 };
 
 export function MentorDashboard() {
+  const { data: session, status } = useSession();
   const { profile, earnings, requests } = MENTOR_DATA;
+  const mentorName = session?.user?.name || "Mentor";
+  const mentorRole = session?.user?.role
+    ? `${session.user.role.charAt(0).toUpperCase()}${session.user.role.slice(1).toLowerCase()}`
+    : profile.role;
   
   // 👇 MODAL STATE ADDED
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -112,8 +116,11 @@ export function MentorDashboard() {
         <div className="mb-8">
           <div className="flex items-end justify-between mb-6">
             <div>
-              <h2 className="text-3xl font-bold text-foreground mb-1">Welcome back, {profile.name}</h2>
+              <h2 className="text-3xl font-bold text-foreground mb-1">
+                {status === "loading" ? "Welcome back" : `Welcome back, ${mentorName}`}
+              </h2>
               <p className="text-muted-foreground">You have {requests.length} new session requests and a payout ready.</p>
+              <p className="text-xs text-muted-foreground mt-1">Role: {mentorRole}</p>
             </div>
             <div className="text-right hidden sm:block">
               <p className="text-sm text-muted-foreground">Local Time</p>

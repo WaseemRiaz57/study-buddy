@@ -3,7 +3,8 @@ import { Space_Grotesk, Space_Mono } from "next/font/google";
 import { ConditionalNavbar } from "@/components/conditional-navbar";
 import { Footer } from "@/components/footer";
 import { ThemeProvider } from "@/components/theme-provider";
-import  AuthProvider  from "@/components/auth-provider";
+import AuthProvider from "@/components/auth-provider";
+import { Toaster } from "sonner"; // 👈 1. Sonner import kiya
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -37,6 +38,8 @@ export default function RootLayout({
             <ConditionalNavbar />
             {children}
             <Footer />
+            {/* 👇 2. Toaster component add kiya (theme aur colors ke sath) */}
+            <Toaster richColors position="top-right" theme="system" />
           </ThemeProvider>
         </AuthProvider>
       </body>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import {
   Check,
   Code,
@@ -47,6 +48,7 @@ const subjects = [
 /* Page Component                                                      */
 /* ------------------------------------------------------------------ */
 export default function MentorshipSetupPage() {
+  const { data: session, status } = useSession();
   const [rate, setRate] = useState<number | string>(50);
   const [oneOnOne, setOneOnOne] = useState(true);
   const [groupStudy, setGroupStudy] = useState(false);
@@ -74,6 +76,15 @@ export default function MentorshipSetupPage() {
   const selectedLabels = subjects
     .filter((s) => selectedSubjects.includes(s.id))
     .map((s) => s.label);
+
+  const fullName = session?.user?.name || "User";
+  const userImage = session?.user?.image || "";
+  const initials = fullName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
 
   /*  Step 4: Under Review  */
   if (submitted) {
@@ -448,13 +459,17 @@ export default function MentorshipSetupPage() {
             <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative mb-4">
                 <div className="size-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-2xl border-4 border-white shadow-md">
-                  WR
+                  {userImage ? (
+                    <img src={userImage} alt={fullName} className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    initials
+                  )}
                 </div>
                 <div className="absolute bottom-0 right-0 bg-green-500 size-6 border-4 border-white rounded-full" />
               </div>
 
               <h3 className="font-serif text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                Waseem Riaz
+                {status === "loading" ? "Loading..." : fullName}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-1">
                 <Star

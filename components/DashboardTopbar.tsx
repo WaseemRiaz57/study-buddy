@@ -2,13 +2,29 @@
 
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
-import { BookOpen, Flame, Coins, Moon, Sun, Users } from "lucide-react";
+import { BookOpen, Flame, Coins, Moon, Sun } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useUserStore } from "@/store/useUserStore";
 import { NotificationBell } from "./NotificationBell";
 
 export function DashboardTopbar() {
   const { resolvedTheme, setTheme } = useTheme();
+  const { data: session, status } = useSession();
   const { role } = useUserStore();
+
+  const fullName = session?.user?.name || "User";
+  const firstName = session?.user?.name?.split(" ")[0] || "User";
+  const userEmail = session?.user?.email || "";
+  const userImage = session?.user?.image || "";
+  const userInitials = fullName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
+  const mentorRoleLabel = session?.user?.role
+    ? `${session.user.role.charAt(0).toUpperCase()}${session.user.role.slice(1).toLowerCase()}`
+    : "Mentor";
 
   // Sample data - can be replaced with dynamic data later
   const studentData = {
@@ -22,11 +38,10 @@ export function DashboardTopbar() {
   };
 
   const mentorData = {
-    role: "Senior Mentor",
+    role: mentorRoleLabel,
     xp: 8450,
     maxXp: 10000,
     gold: 1200,
-    initials: "ME",
   };
 
   const data = role === "MENTOR" ? mentorData : studentData;
@@ -153,19 +168,31 @@ export function DashboardTopbar() {
           {role === "STUDENT" ? (
             <div className="flex items-center gap-3 pl-4 border-l border-border/50">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold leading-none">{studentData.title}</p>
-                <p className="text-xs text-muted-foreground mt-1">Level {studentData.level}</p>
+                <p className="text-sm font-bold leading-none">
+                  {status === "loading" ? "Loading..." : `Welcome ${firstName}`}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {userEmail || `${studentData.title} • Level ${studentData.level}`}
+                </p>
               </div>
               <div className="relative cursor-pointer group">
                 <div className="w-10 h-10 rounded-full ring-2 ring-background ring-offset-2 ring-offset-primary/20 overflow-hidden bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
-                  {studentData.initials}
+                  {userImage ? (
+                    <img src={userImage} alt={fullName} className="h-full w-full object-cover" />
+                  ) : (
+                    userInitials
+                  )}
                 </div>
                 <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-background shadow-sm text-black">{studentData.level}</div>
               </div>
             </div>
           ) : (
             <div className="w-10 h-10 rounded-full ring-2 ring-primary/20 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold cursor-pointer hover:shadow-lg transition-shadow">
-              {mentorData.initials}
+              {userImage ? (
+                <img src={userImage} alt={fullName} className="h-full w-full object-cover" />
+              ) : (
+                userInitials
+              )}
             </div>
           )}
         </div>

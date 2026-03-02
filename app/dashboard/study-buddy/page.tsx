@@ -130,7 +130,7 @@ export default function StudyBuddyPage() {
               className="fixed inset-0 z-50 bg-white/90 dark:bg-[#0f0a16]/95 backdrop-blur-md"
             >
               <MatchSuccess 
-                onClose={handleClose} 
+                onCloseAction={handleClose} 
                 matchData={matchedPeerData} 
               />
             </motion.div>

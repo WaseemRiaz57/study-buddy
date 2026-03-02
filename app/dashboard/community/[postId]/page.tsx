@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import {
   ArrowLeft, ThumbsUp, Bookmark, Share2, MessageSquare,
   Send, Clock, Eye, MoreHorizontal, Heart
@@ -111,12 +112,24 @@ function RoleBadge({ role }: { role: string }) {
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 export default function PostDetailPage() {
+  const { data: session } = useSession();
   const router = useRouter();
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [likeCount, setLikeCount] = useState(POST.likes);
   const [commentInput, setCommentInput] = useState("");
   const [comments, setComments] = useState<Comment[]>(INITIAL_COMMENTS);
+
+  const currentUserName = session?.user?.name || "User";
+  const currentUserInitials = currentUserName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
+  const currentUserRole = session?.user?.role
+    ? `${session.user.role.charAt(0).toUpperCase()}${session.user.role.slice(1).toLowerCase()}`
+    : "Scholar";
 
   const toggleLike = () => {
     setLiked((prev) => !prev);
@@ -128,9 +141,9 @@ export default function PostDetailPage() {
     if (!text) return;
     const newComment: Comment = {
       id: `c${Date.now()}`,
-      author: "You",
-      avatar: "YO",
-      role: "Scholar",
+      author: currentUserName,
+      avatar: currentUserInitials,
+      role: currentUserRole,
       text,
       timeAgo: "Just now",
       likes: 0,
@@ -291,7 +304,7 @@ export default function PostDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 border-t backdrop-blur-xl z-40 bg-white/80 border-slate-200 dark:bg-[#0f0c13]/80 dark:border-white/10">
         <div className="max-w-4xl mx-auto p-4 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-gradient-to-br from-purple-500 to-pink-500 text-white">
-            YO
+            {currentUserInitials}
           </div>
           <input
             value={commentInput}

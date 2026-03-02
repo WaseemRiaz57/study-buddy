@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Pencil, Upload, Trash2, Save, RotateCcw } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 /* ------------------------------------------------------------------ */
 /* Shared input class                                                  */
@@ -21,8 +22,8 @@ const inputCls = `
 /* Defaults (used for discard / reset)                                 */
 /* ------------------------------------------------------------------ */
 const DEFAULTS = {
-  firstName: "Waseem",
-  lastName: "Riaz",
+  firstName: "User",
+  lastName: "",
   headline: "Senior Product Designer & Mentor",
   about: "",
 };
@@ -33,21 +34,50 @@ const ABOUT_MAX = 500;
 /* Public Profile Page                                                 */
 /* ------------------------------------------------------------------ */
 export default function PublicProfilePage() {
+  const { data: session, status } = useSession();
+  const [sessionDefaults, setSessionDefaults] = useState(DEFAULTS);
+  const [isHydratedFromSession, setIsHydratedFromSession] = useState(false);
   const [firstName, setFirstName] = useState(DEFAULTS.firstName);
   const [lastName, setLastName] = useState(DEFAULTS.lastName);
   const [headline, setHeadline] = useState(DEFAULTS.headline);
   const [about, setAbout] = useState(DEFAULTS.about);
   const [dirty, setDirty] = useState(false);
 
+  const fullName = session?.user?.name || `${firstName} ${lastName}`.trim() || "User";
+  const userImage = session?.user?.image || "";
+  const avatarInitials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "U";
+
+  useEffect(() => {
+    if (isHydratedFromSession || status === "loading") return;
+
+    const sessionName = session?.user?.name?.trim() || "User";
+    const [sessionFirstName, ...rest] = sessionName.split(" ");
+    const sessionLastName = rest.join(" ");
+
+    const nextDefaults = {
+      ...DEFAULTS,
+      firstName: sessionFirstName || "User",
+      lastName: sessionLastName || "",
+    };
+
+    setSessionDefaults(nextDefaults);
+    setFirstName(nextDefaults.firstName);
+    setLastName(nextDefaults.lastName);
+    setHeadline(nextDefaults.headline);
+    setAbout(nextDefaults.about);
+    setDirty(false);
+    setIsHydratedFromSession(true);
+  }, [session, status, isHydratedFromSession]);
+
   const markDirty = () => {
     if (!dirty) setDirty(true);
   };
 
   const handleDiscard = () => {
-    setFirstName(DEFAULTS.firstName);
-    setLastName(DEFAULTS.lastName);
-    setHeadline(DEFAULTS.headline);
-    setAbout(DEFAULTS.about);
+    setFirstName(sessionDefaults.firstName);
+    setLastName(sessionDefaults.lastName);
+    setHeadline(sessionDefaults.headline);
+    setAbout(sessionDefaults.about);
     setDirty(false);
   };
 
@@ -74,7 +104,11 @@ export default function PublicProfilePage() {
             {/* Avatar */}
             <div className="relative group shrink-0">
               <div className="size-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 ring-4 ring-slate-50 dark:ring-white/5 flex items-center justify-center text-4xl font-bold text-white select-none">
-                WR
+                {userImage ? (
+                  <img src={userImage} alt={fullName} className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  avatarInitials
+                )}
               </div>
               <button
                 className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-transform hover:scale-105"

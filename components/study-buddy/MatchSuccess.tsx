@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react";
 import { X, MessageCircle, Video, Sparkles } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 interface MatchSuccessProps {
-  onClose: () => void;
+  onCloseAction: () => void;
   matchData: { name: string; image: string; tags: string[] };
 }
 
@@ -116,7 +117,9 @@ function BurstRings() {
 /* ------------------------------------------------------------------ */
 /*  MatchSuccess Component                                             */
 /* ------------------------------------------------------------------ */
-export default function MatchSuccess({ onClose, matchData }: MatchSuccessProps) {
+export default function MatchSuccess({ onCloseAction, matchData }: MatchSuccessProps) {
+  const { data: session, status } = useSession();
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -131,6 +134,15 @@ export default function MatchSuccess({ onClose, matchData }: MatchSuccessProps) 
         .join("")
         .slice(0, 2)
     : "NA";
+
+  const currentUserName = session?.user?.name || "User";
+  const currentUserImage = session?.user?.image || "";
+  const currentUserInitials = currentUserName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
 
   return (
     <AnimatePresence>
@@ -162,7 +174,7 @@ export default function MatchSuccess({ onClose, matchData }: MatchSuccessProps) 
         >
           {/* Close Button */}
           <button 
-            onClick={onClose} 
+            onClick={onCloseAction} 
             className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
           >
             <X size={24} />
@@ -211,9 +223,13 @@ export default function MatchSuccess({ onClose, matchData }: MatchSuccessProps) 
                   border: "2px solid rgba(255, 215, 0, 0.6)",
                 }}
               >
-                <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-2xl">
-                  You
-                </div>
+                {currentUserImage ? (
+                  <img src={currentUserImage} alt={currentUserName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-2xl">
+                    {currentUserInitials}
+                  </div>
+                )}
               </motion.div>
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#ffd700] text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                 YOU
@@ -249,7 +265,7 @@ export default function MatchSuccess({ onClose, matchData }: MatchSuccessProps) 
             transition={{ delay: 0.6 }}
             className="text-slate-600 dark:text-gray-300 text-lg"
           >
-            You and{" "}
+            {status === "loading" ? "You" : currentUserName} and{" "}
             <span className="text-slate-900 dark:text-white font-bold">{matchData.name}</span> match perfectly!
           </motion.p>
 

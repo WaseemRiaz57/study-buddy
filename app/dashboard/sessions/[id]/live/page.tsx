@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Pen,
@@ -43,34 +44,6 @@ interface ChatMessage {
   time: string;
   isMentor?: boolean;
 }
-
-const mentorInfo = { name: "Alex M.", avatar: "AM", rank: "Master" };
-const studentInfo = { name: "Sarah J.", avatar: "SJ", rank: "Scholar" };
-
-const initialChat: ChatMessage[] = [
-  {
-    id: 1,
-    sender: "Sarah J.",
-    avatar: "SJ",
-    text: "Hi! I had a question about problem #4 from the midterm review.",
-    time: "10:02",
-  },
-  {
-    id: 2,
-    sender: "Alex M.",
-    avatar: "AM",
-    text: "Sure! Let me pull up that problem on the board. It's about vector field divergence, right?",
-    time: "10:03",
-    isMentor: true,
-  },
-  {
-    id: 3,
-    sender: "Sarah J.",
-    avatar: "SJ",
-    text: "Yes exactly! I get confused when the field has multiple components.",
-    time: "10:04",
-  },
-];
 
 type ToolId = "pointer" | "pen" | "shapes" | "text" | "eraser";
 
@@ -174,17 +147,70 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
 export default function LiveClassroomPage() {
   const router = useRouter();
   const params = useParams();
+  const { data: session } = useSession();
   const sessionId = params.id as string;
+
+  const currentUserName = session?.user?.name || "User";
+  const currentUserAvatar =
+    currentUserName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "U";
+  const currentUserIsMentor = session?.user?.role?.toUpperCase() === "MENTOR";
+
+  const currentUser = {
+    name: currentUserName,
+    avatar: currentUserAvatar,
+    rank: currentUserIsMentor ? "Mentor" : "Scholar",
+  };
+
+  const peerUser = currentUserIsMentor
+    ? { name: "Student", avatar: "ST", rank: "Scholar" }
+    : { name: "Mentor", avatar: "MN", rank: "Mentor" };
+
+  const mentorInfo = currentUserIsMentor ? currentUser : peerUser;
+  const studentInfo = currentUserIsMentor ? peerUser : currentUser;
+
+  const initialMessages: ChatMessage[] = [
+    {
+      id: 1,
+      sender: studentInfo.name,
+      avatar: studentInfo.avatar,
+      text: "Hi! I had a question about problem #4 from the midterm review.",
+      time: "10:02",
+    },
+    {
+      id: 2,
+      sender: mentorInfo.name,
+      avatar: mentorInfo.avatar,
+      text: "Sure! Let me pull up that problem on the board. It's about vector field divergence, right?",
+      time: "10:03",
+      isMentor: true,
+    },
+    {
+      id: 3,
+      sender: studentInfo.name,
+      avatar: studentInfo.avatar,
+      text: "Yes exactly! I get confused when the field has multiple components.",
+      time: "10:04",
+    },
+  ];
 
   const [activeTool, setActiveTool] = useState<ToolId>("pen");
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [chatOpen, setChatOpen] = useState(true);
-  const [messages, setMessages] = useState<ChatMessage[]>(initialChat);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [newMsg, setNewMsg] = useState("");
   
   // Modal State
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [mentorInfo.name, mentorInfo.avatar, studentInfo.name, studentInfo.avatar]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -194,14 +220,14 @@ export default function LiveClassroomPage() {
       ...prev,
       {
         id: Date.now(),
-        sender: mentorInfo.name,
-        avatar: mentorInfo.avatar,
+        sender: currentUser.name,
+        avatar: currentUser.avatar,
         text: newMsg.trim(),
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        isMentor: true,
+        isMentor: currentUserIsMentor,
       },
     ]);
     setNewMsg("");
@@ -381,7 +407,7 @@ export default function LiveClassroomPage() {
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Based on Sarah&apos;s recent performance, consider using a visual
+                Based on the student&apos;s recent performance, consider using a visual
                 approach with vector field plots. Students with similar profiles
                 show 40% better retention with graphical aids.
               </p>

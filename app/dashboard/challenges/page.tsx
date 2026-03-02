@@ -2,6 +2,7 @@
 import Link from "next/link";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 // Imports check kar lijiyega export name ke hisab se
 import EliteUnlockModal from "@/components/modals/EliteUnlockModal"; 
 import MythicBadgeModal from "@/components/modals/MythicBadgeModal";
@@ -200,13 +201,14 @@ interface LeaderEntry {
   initials: string;
   xp: number;
   color: string;
+  isUser?: boolean;
 }
 
-const leaderboard: LeaderEntry[] = [
+const leaderboardTemplate: LeaderEntry[] = [
   { rank: 1, name: "Amara S.", initials: "AS", xp: 12400, color: "from-yellow-400 to-amber-500" },
   { rank: 2, name: "Ravi K.", initials: "RK", xp: 11200, color: "from-slate-300 to-slate-400" },
   { rank: 3, name: "Mina P.", initials: "MP", xp: 10800, color: "from-orange-400 to-amber-600" },
-  { rank: 4, name: "You", initials: "YO", xp: 9600, color: "from-primary to-purple-500" },
+  { rank: 4, name: "User", initials: "U", xp: 9600, color: "from-primary to-purple-500", isUser: true },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -228,6 +230,20 @@ const fadeUp = {
 /* ═══════════════════════════════════════════════════════════════════ */
 
 export default function ChallengesDashboard() {
+  const { data: session } = useSession();
+  const currentUserName = session?.user?.name || "User";
+  const currentUserInitials = currentUserName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
+  const leaderboard = leaderboardTemplate.map((entry) =>
+    entry.isUser
+      ? { ...entry, name: currentUserName, initials: currentUserInitials }
+      : entry,
+  );
+
   const xpPct = Math.round((userStats.xp / userStats.xpToNext) * 100);
   const [isMythicOpen, setIsMythicOpen] = useState(true);
   const [isEliteOpen, setIsEliteOpen] = useState(true);
@@ -675,7 +691,7 @@ export default function ChallengesDashboard() {
 
               <div className="space-y-2">
                 {leaderboard.map((entry) => {
-                  const isYou = entry.name === "You";
+                  const isYou = !!entry.isUser;
                   return (
                     <div
                       key={entry.rank}

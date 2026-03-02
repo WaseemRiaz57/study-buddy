@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import {
   Pencil,
   Upload,
@@ -45,14 +46,51 @@ const timezones = [
 /* Public Profile Page                                                 */
 /* ------------------------------------------------------------------ */
 export default function PublicProfilePage() {
-  const [firstName, setFirstName] = useState("Waseem");
-  const [lastName, setLastName] = useState("Riaz");
+  const { data: session, status } = useSession();
+  const [sessionDefaults, setSessionDefaults] = useState({
+    firstName: "User",
+    lastName: "",
+    headline: "Full-Stack Developer & Mentor",
+    timezone: "Asia/Karachi",
+    about:
+      "Passionate educator helping students master complex subjects through personalized mentorship. I specialize in web development, system design, and interview preparation.",
+  });
+  const [isHydratedFromSession, setIsHydratedFromSession] = useState(false);
+  const [firstName, setFirstName] = useState(sessionDefaults.firstName);
+  const [lastName, setLastName] = useState(sessionDefaults.lastName);
   const [headline, setHeadline] = useState("Full-Stack Developer & Mentor");
   const [timezone, setTimezone] = useState("Asia/Karachi");
   const [about, setAbout] = useState(
     "Passionate educator helping students master complex subjects through personalized mentorship. I specialize in web development, system design, and interview preparation.",
   );
   const [dirty, setDirty] = useState(false);
+
+  const fullName = session?.user?.name || `${firstName} ${lastName}`.trim() || "User";
+  const userImage = session?.user?.image || "";
+  const avatarInitials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "U";
+
+  useEffect(() => {
+    if (isHydratedFromSession || status === "loading") return;
+
+    const sessionName = session?.user?.name?.trim() || "User";
+    const [sessionFirstName, ...rest] = sessionName.split(" ");
+    const sessionLastName = rest.join(" ");
+
+    const nextDefaults = {
+      ...sessionDefaults,
+      firstName: sessionFirstName || "User",
+      lastName: sessionLastName || "",
+    };
+
+    setSessionDefaults(nextDefaults);
+    setFirstName(nextDefaults.firstName);
+    setLastName(nextDefaults.lastName);
+    setHeadline(nextDefaults.headline);
+    setTimezone(nextDefaults.timezone);
+    setAbout(nextDefaults.about);
+    setDirty(false);
+    setIsHydratedFromSession(true);
+  }, [session, status, isHydratedFromSession]);
 
   const markDirty = () => {
     if (!dirty) setDirty(true);
@@ -83,7 +121,11 @@ export default function PublicProfilePage() {
             <div className="relative shrink-0">
               <div className="w-28 h-28 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-[2.5px] shadow-lg shadow-purple-500/20 dark:shadow-purple-500/10">
                 <div className="w-full h-full rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-3xl font-bold text-purple-600 dark:text-purple-400">
-                  WR
+                  {userImage ? (
+                    <img src={userImage} alt={fullName} className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    avatarInitials
+                  )}
                 </div>
               </div>
               {/* Edit icon button overlapping avatar */}
@@ -276,13 +318,11 @@ export default function PublicProfilePage() {
             {/* Discard */}
             <button
               onClick={() => {
-                setFirstName("Waseem");
-                setLastName("Riaz");
-                setHeadline("Full-Stack Developer & Mentor");
-                setTimezone("Asia/Karachi");
-                setAbout(
-                  "Passionate educator helping students master complex subjects through personalized mentorship. I specialize in web development, system design, and interview preparation.",
-                );
+                setFirstName(sessionDefaults.firstName);
+                setLastName(sessionDefaults.lastName);
+                setHeadline(sessionDefaults.headline);
+                setTimezone(sessionDefaults.timezone);
+                setAbout(sessionDefaults.about);
                 setDirty(false);
               }}
               className="

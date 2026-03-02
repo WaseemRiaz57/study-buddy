@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react";
 // ✨ Added missing import for animations
 import { motion, AnimatePresence } from "framer-motion"; 
+import { useSession } from "next-auth/react";
 import {
   GraduationCap,
   Trophy,
@@ -29,12 +30,7 @@ interface Participant {
   active: boolean;
 }
 
-const PARTICIPANTS: Participant[] = [
-  {
-    name: "Sarah (You)",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80",
-    active: true,
-  },
+const OTHER_PARTICIPANTS: Participant[] = [
   {
     name: "Alex Chen",
     image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80",
@@ -45,6 +41,20 @@ const PARTICIPANTS: Participant[] = [
 export default function StudyRoomSessionPage({ params }: { params: Promise<{ roomId: string }> }) {
   // Unwrap params
   const { roomId } = use(params);
+  const { data: session } = useSession();
+
+  const currentUserName = session?.user?.name || "You";
+  const currentUserImage =
+    session?.user?.image ||
+    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80";
+  const participants: Participant[] = [
+    {
+      name: currentUserName,
+      image: currentUserImage,
+      active: true,
+    },
+    ...OTHER_PARTICIPANTS,
+  ];
   
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"chat" | "vault">("chat");
@@ -174,7 +184,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
           {/* Video Strip */}
           <div className="h-48 flex gap-4 overflow-x-auto pb-4 px-4">
-            {PARTICIPANTS.map((participant) => (
+            {participants.map((participant) => (
               <div
                 key={participant.name}
                 className={`aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all
@@ -257,7 +267,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
                   {/* Peer Msg */}
                   <div className="flex gap-3">
-                     <img src={PARTICIPANTS[1].image} className="w-8 h-8 rounded-full object-cover" />
+                    <img src={participants[1].image} className="w-8 h-8 rounded-full object-cover" />
                      <div className="rounded-2xl rounded-tl-none p-3 text-sm max-w-[85%] border shadow-sm transition-colors
                        bg-white text-slate-700 border-slate-100
                        dark:bg-[#1f192b] dark:text-gray-200 dark:border-white/5">

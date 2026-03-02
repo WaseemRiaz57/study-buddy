@@ -2,6 +2,7 @@
 
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import {
   Radio,
   Users,
@@ -35,7 +36,7 @@ const squadMembers = [
 const miniLeaderboard = [
   { rank: 1, name: "Sara M.", hours: 128, badge: "👑" },
   { rank: 2, name: "Owais R.", hours: 96, badge: "🥈" },
-  { rank: 3, name: "You", hours: 72, badge: "🥉", isUser: true },
+  { rank: 3, name: "User", hours: 72, badge: "🥉", isUser: true },
 ];
 
 const rewardTiers = [
@@ -197,6 +198,12 @@ function InfiniteTickerBar() {
 /* ═══════════════════════════════════════════════════════════════════ */
 
 export default function GlobalEventPage() {
+  const { data: session } = useSession();
+  const currentUserName = session?.user?.name || "User";
+  const personalizedMiniLeaderboard = miniLeaderboard.map((entry) =>
+    entry.isUser ? { ...entry, name: currentUserName } : entry,
+  );
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       {/* ── Ambient background orbs ─────────────────────────────── */}
@@ -295,7 +302,7 @@ export default function GlobalEventPage() {
                     Top Contributors
                   </h4>
                   <div className="space-y-2.5">
-                    {miniLeaderboard.map((entry) => (
+                    {personalizedMiniLeaderboard.map((entry) => (
                       <div
                         key={entry.rank}
                         className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-colors

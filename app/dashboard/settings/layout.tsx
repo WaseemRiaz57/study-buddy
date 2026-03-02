@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import {
   User,
   ShieldCheck,
@@ -65,15 +66,29 @@ function getNavGroups(role: "student" | "mentor"): SettingsNavGroup[] {
 /* Mini Profile (Header for the Menu)                                 */
 /* ------------------------------------------------------------------ */
 function MiniProfile({ role }: { role: "student" | "mentor" }) {
+  const { data: session, status } = useSession();
+  const fullName = session?.user?.name || "User";
+  const userImage = session?.user?.image || "";
+  const initials = fullName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
+
   return (
     <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-[#1f1627] rounded-t-2xl">
       <div className="flex items-center gap-4">
         <div className="size-14 shrink-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg border-2 border-white dark:border-slate-800 shadow-md">
-          WR
+          {userImage ? (
+            <img src={userImage} alt={fullName} className="h-full w-full rounded-full object-cover" />
+          ) : (
+            initials
+          )}
         </div>
         <div className="min-w-0">
           <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight truncate">
-            Waseem Riaz
+            {status === "loading" ? "Loading..." : fullName}
           </h3>
           <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary ring-1 ring-inset ring-primary/20 mt-1 capitalize">
             {role} Account

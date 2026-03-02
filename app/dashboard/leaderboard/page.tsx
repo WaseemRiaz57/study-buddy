@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react";
 import {
   Trophy,
   Crown,
@@ -61,7 +62,7 @@ const allScholars: Scholar[] = [
   { rank: 10, name: "Rune Atlas",   avatar: "RA", xp: 3_410,  streak: 5,  badges: [BADGES.mentor] },
 ];
 
-const currentUser = { rank: 42, name: "You", avatar: "YO", xp: 1_250, streak: 7, nextRankXp: 1_500 };
+const currentUserBase = { rank: 42, xp: 1_250, streak: 7, nextRankXp: 1_500 };
 
 type TimeFilter = "weekly" | "monthly" | "all-time";
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
@@ -176,9 +177,23 @@ function BadgePill({ badge }: { badge: Badge }) {
 
 // ── Page Component ─────────────────────────────────────────
 export default function LeaderboardPage() {
+  const { data: session } = useSession();
   const [filter, setFilter] = useState<TimeFilter>("all-time");
   const topThree = allScholars.slice(0, 3);
   const rest     = allScholars.slice(3);
+
+  const currentUserName = session?.user?.name || "User";
+  const currentUserInitials = currentUserName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
+  const currentUser = {
+    ...currentUserBase,
+    name: currentUserName,
+    avatar: currentUserInitials,
+  };
 
   const progressPct = Math.round((currentUser.xp / currentUser.nextRankXp) * 100);
 
