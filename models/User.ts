@@ -25,6 +25,14 @@ const userSchema = new Schema(
       enum: ["student", "mentor", "admin"],
       default: "student", // Jo naya sign up karega wo default student banega
     },
+    subjects: {
+      type: [String],
+      default: [],
+    },
+    isOnline: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true } // Yeh automatically createdAt aur updatedAt fields bana dega
 );

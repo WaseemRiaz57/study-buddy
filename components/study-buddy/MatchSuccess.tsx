@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
-import { X, MessageCircle, Video, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { X, MessageCircle, Video, Sparkles, Loader2 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
-/*  Types                                                              */
+/*  Types                                                              */
 /* ------------------------------------------------------------------ */
 interface MatchSuccessProps {
   onCloseAction: () => void;
   matchData: { name: string; image: string; tags: string[] };
+  sessionId: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -117,8 +120,36 @@ function BurstRings() {
 /* ------------------------------------------------------------------ */
 /*  MatchSuccess Component                                             */
 /* ------------------------------------------------------------------ */
-export default function MatchSuccess({ onCloseAction, matchData }: MatchSuccessProps) {
+export default function MatchSuccess({ onCloseAction, matchData, sessionId }: MatchSuccessProps) {
   const { data: session, status } = useSession();
+  const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<"chat" | "video" | null>(null);
+
+  const handleSelectMode = async (mode: "chat" | "video") => {
+    if (!sessionId) {
+      toast.error("Session not found. Please try again.");
+      return;
+    }
+    setIsNavigating(true);
+    setSelectedMode(mode);
+    try {
+      const res = await fetch("/api/study-buddy/mode", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, mode }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to set mode");
+      }
+      router.push(`/dashboard/study-room/${sessionId}?mode=${mode}`);
+    } catch (error: any) {
+      toast.error(error.message || "Something went wrong.");
+      setIsNavigating(false);
+      setSelectedMode(null);
+    }
+  };
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -295,11 +326,29 @@ export default function MatchSuccess({ onCloseAction, matchData }: MatchSuccessP
             transition={{ delay: 0.8 }}
             className="grid grid-cols-2 gap-4 w-full"
           >
-            <button className="py-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#8c30e8] to-[#e830d5] shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2">
-              <MessageCircle size={20} /> Chat
+            <button
+              onClick={() => handleSelectMode("chat")}
+              disabled={isNavigating}
+              className="py-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#8c30e8] to-[#e830d5] shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isNavigating && selectedMode === "chat" ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <MessageCircle size={20} />
+              )}
+              Chat
             </button>
-            <button className="py-4 rounded-xl font-bold text-slate-700 dark:text-white border border-slate-200 dark:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2">
-              <Video size={20} /> Video
+            <button
+              onClick={() => handleSelectMode("video")}
+              disabled={isNavigating}
+              className="py-4 rounded-xl font-bold text-slate-700 dark:text-white border border-slate-200 dark:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isNavigating && selectedMode === "video" ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <Video size={20} />
+              )}
+              Video
             </button>
           </motion.div>
         </motion.div>

@@ -1,0 +1,92 @@
+import { connectMongoDB } from "@/lib/mongodb";
+import { createRoomCredentials } from "@/lib/agora";
+import StudyRoom from "@/models/StudyRoom";
+import Notification from "@/models/Notification";
+import User from "@/models/User";
+import mongoose from "mongoose";
+
+export interface StartRoomResult {
+  roomId: string;
+  channelName: string;
+  agoraAppId: string;
+  tokens: { [userId: string]: string };
+  startTime: Date;
+}
+
+/**
+ * UC-14 / FR-7 — StartStudyRoom Algorithm
+ *
+ * 1. Generate a unique channel name for WebRTC / Agora signaling.
+ * 2. Create a StudyRoom record in MongoDB with ActiveStatus: true.
+ * 3. Generate Agora tokens for both participants.
+ * 4. Dispatch a "room_created" notification to the matched peer (FR-12).
+ * 5. Return the room ID + credentials so the frontend can connect.
+ */
+export async function startStudyRoom(
+  studentAId: string,
+  studentBId: string,
+  subject?: string
+): Promise<StartRoomResult> {
+  await connectMongoDB();
+
+  // ── 1. Generate channel + tokens ──────────────────────────────────
+  const credentials = createRoomCredentials(studentAId, studentBId);
+
+  // ── 2. Persist StudyRoom ──────────────────────────────────────────
+  const room = await StudyRoom.create({
+    studentIds: [
+      new mongoose.Types.ObjectId(studentAId),
+      new mongoose.Types.ObjectId(studentBId),
+    ],
+    activeStatus: true,
+    startTime: new Date(),
+    endTime: null,
+    communicationChannel: credentials.channelName,
+    sharedMaterialIds: [],
+  });
+
+  // ── 3. Dispatch notifications (FR-12) ─────────────────────────────
+  // Notify studentB that a room has been created
+  const studentA = await User.findById(studentAId, "name").lean() as { name?: string } | null;
+  const senderName = studentA?.name || "Your study buddy";
+
+  await Notification.create({
+    recipientId: new mongoose.Types.ObjectId(studentBId),
+    senderId: new mongoose.Types.ObjectId(studentAId),
+    type: "room_created",
+    title: "Study Room Ready!",
+    message: `${senderName} started a study room${subject ? ` for ${subject}` : ""}. Join now!`,
+    read: false,
+    metadata: {
+      roomId: room._id.toString(),
+      channelName: credentials.channelName,
+      subject: subject || "",
+    },
+  });
+
+  // Also notify studentA (confirmation)
+  const studentB = await User.findById(studentBId, "name").lean() as { name?: string } | null;
+  const peerName = studentB?.name || "Your study buddy";
+
+  await Notification.create({
+    recipientId: new mongoose.Types.ObjectId(studentAId),
+    senderId: new mongoose.Types.ObjectId(studentBId),
+    type: "room_created",
+    title: "Study Room Created!",
+    message: `Your study room with ${peerName}${subject ? ` for ${subject}` : ""} is ready.`,
+    read: false,
+    metadata: {
+      roomId: room._id.toString(),
+      channelName: credentials.channelName,
+      subject: subject || "",
+    },
+  });
+
+  return {
+    roomId: room._id.toString(),
+    channelName: credentials.channelName,
+    agoraAppId: credentials.agoraAppId,
+    tokens: credentials.tokens,
+    startTime: room.startTime,
+  };
+}

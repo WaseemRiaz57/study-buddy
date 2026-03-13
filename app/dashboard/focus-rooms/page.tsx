@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Pause, RotateCcw, Settings, CloudRain, Coffee, Radio, Plus, Trash2,
-  Music, CheckCircle2, Circle, Sparkles, Flame, Check, BarChart3,
+  Music, CheckCircle2, Circle, Sparkles, Flame, Check, BarChart3, X // 👈 X import add kiya
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -15,7 +15,7 @@ interface SoundChannel {
   icon: React.ReactNode;
   enabled: boolean;
   volume: number;
-  file: string; // 👈 File path add kiya
+  file: string; 
 }
 
 interface Task {
@@ -28,8 +28,6 @@ interface Task {
 /* ------------------------------------------------------------------ */
 /* Constants                                                          */
 /* ------------------------------------------------------------------ */
-const POMODORO_SECONDS = 25 * 60; // 👈 Isay wapas 25 mins kar diya hai
-
 const WEEKLY_DATA = [
   { day: "M", hours: 2, pct: 40 },
   { day: "T", hours: 3, pct: 60 },
@@ -42,8 +40,12 @@ const WEEKLY_DATA = [
 /* Page                                                               */
 /* ------------------------------------------------------------------ */
 export default function FocusRoomsPage() {
+  /* ---- Settings Logic (New) ---- */
+  const [focusDuration, setFocusDuration] = useState(25); // 👈 Default 25 mins
+  const [showSettings, setShowSettings] = useState(false); // 👈 Modal dikhane ke liye
+
   /* ---- Timer ---- */
-  const [timeLeft, setTimeLeft] = useState(POMODORO_SECONDS);
+  const [timeLeft, setTimeLeft] = useState(focusDuration * 60);
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -69,10 +71,9 @@ export default function FocusRoomsPage() {
   const taskInputRef = useRef<HTMLInputElement>(null);
 
   /* ------------------------------------------------------------------ */
-  /* 🎵 Audio Logic (Nayi functionality)                               */
+  /* 🎵 Audio Logic                                                     */
   /* ------------------------------------------------------------------ */
   useEffect(() => {
-    // Audio objects initialization
     const refs = audioRefs.current;
     sounds.forEach((s) => {
       if (!refs[s.id]) {
@@ -85,7 +86,6 @@ export default function FocusRoomsPage() {
     });
 
     return () => {
-      // Cleanup: stop and release all audio objects
       Object.values(refs).forEach((audio) => {
         audio.pause();
         audio.src = "";
@@ -95,7 +95,6 @@ export default function FocusRoomsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update audio when sound state changes
   useEffect(() => {
     sounds.forEach((s) => {
       const audio = audioRefs.current[s.id];
@@ -151,7 +150,7 @@ export default function FocusRoomsPage() {
   }, []);
 
   const handleSessionComplete = useCallback(async () => {
-    const minutesFocused = Math.floor(POMODORO_SECONDS / 60) || 1;
+    const minutesFocused = focusDuration; // 👈 Dynamic minutes update
 
     try {
       const res = await fetch("/api/focus", {
@@ -174,9 +173,8 @@ export default function FocusRoomsPage() {
       console.error("Error saving session:", error);
       toast.error("Network error while saving session.");
     }
-  }, []);
+  }, [focusDuration]); // 👈 Dependency add ki
 
-  // Countdown: only re-creates interval when isRunning toggles, NOT every tick
   useEffect(() => {
     if (!isRunning) return;
     intervalRef.current = setInterval(() => {
@@ -185,7 +183,6 @@ export default function FocusRoomsPage() {
     return clearTimer;
   }, [isRunning, clearTimer]);
 
-  // Completion detection: fires once when timer hits 0 while running
   useEffect(() => {
     if (timeLeft === 0 && isRunning) {
       clearTimer();
@@ -201,13 +198,17 @@ export default function FocusRoomsPage() {
   const resetTimer = () => {
     clearTimer();
     setIsRunning(false);
-    setTimeLeft(POMODORO_SECONDS);
+    setTimeLeft(focusDuration * 60); // 👈 Dynamic reset
   };
 
   /* ---- Derived values ---- */
   const minutesDisplay = String(Math.floor(timeLeft / 60)).padStart(2, "0");
   const secondsDisplay = String(timeLeft % 60).padStart(2, "0");
-  const progressPercent = ((POMODORO_SECONDS - timeLeft) / POMODORO_SECONDS) * 100;
+  
+  // 👈 Progress calculation dynamic ho gayi hai
+  const totalSeconds = focusDuration * 60;
+  const progressPercent = ((totalSeconds - timeLeft) / totalSeconds) * 100;
+  
   const circumference = 2 * Math.PI * 46;
   const currentLevelXp = userXp % 1000;
   const xpProgressPct = (currentLevelXp / 1000) * 100;
@@ -364,7 +365,11 @@ export default function FocusRoomsPage() {
               {isRunning ? "Pause" : "Start Session"}
             </button>
 
-            <button className="w-14 h-14 rounded-full bg-white/60 dark:bg-white/[0.06] hover:bg-white dark:hover:bg-white/10 text-text-muted dark:text-slate-400 hover:text-primary flex items-center justify-center transition-all shadow-[0_8px_32px_rgba(140,48,232,0.1)] border border-white/50 dark:border-white/10">
+            {/* 👇 Settings Button Functionality Attached */}
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="w-14 h-14 rounded-full bg-white/60 dark:bg-white/[0.06] hover:bg-white dark:hover:bg-white/10 text-text-muted dark:text-slate-400 hover:text-primary flex items-center justify-center transition-all shadow-[0_8px_32px_rgba(140,48,232,0.1)] border border-white/50 dark:border-white/10"
+            >
               <Settings size={20} />
             </button>
           </div>
@@ -550,6 +555,48 @@ export default function FocusRoomsPage() {
           </span>
         </div>
       </footer>
+
+      {/* ========================================= */}
+      {/* 👇 Settings Modal (Naya Izafa)            */}
+      {/* ========================================= */}
+      {showSettings && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="glass-panel bg-white/90 dark:bg-slate-900/90 border border-white/20 dark:border-white/10 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-text-main dark:text-white">Timer Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-text-main dark:hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-text-muted dark:text-slate-400 mb-2">
+                Focus Duration (Minutes)
+              </label>
+              <input 
+                type="number" 
+                min="1" 
+                max="120" 
+                value={focusDuration} 
+                onChange={(e) => setFocusDuration(Number(e.target.value))} 
+                className="w-full bg-white/50 dark:bg-slate-800/50 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-text-main dark:text-white outline-none focus:border-primary/50 transition-all" 
+              />
+            </div>
+            
+            <button 
+              onClick={() => { 
+                setTimeLeft(focusDuration * 60); 
+                setShowSettings(false); 
+                setIsRunning(false); 
+                if (intervalRef.current) clearInterval(intervalRef.current);
+              }} 
+              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-xl transition-all shadow-lg shadow-primary/30"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

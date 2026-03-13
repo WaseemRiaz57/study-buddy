@@ -1,71 +1,305 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "sonner";
 
 import ActivePeersView from "@/components/study-buddy/ActivePeersView";
 import TopicSelectionView from "@/components/study-buddy/TopicSelectionView";
 import MatchingLoader from "@/components/study-buddy/MatchingLoader";
 import MatchSuccess from "@/components/study-buddy/MatchSuccess";
+import MatchRequestNotification from "@/components/study-buddy/MatchRequestNotification";
 
 type ViewState = "dashboard" | "topic" | "loading" | "success";
+
+interface Peer {
+  userId: string;
+  name: string;
+  image: string;
+  isOnline: boolean;
+  isLookingForMatch: boolean;
+  currentSubject: string;
+  currentTopic: string;
+  tags: string[];
+}
+
+interface MatchRequest {
+  sessionId: string;
+  requester: {
+    id: string;
+    name: string;
+    email: string;
+    image: string;
+  };
+  subject: string;
+  topic: string;
+}
 
 export default function StudyBuddyPage() {
   const [view, setView] = useState<ViewState>("dashboard");
   const [searchData, setSearchData] = useState({ subject: "", topic: "" });
-  
-  // New State: Track Loading Mode ('search' or 'direct')
+  const [peers, setPeers] = useState<Peer[]>([]);
+  const [peersLoading, setPeersLoading] = useState(true);
+
   const [loadingMode, setLoadingMode] = useState<"search" | "direct">("search");
+
+  // Session tracking for the handshake
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   const [matchedPeerData, setMatchedPeerData] = useState({
     name: "",
     image: "",
-    tags: [] as string[]
+    tags: [] as string[],
   });
 
-  // 1. "Add New" -> Search Mode
+  // Incoming match requests (User B)
+  const [incomingRequests, setIncomingRequests] = useState<MatchRequest[]>([]);
+
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const notifPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ─── Fetch Peers ───
+  const fetchPeers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/study-buddy/peers");
+      if (!res.ok) throw new Error("Failed to fetch peers");
+      const data = await res.json();
+      setPeers(data);
+    } catch {
+      toast.error("Could not load active peers.");
+    } finally {
+      setPeersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPeers();
+  }, [fetchPeers]);
+
+  // ─── Stop Polling Helpers ───
+  const stopStatusPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  const stopNotifPolling = useCallback(() => {
+    if (notifPollingRef.current) {
+      clearInterval(notifPollingRef.current);
+      notifPollingRef.current = null;
+    }
+  }, []);
+
+  // ─── Poll for Incoming Notifications (User B) ───
+  const startNotifPolling = useCallback(() => {
+    if (notifPollingRef.current) return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/study-buddy/notifications");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.notifications && data.notifications.length > 0) {
+          setIncomingRequests(data.notifications);
+        }
+      } catch {
+        // silently retry
+      }
+    };
+
+    poll();
+    notifPollingRef.current = setInterval(poll, 4000);
+  }, []);
+
+  useEffect(() => {
+    startNotifPolling();
+    return () => stopNotifPolling();
+  }, [startNotifPolling, stopNotifPolling]);
+
+  // ─── Poll Session Status (User A) ───
+  const startStatusPolling = useCallback(
+    (sessionId: string) => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+
+      pollingRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(
+            `/api/study-buddy/status?sessionId=${sessionId}`
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+
+          if (data.status === "accepted") {
+            stopStatusPolling();
+            setMatchedPeerData({
+              name: data.peer.name,
+              image: data.peer.image,
+              tags: [],
+            });
+            setView("success");
+          } else if (data.status === "rejected") {
+            stopStatusPolling();
+            toast.info("Your study request was declined.");
+            setView("dashboard");
+            setActiveSessionId(null);
+          }
+        } catch {
+          // silently retry
+        }
+      }, 3000);
+    },
+    [stopStatusPolling]
+  );
+
+  // ─── "Add New" → Search Mode ───
   const handleAddNew = () => {
-    setLoadingMode("search"); // Set mode to Search
+    setLoadingMode("search");
     setView("topic");
   };
 
-  // 2. "Connect" Profile -> Direct Mode
-  const handleDirectConnect = (peer: any) => {
+  // ─── "Connect" Profile → Direct Request (2-Way Handshake) ───
+  const handleDirectConnect = async (peer: any) => {
     setMatchedPeerData({
       name: peer.name,
       image: peer.image,
-      tags: peer.subjects
+      tags: peer.subjects ?? peer.tags ?? [],
     });
-    setLoadingMode("direct"); // Set mode to Direct
-    setView("loading"); 
-  };
-
-  // 3. Search Submit
-  const handleSearch = (data: { subject: string; topic: string }) => {
-    setSearchData(data);
-    // Note: loadingMode is already 'search' from handleAddNew
+    setLoadingMode("direct");
     setView("loading");
+
+    try {
+      const res = await fetch("/api/study-buddy/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId: peer.userId }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Request failed");
+      }
+
+      const data = await res.json();
+      const sessionId = data.sessionId;
+      setActiveSessionId(sessionId);
+      startStatusPolling(sessionId);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send request.");
+      setView("dashboard");
+    }
   };
 
-  // 4. Animation Finished
-  const handleMatchFound = () => {
-    if (!matchedPeerData.name) {
-      setMatchedPeerData({
-        name: "Sarah Jenkins",
-        image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80",
-        tags: [searchData.subject, searchData.topic]
+  // ─── Search Submit → Create request via search flow ───
+  const handleSearch = async (data: { subject: string; topic: string }) => {
+    setSearchData(data);
+    setView("loading");
+
+    try {
+      const res = await fetch("/api/study-buddy/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
+
+      if (!res.ok) throw new Error("Search failed");
+
+      const result = await res.json();
+
+      if (result.status === "matched" && result.sessionId) {
+        setActiveSessionId(result.sessionId);
+        setMatchedPeerData({
+          name: result.peer.name,
+          image: result.peer.image,
+          tags: result.peer.tags || [],
+        });
+        startStatusPolling(result.sessionId);
+      } else if (result.status === "waiting") {
+        if (!pollingRef.current) {
+          pollingRef.current = setInterval(async () => {
+            try {
+              const pollRes = await fetch("/api/study-buddy/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+              });
+              if (!pollRes.ok) return;
+              const pollResult = await pollRes.json();
+              if (pollResult.status === "matched" && pollResult.sessionId) {
+                stopStatusPolling();
+                setActiveSessionId(pollResult.sessionId);
+                setMatchedPeerData({
+                  name: pollResult.peer.name,
+                  image: pollResult.peer.image,
+                  tags: pollResult.peer.tags || [],
+                });
+                startStatusPolling(pollResult.sessionId);
+              }
+            } catch {
+              // silently retry
+            }
+          }, 3000);
+        }
+      }
+    } catch {
+      toast.error("Matchmaking failed. Please try again.");
+      setView("dashboard");
     }
+  };
+
+  // ─── Animation finished callback from MatchingLoader ───
+  const handleMatchFound = () => {
+    if (matchedPeerData.name && activeSessionId) {
+      setView("success");
+    }
+  };
+
+  // ─── User B: Accept Request ───
+  const handleRequestAccepted = (
+    sessionId: string,
+    peerName: string,
+    peerImage: string
+  ) => {
+    stopNotifPolling();
+    setIncomingRequests((prev) =>
+      prev.filter((r) => r.sessionId !== sessionId)
+    );
+    setActiveSessionId(sessionId);
+    setMatchedPeerData({ name: peerName, image: peerImage, tags: [] });
     setView("success");
   };
 
+  // ─── User B: Decline Request ───
+  const handleRequestDeclined = (sessionId: string) => {
+    setIncomingRequests((prev) =>
+      prev.filter((r) => r.sessionId !== sessionId)
+    );
+  };
+
+  // ─── Close / Reset ───
   const handleClose = () => {
+    stopStatusPolling();
     setView("dashboard");
     setSearchData({ subject: "", topic: "" });
     setMatchedPeerData({ name: "", image: "", tags: [] });
+    setActiveSessionId(null);
+    fetchPeers();
+    startNotifPolling();
   };
 
-  const handleCancelLoading = () => setView("dashboard");
+  const handleCancelLoading = () => {
+    stopStatusPolling();
+    setView("dashboard");
+    setActiveSessionId(null);
+  };
+
+  // ─── Cleanup on unmount ───
+  useEffect(() => {
+    return () => {
+      stopStatusPolling();
+      stopNotifPolling();
+    };
+  }, [stopStatusPolling, stopNotifPolling]);
 
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-[#0f0a16] text-slate-900 dark:text-white overflow-hidden font-sans transition-colors duration-300">
@@ -74,6 +308,15 @@ export default function StudyBuddyPage() {
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-pink-500/10 rounded-full blur-[120px]" />
       </div>
+
+      {/* ── Incoming Match Request Notifications (User B) ── */}
+      {incomingRequests.length > 0 && view !== "loading" && view !== "success" && (
+        <MatchRequestNotification
+          request={incomingRequests[0]}
+          onAcceptedAction={handleRequestAccepted}
+          onDeclinedAction={handleRequestDeclined}
+        />
+      )}
 
       <main className="relative z-10 w-full h-full pt-6">
         <AnimatePresence mode="wait">
@@ -85,8 +328,10 @@ export default function StudyBuddyPage() {
               className="w-full"
             >
               <ActivePeersView 
-                onAddNew={handleAddNew} 
-                onConnect={handleDirectConnect} 
+                onAddNewAction={handleAddNew} 
+                onConnectAction={handleDirectConnect}
+                peers={peers}
+                loading={peersLoading}
               />
             </motion.div>
           )}
@@ -111,17 +356,16 @@ export default function StudyBuddyPage() {
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 bg-white/90 dark:bg-[#0f0a16]/95 backdrop-blur-md"
             >
-              {/* ✨ UPDATED LOADER WITH PROPS */}
               <MatchingLoader 
                 onCancel={handleCancelLoading} 
                 onMatchFound={handleMatchFound} 
-                mode={loadingMode} // 'search' or 'direct'
-                peerName={matchedPeerData.name} // "Connecting to Sarah..."
+                mode={loadingMode}
+                peerName={matchedPeerData.name}
               />
             </motion.div>
           )}
 
-          {view === "success" && (
+          {view === "success" && activeSessionId && (
             <motion.div 
               key="success"
               initial={{ opacity: 0, scale: 0.95 }} 
@@ -131,7 +375,8 @@ export default function StudyBuddyPage() {
             >
               <MatchSuccess 
                 onCloseAction={handleClose} 
-                matchData={matchedPeerData} 
+                matchData={matchedPeerData}
+                sessionId={activeSessionId}
               />
             </motion.div>
           )}

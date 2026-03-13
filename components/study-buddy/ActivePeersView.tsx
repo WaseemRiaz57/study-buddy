@@ -1,55 +1,31 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Users, Plus, Sparkles } from "lucide-react";
+import { Users, Plus, Sparkles, Loader2 } from "lucide-react";
 
 interface Student {
-  id: string;
+  id?: string;
+  userId?: string;
   name: string;
-  major: string;
-  university: string;
+  major?: string;
+  university?: string;
   image?: string;
   isOnline: boolean;
-  subjects: string[];
+  subjects?: string[];
+  tags?: string[];
 }
-
-// Mock Data (Ye shuru me dikhega)
-const ACTIVE_PEERS: Student[] = [
-  {
-    id: "1",
-    name: "Sarah Jenkins",
-    major: "Computer Science",
-    university: "Stanford",
-    isOnline: true,
-    subjects: ["React", "Next.js"],
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80"
-  },
-  {
-    id: "2",
-    name: "David Chen",
-    major: "Mathematics",
-    university: "MIT",
-    isOnline: true,
-    subjects: ["Calculus", "Linear Algebra"],
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80"
-  },
-  {
-    id: "3",
-    name: "Emily Davis",
-    major: "Physics",
-    university: "Cambridge",
-    isOnline: false,
-    subjects: ["Quantum Mechanics"],
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&q=80"
-  }
-];
 
 interface ActivePeersViewProps {
-  onAddNew: () => void;
-  onConnect: (peer: Student) => void;
+  onAddNewAction: () => void;
+  onConnectAction: (peer: Student) => void;
+  peers?: Student[];
+  loading?: boolean;
 }
 
-export default function ActivePeersView({ onAddNew, onConnect }: ActivePeersViewProps) {
+export default function ActivePeersView({ onAddNewAction, onConnectAction, peers, loading }: ActivePeersViewProps) {
+  // Use API peers if provided, otherwise fall back to empty array
+  const displayPeers = peers ?? [];
+
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-8">
       
@@ -68,7 +44,7 @@ export default function ActivePeersView({ onAddNew, onConnect }: ActivePeersView
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={onAddNew}
+          onClick={onAddNewAction}
           className="flex items-center gap-2 bg-gradient-to-r from-[#8c30e8] to-[#e830d5] text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all"
         >
           <Plus size={20} />
@@ -76,16 +52,35 @@ export default function ActivePeersView({ onAddNew, onConnect }: ActivePeersView
         </motion.button>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-[#8c30e8]" />
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && displayPeers.length === 0 && (
+        <div className="text-center py-20 text-slate-500 dark:text-gray-400">
+          <p className="text-lg font-medium">No peers online right now.</p>
+          <p className="text-sm mt-1">Click &quot;Find New Buddy&quot; to start matchmaking!</p>
+        </div>
+      )}
+
       {/* Peers Grid */}
+      {!loading && (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ACTIVE_PEERS.map((peer, index) => (
+        {displayPeers.map((peer, index) => {
+          const peerId = peer.userId ?? peer.id ?? index.toString();
+          const peerSubjects = peer.subjects ?? peer.tags ?? [];
+          return (
           <motion.div
-            key={peer.id}
+            key={peerId}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             className="group relative bg-white dark:bg-[#1a1524] border border-slate-200 dark:border-white/10 p-5 rounded-2xl hover:border-[#8c30e8]/50 transition-all cursor-pointer shadow-sm hover:shadow-md"
-            onClick={() => onConnect(peer)}
+            onClick={() => onConnectAction({ ...peer, subjects: peerSubjects })}
           >
             {/* Online Indicator */}
             {peer.isOnline && (
@@ -94,19 +89,19 @@ export default function ActivePeersView({ onAddNew, onConnect }: ActivePeersView
 
             <div className="flex items-center gap-4 mb-4">
               <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-slate-100 dark:border-white/10">
-                <img src={peer.image} alt={peer.name} className="w-full h-full object-cover" />
+                <img src={peer.image || "/placeholder-avatar.png"} alt={peer.name} className="w-full h-full object-cover" />
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-[#8c30e8] transition-colors">
                   {peer.name}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-gray-400">{peer.major}</p>
-                <p className="text-xs text-slate-400 dark:text-gray-500">{peer.university}</p>
+                {peer.major && <p className="text-xs text-slate-500 dark:text-gray-400">{peer.major}</p>}
+                {peer.university && <p className="text-xs text-slate-400 dark:text-gray-500">{peer.university}</p>}
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2 mb-4">
-              {peer.subjects.map(sub => (
+              {peerSubjects.map(sub => (
                 <span key={sub} className="text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 border border-slate-200 dark:border-white/5">
                   {sub}
                 </span>
@@ -117,11 +112,12 @@ export default function ActivePeersView({ onAddNew, onConnect }: ActivePeersView
               Connect
             </div>
           </motion.div>
-        ))}
+          );
+        })}
 
         {/* Placeholder Card for "Add New" visual */}
         <motion.div
-          onClick={onAddNew}
+          onClick={onAddNewAction}
           whileHover={{ scale: 1.02 }}
           className="border-2 border-dashed border-slate-300 dark:border-white/10 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#8c30e8] hover:bg-slate-50 dark:hover:bg-white/5 transition-all min-h-[200px]"
         >
@@ -133,6 +129,7 @@ export default function ActivePeersView({ onAddNew, onConnect }: ActivePeersView
         </motion.div>
 
       </div>
+      )}
     </div>
   );
 }
