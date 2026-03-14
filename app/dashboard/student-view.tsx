@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Search, TrendingUp, Clock, FileText, Plus, Sparkles, Zap, BarChart3, Target, Award, CheckSquare, Upload, Download, MessageCircle, BookOpen, Brain, Timer, Star, Trophy, BookMarked, Lock, ArrowRight, Users } from "lucide-react";
 
@@ -9,7 +10,61 @@ const fadeIn = {
   transition: { duration: 0.3 }
 };
 
+type AINoteType = "notes" | "summarizer" | "quiz";
+
+interface RecentAINote {
+  _id: string;
+  title: string;
+  content: string;
+  type: AINoteType;
+  createdAt: string;
+}
+
 export function StudentDashboard() {
+  const [recentNotes, setRecentNotes] = useState<RecentAINote[]>([]);
+
+  const formatRelativeTime = useCallback((isoDate: string) => {
+    const date = new Date(isoDate).getTime();
+    const now = Date.now();
+    const diffMs = now - date;
+    const mins = Math.floor(diffMs / (1000 * 60));
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }, []);
+
+  const fetchRecentNotes = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai-notes?limit=8", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setRecentNotes(Array.isArray(data) ? data : []);
+    } catch {
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRecentNotes();
+
+    const onNotesUpdated = () => {
+      fetchRecentNotes();
+    };
+
+    window.addEventListener("ai-notes-updated", onNotesUpdated);
+    return () => {
+      window.removeEventListener("ai-notes-updated", onNotesUpdated);
+    };
+  }, [fetchRecentNotes]);
+
+  const noteTypeMeta: Record<AINoteType, { gradient: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string }> = {
+    notes: { gradient: "from-emerald-500 to-teal-600", icon: Brain, label: "Smart Notes" },
+    summarizer: { gradient: "from-indigo-500 to-purple-600", icon: FileText, label: "Summary" },
+    quiz: { gradient: "from-orange-500 to-red-600", icon: Zap, label: "Quiz" },
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       {/* MAIN CONTENT */}
@@ -169,28 +224,31 @@ export function StudentDashboard() {
             </div>
 
             <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {[
-                { title: "Photosynthesis Deep Dive", subject: "Biology", time: "2m ago", gradient: "from-indigo-500 to-purple-600", icon: Brain },
-                { title: "Quantum Mechanics Intro", subject: "Physics", time: "1h ago", gradient: "from-emerald-500 to-teal-600", icon: Zap },
-                { title: "Macroeconomics Ch. 4", subject: "Economics", time: "5h ago", gradient: "from-orange-500 to-red-600", icon: TrendingUp },
-                { title: "The Industrial Revolution", subject: "History", time: "1d ago", gradient: "from-blue-500 to-cyan-600", icon: BookOpen },
-              ].map((note, i) => (
-                <div key={i} className="min-w-[260px] glass-panel rounded-[1.5rem] p-5 hover:-translate-y-2 transition-all cursor-pointer group relative overflow-hidden">
-                  <div className={`aspect-[4/3] rounded-2xl mb-4 overflow-hidden relative bg-gradient-to-br ${note.gradient} flex items-center justify-center shadow-inner`}>
+              {recentNotes.map((note) => {
+                const meta = noteTypeMeta[note.type];
+                const Icon = meta.icon;
+                return (
+                <div key={note._id} className="min-w-[260px] glass-panel rounded-[1.5rem] p-5 hover:-translate-y-2 transition-all cursor-pointer group relative overflow-hidden">
+                  <div className={`aspect-[4/3] rounded-2xl mb-4 overflow-hidden relative bg-gradient-to-br ${meta.gradient} flex items-center justify-center shadow-inner`}>
                     <div className="absolute inset-0 bg-black/10" />
-                    <note.icon className="text-white/60 group-hover:scale-110 transition-transform duration-500" size={48} />
+                    <Icon className="text-white/60 group-hover:scale-110 transition-transform duration-500" size={48} />
                   </div>
                   <h4 className="font-bold text-base mb-2 text-foreground group-hover:text-primary transition-colors line-clamp-1">
                     {note.title}
                   </h4>
                   <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-3">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      {note.subject}
+                      {meta.label}
                     </p>
-                    <p className="text-[10px] font-bold text-muted-foreground">{note.time}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground">{formatRelativeTime(note.createdAt)}</p>
                   </div>
                 </div>
-              ))}
+              )})}
+              {recentNotes.length === 0 && (
+                <div className="min-w-[260px] glass-panel rounded-[1.5rem] p-5 text-sm text-muted-foreground">
+                  Your latest AI notes will appear here.
+                </div>
+              )}
             </div>
           </motion.div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -15,9 +15,6 @@ import ResourceCard from "@/components/resources/ResourceCard";
 import type { Resource } from "@/components/resources/ResourceCard";
 import UploadResourceModal from "@/components/resources/UploadResourceModal";
 
-/* ------------------------------------------------------------------ */
-/*  Mock data                                                          */
-/* ------------------------------------------------------------------ */
 const SUBJECTS = [
   "All Subjects",
   "Mathematics",
@@ -36,98 +33,40 @@ const SORT_OPTIONS = [
   { label: "Top Rated", value: "rating", icon: Star },
 ];
 
-const MOCK_RESOURCES: Resource[] = [
-  {
-    id: "r1",
-    title: "Calculus II Complete Notes",
-    subject: "Mathematics",
-    fileType: "PDF",
-    rating: 4.8,
-    author: "Sarah J.",
-    authorAvatar: "SJ",
-    downloads: 1240,
-  },
-  {
-    id: "r2",
-    title: "Quantum Mechanics Study Guide",
-    subject: "Physics",
-    fileType: "PDF",
-    rating: 4.6,
-    author: "Alex R.",
-    authorAvatar: "AR",
-    downloads: 890,
-  },
-  {
-    id: "r3",
-    title: "Data Structures & Algorithms Cheat Sheet",
-    subject: "Computer Science",
-    fileType: "DOC",
-    rating: 4.9,
-    author: "Priya S.",
-    authorAvatar: "PS",
-    downloads: 2310,
-  },
-  {
-    id: "r4",
-    title: "Organic Chemistry Reaction Maps",
-    subject: "Chemistry",
-    fileType: "IMG",
-    rating: 4.3,
-    author: "Jordan L.",
-    authorAvatar: "JL",
-    downloads: 670,
-  },
-  {
-    id: "r5",
-    title: "Cell Biology Lab Manual",
-    subject: "Biology",
-    fileType: "PDF",
-    rating: 4.5,
-    author: "Taylor M.",
-    authorAvatar: "TM",
-    downloads: 540,
-  },
-  {
-    id: "r6",
-    title: "Linear Algebra Formula Sheet",
-    subject: "Mathematics",
-    fileType: "XLS",
-    rating: 4.7,
-    author: "Morgan K.",
-    authorAvatar: "MK",
-    downloads: 1580,
-  },
-  {
-    id: "r7",
-    title: "Shakespeare Analysis Notes",
-    subject: "Literature",
-    fileType: "DOC",
-    rating: 4.2,
-    author: "Casey W.",
-    authorAvatar: "CW",
-    downloads: 320,
-  },
-  {
-    id: "r8",
-    title: "World War II Timeline & Key Events",
-    subject: "History",
-    fileType: "PDF",
-    rating: 4.4,
-    author: "Riley B.",
-    authorAvatar: "RB",
-    downloads: 460,
-  },
-  {
-    id: "r9",
-    title: "Introduction to Ethics Study Notes",
-    subject: "Philosophy",
-    fileType: "PDF",
-    rating: 4.1,
-    author: "Sam T.",
-    authorAvatar: "ST",
-    downloads: 280,
-  },
-];
+type FileType = Resource["fileType"];
+
+interface ApiResource {
+  _id: string;
+  title: string;
+  subject: string;
+  fileType: string;
+  rating: number;
+  downloadCount: number;
+  createdAt: string;
+  uploadedBy?: {
+    name?: string;
+  };
+}
+
+interface ResourceItem extends Resource {
+  createdAt: string;
+}
+
+function normalizeFileType(input: string): FileType {
+  const type = input.toUpperCase();
+  if (type.includes("PDF")) return "PDF";
+  if (type.includes("DOC")) return "DOC";
+  if (type.includes("XLS") || type.includes("SHEET")) return "XLS";
+  if (type.includes("IMG") || type.includes("IMAGE") || type.includes("PNG") || type.includes("JPEG") || type.includes("JPG")) return "IMG";
+  return "OTHER";
+}
+
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "U";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
 
 /* ------------------------------------------------------------------ */
 /*  Page component                                                     */
@@ -137,36 +76,70 @@ export default function ResourcesPage() {
   const [subject, setSubject] = useState("All Subjects");
   const [sort, setSort] = useState("popular");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [resources, setResources] = useState<ResourceItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchResources = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const params = new URLSearchParams();
+      if (subject !== "All Subjects") params.set("subject", subject);
+      if (search.trim()) params.set("search", search.trim());
+
+      const query = params.toString();
+      const response = await fetch(`/api/resources${query ? `?${query}` : ""}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch resources.");
+      }
+
+      const data = (await response.json()) as ApiResource[];
+      const mapped: ResourceItem[] = data.map((item) => {
+        const author = item.uploadedBy?.name?.trim() || "Unknown User";
+        return {
+          id: item._id,
+          title: item.title,
+          subject: item.subject,
+          fileType: normalizeFileType(item.fileType),
+          rating: item.rating ?? 4.5,
+          author,
+          authorAvatar: getInitials(author),
+          downloads: item.downloadCount ?? 0,
+          createdAt: item.createdAt,
+        };
+      });
+
+      setResources(mapped);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : "Failed to fetch resources.");
+      setResources([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchResources();
+  }, [search, subject]);
 
   /* ---- Filtering & sorting ---- */
   const filtered = useMemo(() => {
-    let list = MOCK_RESOURCES;
+    let list = [...resources];
 
-    // Filter by subject
-    if (subject !== "All Subjects") {
-      list = list.filter((r) => r.subject === subject);
-    }
-
-    // Filter by search
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (r) =>
-          r.title.toLowerCase().includes(q) ||
-          r.subject.toLowerCase().includes(q) ||
-          r.author.toLowerCase().includes(q)
-      );
-    }
-
-    // Sort
     list = [...list].sort((a, b) => {
       if (sort === "popular") return b.downloads - a.downloads;
       if (sort === "rating") return b.rating - a.rating;
-      return 0; // "newest" – keep original order
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
     return list;
-  }, [search, subject, sort]);
+  }, [resources, sort]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0f0c13] p-6 md:p-8">
@@ -249,14 +222,24 @@ export default function ResourcesPage() {
         </div>
       </motion.div>
 
-      {/* ---- Resource count ---- */}
+      {error && (
+        <p className="text-sm text-red-500 dark:text-red-400 mb-4">{error}</p>
+      )}
+
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
         Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{filtered.length}</span>{" "}
         resource{filtered.length !== 1 && "s"}
       </p>
 
       {/* ---- Grid ---- */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-20">
+          <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center text-slate-400 dark:text-slate-500 animate-pulse">
+            <Library size={28} />
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading resources…</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-20">
           <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center text-slate-400 dark:text-slate-500">
             <Search size={28} />
@@ -292,6 +275,7 @@ export default function ResourcesPage() {
       <UploadResourceModal
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
+        onUploadSuccess={fetchResources}
       />
     </div>
   );

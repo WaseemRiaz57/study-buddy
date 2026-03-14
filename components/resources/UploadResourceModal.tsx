@@ -11,6 +11,7 @@ import {
   Tag,
   AlignLeft,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -19,6 +20,7 @@ import {
 interface UploadResourceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUploadSuccess?: () => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -39,14 +41,15 @@ const SUBJECTS = [
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
-export default function UploadResourceModal({ isOpen, onClose }: UploadResourceModalProps) {
+export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }: UploadResourceModalProps) {
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ---- Drag‑and‑drop handlers ---- */
@@ -66,24 +69,37 @@ export default function UploadResourceModal({ isOpen, onClose }: UploadResourceM
     if (selected) setFile(selected);
   };
 
-  /* ---- Simulated upload ---- */
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!title || !file) return;
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev === null) return 0;
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            resetForm();
-            onClose();
-          }, 600);
-          return 100;
-        }
-        return prev + 10;
+    setError(null);
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("subject", subject);
+      formData.append("description", description);
+      formData.append("tags", tags);
+      formData.append("file", file);
+
+      const response = await fetch("/api/resources", {
+        method: "POST",
+        body: formData,
       });
-    }, 200);
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.message || "Upload failed.");
+      }
+
+      resetForm();
+      onUploadSuccess?.();
+      onClose();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const resetForm = () => {
@@ -92,7 +108,7 @@ export default function UploadResourceModal({ isOpen, onClose }: UploadResourceM
     setDescription("");
     setTags("");
     setFile(null);
-    setUploadProgress(null);
+    setError(null);
   };
 
   if (!isOpen) return null;
@@ -256,35 +272,24 @@ export default function UploadResourceModal({ isOpen, onClose }: UploadResourceM
                   )}
                 </div>
 
-                {/* Progress bar */}
-                {uploadProgress !== null && (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
-                      <span>Uploading…</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-600"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${uploadProgress}%` }}
-                        transition={{ ease: "easeOut" }}
-                      />
-                    </div>
-                  </div>
+                {error && (
+                  <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
                 )}
 
                 {/* Submit */}
                 <button
                   onClick={handleUpload}
-                  disabled={!title || !file || uploadProgress !== null}
+                  disabled={!title || !subject || !description || !file || isUploading}
                   className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-colors shadow-lg shadow-purple-500/20"
                 >
-                  {uploadProgress !== null
-                    ? uploadProgress >= 100
-                      ? "Done!"
-                      : "Uploading…"
-                    : "Upload Resource"}
+                  {isUploading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 size={16} className="animate-spin" />
+                      Uploading...
+                    </span>
+                  ) : (
+                    "Upload Resource"
+                  )}
                 </button>
               </div>
             </div>

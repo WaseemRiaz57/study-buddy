@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 import {
   PenLine,
   AlignLeft,
@@ -16,10 +17,12 @@ import {
   Clock,
   UploadCloud,
   X,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
-/*  Types & Data                                                       */
+/* Types & Data                                                      */
 /* ------------------------------------------------------------------ */
 type TabId = "notes" | "summarizer" | "quiz";
 
@@ -30,42 +33,18 @@ interface Tab {
   generateLabel: string;
 }
 
-interface HistoryItem {
-  id: string;
+interface RecentCreationItem {
+  _id: string;
   type: TabId;
   title: string;
-  description: string;
-  time: string;
+  content: string;
+  createdAt: string;
 }
 
 const TABS: Tab[] = [
   { id: "notes", label: "Smart Notes", icon: <PenLine size={16} />, generateLabel: "Generate Smart Notes" },
   { id: "summarizer", label: "Summarizer", icon: <AlignLeft size={16} />, generateLabel: "Generate Summary" },
   { id: "quiz", label: "Quiz Builder", icon: <BrainCircuit size={16} />, generateLabel: "Generate Quiz" },
-];
-
-const HISTORY: HistoryItem[] = [
-  {
-    id: "1",
-    type: "summarizer",
-    title: "The Great Gatsby Summary",
-    description: "A concise summary focusing on the themes of wealth, class, and the American Dream...",
-    time: "2h ago",
-  },
-  {
-    id: "2",
-    type: "quiz",
-    title: "Organic Chemistry Quiz",
-    description: "15 questions covering functional groups, nomenclature, and reaction mechanisms.",
-    time: "Yesterday",
-  },
-  {
-    id: "3",
-    type: "notes",
-    title: "Machine Learning Basics",
-    description: "Introduction to supervised vs unsupervised learning, neural networks, and backpropagation.",
-    time: "3d ago",
-  },
 ];
 
 const historyTypeStyles: Record<TabId, { bg: string; text: string; icon: React.ReactNode }> = {
@@ -87,70 +66,17 @@ const historyTypeStyles: Record<TabId, { bg: string; text: string; icon: React.R
 };
 
 /* ------------------------------------------------------------------ */
-/*  Mock Results                                                       */
-/* ------------------------------------------------------------------ */
-const MOCK_NOTES = `## Quantum Mechanics: The Basics
-
-> **Key Takeaway:** Physics at the scale of atoms and subatomic particles differs significantly from classical mechanics.
-
-### 1. Wave-Particle Duality
-Matter and light exhibit behaviors of both waves and particles. This is famously demonstrated by the **double-slit experiment**.
-
-- Photons act like particles (discrete packets of energy).
-- Photons create interference patterns like waves.
-
-### 2. Uncertainty Principle
-Formulated by Heisenberg, it states you cannot simultaneously know the exact position and momentum of a particle.
-
-### 3. Quantum Superposition
-A particle exists in all possible states until it is observed. Schrödinger's cat is the classic thought experiment.`;
-
-const MOCK_SUMMARY = `**Summary: The French Revolution (1789–1799)**
-
-The French Revolution was a period of radical political and societal change in France. Triggered by economic crisis, social inequality, and Enlightenment ideals, it led to the overthrow of the monarchy and establishment of a republic.
-
-**Key Events:**
-- Storming of the Bastille (July 14, 1789)
-- Declaration of the Rights of Man and Citizen
-- Reign of Terror (1793–1794)
-- Rise of Napoleon Bonaparte
-
-**Impact:** The Revolution fundamentally transformed governance in Europe, promoting ideas of citizenship, inalienable rights, and the separation of powers.`;
-
-const MOCK_QUIZ = `### Quiz: Organic Chemistry Fundamentals
-
-**Q1.** What is the general formula for alkanes?
-- A) CₙH₂ₙ
-- B) CₙH₂ₙ₊₂ ✓
-- C) CₙH₂ₙ₋₂
-- D) CₙHₙ
-
-**Q2.** Which functional group is present in alcohols?
-- A) -COOH
-- B) -CHO
-- C) -OH ✓
-- D) -NH₂
-
-**Q3.** What type of reaction converts an alkene to an alkane?
-- A) Elimination
-- B) Substitution
-- C) Addition (Hydrogenation) ✓
-- D) Oxidation
-
-**Q4.** What is the IUPAC name for CH₃CH₂OH?
-- A) Methanol
-- B) Ethanol ✓
-- C) Propanol
-- D) Butanol`;
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
+/* Component                                                         */
 /* ------------------------------------------------------------------ */
 export default function ContentGeneratorPage() {
   const [activeTab, setActiveTab] = useState<TabId>("notes");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [aiResponseText, setAiResponseText] = useState("");
+  const [hasReceivedFirstChunk, setHasReceivedFirstChunk] = useState(false);
+  const [isPreviewMaximized, setIsPreviewMaximized] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [recentCreations, setRecentCreations] = useState<RecentCreationItem[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   /* ---- Notes state ---- */
   const [notesTopic, setNotesTopic] = useState("");
@@ -168,33 +94,252 @@ export default function ContentGeneratorPage() {
   const [quizTopic, setQuizTopic] = useState("");
   const [quizDifficulty, setQuizDifficulty] = useState("medium");
   const [quizCount, setQuizCount] = useState(10);
+  const [quizType, setQuizType] = useState("mcq");
 
-  /* ---- Handlers ---- */
-  const handleGenerate = useCallback(() => {
+  /* ---- Database Save & Helper Functions (Moved to Top) ---- */
+  const fetchRecentCreations = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai-notes?limit=6", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setRecentCreations(Array.isArray(data) ? data : []);
+    } catch {
+    }
+  }, []);
+
+  const deriveGeneratedTitle = useCallback(
+    (responseText: string): string => {
+      const headingMatch = responseText.match(/^#\s+(.+)$/m);
+      if (headingMatch?.[1]) return headingMatch[1].trim();
+      if (activeTab === "notes") return notesTopic.trim() || "Generated Notes";
+      if (activeTab === "summarizer") {
+        const firstLine = summarizerText.trim().split("\n")[0] || "Generated Summary";
+        return firstLine.slice(0, 80);
+      }
+      if (activeTab === "quiz") return quizTopic.trim() || "Generated Quiz";
+      return "Generated Content";
+    },
+    [activeTab, notesTopic, summarizerText, quizTopic]
+  );
+
+  const saveGeneratedNote = useCallback(
+    async (content: string) => {
+      if (!content.trim()) return;
+
+      try {
+        const title = deriveGeneratedTitle(content);
+        const res = await fetch("/api/ai-notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, content, type: activeTab }),
+        });
+
+        if (!res.ok) return;
+
+        await fetchRecentCreations();
+        window.dispatchEvent(new Event("ai-notes-updated"));
+      } catch {
+      }
+    },
+    [activeTab, deriveGeneratedTitle, fetchRecentCreations]
+  );
+
+
+  /* ---- Main Handlers ---- */
+  const handleGenerate = useCallback(async () => {
+    let userPrompt = "";
+    let outputMode: "bullets" | "paragraphs" | "mcq" | "direct" | "unknown" = "unknown";
+
+    if (activeTab === "notes") {
+      if (!notesTopic.trim() && !uploadedFile) {
+        setAiResponseText("Please enter a topic or concept, or upload a file.");
+        return;
+      }
+
+      if (notesTopic.trim()) {
+        userPrompt = [
+          `Create smart study notes on: ${notesTopic.trim()}`,
+          `Detail level: ${notesDetail}.`,
+          notesContext.trim() ? `Additional context: ${notesContext.trim()}` : "",
+          `Output format: ${notesFormat}.`,
+        ]
+          .filter(Boolean)
+          .join("\n");
+      } else {
+        userPrompt = [
+          "Create detailed smart study notes from the uploaded document.",
+          `Detail level: ${notesDetail}.`,
+          notesContext.trim() ? `Additional context: ${notesContext.trim()}` : "",
+          `Output format: ${notesFormat}.`,
+        ]
+          .filter(Boolean)
+          .join("\n");
+      }
+
+      outputMode = notesFormat;
+    }
+
+    if (activeTab === "summarizer") {
+      if (!summarizerText.trim() && !uploadedFile) {
+        setAiResponseText("Please paste text or upload a file to summarize.");
+        return;
+      }
+      userPrompt = summarizerText.trim()
+        ? `Summarize this text:\n\n${summarizerText.trim()}`
+        : "Summarize the uploaded document in clear study notes.";
+    }
+
+    if (activeTab === "quiz") {
+      if (!quizTopic.trim() && !uploadedFile) {
+        setAiResponseText("Please enter a quiz topic or upload a file.");
+        return;
+      }
+      const questionTypeLabel = quizType === "mcq" ? "multiple choice (MCQ)" : "direct/short-answer";
+      if (quizTopic.trim()) {
+        userPrompt = `Create a ${quizDifficulty} difficulty quiz with ${quizCount} ${questionTypeLabel} questions on: ${quizTopic.trim()}`;
+      } else {
+        userPrompt = `Create a ${quizDifficulty} difficulty quiz with ${quizCount} ${questionTypeLabel} questions based on the content of the uploaded file.`;
+      }
+
+      outputMode = quizType === "mcq" ? "mcq" : "direct";
+    }
+
     setIsGenerating(true);
-    setResult(null);
-    setTimeout(() => {
-      const mockMap: Record<TabId, string> = {
-        notes: MOCK_NOTES,
-        summarizer: MOCK_SUMMARY,
-        quiz: MOCK_QUIZ,
-      };
-      setResult(mockMap[activeTab]);
+    setAiResponseText("");
+    setHasReceivedFirstChunk(false);
+
+    try {
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      let response: Response;
+      const canAttachFile = uploadedFile !== null;
+
+      if (canAttachFile) {
+        const formData = new FormData();
+        formData.append("userPrompt", userPrompt);
+        formData.append("outputMode", outputMode);
+        formData.append("file", uploadedFile);
+
+        response = await fetch("/api/generate-content", {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+      } else {
+        response = await fetch("/api/generate-content", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userPrompt, outputMode }),
+          signal: controller.signal,
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Failed to generate content");
+      }
+
+      if (!response.body) {
+        throw new Error("No stream available from API");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamedText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        if (chunk.length > 0) {
+          setHasReceivedFirstChunk(true);
+          streamedText += chunk;
+          setAiResponseText((prev) => prev + chunk);
+        }
+      }
+
+      const lastChunk = decoder.decode();
+      if (lastChunk) {
+        setHasReceivedFirstChunk(true);
+        streamedText += lastChunk;
+        setAiResponseText((prev) => prev + lastChunk);
+      }
+
+      const finalText = streamedText.trim() ? streamedText : "No response generated.";
+      setAiResponseText(finalText);
+
+      if (streamedText.trim()) {
+        await saveGeneratedNote(streamedText);
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : "Failed to generate content";
+      setAiResponseText(message);
+    } finally {
+      abortControllerRef.current = null;
       setIsGenerating(false);
-    }, 2000);
-  }, [activeTab]);
+    }
+  }, [activeTab, notesTopic, notesDetail, notesContext, notesFormat, summarizerText, uploadedFile, quizTopic, quizDifficulty, quizCount, quizType, saveGeneratedNote]);
+
+  const handleStopGenerating = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsGenerating(false);
+    }
+  }, []);
 
   const handleCopy = useCallback(() => {
-    if (result) {
-      navigator.clipboard.writeText(result);
+    if (aiResponseText) {
+      navigator.clipboard.writeText(aiResponseText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  }, [result]);
+  }, [aiResponseText]);
+
+  const handleDownload = useCallback(() => {
+    if (!aiResponseText.trim()) return;
+    const blob = new Blob([aiResponseText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `ai-content-${Date.now()}.txt`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [aiResponseText]);
+
+  const formatRelativeTime = useCallback((isoDate: string) => {
+    const date = new Date(isoDate).getTime();
+    const now = Date.now();
+    const diffMs = now - date;
+    const mins = Math.floor(diffMs / (1000 * 60));
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }, []);
+
+  useEffect(() => {
+    fetchRecentCreations();
+  }, [fetchRecentCreations]);
 
   const handleTabChange = (tab: TabId) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setActiveTab(tab);
-    setResult(null);
+    setAiResponseText("");
+    setHasReceivedFirstChunk(false);
     setIsGenerating(false);
     setUploadedFile(null);
   };
@@ -210,7 +355,7 @@ export default function ContentGeneratorPage() {
   const currentTab = TABS.find((t) => t.id === activeTab)!;
 
   /* ================================================================ */
-  /*  RENDER                                                           */
+  /* RENDER                                                          */
   /* ================================================================ */
   return (
     <div className="relative min-h-screen overflow-x-hidden">
@@ -221,7 +366,7 @@ export default function ContentGeneratorPage() {
 
       <div className="px-4 sm:px-6 lg:px-8 py-8 md:py-12 max-w-7xl mx-auto">
         {/* ============================================================ */}
-        {/*  HEADER                                                       */}
+        {/* HEADER                                                      */}
         {/* ============================================================ */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
@@ -240,11 +385,11 @@ export default function ContentGeneratorPage() {
         </motion.header>
 
         {/* ============================================================ */}
-        {/*  MAIN GRID                                                    */}
+        {/* MAIN GRID                                                   */}
         {/* ============================================================ */}
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* ---------------------------------------------------------- */}
-          {/*  LEFT PANEL — Controls                                      */}
+          {/* LEFT PANEL — Controls                                      */}
           {/* ---------------------------------------------------------- */}
           <div className="lg:col-span-7 space-y-6">
             {/* Tab Navigation */}
@@ -376,13 +521,15 @@ export default function ContentGeneratorPage() {
                   {/* ---- Quiz Builder ---- */}
                   {activeTab === "quiz" && (
                     <>
-                      <InputField
-                        id="quiz-topic"
-                        label="Topic"
-                        placeholder="e.g. Organic Chemistry, World War II"
-                        value={quizTopic}
-                        onChange={setQuizTopic}
-                      />
+                      <div className={uploadedFile ? "opacity-50 pointer-events-none" : ""}>
+                        <InputField
+                          id="quiz-topic"
+                          label="Topic"
+                          placeholder="e.g. Organic Chemistry, World War II"
+                          value={quizTopic}
+                          onChange={setQuizTopic}
+                        />
+                      </div>
                       <SelectField
                         id="quiz-difficulty"
                         label="Difficulty"
@@ -392,6 +539,16 @@ export default function ContentGeneratorPage() {
                           { value: "easy", label: "Easy" },
                           { value: "medium", label: "Medium" },
                           { value: "hard", label: "Hard" },
+                        ]}
+                      />
+                      <SelectField
+                        id="quiz-type"
+                        label="Question Type"
+                        value={quizType}
+                        onChange={setQuizType}
+                        options={[
+                          { value: "mcq", label: "Multiple Choice (MCQs)" },
+                          { value: "direct", label: "Direct Questions" },
                         ]}
                       />
                       <div>
@@ -411,6 +568,12 @@ export default function ContentGeneratorPage() {
                           className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] focus:bg-white dark:focus:bg-white/[0.06] focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none text-text-main dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                         />
                       </div>
+                      {/* File Upload Zone */}
+                      <FileDropZone
+                        file={uploadedFile}
+                        onFile={handleFileDrop}
+                        onRemove={() => setUploadedFile(null)}
+                      />
                     </>
                   )}
                 </div>
@@ -433,10 +596,19 @@ export default function ContentGeneratorPage() {
                 {isGenerating ? "Generating…" : currentTab.generateLabel}
               </div>
             </button>
+
+            {isGenerating && (
+              <button
+                onClick={handleStopGenerating}
+                className="w-full rounded-xl border border-slate-300 dark:border-white/15 bg-white/70 dark:bg-white/[0.04] p-3 text-sm font-semibold text-text-main dark:text-white transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.08]"
+              >
+                Stop Generating
+              </button>
+            )}
           </div>
 
           {/* ---------------------------------------------------------- */}
-          {/*  RIGHT PANEL — Result Preview                                */}
+          {/* RIGHT PANEL — Result Preview                                */}
           {/* ---------------------------------------------------------- */}
           <div className="lg:col-span-5 flex flex-col h-full">
             <motion.div
@@ -448,20 +620,28 @@ export default function ContentGeneratorPage() {
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-200 dark:border-white/[0.06] flex justify-between items-center bg-slate-50/50 dark:bg-white/[0.02]">
                 <h3 className="font-bold text-text-main dark:text-white flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${result ? "bg-green-400" : isGenerating ? "bg-amber-400 animate-pulse" : "bg-slate-300 dark:bg-slate-600"}`} />
+                  <span className={`w-2 h-2 rounded-full ${aiResponseText ? "bg-green-400" : isGenerating ? "bg-amber-400 animate-pulse" : "bg-slate-300 dark:bg-slate-600"}`} />
                   Result Preview
                 </h3>
                 <div className="flex gap-2">
                   <button
+                    onClick={() => setIsPreviewMaximized(true)}
+                    className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors"
+                    title="Maximize"
+                  >
+                    <Maximize2 size={16} />
+                  </button>
+                  <button
                     onClick={handleCopy}
-                    disabled={!result}
+                    disabled={!aiResponseText}
                     className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     title="Copy"
                   >
                     {copied ? <span className="text-xs text-green-500 font-medium">Copied!</span> : <Copy size={16} />}
                   </button>
                   <button
-                    disabled={!result}
+                    onClick={handleDownload}
+                    disabled={!aiResponseText}
                     className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     title="Download"
                   >
@@ -473,7 +653,7 @@ export default function ContentGeneratorPage() {
               {/* Content Area */}
               <div className="flex-grow p-6 overflow-y-auto relative">
                 <AnimatePresence mode="wait">
-                  {isGenerating ? (
+                  {isGenerating && !hasReceivedFirstChunk ? (
                     /* Loading shimmer */
                     <motion.div
                       key="loading"
@@ -490,7 +670,7 @@ export default function ContentGeneratorPage() {
                         />
                       ))}
                     </motion.div>
-                  ) : result ? (
+                  ) : aiResponseText ? (
                     /* Generated content */
                     <motion.div
                       key="result"
@@ -500,7 +680,7 @@ export default function ContentGeneratorPage() {
                       transition={{ duration: 0.4 }}
                       className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-text-main dark:prose-headings:text-white prose-p:text-text-muted dark:prose-p:text-slate-300 prose-strong:text-text-main dark:prose-strong:text-white prose-li:text-text-muted dark:prose-li:text-slate-300"
                     >
-                      <ResultRenderer content={result} tab={activeTab} />
+                      <ResultRenderer content={aiResponseText} />
                     </motion.div>
                   ) : (
                     /* Empty state */
@@ -518,7 +698,7 @@ export default function ContentGeneratorPage() {
                 </AnimatePresence>
 
                 {/* Bottom scroll fade */}
-                {result && (
+                {aiResponseText && (
                   <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white dark:from-[#0f0a16]/80 to-transparent pointer-events-none" />
                 )}
               </div>
@@ -527,7 +707,7 @@ export default function ContentGeneratorPage() {
         </div>
 
         {/* ============================================================ */}
-        {/*  RECENT CREATIONS                                             */}
+        {/* RECENT CREATIONS                                            */}
         {/* ============================================================ */}
         <motion.section
           initial={{ opacity: 0, y: 30 }}
@@ -543,11 +723,11 @@ export default function ContentGeneratorPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {HISTORY.map((item) => {
-              const style = historyTypeStyles[item.type];
+            {recentCreations.map((item) => {
+              const style = historyTypeStyles[item.type as TabId] ?? historyTypeStyles.notes;
               return (
                 <motion.div
-                  key={item.id}
+                  key={item._id}
                   whileHover={{ y: -4 }}
                   className="group glass-panel rounded-xl p-5 hover:shadow-md transition-all cursor-pointer"
                 >
@@ -557,27 +737,103 @@ export default function ContentGeneratorPage() {
                     </div>
                     <span className="text-xs font-medium text-slate-400 dark:text-slate-500 flex items-center gap-1">
                       <Clock size={12} />
-                      {item.time}
+                      {formatRelativeTime(item.createdAt)}
                     </span>
                   </div>
                   <h3 className="font-bold text-text-main dark:text-white mb-1 group-hover:text-primary transition-colors">
                     {item.title}
                   </h3>
                   <p className="text-sm text-text-muted dark:text-slate-400 line-clamp-2">
-                    {item.description}
+                    {item.content}
                   </p>
                 </motion.div>
               );
             })}
+            {recentCreations.length === 0 && (
+              <div className="md:col-span-3 glass-panel rounded-xl p-6 text-center text-text-muted dark:text-slate-400">
+                Your generated notes will appear here.
+              </div>
+            )}
           </div>
         </motion.section>
       </div>
+
+      {isPreviewMaximized && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm p-4 md:p-8">
+          <div className="rounded-2xl h-full max-w-5xl mx-auto flex flex-col overflow-hidden bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 shadow-2xl">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-900">
+              <h3 className="font-bold text-text-main dark:text-white flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${aiResponseText ? "bg-green-400" : isGenerating ? "bg-amber-400 animate-pulse" : "bg-slate-300 dark:bg-slate-600"}`} />
+                Result Preview
+              </h3>
+              <div className="flex gap-2">
+                {isGenerating && (
+                  <button
+                    onClick={handleStopGenerating}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-gray-600 text-text-main dark:text-white hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors"
+                    title="Stop Generation"
+                  >
+                    Stop
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsPreviewMaximized(false)}
+                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors"
+                  title="Minimize"
+                >
+                  <Minimize2 size={16} />
+                </button>
+                <button
+                  onClick={handleCopy}
+                  disabled={!aiResponseText}
+                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Copy"
+                >
+                  {copied ? <span className="text-xs text-green-500 font-medium">Copied!</span> : <Copy size={16} />}
+                </button>
+                <button
+                  onClick={handleDownload}
+                  disabled={!aiResponseText}
+                  className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Download"
+                >
+                  <Download size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-grow p-6 overflow-y-auto relative bg-white dark:bg-gray-900">
+              {isGenerating && !hasReceivedFirstChunk ? (
+                <div className="space-y-4">
+                  {[...Array(6)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-4 rounded-lg bg-slate-200 dark:bg-white/[0.06] animate-pulse"
+                      style={{ width: `${85 - i * 10}%` }}
+                    />
+                  ))}
+                </div>
+              ) : aiResponseText ? (
+                <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-text-main dark:prose-headings:text-white prose-p:text-text-muted dark:prose-p:text-slate-300 prose-strong:text-text-main dark:prose-strong:text-white prose-li:text-text-muted dark:prose-li:text-slate-300">
+                  <ResultRenderer content={aiResponseText} />
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 p-8 text-center">
+                  <FileText size={48} className="mb-4 opacity-30" />
+                  <p className="font-medium">Ready to create.</p>
+                  <p className="text-sm mt-1">Select a tool and start generating content.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Reusable Form Fields                                               */
+/* Reusable Form Fields                                              */
 /* ------------------------------------------------------------------ */
 function InputField({
   id,
@@ -635,7 +891,7 @@ function SelectField({
           className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] focus:bg-white dark:focus:bg-white/[0.06] focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none text-text-main dark:text-white appearance-none cursor-pointer"
         >
           {options.map((o) => (
-            <option key={o.value} value={o.value}>
+            <option key={o.value} value={o.value} className="bg-slate-50 text-text-main dark:bg-[#1a1425] dark:text-slate-100">
               {o.label}
             </option>
           ))}
@@ -679,7 +935,7 @@ function TextAreaField({
 }
 
 /* ------------------------------------------------------------------ */
-/*  File Drop Zone                                                     */
+/* File Drop Zone                                                    */
 /* ------------------------------------------------------------------ */
 function FileDropZone({
   file,
@@ -767,55 +1023,39 @@ function FileDropZone({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Result Renderer (simple markdown-like)                             */
+/* Result Renderer (simple markdown-like)                            */
 /* ------------------------------------------------------------------ */
-function ResultRenderer({ content, tab }: { content: string; tab: TabId }) {
-  const lines = content.split("\n");
-
+function ResultRenderer({ content }: { content: string }) {
   return (
-    <div className="space-y-2">
-      {lines.map((line, i) => {
-        const trimmed = line.trim();
-        if (!trimmed) return <div key={i} className="h-2" />;
-
-        // Headings
-        if (trimmed.startsWith("## "))
-          return (
-            <h2 key={i} className="text-xl font-bold text-text-main dark:text-white mt-2 mb-3">
-              {trimmed.replace(/^## /, "")}
-            </h2>
-          );
-        if (trimmed.startsWith("### "))
-          return (
-            <h3 key={i} className="text-lg font-semibold text-text-main dark:text-white mt-4 mb-2">
-              {trimmed.replace(/^### /, "")}
-            </h3>
-          );
-
-        // Blockquote
-        if (trimmed.startsWith("> "))
-          return (
-            <div key={i} className="bg-primary/5 dark:bg-primary/10 border-l-4 border-primary p-3 rounded-r-lg my-3">
-              <p className="text-sm text-text-muted dark:text-slate-300 m-0" dangerouslySetInnerHTML={{ __html: formatInline(trimmed.replace(/^> /, "")) }} />
-            </div>
-          );
-
-        // List items
-        if (trimmed.startsWith("- "))
-          return (
-            <li key={i} className="ml-5 text-text-muted dark:text-slate-300 text-sm leading-relaxed list-disc" dangerouslySetInnerHTML={{ __html: formatInline(trimmed.replace(/^- /, "")) }} />
-          );
-
-        // Regular paragraph
-        return (
-          <p key={i} className="text-text-muted dark:text-slate-300 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formatInline(trimmed) }} />
-        );
-      })}
-    </div>
+    <ReactMarkdown
+      components={{
+        h1: ({ children }) => (
+          <h1 className="text-2xl font-extrabold text-text-main dark:text-white mb-4">{children}</h1>
+        ),
+        h2: ({ children }) => (
+          <h2 className="text-xl font-bold text-text-main dark:text-white mt-6 mb-3">{children}</h2>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="bg-primary/5 dark:bg-primary/10 border-l-4 border-primary p-3 rounded-r-lg my-4">
+            <div className="text-sm text-text-muted dark:text-slate-300">{children}</div>
+          </blockquote>
+        ),
+        p: ({ children }) => (
+          <p className="text-sm leading-relaxed text-text-muted dark:text-slate-300 mb-3">{children}</p>
+        ),
+        ol: ({ children }) => (
+          <ol className="list-decimal pl-6 space-y-3 text-text-main dark:text-white">{children}</ol>
+        ),
+        ul: ({ children }) => (
+          <ul className="list-disc pl-6 space-y-2 text-text-muted dark:text-slate-300">{children}</ul>
+        ),
+        li: ({ children }) => <li className="text-sm leading-relaxed">{children}</li>,
+        strong: ({ children }) => (
+          <strong className="font-semibold text-text-main dark:text-white">{children}</strong>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
   );
-}
-
-/** Converts **bold** to <strong> tags */
-function formatInline(text: string): string {
-  return text.replace(/\*\*(.+?)\*\*/g, "<strong class='text-text-main dark:text-white font-semibold'>$1</strong>");
 }
