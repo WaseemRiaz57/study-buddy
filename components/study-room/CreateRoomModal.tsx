@@ -8,9 +8,10 @@ import { useRouter } from "next/navigation";
 type CreateRoomModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: () => void;
 };
 
-export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProps) {
+export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRoomModalProps) {
   const router = useRouter();
   const [step, setStep] = useState<"form" | "success">("form");
   const [topic, setTopic] = useState("");
@@ -18,13 +19,43 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
   const [privacy, setPrivacy] = useState<"public" | "invite">("public");
   const [roomId, setRoomId] = useState("");
   const [copied, setCopied] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleIgnite = () => {
+  const handleIgnite = async () => {
     if (!topic.trim()) return;
-    // Generate a mock Room ID
-    const newId = "SB-" + Math.random().toString(36).substring(2, 7).toUpperCase();
-    setRoomId(newId);
-    setStep("success");
+
+    setIsCreating(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/study-rooms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          topic: topic.trim(),
+          maxParticipants,
+          privacy: privacy === "invite" ? "Invite" : "Public",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data?.message || "Failed to create room.");
+        return;
+      }
+
+      setRoomId(String(data.roomId || ""));
+      setStep("success");
+      onCreated?.();
+    } catch {
+      setError("Failed to create room. Please try again.");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleCopy = () => {
@@ -164,14 +195,17 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
                     <div className="pt-2">
                       <button
                         onClick={handleIgnite}
-                        disabled={!topic.trim()}
+                        disabled={!topic.trim() || isCreating}
                         className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2
-                            ${topic.trim() 
+                            ${topic.trim() && !isCreating
                             ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-purple-500/25 hover:scale-[1.02]" 
                             : "bg-slate-300 dark:bg-white/10 cursor-not-allowed text-slate-500 dark:text-gray-500"}`}
                       >
-                        Ignite Room <ArrowRight size={18} />
+                        {isCreating ? "Forging..." : "Ignite Room"} <ArrowRight size={18} />
                       </button>
+                      {error ? (
+                        <p className="mt-3 text-sm text-red-500 text-center">{error}</p>
+                      ) : null}
                     </div>
                   </motion.div>
                 ) : (

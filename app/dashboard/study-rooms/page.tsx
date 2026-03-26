@@ -1,28 +1,89 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, SlidersHorizontal, Clock3, Radio, Plus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import CreateRoomModal from "@/components/study-room/CreateRoomModal";
 
 type Room = {
-  id: string;
-  title: string;
-  subject: string;
-  liveCount: number;
+  _id: string;
+  topic: string;
+  roomId: string;
+  participantsCount: number;
   capacity: number;
 };
 
-const ROOM_LIST: Room[] = [
-  { id: "101", title: "Operating Systems - Ch 5", subject: "CS 302", liveCount: 4, capacity: 10 },
-  { id: "102", title: "Linear Algebra Problem Set", subject: "MATH 210", liveCount: 6, capacity: 12 },
-  { id: "103", title: "Organic Chemistry Review", subject: "CHEM 240", liveCount: 5, capacity: 8 },
-  { id: "104", title: "Business Case Analysis", subject: "BUS 115", liveCount: 3, capacity: 6 },
-];
-
 export default function StudyRoomsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true);
+  const [roomsError, setRoomsError] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState("");
   const router = useRouter();
+
+  const loadRooms = async () => {
+    setIsLoadingRooms(true);
+    setRoomsError("");
+
+    try {
+      const response = await fetch("/api/study-rooms", { cache: "no-store" });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setRoomsError(data?.message || "Failed to load rooms.");
+        return;
+      }
+
+      const normalizedRooms: Room[] = Array.isArray(data)
+        ? data.map((room) => ({
+            _id: String(room._id),
+            topic: String(room.topic || "Untitled Room"),
+            roomId: String(room.roomId || ""),
+            participantsCount:
+              typeof room.participantsCount === "number" ? room.participantsCount : 0,
+            capacity: typeof room.maxParticipants === "number" ? room.maxParticipants : 20,
+          }))
+        : [];
+
+      setRooms(normalizedRooms);
+    } catch {
+      setRoomsError("Failed to load rooms.");
+    } finally {
+      setIsLoadingRooms(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRooms();
+  }, []);
+
+  const handleJoinWithCode = async () => {
+    const normalizedCode = joinCode.trim().toUpperCase();
+    if (!normalizedCode) return;
+
+    setIsJoining(true);
+    setJoinError("");
+
+    try {
+      const response = await fetch(`/api/study-rooms/${normalizedCode}/join`, {
+        method: "POST",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setJoinError(data?.message || "Failed to join room.");
+        return;
+      }
+
+      router.push(`/dashboard/study-rooms/${normalizedCode}`);
+    } catch {
+      setJoinError("Failed to join room.");
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   return (
     <>
@@ -74,6 +135,26 @@ export default function StudyRoomsPage() {
               />
             </div>
             <div className="flex gap-3">
+              <div className="flex items-center gap-2">
+                <input
+                  value={joinCode}
+                  onChange={(event) => setJoinCode(event.target.value)}
+                  placeholder="Enter Room ID"
+                  className="px-4 h-12 rounded-xl text-sm font-medium transition-all w-36
+                    bg-white border border-slate-200 text-slate-700 placeholder-slate-400
+                    dark:bg-white/5 dark:border-white/10 dark:text-white dark:placeholder-white/30
+                    focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                />
+                <button
+                  onClick={handleJoinWithCode}
+                  disabled={!joinCode.trim() || isJoining}
+                  className="px-4 h-12 rounded-xl text-sm font-bold inline-flex items-center gap-2 transition-all
+                    bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed
+                    dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                >
+                  {isJoining ? "Joining..." : "Join"}
+                </button>
+              </div>
               <button className="px-4 h-12 rounded-xl text-sm font-medium inline-flex items-center gap-2 transition-all
                 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50
                 dark:bg-white/5 dark:border-white/10 dark:text-gray-300 dark:hover:border-[#4fd1c5]/30">
@@ -88,6 +169,7 @@ export default function StudyRoomsPage() {
               </button>
             </div>
           </div>
+          {joinError ? <p className="text-sm text-red-500">{joinError}</p> : null}
 
           {/* ── ROOM GRID (Cleaned) ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -95,10 +177,16 @@ export default function StudyRoomsPage() {
             {/* Note: Removed the "Create Card" from here */}
 
             {/* Room Cards */}
-            {ROOM_LIST.map((room) => (
+            {!isLoadingRooms && rooms.length === 0 ? (
+              <div className="col-span-full rounded-2xl p-6 text-center border border-slate-200 bg-white text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-gray-300">
+                {roomsError || "No live public rooms right now."}
+              </div>
+            ) : null}
+
+            {rooms.map((room) => (
               <article
-                key={room.id}
-                onClick={() => router.push(`/dashboard/study-rooms/${room.id}`)}
+                key={room._id}
+                onClick={() => router.push(`/dashboard/study-rooms/${room.roomId}`)}
                 className="group cursor-pointer relative flex flex-col p-5 h-64 rounded-2xl transition-all duration-300 hover:-translate-y-1
                   bg-white border border-slate-200 shadow-sm hover:shadow-md
                   dark:bg-white/5 dark:border-white/10 dark:hover:border-[#4fd1c5]/30 dark:shadow-none backdrop-blur-md"
@@ -116,12 +204,12 @@ export default function StudyRoomsPage() {
 
                 {/* Content */}
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 line-clamp-2">{room.title}</h3>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 line-clamp-2">{room.topic}</h3>
                   <div className="flex flex-wrap gap-2 mt-2">
                     <span className="px-2 py-1 rounded-md text-xs font-medium
                       bg-slate-100 text-slate-600 border border-slate-200
                       dark:bg-white/5 dark:text-white/70 dark:border-white/10">
-                      {room.subject}
+                      {room.roomId}
                     </span>
                   </div>
                 </div>
@@ -135,7 +223,7 @@ export default function StudyRoomsPage() {
                   </div>
                   <div className="text-slate-500 dark:text-white/60 text-sm font-medium flex items-center gap-1">
                     <Users size={14} />
-                    {room.liveCount}/{room.capacity}
+                    {room.participantsCount}/{room.capacity}
                   </div>
                 </div>
               </article>
@@ -144,7 +232,7 @@ export default function StudyRoomsPage() {
         </div>
       </main>
 
-      <CreateRoomModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+      <CreateRoomModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onCreated={loadRooms} />
     </>
   );
 }

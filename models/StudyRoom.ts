@@ -1,50 +1,63 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IStudyRoom extends Document {
-  studentIds: mongoose.Types.ObjectId[];
-  activeStatus: boolean;
-  startTime: Date;
-  endTime: Date | null;
-  communicationChannel: string;
-  sharedMaterialIds: mongoose.Types.ObjectId[];
+  topic: string;
+  roomId: string;
+  maxParticipants: number;
+  privacy: "Public" | "Invite";
+  host: mongoose.Types.ObjectId;
+  participants: mongoose.Types.ObjectId[];
+  isLive: boolean;
+  createdAt: Date;
 }
 
 const StudyRoomSchema = new Schema<IStudyRoom>(
   {
-    studentIds: {
-      type: [Schema.Types.ObjectId],
+    topic: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    roomId: {
+      type: String,
+      required: true,
+      unique: true,
+      uppercase: true,
+      trim: true,
+    },
+    maxParticipants: {
+      type: Number,
+      default: 20,
+      min: 2,
+    },
+    privacy: {
+      type: String,
+      enum: ["Public", "Invite"],
+      default: "Public",
+    },
+    host: {
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      validate: {
-        validator: (v: mongoose.Types.ObjectId[]) => v.length >= 2,
-        message: "A study room requires at least 2 students.",
-      },
     },
-    activeStatus: {
+    participants: {
+      type: [Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
+    },
+    isLive: {
       type: Boolean,
       default: true,
     },
-    startTime: {
+    createdAt: {
       type: Date,
       default: Date.now,
     },
-    endTime: {
-      type: Date,
-      default: null,
-    },
-    communicationChannel: {
-      type: String, // WebRTC / Agora channel reference
-      default: "",
-    },
-    sharedMaterialIds: {
-      type: [Schema.Types.ObjectId],
-      default: [],
-    },
   },
-  { timestamps: true }
+  { timestamps: false }
 );
 
-StudyRoomSchema.index({ studentIds: 1, activeStatus: 1 });
+StudyRoomSchema.index({ isLive: 1, privacy: 1, createdAt: -1 });
 
 export default mongoose.models.StudyRoom ||
   mongoose.model<IStudyRoom>("StudyRoom", StudyRoomSchema);

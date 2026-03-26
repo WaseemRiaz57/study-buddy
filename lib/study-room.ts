@@ -13,6 +13,17 @@ export interface StartRoomResult {
   startTime: Date;
 }
 
+function generateShortRoomId() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+
+  for (let index = 0; index < 5; index += 1) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+
+  return `SB-${code}`;
+}
+
 /**
  * UC-14 / FR-7 — StartStudyRoom Algorithm
  *
@@ -33,16 +44,26 @@ export async function startStudyRoom(
   const credentials = createRoomCredentials(studentAId, studentBId);
 
   // ── 2. Persist StudyRoom ──────────────────────────────────────────
+  let roomCode = generateShortRoomId();
+  let existingRoom = await StudyRoom.exists({ roomId: roomCode });
+
+  while (existingRoom) {
+    roomCode = generateShortRoomId();
+    existingRoom = await StudyRoom.exists({ roomId: roomCode });
+  }
+
   const room = await StudyRoom.create({
-    studentIds: [
+    topic: subject?.trim() || "General Study",
+    roomId: roomCode,
+    maxParticipants: 20,
+    privacy: "Invite",
+    host: new mongoose.Types.ObjectId(studentAId),
+    participants: [
       new mongoose.Types.ObjectId(studentAId),
       new mongoose.Types.ObjectId(studentBId),
     ],
-    activeStatus: true,
-    startTime: new Date(),
-    endTime: null,
-    communicationChannel: credentials.channelName,
-    sharedMaterialIds: [],
+    isLive: true,
+    createdAt: new Date(),
   });
 
   // ── 3. Dispatch notifications (FR-12) ─────────────────────────────
@@ -83,10 +104,10 @@ export async function startStudyRoom(
   });
 
   return {
-    roomId: room._id.toString(),
+    roomId: room.roomId,
     channelName: credentials.channelName,
     agoraAppId: credentials.agoraAppId,
     tokens: credentials.tokens,
-    startTime: room.startTime,
+    startTime: room.createdAt,
   };
 }
