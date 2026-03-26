@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+// @ts-ignore - pdf-parse-fork handles ESM/CommonJS better for Vercel builds
+import pdf from 'pdf-parse-fork';
 
 const OLLAMA_URL = "http://143.244.133.231:11434/api/generate";
 
@@ -20,14 +22,17 @@ async function extractTextFromFile(file: File): Promise<string> {
     return buffer.toString("utf-8");
   }
 
- if (filename.endsWith(".pdf") || file.type === "application/pdf") {
-  // @ts-ignore - pdf-parse handles imports inconsistently in ESM
-  const pdf = await import("pdf-parse/lib/pdf-parse.js");
-  const pdfParse = pdf.default || pdf; 
-  
-  const parsed = await pdfParse(buffer);
-  return parsed.text || "";
-}
+  // --- UPDATED PDF LOGIC ---
+  if (filename.endsWith(".pdf") || file.type === "application/pdf") {
+    try {
+      const data = await pdf(buffer);
+      return data.text || "";
+    } catch (err) {
+      console.error("PDF Parsing Error:", err);
+      return "Error: Could not extract text from PDF.";
+    }
+  }
+  // -------------------------
 
   if (
     filename.endsWith(".docx") ||
