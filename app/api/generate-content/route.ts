@@ -20,11 +20,14 @@ async function extractTextFromFile(file: File): Promise<string> {
     return buffer.toString("utf-8");
   }
 
-  if (filename.endsWith(".pdf") || file.type === "application/pdf") {
-    const pdfParse = (await import("pdf-parse")).default;
-    const parsed = await pdfParse(buffer);
-    return parsed.text || "";
-  }
+ if (filename.endsWith(".pdf") || file.type === "application/pdf") {
+  // @ts-ignore - pdf-parse handles imports inconsistently in ESM
+  const pdf = await import("pdf-parse/lib/pdf-parse.js");
+  const pdfParse = pdf.default || pdf; 
+  
+  const parsed = await pdfParse(buffer);
+  return parsed.text || "";
+}
 
   if (
     filename.endsWith(".docx") ||
