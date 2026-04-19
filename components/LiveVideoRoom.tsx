@@ -75,25 +75,6 @@ function isProbablyScreenShareUser(user: IAgoraRTCRemoteUser): boolean {
   return label.includes("screen") || label.includes("display") || label.includes("window");
 }
 
-function resolveNumericUid(userId?: string): number {
-  const normalized = (userId || "").trim();
-  const parsed = Number.parseInt(normalized, 10);
-
-  if (Number.isInteger(parsed) && parsed > 0) {
-    return parsed;
-  }
-
-  const source = normalized || "guest-user";
-  let hash = 0;
-
-  for (let index = 0; index < source.length; index += 1) {
-    hash = (hash << 5) - hash + source.charCodeAt(index);
-    hash |= 0;
-  }
-
-  return (Math.abs(hash) % 2147483000) + 1;
-}
-
 function LiveVideoRoomController({
   roomId,
   userId,
@@ -102,8 +83,7 @@ function LiveVideoRoomController({
 }: LiveVideoRoomControllerProps) {
   const router = useRouter();
   const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID ?? "";
-  const channelName = useMemo(() => String(roomId || "").trim(), [roomId]);
-  const uid = useMemo(() => resolveNumericUid(userId), [userId]);
+  const [agoraUid] = useState(() => Math.floor(Math.random() * 1000000));
 
   const [token, setToken] = useState<string | null>(null);
   const [isTokenLoading, setIsTokenLoading] = useState(true);
@@ -125,12 +105,12 @@ function LiveVideoRoomController({
       setTokenError(null);
 
       try {
-        if (!channelName) {
+        if (!roomId) {
           throw new Error("Room ID is required.");
         }
 
         const response = await fetch(
-          `/api/agora-token?channelName=${encodeURIComponent(channelName)}&uid=${uid}`
+          "/api/agora-token?channelName=" + roomId + "&uid=0"
         );
 
         const data = await response.json();
@@ -162,7 +142,7 @@ function LiveVideoRoomController({
     return () => {
       isActive = false;
     };
-  }, [channelName, uid]);
+  }, [roomId]);
 
   const { localMicrophoneTrack, isLoading: isMicLoading } = useLocalMicrophoneTrack();
   const { localCameraTrack, isLoading: isCameraLoading } = useLocalCameraTrack();
@@ -240,15 +220,15 @@ function LiveVideoRoomController({
   }, [screenTrack]);
 
   const canJoin = Boolean(
-    appId && channelName && token && !isTokenLoading && !tokenError && !isLeaving
+    appId && roomId && token && !isTokenLoading && !tokenError && !isLeaving
   );
 
   const { isConnected, isLoading: isJoinLoading } = useJoin(
     {
       appid: appId,
-      channel: channelName,
+      channel: roomId,
       token: token ?? null,
-      uid,
+      uid: agoraUid,
     },
     canJoin
   );
