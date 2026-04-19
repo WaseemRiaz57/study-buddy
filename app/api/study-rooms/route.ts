@@ -2,11 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import mongoose from "mongoose";
 import { connectMongoDB } from "@/lib/mongodb";
 import { requireStudyRoomJwt } from "@/lib/study-room-auth";
-import { maybeAutoCloseStudyRoom } from "@/lib/study-room-lifecycle";
-import {
-  initializeStudyRoomState,
-  touchStudyRoomState,
-} from "@/lib/redis";
 import { STUDY_ROOM_SOCKET_NAMESPACE } from "@/lib/study-room-constants";
 import StudyRoom from "@/models/StudyRoom";
 
@@ -77,9 +72,6 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
     });
 
-    await initializeStudyRoomState(room.roomId, []);
-    await touchStudyRoomState(room.roomId);
-
     return NextResponse.json(
       {
         message: "Study room created successfully",
@@ -106,19 +98,7 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .lean();
 
-    const autoCloseResults = await Promise.all(
-      rooms.map((room) => maybeAutoCloseStudyRoom(String(room.roomId)))
-    );
-
-    const autoClosedRoomIds = new Set(
-      autoCloseResults.filter((result) => result.closed).map((result) => result.roomId)
-    );
-
-    const openRooms = rooms.filter(
-      (room) => !autoClosedRoomIds.has(String(room.roomId).toUpperCase())
-    );
-
-    const formattedRooms = openRooms.map((room) => ({
+    const formattedRooms = rooms.map((room) => ({
       _id: room._id,
       topic: room.topic,
       roomId: room.roomId,
