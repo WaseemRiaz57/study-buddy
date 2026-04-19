@@ -102,7 +102,9 @@ function LiveVideoRoomController({
 }: LiveVideoRoomControllerProps) {
   const router = useRouter();
   const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID ?? "";
+  // Keeps the UID random to avoid collision
   const [agoraUid] = useState(() => Math.floor(Math.random() * 1000000));
+  
   const effectiveCurrentUserId = String(currentUserId || userId || "").trim();
   const normalizedHostId = String(hostId || "").trim();
   const derivedIsHost = Boolean(
@@ -110,8 +112,7 @@ function LiveVideoRoomController({
       normalizedHostId &&
       effectiveCurrentUserId === normalizedHostId
   );
-  const isHost =
-    typeof isHostProp === "boolean" ? isHostProp : derivedIsHost;
+  const isHost = typeof isHostProp === "boolean" ? isHostProp : derivedIsHost;
 
   const [token, setToken] = useState<string | null>(null);
   const [isTokenLoading, setIsTokenLoading] = useState(true);
@@ -122,10 +123,7 @@ function LiveVideoRoomController({
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
 
-  const localCameraTrackRef = useRef<ILocalTrack | null>(null);
-  const localMicrophoneTrackRef = useRef<ILocalTrack | null>(null);
-  const localScreenTrackRef = useRef<ILocalTrack | null>(null);
-
+  // Fetch Token
   useEffect(() => {
     let isActive = true;
 
@@ -134,35 +132,22 @@ function LiveVideoRoomController({
       setTokenError(null);
 
       try {
-        if (!roomId) {
-          throw new Error("Room ID is required.");
-        }
+        if (!roomId) throw new Error("Room ID is required.");
 
-        const response = await fetch(
-          "/api/agora-token?channelName=" + roomId + "&uid=0"
-        );
-
+        const response = await fetch("/api/agora-token?channelName=" + roomId + "&uid=0");
         const data = await response.json();
 
         if (!response.ok || !data?.token) {
           throw new Error(data?.error || "Failed to fetch RTC token.");
         }
 
-        if (isActive) {
-          setToken(String(data.token));
-        }
+        if (isActive) setToken(String(data.token));
       } catch (error) {
         if (isActive) {
-          setTokenError(
-            error instanceof Error
-              ? error.message
-              : "Unable to fetch room token."
-          );
+          setTokenError(error instanceof Error ? error.message : "Unable to fetch room token.");
         }
       } finally {
-        if (isActive) {
-          setIsTokenLoading(false);
-        }
+        if (isActive) setIsTokenLoading(false);
       }
     }
 
@@ -173,6 +158,7 @@ function LiveVideoRoomController({
     };
   }, [roomId]);
 
+  // Init Local Tracks
   const { localMicrophoneTrack, isLoading: isMicLoading } = useLocalMicrophoneTrack();
   const { localCameraTrack, isLoading: isCameraLoading } = useLocalCameraTrack();
   const {
@@ -181,73 +167,16 @@ function LiveVideoRoomController({
     error: _screenError,
   } = useLocalScreenTrack(isScreenSharing, {}, "disable");
 
+  // Toggle States
   useEffect(() => {
-    localCameraTrackRef.current = localCameraTrack;
-  }, [localCameraTrack]);
-
-  useEffect(() => {
-    localMicrophoneTrackRef.current = localMicrophoneTrack;
-  }, [localMicrophoneTrack]);
-
-  useEffect(() => {
-    localScreenTrackRef.current = screenTrack;
-  }, [screenTrack]);
-
-  useEffect(() => {
-    return () => {
-      localCameraTrackRef.current?.stop();
-      localCameraTrackRef.current?.close();
-      localMicrophoneTrackRef.current?.stop();
-      localMicrophoneTrackRef.current?.close();
-      localScreenTrackRef.current?.stop();
-      localScreenTrackRef.current?.close();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!localMicrophoneTrack) {
-      return;
-    }
-
-    void localMicrophoneTrack.setEnabled(isMicEnabled);
+    if (localMicrophoneTrack) void localMicrophoneTrack.setEnabled(isMicEnabled);
   }, [localMicrophoneTrack, isMicEnabled]);
 
   useEffect(() => {
-    if (!localCameraTrack) {
-      return;
-    }
-
-    void localCameraTrack.setEnabled(isCameraEnabled);
+    if (localCameraTrack) void localCameraTrack.setEnabled(isCameraEnabled);
   }, [localCameraTrack, isCameraEnabled]);
 
-  useEffect(() => {
-    if (isScreenSharing || !screenTrack) {
-      return;
-    }
-
-    screenTrack.stop();
-    screenTrack.close();
-  }, [isScreenSharing, screenTrack]);
-
-  useEffect(() => {
-    if (!screenTrack) {
-      return;
-    }
-
-    const handleTrackEnded = () => setIsScreenSharing(false);
-    (screenTrack as { on?: (event: string, cb: () => void) => void }).on?.(
-      "track-ended",
-      handleTrackEnded
-    );
-
-    return () => {
-      (screenTrack as { off?: (event: string, cb: () => void) => void }).off?.(
-        "track-ended",
-        handleTrackEnded
-      );
-    };
-  }, [screenTrack]);
-
+  // Join Channel
   const canJoin = Boolean(
     appId && roomId && token && !isTokenLoading && !tokenError && !isLeaving
   );
@@ -262,26 +191,22 @@ function LiveVideoRoomController({
     canJoin
   );
 
-  usePublish([localMicrophoneTrack, localCameraTrack]);
+  // Safely Publish only when connected to avoid Invalid_Params
+  usePublish(isConnected ? [localMicrophoneTrack, localCameraTrack] : []);
 
+  // Remote Users Data
   const remoteUsers = useRemoteUsers();
-  const { videoTracks: _remoteVideoTracks } = useRemoteVideoTracks(remoteUsers);
-  const { audioTracks: _remoteAudioTracks } = useRemoteAudioTracks(remoteUsers);
+  // Call these hooks so Agora automatically subscribes and downloads the remote tracks
+  useRemoteVideoTracks(remoteUsers);
+  useRemoteAudioTracks(remoteUsers);
 
   const remoteScreenUser = useMemo(() => {
-    return (
-      remoteUsers.find(
-        (user) => user.hasVideo && isProbablyScreenShareUser(user)
-      ) ?? null
-    );
+    return remoteUsers.find((user) => user.hasVideo && isProbablyScreenShareUser(user)) ?? null;
   }, [remoteUsers]);
 
   const removeParticipant = useCallback(
     (participantUid: string | number) => {
-      if (!isHost) {
-        return;
-      }
-
+      if (!isHost) return;
       console.log("Kick User: ", participantUid);
     },
     [isHost]
@@ -299,15 +224,13 @@ function LiveVideoRoomController({
           playAudio={true}
           className="h-full w-full object-cover"
         />
-
         <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md transition-colors bg-white/80 text-slate-900 font-bold dark:bg-black/50 dark:text-white dark:font-normal">
           User {String(user.uid)}
         </div>
-
         {isHost ? (
           <button
             onClick={() => removeParticipant(user.uid)}
-            className="absolute top-2 right-2 rounded-md bg-red-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-600"
+            className="absolute top-2 right-2 rounded-md bg-red-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-600 z-10"
           >
             Remove
           </button>
@@ -317,27 +240,18 @@ function LiveVideoRoomController({
   }, [isHost, remoteUsers, removeParticipant]);
 
   const updateSessionDatabase = useCallback(async () => {
-    if (!isHost) {
-      return;
-    }
-
+    if (!isHost) return;
     try {
-      await fetch(
-        `/api/study-rooms/${encodeURIComponent(roomId)}/end-session`,
-        {
-          method: "PATCH",
-        }
-      );
+      await fetch(`/api/study-rooms/${encodeURIComponent(roomId)}/end-session`, {
+        method: "PATCH",
+      });
     } catch (error) {
       console.error("Session end database update error:", error);
     }
   }, [isHost, roomId]);
 
   const leaveRoom = useCallback(async () => {
-    if (isLeaving) {
-      return;
-    }
-
+    if (isLeaving) return;
     setIsLeaving(true);
 
     if (isHost) {
@@ -349,29 +263,18 @@ function LiveVideoRoomController({
       }
     }
 
-    const tracksToClose: ILocalTrack[] = [
-      localMicrophoneTrack,
-      localCameraTrack,
-      screenTrack,
-    ].filter((track): track is ILocalTrack => Boolean(track));
-
-    try {
-      if (tracksToClose.length > 0) {
-        await client.unpublish(tracksToClose);
-      }
-    } catch (error) {
-      console.error("Unpublish error:", error);
-    }
-
     try {
       await client.leave();
     } catch (error) {
       console.error("Leave room error:", error);
     } finally {
-      tracksToClose.forEach((track) => {
-        track.stop();
-        track.close();
-      });
+      // Clean up tracks ONLY on leave
+      localCameraTrack?.stop();
+      localCameraTrack?.close();
+      localMicrophoneTrack?.stop();
+      localMicrophoneTrack?.close();
+      screenTrack?.stop();
+      screenTrack?.close();
 
       router.push("/dashboard");
     }
@@ -386,17 +289,13 @@ function LiveVideoRoomController({
     updateSessionDatabase,
   ]);
 
-  const leaveButtonLabel = isHost
-    ? "End Session"
-    : "Leave Room";
+  const leaveButtonLabel = isHost ? "End Session" : "Leave Room";
 
   const renderState: LiveVideoRoomRenderState = {
     isConnected,
     isJoining: isJoinLoading || isCameraLoading || isMicLoading,
     isTokenLoading,
-    tokenError: !appId
-      ? "NEXT_PUBLIC_AGORA_APP_ID is missing."
-      : tokenError,
+    tokenError: !appId ? "NEXT_PUBLIC_AGORA_APP_ID is missing." : tokenError,
     isMicEnabled,
     isCameraEnabled,
     isScreenSharing,
