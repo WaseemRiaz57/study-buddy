@@ -54,8 +54,10 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   };
 
   return (
-    <LiveVideoRoom roomId={roomId} userId={sessionUserId}>
-      {(liveRoom: LiveVideoRoomRenderState) => (
+    <LiveVideoRoom
+      roomId={roomId}
+      userId={sessionUserId}
+      renderAction={(liveRoom: LiveVideoRoomRenderState) => (
         <div className="fixed inset-0 z-50 overflow-hidden flex flex-col font-sans transition-colors duration-300
           bg-slate-50 text-slate-900 
           dark:bg-[#0f0c1d] dark:text-white">
@@ -334,7 +336,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
       ) : null}
     </div>
       )}
-    </LiveVideoRoom>
+    />
   );
 }
 
