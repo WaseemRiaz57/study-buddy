@@ -28,6 +28,7 @@ const LiveVideoRoom = dynamic(() => import("@/components/LiveVideoRoom"), {
 export default function StudyRoomSessionPage({ params }: { params: Promise<{ roomId: string }> }) {
   // Unwrap params
   const { roomId } = use(params);
+  const normalizedRoomId = String(roomId || "").trim();
   const { data: session } = useSession();
 
   const currentUserName = session?.user?.name || "You";
@@ -41,11 +42,58 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const [activeTab, setActiveTab] = useState<"chat" | "vault">("chat");
   const [showChat, setShowChat] = useState(true);
   const [seconds, setSeconds] = useState(0);
+  const [roomTopic, setRoomTopic] = useState<string>("");
+  const [isRoomLoading, setIsRoomLoading] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => setSeconds(s => s + 1), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchRoomDetails() {
+      if (!normalizedRoomId) {
+        if (isActive) {
+          setRoomTopic("");
+          setIsRoomLoading(false);
+        }
+        return;
+      }
+
+      setIsRoomLoading(true);
+
+      try {
+        const response = await fetch(
+          `/api/study-rooms/${encodeURIComponent(normalizedRoomId)}`
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to load room details.");
+        }
+
+        if (isActive) {
+          setRoomTopic(typeof data?.topic === "string" ? data.topic : "");
+        }
+      } catch {
+        if (isActive) {
+          setRoomTopic("");
+        }
+      } finally {
+        if (isActive) {
+          setIsRoomLoading(false);
+        }
+      }
+    }
+
+    void fetchRoomDetails();
+
+    return () => {
+      isActive = false;
+    };
+  }, [normalizedRoomId]);
 
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
@@ -55,7 +103,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
   return (
     <LiveVideoRoom
-      roomId={roomId}
+      roomId={normalizedRoomId}
       userId={sessionUserId}
       renderAction={(liveRoom: LiveVideoRoomRenderState) => (
         <div className="fixed inset-0 z-50 overflow-hidden flex flex-col font-sans transition-colors duration-300
@@ -82,12 +130,14 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
             </div>
             <div>
               <h2 className="text-sm font-bold flex items-center gap-2">
-                Study Room {roomId}
+                Study Room {normalizedRoomId}
                 <span className="px-1.5 py-0.5 rounded text-[10px] border font-mono transition-colors
                   bg-red-50 text-red-500 border-red-200
                   dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">LIVE</span>
               </h2>
-              <p className="text-xs text-slate-500 dark:text-gray-400">Advanced OS Concepts</p>
+              <p className="text-xs text-slate-500 dark:text-gray-400">
+                {isRoomLoading ? "Loading Room..." : roomTopic || "Study Room"}
+              </p>
             </div>
           </div>
           

@@ -102,6 +102,7 @@ function LiveVideoRoomController({
 }: LiveVideoRoomControllerProps) {
   const router = useRouter();
   const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID ?? "";
+  const channelName = useMemo(() => String(roomId || "").trim(), [roomId]);
   const uid = useMemo(() => resolveNumericUid(userId), [userId]);
 
   const [token, setToken] = useState<string | null>(null);
@@ -124,8 +125,12 @@ function LiveVideoRoomController({
       setTokenError(null);
 
       try {
+        if (!channelName) {
+          throw new Error("Room ID is required.");
+        }
+
         const response = await fetch(
-          `/api/agora-token?channelName=${encodeURIComponent(roomId)}&uid=${uid}`
+          `/api/agora-token?channelName=${encodeURIComponent(channelName)}&uid=${uid}`
         );
 
         const data = await response.json();
@@ -157,7 +162,7 @@ function LiveVideoRoomController({
     return () => {
       isActive = false;
     };
-  }, [roomId, uid]);
+  }, [channelName, uid]);
 
   const { localMicrophoneTrack, isLoading: isMicLoading } = useLocalMicrophoneTrack();
   const { localCameraTrack, isLoading: isCameraLoading } = useLocalCameraTrack();
@@ -235,13 +240,13 @@ function LiveVideoRoomController({
   }, [screenTrack]);
 
   const canJoin = Boolean(
-    appId && token && !isTokenLoading && !tokenError && !isLeaving
+    appId && channelName && token && !isTokenLoading && !tokenError && !isLeaving
   );
 
   const { isConnected, isLoading: isJoinLoading } = useJoin(
     {
       appid: appId,
-      channel: roomId,
+      channel: channelName,
       token: token ?? null,
       uid,
     },
