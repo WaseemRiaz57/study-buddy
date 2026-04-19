@@ -42,9 +42,9 @@ export async function POST(
       );
     }
 
-    const alreadyParticipant = room.participants.some(
-      (participantId) => participantId.toString() === authResult.userId
-    );
+  const alreadyParticipant = room.participants.some(
+  (participantId: any) => participantId.toString() === authResult.userId
+);
 
     if (!alreadyParticipant && room.participants.length >= room.maxParticipants) {
       return NextResponse.json({ message: "Room is full" }, { status: 400 });
