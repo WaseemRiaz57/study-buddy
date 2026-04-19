@@ -191,8 +191,9 @@ function LiveVideoRoomController({
     canJoin
   );
 
-  // Safely Publish only when connected to avoid Invalid_Params
-  usePublish(isConnected ? [localMicrophoneTrack, localCameraTrack] : []);
+  // Filter out null tracks so Agora doesn't crash if Mic or Camera is blocked
+const tracksToPublish = [localMicrophoneTrack, localCameraTrack].filter(Boolean);
+usePublish(isConnected && tracksToPublish.length > 0 ? tracksToPublish : []);
 
   // Remote Users Data
   const remoteUsers = useRemoteUsers();
