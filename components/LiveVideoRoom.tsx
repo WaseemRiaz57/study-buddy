@@ -25,6 +25,7 @@ import {
   useLocalCameraTrack,
   useLocalMicrophoneTrack,
   useLocalScreenTrack,
+  usePublish,
   useRemoteAudioTracks,
   useRemoteUsers,
   useRemoteVideoTracks,
@@ -261,22 +262,7 @@ function LiveVideoRoomController({
     canJoin
   );
 
-  useEffect(() => {
-    const publishTracks = async () => {
-      if (client && client.connectionState === "CONNECTED" && localCameraTrack && localMicrophoneTrack) {
-        try {
-          // Ensure tracks are awake before pushing
-          await localCameraTrack.setEnabled(true);
-          await localMicrophoneTrack.setEnabled(true);
-          await client.publish([localMicrophoneTrack, localCameraTrack]);
-          console.log("Tracks FORCE PUBLISHED successfully!");
-        } catch (error) {
-          console.error("Failed to publish tracks:", error);
-        }
-      }
-    };
-    publishTracks();
-  }, [client, client?.connectionState, localCameraTrack, localMicrophoneTrack]);
+  usePublish([localMicrophoneTrack, localCameraTrack]);
 
   const remoteUsers = useRemoteUsers();
   const { videoTracks: _remoteVideoTracks } = useRemoteVideoTracks(remoteUsers);
