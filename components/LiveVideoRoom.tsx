@@ -233,9 +233,7 @@ function LiveVideoRoomController({
     canJoin
   );
 
-  const activeVideoTrack = isScreenSharing ? screenTrack : localCameraTrack;
-
-  usePublish([localMicrophoneTrack, activeVideoTrack], canJoin);
+  usePublish([localMicrophoneTrack, localCameraTrack]);
 
   const remoteUsers = useRemoteUsers();
 

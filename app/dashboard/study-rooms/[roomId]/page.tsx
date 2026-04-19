@@ -215,7 +215,12 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                     liveRoom.isScreenSharing && liveRoom.screenTrack ? (
                      <LocalVideoTrack track={liveRoom.screenTrack as any} play className="h-full w-full object-cover" />
                     ) : (
-                      <RemoteUser user={liveRoom.remoteScreenUser as any} className="h-full w-full object-cover" />
+                      <RemoteUser
+                        user={liveRoom.remoteScreenUser as any}
+                        playVideo
+                        playAudio
+                        className="h-full w-full object-cover"
+                      />
                     )
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-sm text-slate-200">
@@ -255,7 +260,12 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                   bg-white border-slate-200
                   dark:bg-zinc-800 dark:border-white/10"
               >
-                <RemoteUser user={user as any} className="h-full w-full object-cover" />
+                <RemoteUser
+                  user={user as any}
+                  playVideo
+                  playAudio
+                  className="h-full w-full object-cover"
+                />
                 <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md transition-colors
                   bg-white/80 text-slate-900 font-bold
                   dark:bg-black/50 dark:text-white dark:font-normal">
