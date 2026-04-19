@@ -161,9 +161,9 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                 <div className="h-full w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-900 dark:border-white/10">
                   {(liveRoom.isScreenSharing && liveRoom.screenTrack) || liveRoom.remoteScreenUser ? (
                     liveRoom.isScreenSharing && liveRoom.screenTrack ? (
-                      <LocalVideoTrack track={liveRoom.screenTrack} play className="h-full w-full object-cover" />
+                     <LocalVideoTrack track={liveRoom.screenTrack as any} play className="h-full w-full object-cover" />
                     ) : (
-                      <RemoteUser user={liveRoom.remoteScreenUser!} className="h-full w-full object-cover" />
+                      <RemoteUser user={liveRoom.remoteScreenUser as any} className="h-full w-full object-cover" />
                     )
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-sm text-slate-200">
@@ -183,12 +183,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                 dark:bg-zinc-800 dark:border-white/10 ring-2 ring-purple-500 dark:shadow-[0_0_0_2px_#ffd700]"
             >
               {liveRoom.localCameraTrack ? (
-                <LocalVideoTrack
-                  track={liveRoom.localCameraTrack}
-                  play
-                  disabled={!liveRoom.isCameraEnabled}
-                  className="h-full w-full object-cover opacity-95"
-                />
+                <LocalVideoTrack track={liveRoom.localCameraTrack as any} play className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs text-slate-200">
                   Camera unavailable
@@ -208,7 +203,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                   bg-white border-slate-200
                   dark:bg-zinc-800 dark:border-white/10"
               >
-                <RemoteUser user={user} className="h-full w-full object-cover" />
+                <RemoteUser user={user as any} className="h-full w-full object-cover" />
                 <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md transition-colors
                   bg-white/80 text-slate-900 font-bold
                   dark:bg-black/50 dark:text-white dark:font-normal">
