@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, use } from "react";
 // ✨ Added missing import for animations
 import { motion, AnimatePresence } from "framer-motion"; 
 import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
+import type { LiveVideoRoomRenderState } from "@/components/LiveVideoRoom";
+import { LocalVideoTrack, RemoteUser } from "agora-rtc-react";
 import {
-  GraduationCap,
-  Trophy,
-  Timer,
   Mic,
   Video,
   MonitorUp,
@@ -16,27 +16,14 @@ import {
   FolderOpen,
   MessageSquare,
   Clock,
-  PenTool,
-  FileText,
   VideoOff,
   MicOff
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
-// Types
-interface Participant {
-  name: string;
-  image: string;
-  active: boolean;
-}
-
-const OTHER_PARTICIPANTS: Participant[] = [
-  {
-    name: "Alex Chen",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80",
-    active: false,
-  },
-];
+const LiveVideoRoom = dynamic(() => import("@/components/LiveVideoRoom"), {
+  ssr: false,
+  loading: () => <p>Starting Camera...</p>,
+});
 
 export default function StudyRoomSessionPage({ params }: { params: Promise<{ roomId: string }> }) {
   // Unwrap params
@@ -44,55 +31,21 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const { data: session } = useSession();
 
   const currentUserName = session?.user?.name || "You";
-  const currentUserImage =
-    session?.user?.image ||
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80";
-  const participants: Participant[] = [
-    {
-      name: currentUserName,
-      image: currentUserImage,
-      active: true,
-    },
-    ...OTHER_PARTICIPANTS,
-  ];
-  
-  const router = useRouter();
+  const sessionUserId = String(
+    (session?.user as { id?: string } | undefined)?.id ||
+      session?.user?.email ||
+      session?.user?.name ||
+      "guest-user"
+  );
+
   const [activeTab, setActiveTab] = useState<"chat" | "vault">("chat");
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
   const [showChat, setShowChat] = useState(true);
   const [seconds, setSeconds] = useState(0);
-
-  const updatePresence = useCallback(
-    async (action: "connect" | "disconnect") => {
-      try {
-        await fetch(`/api/study-rooms/${roomId}/presence`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ action }),
-          ...(action === "disconnect" ? { keepalive: true } : {}),
-        });
-      } catch {
-        // Presence updates are best-effort; room state still expires via Redis TTL.
-      }
-    },
-    [roomId]
-  );
 
   useEffect(() => {
     const interval = setInterval(() => setSeconds(s => s + 1), 1000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    void updatePresence("connect");
-
-    return () => {
-      void updatePresence("disconnect");
-    };
-  }, [updatePresence]);
 
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
@@ -100,15 +53,12 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
     return `${m}:${s}`;
   };
 
-  const handleEndCall = async () => {
-    await updatePresence("disconnect");
-    router.push("/dashboard/study-rooms");
-  };
-
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden flex flex-col font-sans transition-colors duration-300
-      bg-slate-50 text-slate-900 
-      dark:bg-[#0f0c1d] dark:text-white">
+    <LiveVideoRoom roomId={roomId} userId={sessionUserId}>
+      {(liveRoom: LiveVideoRoomRenderState) => (
+        <div className="fixed inset-0 z-50 overflow-hidden flex flex-col font-sans transition-colors duration-300
+          bg-slate-50 text-slate-900 
+          dark:bg-[#0f0c1d] dark:text-white">
       
       {/* ── Background Ambience (Dark Only) ── */}
       <div className="absolute inset-0 pointer-events-none opacity-0 dark:opacity-100 transition-opacity">
@@ -175,7 +125,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
         
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          <button onClick={handleEndCall} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-red-500/20 transition-all flex items-center gap-2">
+          <button onClick={() => void liveRoom.leaveRoom()} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-red-500/20 transition-all flex items-center gap-2">
             <PhoneOff size={16} /> <span className="hidden sm:inline">Leave</span>
           </button>
         </div>
@@ -199,34 +149,79 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                 <div className="px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md transition-colors
                   bg-slate-100 text-slate-900 border border-slate-200
                   dark:bg-black/60 dark:text-white dark:border-white/10">
-                  Alex Chen is sharing <strong>Deadlocks.pdf</strong>
+                  {liveRoom.isScreenSharing
+                    ? "You are sharing your screen"
+                    : liveRoom.remoteScreenUser
+                    ? `Participant ${String(liveRoom.remoteScreenUser.uid)} is sharing`
+                    : "No active screen share"}
                 </div>
               </div>
               
-              <div className="w-3/4 h-[90%] rounded shadow-2xl opacity-80 border transition-colors
-                bg-slate-50 border-slate-200
-                dark:bg-white dark:border-none" />
+              <div className="h-[90%] w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-[#110d1b]">
+                <div className="h-full w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-900 dark:border-white/10">
+                  {(liveRoom.isScreenSharing && liveRoom.screenTrack) || liveRoom.remoteScreenUser ? (
+                    liveRoom.isScreenSharing && liveRoom.screenTrack ? (
+                      <LocalVideoTrack track={liveRoom.screenTrack} play className="h-full w-full object-cover" />
+                    ) : (
+                      <RemoteUser user={liveRoom.remoteScreenUser!} className="h-full w-full object-cover" />
+                    )
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-sm text-slate-200">
+                      Welcome to Study Room
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Video Strip */}
           <div className="h-48 flex gap-4 overflow-x-auto pb-4 px-4">
-            {participants.map((participant) => (
+            <div
+              className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all
+                bg-white border-slate-200
+                dark:bg-zinc-800 dark:border-white/10 ring-2 ring-purple-500 dark:shadow-[0_0_0_2px_#ffd700]"
+            >
+              {liveRoom.localCameraTrack ? (
+                <LocalVideoTrack
+                  track={liveRoom.localCameraTrack}
+                  play
+                  disabled={!liveRoom.isCameraEnabled}
+                  className="h-full w-full object-cover opacity-95"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-slate-200">
+                  Camera unavailable
+                </div>
+              )}
+              <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md transition-colors
+                bg-white/80 text-slate-900 font-bold
+                dark:bg-black/50 dark:text-white dark:font-normal">
+                {currentUserName}
+              </div>
+            </div>
+
+            {liveRoom.remoteUsers.map((user) => (
               <div
-                key={participant.name}
-                className={`aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all
+                key={String(user.uid)}
+                className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all
                   bg-white border-slate-200
-                  dark:bg-zinc-800 dark:border-white/10
-                  ${participant.active ? "ring-2 ring-purple-500 dark:shadow-[0_0_0_2px_#ffd700]" : ""}`}
+                  dark:bg-zinc-800 dark:border-white/10"
               >
-                <img src={participant.image} className="w-full h-full object-cover opacity-90" alt={participant.name} />
+                <RemoteUser user={user} className="h-full w-full object-cover" />
                 <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md transition-colors
                   bg-white/80 text-slate-900 font-bold
                   dark:bg-black/50 dark:text-white dark:font-normal">
-                  {participant.name}
+                  User {String(user.uid)}
                 </div>
               </div>
             ))}
+
+            {liveRoom.remoteUsers.length === 0 ? (
+              <div className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all bg-slate-100 border-dashed border-slate-300 text-slate-500 flex items-center justify-center text-xs">
+                Waiting for participants...
+              </div>
+            ) : null}
           </div>
 
           {/* Bottom Floating Controls */}
@@ -235,18 +230,20 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
               bg-white/90 border-slate-200
               dark:bg-[#191121]/90 dark:border-white/10">
               
-              <ControlBtn isActive={!isMuted} onClick={() => setIsMuted(!isMuted)} iconOn={Mic} iconOff={MicOff} />
-              <ControlBtn isActive={!isVideoOff} onClick={() => setIsVideoOff(!isVideoOff)} iconOn={Video} iconOff={VideoOff} />
+              <ControlBtn isActive={liveRoom.isMicEnabled} onClick={liveRoom.toggleMic} iconOn={Mic} iconOff={MicOff} />
+              <ControlBtn isActive={liveRoom.isCameraEnabled} onClick={liveRoom.toggleCamera} iconOn={Video} iconOff={VideoOff} />
               
               <div className="w-[1px] h-8 bg-slate-200 dark:bg-white/10 mx-2" />
               
-              <button className="flex flex-col items-center gap-1 group px-2">
+              <button onClick={liveRoom.toggleScreenShare} className="flex flex-col items-center gap-1 group px-2">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform group-hover:scale-110
                   bg-purple-600 text-white
                   dark:bg-[#8c30e8]">
                   <MonitorUp size={18} />
                 </div>
-                <span className="text-[10px] font-medium text-purple-600 dark:text-[#8c30e8]">Share</span>
+                <span className="text-[10px] font-medium text-purple-600 dark:text-[#8c30e8]">
+                  {liveRoom.isScreenSharing ? "Sharing" : "Share"}
+                </span>
               </button>
 
               <div className="w-[1px] h-8 bg-slate-200 dark:bg-white/10 mx-2" />
@@ -294,7 +291,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
                   {/* Peer Msg */}
                   <div className="flex gap-3">
-                    <img src={participants[1].image} className="w-8 h-8 rounded-full object-cover" />
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-200 text-slate-600 text-xs font-bold dark:bg-white/10 dark:text-gray-200">P</div>
                      <div className="rounded-2xl rounded-tl-none p-3 text-sm max-w-[85%] border shadow-sm transition-colors
                        bg-white text-slate-700 border-slate-100
                        dark:bg-[#1f192b] dark:text-gray-200 dark:border-white/5">
@@ -335,7 +332,14 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
           )}
         </AnimatePresence>
       </main>
+      {liveRoom.tokenError ? (
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {liveRoom.tokenError}
+        </div>
+      ) : null}
     </div>
+      )}
+    </LiveVideoRoom>
   );
 }
 
