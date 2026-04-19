@@ -3,6 +3,12 @@ import { getServerSession } from "next-auth";
 import { v2 as cloudinary } from "cloudinary";
 import { connectMongoDB } from "@/lib/mongodb";
 import { authOptions } from "@/lib/authOptions";
+import {
+  ALLOWED_UPLOAD_EXTENSIONS,
+  MAX_UPLOAD_FILE_SIZE_BYTES,
+  getLowerCaseExtension,
+  isAllowedUploadType,
+} from "@/lib/study-room-constants";
 import Resource from "@/models/Resource";
 
 cloudinary.config({
@@ -10,6 +16,13 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+function getCloudinaryResourceType(fileName: string): "raw" | "image" {
+  const extension = getLowerCaseExtension(fileName);
+  const rawFileExtensions = new Set([".pdf", ".docx", ".xlsx"]);
+
+  return rawFileExtensions.has(extension) ? "raw" : "image";
+}
 
 function uploadToCloudinary(buffer: Buffer, fileName: string, folder = "study-buddy/resources") {
   return new Promise<{
@@ -19,12 +32,12 @@ function uploadToCloudinary(buffer: Buffer, fileName: string, folder = "study-bu
     format?: string;
     pages?: number;
   }>((resolve, reject) => {
-    const isPdf = fileName.toLowerCase().endsWith(".pdf");
+    const resourceType = getCloudinaryResourceType(fileName);
 
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder,
-        resource_type: isPdf ? "raw" : "auto",
+        resource_type: resourceType,
         public_id: `${Date.now()}-${fileName.replace(/\s+/g, "-")}`,
       },
       (error, result) => {
@@ -68,9 +81,35 @@ export async function POST(request: Request) {
       );
     }
 
+    if (uploadedFile.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        {
+          message: "File exceeds 20MB limit.",
+          maxSizeBytes: MAX_UPLOAD_FILE_SIZE_BYTES,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!isAllowedUploadType(uploadedFile.name, uploadedFile.type || "")) {
+      return NextResponse.json(
+        {
+          message: `Unsupported file type. Allowed types: ${ALLOWED_UPLOAD_EXTENSIONS.join(
+            ", "
+          )}`,
+        },
+        { status: 400 }
+      );
+    }
+
     const arrayBuffer = await uploadedFile.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
     const cloudinaryResult = await uploadToCloudinary(fileBuffer, uploadedFile.name);
+
+    const extension = getLowerCaseExtension(uploadedFile.name);
+    const normalizedType = extension
+      ? extension.replace(".", "").toUpperCase()
+      : uploadedFile.type || (cloudinaryResult.format ?? "UNKNOWN").toUpperCase();
 
     await connectMongoDB();
 
@@ -86,7 +125,7 @@ export async function POST(request: Request) {
         : [],
       fileUrl: cloudinaryResult.secure_url,
       fileSize: `${(cloudinaryResult.bytes / (1024 * 1024)).toFixed(2)} MB`,
-      fileType: uploadedFile.type || (cloudinaryResult.format ?? "UNKNOWN").toUpperCase(),
+      fileType: normalizedType,
       pageCount: cloudinaryResult.pages ?? 0,
       uploadedBy: session.user.id,
     });

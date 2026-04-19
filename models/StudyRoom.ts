@@ -8,6 +8,8 @@ export interface IStudyRoom extends Document {
   host: mongoose.Types.ObjectId;
   participants: mongoose.Types.ObjectId[];
   isLive: boolean;
+  closedAt: Date | null;
+  sessionDurationMinutes: number;
   createdAt: Date;
 }
 
@@ -48,6 +50,15 @@ const StudyRoomSchema = new Schema<IStudyRoom>(
     isLive: {
       type: Boolean,
       default: true,
+    },
+    closedAt: {
+      type: Date,
+      default: null,
+    },
+    sessionDurationMinutes: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     createdAt: {
       type: Date,

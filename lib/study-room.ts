@@ -1,5 +1,10 @@
 import { connectMongoDB } from "@/lib/mongodb";
 import { createRoomCredentials } from "@/lib/agora";
+import {
+  initializeStudyRoomState,
+  touchStudyRoomState,
+} from "@/lib/redis";
+import { STUDY_ROOM_SOCKET_NAMESPACE } from "@/lib/study-room-constants";
 import StudyRoom from "@/models/StudyRoom";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
@@ -8,6 +13,7 @@ import mongoose from "mongoose";
 export interface StartRoomResult {
   roomId: string;
   channelName: string;
+  socketNamespace: string;
   agoraAppId: string;
   tokens: { [userId: string]: string };
   startTime: Date;
@@ -63,8 +69,13 @@ export async function startStudyRoom(
       new mongoose.Types.ObjectId(studentBId),
     ],
     isLive: true,
+    closedAt: null,
+    sessionDurationMinutes: 0,
     createdAt: new Date(),
   });
+
+  await initializeStudyRoomState(room.roomId, []);
+  await touchStudyRoomState(room.roomId);
 
   // ── 3. Dispatch notifications (FR-12) ─────────────────────────────
   // Notify studentB that a room has been created
@@ -106,6 +117,7 @@ export async function startStudyRoom(
   return {
     roomId: room.roomId,
     channelName: credentials.channelName,
+    socketNamespace: STUDY_ROOM_SOCKET_NAMESPACE,
     agoraAppId: credentials.agoraAppId,
     tokens: credentials.tokens,
     startTime: room.createdAt,

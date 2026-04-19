@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 // ✨ Added missing import for animations
 import { motion, AnimatePresence } from "framer-motion"; 
 import { useSession } from "next-auth/react";
@@ -63,10 +63,36 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const [showChat, setShowChat] = useState(true);
   const [seconds, setSeconds] = useState(0);
 
+  const updatePresence = useCallback(
+    async (action: "connect" | "disconnect") => {
+      try {
+        await fetch(`/api/study-rooms/${roomId}/presence`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action }),
+          ...(action === "disconnect" ? { keepalive: true } : {}),
+        });
+      } catch {
+        // Presence updates are best-effort; room state still expires via Redis TTL.
+      }
+    },
+    [roomId]
+  );
+
   useEffect(() => {
     const interval = setInterval(() => setSeconds(s => s + 1), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    void updatePresence("connect");
+
+    return () => {
+      void updatePresence("disconnect");
+    };
+  }, [updatePresence]);
 
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
@@ -74,7 +100,8 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
     return `${m}:${s}`;
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
+    await updatePresence("disconnect");
     router.push("/dashboard/study-rooms");
   };
 

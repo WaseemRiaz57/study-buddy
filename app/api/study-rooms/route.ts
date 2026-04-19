@@ -1,8 +1,13 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { NextResponse, type NextRequest } from "next/server";
 import mongoose from "mongoose";
-import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { requireStudyRoomJwt } from "@/lib/study-room-auth";
+import { maybeAutoCloseStudyRoom } from "@/lib/study-room-lifecycle";
+import {
+  initializeStudyRoomState,
+  touchStudyRoomState,
+} from "@/lib/redis";
+import { STUDY_ROOM_SOCKET_NAMESPACE } from "@/lib/study-room-constants";
 import StudyRoom from "@/models/StudyRoom";
 
 function generateRoomCode() {
@@ -33,12 +38,16 @@ async function generateUniqueRoomCode() {
   throw new Error("Failed to generate unique roomId.");
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const authResult = await requireStudyRoomJwt(request);
+    if (authResult.error) return authResult.error;
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!mongoose.Types.ObjectId.isValid(authResult.userId)) {
+      return NextResponse.json(
+        { message: "Unauthorized: invalid user identity" },
+        { status: 401 }
+      );
     }
 
     const { topic, maxParticipants, privacy } = await request.json();
@@ -50,7 +59,7 @@ export async function POST(request: Request) {
     await connectMongoDB();
 
     const roomId = await generateUniqueRoomCode();
-    const hostId = new mongoose.Types.ObjectId(session.user.id);
+    const hostId = new mongoose.Types.ObjectId(authResult.userId);
 
     const room = await StudyRoom.create({
       topic: topic.trim(),
@@ -63,13 +72,19 @@ export async function POST(request: Request) {
       host: hostId,
       participants: [hostId],
       isLive: true,
+      closedAt: null,
+      sessionDurationMinutes: 0,
       createdAt: new Date(),
     });
+
+    await initializeStudyRoomState(room.roomId, []);
+    await touchStudyRoomState(room.roomId);
 
     return NextResponse.json(
       {
         message: "Study room created successfully",
         roomId: room.roomId,
+        socketNamespace: STUDY_ROOM_SOCKET_NAMESPACE,
       },
       { status: 201 }
     );
@@ -79,8 +94,11 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authResult = await requireStudyRoomJwt(request);
+    if (authResult.error) return authResult.error;
+
     await connectMongoDB();
 
     const rooms = await StudyRoom.find({ isLive: true, privacy: "Public" })
@@ -88,7 +106,19 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .lean();
 
-    const formattedRooms = rooms.map((room) => ({
+    const autoCloseResults = await Promise.all(
+      rooms.map((room) => maybeAutoCloseStudyRoom(String(room.roomId)))
+    );
+
+    const autoClosedRoomIds = new Set(
+      autoCloseResults.filter((result) => result.closed).map((result) => result.roomId)
+    );
+
+    const openRooms = rooms.filter(
+      (room) => !autoClosedRoomIds.has(String(room.roomId).toUpperCase())
+    );
+
+    const formattedRooms = openRooms.map((room) => ({
       _id: room._id,
       topic: room.topic,
       roomId: room.roomId,

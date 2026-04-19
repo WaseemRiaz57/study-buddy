@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 // @ts-ignore - pdf-parse-fork handles ESM/CommonJS better for Vercel builds
 import pdf from 'pdf-parse-fork';
+import {
+  ALLOWED_UPLOAD_EXTENSIONS,
+  MAX_UPLOAD_FILE_SIZE_BYTES,
+  isAllowedUploadType,
+} from "@/lib/study-room-constants";
 
 const OLLAMA_URL = "http://143.244.133.231:11434/api/generate";
 
@@ -12,17 +17,13 @@ type IncomingPayload = {
   userPrompt: string;
   extractedFileText: string;
   outputMode: OutputMode;
+  validationError: string | null;
 };
 
 async function extractTextFromFile(file: File): Promise<string> {
   const filename = file.name.toLowerCase();
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  if (filename.endsWith(".txt") || file.type === "text/plain") {
-    return buffer.toString("utf-8");
-  }
-
-  // --- UPDATED PDF LOGIC ---
   if (filename.endsWith(".pdf") || file.type === "application/pdf") {
     try {
       const data = await pdf(buffer);
@@ -32,7 +33,6 @@ async function extractTextFromFile(file: File): Promise<string> {
       return "Error: Could not extract text from PDF.";
     }
   }
-  // -------------------------
 
   if (
     filename.endsWith(".docx") ||
@@ -41,6 +41,16 @@ async function extractTextFromFile(file: File): Promise<string> {
     const mammoth = await import("mammoth");
     const parsed = await mammoth.extractRawText({ buffer });
     return parsed.value || "";
+  }
+
+  if (
+    filename.endsWith(".png") ||
+    filename.endsWith(".jpg") ||
+    filename.endsWith(".jpeg") ||
+    filename.endsWith(".xlsx")
+  ) {
+    // Supported upload types that currently do not have text extraction logic.
+    return "";
   }
 
   throw new Error("Unsupported file type");
@@ -63,15 +73,50 @@ async function parseIncomingRequest(req: Request): Promise<IncomingPayload> {
     const fileEntry = formData.get("file");
 
     if (!(fileEntry instanceof File)) {
-      return { userPrompt, extractedFileText: "", outputMode };
+      return {
+        userPrompt,
+        extractedFileText: "",
+        outputMode,
+        validationError: null,
+      };
+    }
+
+    if (fileEntry.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+      return {
+        userPrompt,
+        extractedFileText: "",
+        outputMode,
+        validationError: "File exceeds 20MB limit.",
+      };
+    }
+
+    if (!isAllowedUploadType(fileEntry.name, fileEntry.type || "")) {
+      return {
+        userPrompt,
+        extractedFileText: "",
+        outputMode,
+        validationError: `Unsupported file type. Allowed types: ${ALLOWED_UPLOAD_EXTENSIONS.join(
+          ", "
+        )}`,
+      };
     }
 
     try {
       const text = (await extractTextFromFile(fileEntry)).trim();
-      return { userPrompt, extractedFileText: text, outputMode };
+      return {
+        userPrompt,
+        extractedFileText: text,
+        outputMode,
+        validationError: null,
+      };
     } catch (err) {
       console.error("File extraction failed:", err);
-      return { userPrompt, extractedFileText: "", outputMode };
+      return {
+        userPrompt,
+        extractedFileText: "",
+        outputMode,
+        validationError: null,
+      };
     }
   }
 
@@ -85,7 +130,12 @@ async function parseIncomingRequest(req: Request): Promise<IncomingPayload> {
     rawOutputMode === "direct"
       ? rawOutputMode
       : "unknown";
-  return { userPrompt, extractedFileText: "", outputMode };
+  return {
+    userPrompt,
+    extractedFileText: "",
+    outputMode,
+    validationError: null,
+  };
 }
 
 function buildSystemPrompt(outputMode: OutputMode, hasFileText: boolean): string {
@@ -118,7 +168,12 @@ function buildSystemPrompt(outputMode: OutputMode, hasFileText: boolean): string
 
 export async function POST(req: Request) {
   try {
-    const { userPrompt, extractedFileText, outputMode } = await parseIncomingRequest(req);
+    const { userPrompt, extractedFileText, outputMode, validationError } =
+      await parseIncomingRequest(req);
+
+    if (validationError) {
+      return NextResponse.json({ message: validationError }, { status: 400 });
+    }
 
     if (!userPrompt || typeof userPrompt !== "string") {
       return NextResponse.json({ message: "userPrompt is required" }, { status: 400 });

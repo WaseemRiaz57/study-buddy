@@ -141,6 +141,7 @@ export async function POST(req: NextRequest) {
         message: "Study room created successfully!",
         roomId: result.roomId,
         channelName: result.channelName,
+        socketNamespace: result.socketNamespace,
         agoraAppId: result.agoraAppId,
         tokens: result.tokens,
         startTime: result.startTime,
