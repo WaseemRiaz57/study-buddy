@@ -25,18 +25,24 @@ import {
   useLocalMicrophoneTrack,
   useLocalScreenTrack,
   usePublish,
+  useRemoteAudioTracks,
   useRemoteUsers,
+  useRemoteVideoTracks,
   useRTCClient,
 } from "agora-rtc-react";
 
 type LiveVideoRoomProps = {
   roomId: string;
+  currentUserId?: string;
+  hostId?: string;
   userId?: string;
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
 };
 
 type LiveVideoRoomControllerProps = {
   roomId: string;
+  currentUserId?: string;
+  hostId?: string;
   userId?: string;
   client: IAgoraRTCClient;
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
@@ -53,11 +59,17 @@ export type LiveVideoRoomRenderState = {
   localCameraTrack: ICameraVideoTrack | null;
   localMicrophoneTrack: IMicrophoneAudioTrack | null;
   screenTrack: ILocalVideoTrack | null;
+  currentUserId: string;
+  hostId: string;
+  isHost: boolean;
   remoteUsers: IAgoraRTCRemoteUser[];
   remoteScreenUser: IAgoraRTCRemoteUser | null;
+  leaveButtonLabel: string;
+  isEndingSession: boolean;
   toggleMic: () => void;
   toggleCamera: () => void;
   toggleScreenShare: () => void;
+  removeParticipant: (participantUid: string | number) => void;
   leaveRoom: () => Promise<void>;
 };
 
@@ -77,6 +89,8 @@ function isProbablyScreenShareUser(user: IAgoraRTCRemoteUser): boolean {
 
 function LiveVideoRoomController({
   roomId,
+  currentUserId,
+  hostId,
   userId,
   client,
   renderAction,
@@ -84,14 +98,23 @@ function LiveVideoRoomController({
   const router = useRouter();
   const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID ?? "";
   const [agoraUid] = useState(() => Math.floor(Math.random() * 1000000));
+  const effectiveCurrentUserId = String(currentUserId || userId || "").trim();
+  const normalizedHostId = String(hostId || "").trim();
+  const isHost = Boolean(
+    effectiveCurrentUserId &&
+      normalizedHostId &&
+      effectiveCurrentUserId === normalizedHostId
+  );
 
   const [token, setToken] = useState<string | null>(null);
   const [isTokenLoading, setIsTokenLoading] = useState(true);
   const [tokenError, setTokenError] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isEndingSession, setIsEndingSession] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [removedRemoteUserUids, setRemovedRemoteUserUids] = useState<string[]>([]);
 
   const localCameraTrackRef = useRef<ILocalTrack | null>(null);
   const localMicrophoneTrackRef = useRef<ILocalTrack | null>(null);
@@ -236,14 +259,72 @@ function LiveVideoRoomController({
   usePublish([localMicrophoneTrack, localCameraTrack]);
 
   const remoteUsers = useRemoteUsers();
+  const { videoTracks: _remoteVideoTracks } = useRemoteVideoTracks(remoteUsers);
+  const { audioTracks: _remoteAudioTracks } = useRemoteAudioTracks(remoteUsers);
+
+  const visibleRemoteUsers = useMemo(() => {
+    return remoteUsers.filter(
+      (user) => !removedRemoteUserUids.includes(String(user.uid))
+    );
+  }, [remoteUsers, removedRemoteUserUids]);
 
   const remoteScreenUser = useMemo(() => {
     return (
-      remoteUsers.find(
+      visibleRemoteUsers.find(
         (user) => user.hasVideo && isProbablyScreenShareUser(user)
       ) ?? null
     );
-  }, [remoteUsers]);
+  }, [visibleRemoteUsers]);
+
+  const removeParticipant = useCallback(
+    (participantUid: string | number) => {
+      if (!isHost) {
+        return;
+      }
+
+      const targetUid = String(participantUid);
+      setRemovedRemoteUserUids((current) =>
+        current.includes(targetUid) ? current : [...current, targetUid]
+      );
+
+      const targetUser = remoteUsers.find((user) => String(user.uid) === targetUid);
+      if (!targetUser) {
+        return;
+      }
+
+      void (async () => {
+        try {
+          if (targetUser.hasAudio) {
+            await client.unsubscribe(targetUser, "audio");
+          }
+
+          if (targetUser.hasVideo) {
+            await client.unsubscribe(targetUser, "video");
+          }
+        } catch (error) {
+          console.error("Remove participant error:", error);
+        }
+      })();
+    },
+    [client, isHost, remoteUsers]
+  );
+
+  const updateSessionDatabase = useCallback(async () => {
+    if (!isHost) {
+      return;
+    }
+
+    try {
+      await fetch(
+        `/api/study-rooms/${encodeURIComponent(roomId)}/end-session`,
+        {
+          method: "PATCH",
+        }
+      );
+    } catch (error) {
+      console.error("Session end database update error:", error);
+    }
+  }, [isHost, roomId]);
 
   const leaveRoom = useCallback(async () => {
     if (isLeaving) {
@@ -251,6 +332,15 @@ function LiveVideoRoomController({
     }
 
     setIsLeaving(true);
+
+    if (isHost) {
+      setIsEndingSession(true);
+      try {
+        await updateSessionDatabase();
+      } finally {
+        setIsEndingSession(false);
+      }
+    }
 
     const tracksToClose: ILocalTrack[] = [
       localMicrophoneTrack,
@@ -281,11 +371,21 @@ function LiveVideoRoomController({
   }, [
     client,
     isLeaving,
+    isHost,
     localCameraTrack,
     localMicrophoneTrack,
     router,
     screenTrack,
+    updateSessionDatabase,
   ]);
+
+  const leaveButtonLabel = isHost
+    ? isEndingSession || isLeaving
+      ? "Ending Session..."
+      : "End Session"
+    : isLeaving
+    ? "Leaving Room..."
+    : "Leave Room";
 
   const renderState: LiveVideoRoomRenderState = {
     isConnected,
@@ -300,18 +400,30 @@ function LiveVideoRoomController({
     localCameraTrack,
     localMicrophoneTrack,
     screenTrack,
-    remoteUsers,
+    currentUserId: effectiveCurrentUserId,
+    hostId: normalizedHostId,
+    isHost,
+    remoteUsers: visibleRemoteUsers,
     remoteScreenUser,
+    leaveButtonLabel,
+    isEndingSession,
     toggleMic: () => setIsMicEnabled((value) => !value),
     toggleCamera: () => setIsCameraEnabled((value) => !value),
     toggleScreenShare: () => setIsScreenSharing((value) => !value),
+    removeParticipant,
     leaveRoom,
   };
 
   return <>{renderAction(renderState)}</>;
 }
 
-export default function LiveVideoRoom({ roomId, userId, renderAction }: LiveVideoRoomProps) {
+export default function LiveVideoRoom({
+  roomId,
+  currentUserId,
+  hostId,
+  userId,
+  renderAction,
+}: LiveVideoRoomProps) {
   const client = useRTCClient(
     useMemo(() => AgoraRTC.createClient({ mode: "rtc", codec: "vp8" }), [])
   );
@@ -320,6 +432,8 @@ export default function LiveVideoRoom({ roomId, userId, renderAction }: LiveVide
     <AgoraRTCProvider client={client}>
       <LiveVideoRoomController
         roomId={roomId}
+        currentUserId={currentUserId}
+        hostId={hostId}
         userId={userId}
         client={client}
         renderAction={renderAction}

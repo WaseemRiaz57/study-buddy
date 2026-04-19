@@ -43,6 +43,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const [showChat, setShowChat] = useState(true);
   const [seconds, setSeconds] = useState(0);
   const [roomTopic, setRoomTopic] = useState<string>("");
+  const [roomHostId, setRoomHostId] = useState<string>("");
   const [isRoomLoading, setIsRoomLoading] = useState(true);
 
   useEffect(() => {
@@ -76,10 +77,24 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
         if (isActive) {
           setRoomTopic(typeof data?.topic === "string" ? data.topic : "");
+
+          const hostValue = data?.host;
+          const resolvedHostId =
+            typeof hostValue === "string"
+              ? hostValue
+              : hostValue && typeof hostValue === "object"
+              ? String(
+                  (hostValue as { _id?: string; id?: string })._id ||
+                    (hostValue as { _id?: string; id?: string }).id ||
+                    ""
+                )
+              : "";
+          setRoomHostId(resolvedHostId.trim());
         }
       } catch {
         if (isActive) {
           setRoomTopic("");
+          setRoomHostId("");
         }
       } finally {
         if (isActive) {
@@ -104,7 +119,8 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   return (
     <LiveVideoRoom
       roomId={normalizedRoomId}
-      userId={sessionUserId}
+      currentUserId={sessionUserId}
+      hostId={roomHostId}
       renderAction={(liveRoom: LiveVideoRoomRenderState) => (
         <div className="fixed inset-0 z-50 overflow-hidden flex flex-col font-sans transition-colors duration-300
           bg-slate-50 text-slate-900 
@@ -178,7 +194,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
           <button onClick={() => void liveRoom.leaveRoom()} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-red-500/20 transition-all flex items-center gap-2">
-            <PhoneOff size={16} /> <span className="hidden sm:inline">Leave</span>
+            <PhoneOff size={16} /> <span className="hidden sm:inline">{liveRoom.leaveButtonLabel}</span>
           </button>
         </div>
       </header>
@@ -280,6 +296,39 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
               </div>
             ) : null}
           </div>
+
+          {liveRoom.isHost ? (
+            <div className="px-4 pb-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-3 dark:bg-[#1a1524] dark:border-white/10">
+                <div className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+                  Manage Participants
+                </div>
+
+                {liveRoom.remoteUsers.length === 0 ? (
+                  <p className="text-xs text-slate-500 dark:text-gray-400">No participants to manage.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {liveRoom.remoteUsers.map((user) => (
+                      <div
+                        key={`manage-${String(user.uid)}`}
+                        className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-[#130d1a]"
+                      >
+                        <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
+                          User {String(user.uid)}
+                        </span>
+                        <button
+                          onClick={() => liveRoom.removeParticipant(user.uid)}
+                          className="rounded-md bg-red-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-600"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           {/* Bottom Floating Controls */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
