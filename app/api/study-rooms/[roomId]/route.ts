@@ -32,10 +32,23 @@ export async function GET(
       return NextResponse.json({ message: "Room not found" }, { status: 404 });
     }
 
+    const hostId =
+      typeof room.host === "string"
+        ? room.host
+        : room.host && typeof room.host === "object"
+        ? String(
+            (room.host as { _id?: string; id?: string })._id ||
+              (room.host as { _id?: string; id?: string }).id ||
+              ""
+          )
+        : "";
+
     return NextResponse.json({
       _id: room._id,
       topic: room.topic,
       roomId: room.roomId,
+      hostId,
+      currentUserId: authResult.userId,
       maxParticipants: room.maxParticipants,
       privacy: room.privacy,
       isLive: room.isLive,

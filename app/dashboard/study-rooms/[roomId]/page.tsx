@@ -32,16 +32,11 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const { data: session } = useSession();
 
   const currentUserName = session?.user?.name || "You";
-  const sessionUserId = String(
-    (session?.user as { id?: string } | undefined)?.id ||
-      session?.user?.email ||
-      session?.user?.name ||
-      "guest-user"
-  );
 
   const [activeTab, setActiveTab] = useState<"chat" | "vault">("chat");
   const [showChat, setShowChat] = useState(true);
   const [seconds, setSeconds] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [roomTopic, setRoomTopic] = useState<string>("");
   const [roomHostId, setRoomHostId] = useState<string>("");
   const [isRoomLoading, setIsRoomLoading] = useState(true);
@@ -76,23 +71,13 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
         }
 
         if (isActive) {
+          setCurrentUserId(String(data?.currentUserId || "").trim());
           setRoomTopic(typeof data?.topic === "string" ? data.topic : "");
-
-          const hostValue = data?.host;
-          const resolvedHostId =
-            typeof hostValue === "string"
-              ? hostValue
-              : hostValue && typeof hostValue === "object"
-              ? String(
-                  (hostValue as { _id?: string; id?: string })._id ||
-                    (hostValue as { _id?: string; id?: string }).id ||
-                    ""
-                )
-              : "";
-          setRoomHostId(resolvedHostId.trim());
+          setRoomHostId(String(data?.hostId || "").trim());
         }
       } catch {
         if (isActive) {
+          setCurrentUserId("");
           setRoomTopic("");
           setRoomHostId("");
         }
@@ -119,8 +104,9 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   return (
     <LiveVideoRoom
       roomId={normalizedRoomId}
-      currentUserId={sessionUserId}
+      currentUserId={currentUserId}
       hostId={roomHostId}
+      isHost={Boolean(currentUserId && roomHostId && currentUserId === roomHostId)}
       renderAction={(liveRoom: LiveVideoRoomRenderState) => (
         <div className="fixed inset-0 z-50 overflow-hidden flex flex-col font-sans transition-colors duration-300
           bg-slate-50 text-slate-900 
@@ -269,26 +255,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
               </div>
             </div>
 
-            {liveRoom.remoteUsers.map((user) => (
-              <div
-                key={String(user.uid)}
-                className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all
-                  bg-white border-slate-200
-                  dark:bg-zinc-800 dark:border-white/10"
-              >
-                <RemoteUser
-                  user={user as any}
-                  playVideo
-                  playAudio
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md transition-colors
-                  bg-white/80 text-slate-900 font-bold
-                  dark:bg-black/50 dark:text-white dark:font-normal">
-                  User {String(user.uid)}
-                </div>
-              </div>
-            ))}
+            {liveRoom.remoteParticipantCards}
 
             {liveRoom.remoteUsers.length === 0 ? (
               <div className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all bg-slate-100 border-dashed border-slate-300 text-slate-500 flex items-center justify-center text-xs">
