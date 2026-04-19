@@ -146,9 +146,9 @@ export async function POST(
     }
 
     const userObjectId = new mongoose.Types.ObjectId(authResult.userId);
-    const isParticipant = room.participants.some(
-      (participantId) => participantId.toString() === authResult.userId
-    );
+   const isParticipant = room.participants.some(
+  (participantId: any) => participantId.toString() === authResult.userId
+);
 
     if (action === "connect" && !isParticipant) {
       if (room.participants.length >= room.maxParticipants) {
