@@ -1,118 +1,65 @@
 import { NextResponse, type NextRequest } from "next/server";
 import mongoose from "mongoose";
-import { connectMongoDB } from "@/lib/mongodb";
-import { requireStudyRoomJwt } from "@/lib/study-room-auth";
-import { STUDY_ROOM_SOCKET_NAMESPACE } from "@/lib/study-room-constants";
+import { connectDB } from "@/lib/connectDB";
 import StudyRoom from "@/models/StudyRoom";
 
-function generateRoomCode() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "";
-
-  for (let index = 0; index < 5; index += 1) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-
-  return `SB-${code}`;
-}
-
-async function generateUniqueRoomCode() {
-  let tries = 0;
-
-  while (tries < 10) {
-    const candidate = generateRoomCode();
-    const exists = await StudyRoom.exists({ roomId: candidate });
-
-    if (!exists) {
-      return candidate;
-    }
-
-    tries += 1;
-  }
-
-  throw new Error("Failed to generate unique roomId.");
+interface CreateStudyRoomBody {
+  roomId: string;
+  createdBy: string;
+  title: string;
+  participants?: string[];
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireStudyRoomJwt(request);
-    if (authResult.error) return authResult.error;
+    const body = (await request.json()) as CreateStudyRoomBody;
+    const { roomId, createdBy, title, participants = [] } = body;
 
-    if (!mongoose.Types.ObjectId.isValid(authResult.userId)) {
+    if (!roomId || !createdBy || !title) {
       return NextResponse.json(
-        { message: "Unauthorized: invalid user identity" },
-        { status: 401 }
+        { message: "roomId, createdBy and title are required" },
+        { status: 400 }
       );
     }
 
-    const { topic, maxParticipants, privacy } = await request.json();
-
-    if (!topic || typeof topic !== "string") {
-      return NextResponse.json({ message: "topic is required" }, { status: 400 });
+    if (!mongoose.Types.ObjectId.isValid(createdBy)) {
+      return NextResponse.json(
+        { message: "Invalid createdBy user id" },
+        { status: 400 }
+      );
     }
 
-    await connectMongoDB();
+    await connectDB();
 
-    const roomId = await generateUniqueRoomCode();
-    const hostId = new mongoose.Types.ObjectId(authResult.userId);
+    const participantIds = participants
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    const creatorObjectId = new mongoose.Types.ObjectId(createdBy);
 
     const room = await StudyRoom.create({
-      topic: topic.trim(),
-      roomId,
-      maxParticipants:
-        typeof maxParticipants === "number" && Number.isFinite(maxParticipants)
-          ? maxParticipants
-          : undefined,
-      privacy: privacy === "Invite" ? "Invite" : "Public",
-      host: hostId,
-      participants: [hostId],
+      roomId: roomId.trim(),
+      createdBy: creatorObjectId,
+      title: title.trim(),
+      participants:
+        participantIds.length > 0
+          ? participantIds
+          : [creatorObjectId],
       isLive: true,
-      closedAt: null,
-      sessionDurationMinutes: 0,
-      createdAt: new Date(),
     });
 
     return NextResponse.json(
       {
         message: "Study room created successfully",
-        roomId: room.roomId,
-        socketNamespace: STUDY_ROOM_SOCKET_NAMESPACE,
+        room,
       },
       { status: 201 }
     );
   } catch (error) {
     console.error("Create study room error:", error);
-    return NextResponse.json({ message: "Failed to create study room" }, { status: 500 });
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireStudyRoomJwt(request);
-    if (authResult.error) return authResult.error;
-
-    await connectMongoDB();
-
-    const rooms = await StudyRoom.find({ isLive: true, privacy: "Public" })
-      .populate("host", "name")
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const formattedRooms = rooms.map((room) => ({
-      _id: room._id,
-      topic: room.topic,
-      roomId: room.roomId,
-      maxParticipants: room.maxParticipants,
-      privacy: room.privacy,
-      isLive: room.isLive,
-      createdAt: room.createdAt,
-      host: room.host,
-      participantsCount: Array.isArray(room.participants) ? room.participants.length : 0,
-    }));
-
-    return NextResponse.json(formattedRooms);
-  } catch (error) {
-    console.error("Fetch study rooms error:", error);
-    return NextResponse.json({ message: "Failed to fetch study rooms" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to create study room" },
+      { status: 500 }
+    );
   }
 }

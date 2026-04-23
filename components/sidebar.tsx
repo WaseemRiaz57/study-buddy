@@ -93,9 +93,19 @@ export function Sidebar() {
   const role = useUserStore((s) => s.role);
   const plan = useUserStore((s) => s.plan);
 
-  const navItems = buildNavItems(plan === "COMMUNITY").filter((item) =>
-    item.roles.includes(role),
-  );
+  const navItems = buildNavItems(plan === "COMMUNITY").filter((item) => {
+    if (!item.roles.includes(role)) return false;
+
+    if (
+      role === "MENTOR" &&
+      (item.href === "/dashboard/focus-rooms" ||
+        item.href === "/dashboard/study-buddy")
+    ) {
+      return false;
+    }
+
+    return true;
+  });
 
   return (
     <aside

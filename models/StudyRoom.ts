@@ -1,46 +1,32 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IStudyRoom extends Document {
-  topic: string;
   roomId: string;
-  maxParticipants: number;
-  privacy: "Public" | "Invite";
-  host: mongoose.Types.ObjectId;
+  createdBy: mongoose.Types.ObjectId;
+  title: string;
   participants: mongoose.Types.ObjectId[];
   isLive: boolean;
-  closedAt: Date | null;
-  sessionDurationMinutes: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const StudyRoomSchema = new Schema<IStudyRoom>(
   {
-    topic: {
-      type: String,
-      required: true,
-      trim: true,
-    },
     roomId: {
       type: String,
       required: true,
       unique: true,
-      uppercase: true,
       trim: true,
     },
-    maxParticipants: {
-      type: Number,
-      default: 20,
-      min: 2,
-    },
-    privacy: {
-      type: String,
-      enum: ["Public", "Invite"],
-      default: "Public",
-    },
-    host: {
+    createdBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
     },
     participants: {
       type: [Schema.Types.ObjectId],
@@ -51,24 +37,12 @@ const StudyRoomSchema = new Schema<IStudyRoom>(
       type: Boolean,
       default: true,
     },
-    closedAt: {
-      type: Date,
-      default: null,
-    },
-    sessionDurationMinutes: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
   },
-  { timestamps: false }
+  { timestamps: true }
 );
 
-StudyRoomSchema.index({ isLive: 1, privacy: 1, createdAt: -1 });
+StudyRoomSchema.index({ roomId: 1 }, { unique: true });
+StudyRoomSchema.index({ isLive: 1, createdAt: -1 });
 
 export default mongoose.models.StudyRoom ||
   mongoose.model<IStudyRoom>("StudyRoom", StudyRoomSchema);
