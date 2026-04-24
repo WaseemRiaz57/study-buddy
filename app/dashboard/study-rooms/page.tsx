@@ -42,7 +42,7 @@ export default function StudyRoomsPage() {
           ? payload
           : [];
 
-      const normalizedRooms: Room[] = rawRooms.map((room) => ({
+      const normalizedRooms: Room[] = rawRooms.map((room: any) => ({
             _id: String(room._id),
             topic: String(room.topic || "Untitled Room"),
             roomId: String(room.roomId || ""),
