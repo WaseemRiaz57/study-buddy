@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-// ✨ Added missing import for animations
+import { useState, useEffect, use, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion"; 
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import type { LiveVideoRoomRenderState } from "@/components/LiveVideoRoom";
-import { LocalVideoTrack, RemoteUser } from "agora-rtc-react";
 import {
   Mic,
   Video,
@@ -20,9 +18,20 @@ import {
   MicOff
 } from "lucide-react";
 
+// Native Video Player Helper (Replaces Agora's LocalVideoTrack & RemoteUser)
+const NativeStreamPlayer = ({ stream, muted = false, className = "" }: any) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+  return <video ref={videoRef} autoPlay playsInline muted={muted} className={className} />;
+};
+
 const LiveVideoRoom = dynamic(() => import('@/components/LiveVideoRoom'), {
   ssr: false,
-  loading: () => <p>Loading Room...</p>,
+  loading: () => <p className="text-center mt-10 text-slate-500">Loading Room...</p>,
 });
 
 export default function StudyRoomSessionPage({ params }: { params: Promise<{ roomId: string }> }) {
@@ -206,23 +215,18 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                   {liveRoom.isScreenSharing
                     ? "You are sharing your screen"
                     : liveRoom.remoteScreenUser
-                    ? `Participant ${String(liveRoom.remoteScreenUser.uid)} is sharing`
+                    ? `A participant is sharing`
                     : "No active screen share"}
                 </div>
               </div>
               
               <div className="h-[90%] w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-[#110d1b]">
-                <div className="h-full w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-900 dark:border-white/10">
+                <div className="h-full w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-900 dark:border-white/10 relative">
                   {(liveRoom.isScreenSharing && liveRoom.screenTrack) || liveRoom.remoteScreenUser ? (
                     liveRoom.isScreenSharing && liveRoom.screenTrack ? (
-                     <LocalVideoTrack track={liveRoom.screenTrack as any} play className="h-full w-full object-cover" />
+                      <NativeStreamPlayer stream={liveRoom.screenTrack} muted className="h-full w-full object-cover" />
                     ) : (
-                      <RemoteUser
-                        user={liveRoom.remoteScreenUser as any}
-                        playVideo
-                        playAudio
-                        className="h-full w-full object-cover"
-                      />
+                      <NativeStreamPlayer stream={liveRoom.remoteScreenUser} className="h-full w-full object-cover" />
                     )
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-sm text-slate-200">
@@ -236,13 +240,14 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
           {/* Video Strip */}
           <div className="h-48 flex gap-4 overflow-x-auto pb-4 px-4">
+            {/* My Local Video */}
             <div
               className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all
                 bg-white border-slate-200
                 dark:bg-zinc-800 dark:border-white/10 ring-2 ring-purple-500 dark:shadow-[0_0_0_2px_#ffd700]"
             >
-              {liveRoom.localCameraTrack ? (
-                <LocalVideoTrack track={liveRoom.localCameraTrack as any} play className="h-full w-full object-cover" />
+              {liveRoom.localStream ? (
+                <NativeStreamPlayer stream={liveRoom.localStream} muted className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs text-slate-200">
                   Camera unavailable
@@ -255,43 +260,28 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
               </div>
             </div>
 
+            {/* Remote Videos */}
             {liveRoom.remoteParticipantCards}
 
-            {liveRoom.remoteUsers.length === 0 ? (
+            {/* Waiting State */}
+            {(!liveRoom.remoteParticipantCards || liveRoom.remoteParticipantCards.length === 0) ? (
               <div className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all bg-slate-100 border-dashed border-slate-300 text-slate-500 flex items-center justify-center text-xs">
                 Waiting for participants...
               </div>
             ) : null}
           </div>
 
+          {/* Host Management Panel */}
           {liveRoom.isHost ? (
             <div className="px-4 pb-4">
               <div className="rounded-xl border border-slate-200 bg-white p-3 dark:bg-[#1a1524] dark:border-white/10">
                 <div className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                   Manage Participants
                 </div>
-
-                {liveRoom.remoteUsers.length === 0 ? (
+                {(!liveRoom.remoteParticipantCards || liveRoom.remoteParticipantCards.length === 0) ? (
                   <p className="text-xs text-slate-500 dark:text-gray-400">No participants to manage.</p>
                 ) : (
-                  <div className="space-y-2">
-                    {liveRoom.remoteUsers.map((user) => (
-                      <div
-                        key={`manage-${String(user.uid)}`}
-                        className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-[#130d1a]"
-                      >
-                        <span className="text-sm font-medium text-slate-700 dark:text-gray-200">
-                          User {String(user.uid)}
-                        </span>
-                        <button
-                          onClick={() => liveRoom.removeParticipant(user.uid)}
-                          className="rounded-md bg-red-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-600"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-xs text-slate-500 dark:text-gray-400">Participants can be managed directly on their video cards.</p>
                 )}
               </div>
             </div>
@@ -361,24 +351,6 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                       bg-slate-100 text-slate-500
                       dark:bg-white/5 dark:text-gray-500">Session Started</span>
                   </div>
-
-                  {/* Peer Msg */}
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-200 text-slate-600 text-xs font-bold dark:bg-white/10 dark:text-gray-200">P</div>
-                     <div className="rounded-2xl rounded-tl-none p-3 text-sm max-w-[85%] border shadow-sm transition-colors
-                       bg-white text-slate-700 border-slate-100
-                       dark:bg-[#1f192b] dark:text-gray-200 dark:border-white/5">
-                        <p>I uploaded the PDF.</p>
-                     </div>
-                  </div>
-
-                  {/* Me Msg */}
-                  <div className="flex flex-row-reverse gap-3">
-                     <div className="rounded-2xl rounded-tr-none p-3 text-sm text-white max-w-[85%] shadow-md transition-colors
-                       bg-purple-600 dark:bg-[#8c30e8]">
-                        <p>Got it, thanks!</p>
-                     </div>
-                  </div>
                 </div>
 
                 {/* Input Area */}
@@ -405,11 +377,6 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
           )}
         </AnimatePresence>
       </main>
-      {liveRoom.tokenError ? (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
-          {liveRoom.tokenError}
-        </div>
-      ) : null}
     </div>
       )}
     />
