@@ -34,6 +34,15 @@ const LiveVideoRoom = dynamic(() => import('@/components/LiveVideoRoom'), {
   loading: () => <p className="text-center mt-10 text-slate-500">Loading Room...</p>,
 });
 
+function normalizeUserId(value: unknown): string {
+  return String(value || "").trim();
+}
+
+function createGuestUserId(): string {
+  const randomNumber = Math.floor(100000 + Math.random() * 900000);
+  return `Guest-${randomNumber}`;
+}
+
 export default function StudyRoomSessionPage({ params }: { params: Promise<{ roomId: string }> }) {
   // Unwrap params
   const { roomId } = use(params);
@@ -41,11 +50,14 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const { data: session } = useSession();
 
   const currentUserName = session?.user?.name || "You";
+  const sessionUserId = normalizeUserId(session?.user?.id);
+  const [guestUserId] = useState(() => createGuestUserId());
+  const effectiveCurrentUserId = normalizeUserId(sessionUserId || guestUserId);
 
   const [activeTab, setActiveTab] = useState<"chat" | "vault">("chat");
   const [showChat, setShowChat] = useState(true);
   const [seconds, setSeconds] = useState(0);
-  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [apiCurrentUserId, setApiCurrentUserId] = useState<string>("");
   const [roomTopic, setRoomTopic] = useState<string>("");
   const [roomHostId, setRoomHostId] = useState<string>("");
   const [isRoomLoading, setIsRoomLoading] = useState(true);
@@ -80,13 +92,25 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
         }
 
         if (isActive) {
-          setCurrentUserId(String(data?.currentUserId || "").trim());
-          setRoomTopic(typeof data?.topic === "string" ? data.topic : "");
-          setRoomHostId(String(data?.hostId || "").trim());
+          const room = data?.room ?? {};
+          const fetchedCurrentUserId = normalizeUserId(data?.currentUserId || sessionUserId || guestUserId);
+          const fetchedHostId = normalizeUserId(
+            data?.hostId || room?.createdBy?._id || room?.createdBy
+          );
+
+          setApiCurrentUserId(fetchedCurrentUserId);
+          setRoomTopic(
+            typeof room?.title === "string"
+              ? room.title
+              : typeof data?.topic === "string"
+                ? data.topic
+                : ""
+          );
+          setRoomHostId(fetchedHostId);
         }
       } catch {
         if (isActive) {
-          setCurrentUserId("");
+          setApiCurrentUserId("");
           setRoomTopic("");
           setRoomHostId("");
         }
@@ -102,7 +126,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
     return () => {
       isActive = false;
     };
-  }, [normalizedRoomId]);
+  }, [normalizedRoomId, guestUserId, sessionUserId]);
 
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
@@ -113,9 +137,9 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   return (
     <LiveVideoRoom
       roomId={normalizedRoomId}
-      currentUserId={currentUserId}
+      currentUserId={normalizeUserId(apiCurrentUserId || sessionUserId || guestUserId || effectiveCurrentUserId)}
       hostId={roomHostId}
-      isHost={Boolean(currentUserId && roomHostId && currentUserId === roomHostId)}
+      isHost={Boolean((apiCurrentUserId || sessionUserId || guestUserId) && roomHostId && (apiCurrentUserId || sessionUserId || guestUserId) === roomHostId)}
       renderAction={(liveRoom: LiveVideoRoomRenderState) => (
         <div className="fixed inset-0 z-50 overflow-hidden flex flex-col font-sans transition-colors duration-300
           bg-slate-50 text-slate-900 

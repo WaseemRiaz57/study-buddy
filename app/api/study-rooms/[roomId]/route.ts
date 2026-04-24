@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getServerSession } from "next-auth";
 import { connectDB } from "@/lib/connectDB";
+import { authOptions } from "@/lib/authOptions";
 import StudyRoom from "@/models/StudyRoom";
 
 function normalizeRoomId(roomId: string): string {
@@ -13,6 +15,8 @@ export async function GET(
   try {
     const { roomId } = await params;
     const normalizedRoomId = normalizeRoomId(roomId);
+    const session = await getServerSession(authOptions);
+    const currentUserId = String(session?.user?.id || "").trim();
 
     if (!normalizedRoomId) {
       return NextResponse.json({ message: "roomId is required" }, { status: 400 });
@@ -29,8 +33,19 @@ export async function GET(
       return NextResponse.json({ message: "Room not found" }, { status: 404 });
     }
 
+    const populatedRoom = room as {
+      createdBy?: { _id?: unknown } | unknown;
+    };
+    const hostId = String(
+      (typeof populatedRoom.createdBy === "object" && populatedRoom.createdBy !== null
+        ? (populatedRoom.createdBy as { _id?: unknown })._id
+        : populatedRoom.createdBy) || ""
+    ).trim();
+
     return NextResponse.json({
       room,
+      currentUserId,
+      hostId,
     });
   } catch (error) {
     console.error("Fetch study room details error:", error);
