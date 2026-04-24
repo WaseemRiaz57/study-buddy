@@ -10,8 +10,10 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { io } from "socket.io-client";
 import Peer from "simple-peer";
+import { Minus } from "lucide-react";
 
 // 🚨 UPDATE THIS URL TO YOUR RENDER BACKEND
 const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "https://studybuddy-backend-pl2i.onrender.com";
@@ -369,6 +371,7 @@ export default function LiveVideoRoom({
 const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
   const ref = useRef<HTMLVideoElement>(null);
   const [hasStream, setHasStream] = useState(false); 
+  const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
     if (!peer || peer.destroyed) return;
@@ -394,24 +397,48 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
   }, [peer]);
 
   return (
-    <div className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all bg-black border-slate-200 dark:border-white/10">
-      <video ref={ref} autoPlay playsInline className="h-full w-full object-cover" />
-      
-      {!hasStream && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/90 z-0">
-          <span className="text-xs text-gray-400 font-medium animate-pulse">Connecting Video...</span>
+    <motion.div
+      layout
+      transition={{ type: "spring", stiffness: 240, damping: 22 }}
+      className={`relative overflow-hidden flex-shrink-0 border shadow-sm transition-all bg-black border-slate-200 dark:border-white/10 ${
+        isMinimized ? "h-24 w-36 rounded-lg" : "aspect-video h-full rounded-xl"
+      }`}
+    >
+      <button
+        onClick={() => setIsMinimized((prev) => !prev)}
+        className="absolute top-2 left-2 rounded-md bg-black/60 px-1.5 py-1 text-white hover:bg-black/80 z-20"
+        aria-label={isMinimized ? "Expand participant video" : "Minimize participant video"}
+      >
+        <Minus size={12} />
+      </button>
+
+      {!isMinimized ? (
+        <>
+          <video ref={ref} autoPlay playsInline className="h-full w-full object-cover" />
+
+          {!hasStream && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/90 z-0">
+              <span className="text-xs text-gray-400 font-medium animate-pulse">Connecting Video...</span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-gray-800/90">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-xs font-semibold text-white">
+            {String(name || "U").slice(0, 1).toUpperCase()}
+          </div>
         </div>
       )}
 
       <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md bg-black/50 text-white font-normal z-10">
         {name}
       </div>
-      
-      {isHost && (
+
+      {isHost && !isMinimized && (
         <button onClick={onRemove} className="absolute top-2 right-2 rounded-md bg-red-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-600 z-10">
           Remove
         </button>
       )}
-    </div>
+    </motion.div>
   );
 };
