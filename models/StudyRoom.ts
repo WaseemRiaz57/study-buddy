@@ -5,6 +5,9 @@ export interface IStudyRoom extends Document {
   createdBy: mongoose.Types.ObjectId;
   title: string;
   participants: mongoose.Types.ObjectId[];
+  maxParticipants?: number;
+  isActive: boolean;
+  status: string;
   isLive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +36,22 @@ const StudyRoomSchema = new Schema<IStudyRoom>(
       ref: "User",
       default: [],
     },
+    maxParticipants: {
+      type: Number,
+      default: 20,
+      min: 2,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    status: {
+      type: String,
+      default: "active",
+      index: true,
+      trim: true,
+    },
     isLive: {
       type: Boolean,
       default: true,
@@ -43,6 +62,7 @@ const StudyRoomSchema = new Schema<IStudyRoom>(
 
 StudyRoomSchema.index({ roomId: 1 }, { unique: true });
 StudyRoomSchema.index({ isLive: 1, createdAt: -1 });
+StudyRoomSchema.index({ isActive: 1, status: 1, createdAt: -1 });
 
 export default mongoose.models.StudyRoom ||
   mongoose.model<IStudyRoom>("StudyRoom", StudyRoomSchema);

@@ -5,7 +5,11 @@ import { authOptions } from "@/lib/authOptions";
 import StudyRoom from "@/models/StudyRoom";
 
 function normalizeRoomId(roomId: string): string {
-  return roomId.trim();
+  return roomId.trim().toUpperCase();
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export async function GET(
@@ -24,7 +28,9 @@ export async function GET(
 
     await connectDB();
 
-    const room = await StudyRoom.findOne({ roomId: normalizedRoomId })
+    const room = await StudyRoom.findOne({
+      roomId: { $regex: `^${escapeRegex(normalizedRoomId)}$`, $options: "i" },
+    })
       .populate("createdBy", "name email")
       .populate("participants", "name email")
       .lean();

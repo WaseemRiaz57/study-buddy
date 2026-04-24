@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/connectDB";
 import StudyRoom from "@/models/StudyRoom";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface CreateStudyRoomBody {
   roomId: string;
@@ -18,8 +19,9 @@ export async function GET() {
 
     const rooms = await StudyRoom.find({
       $or: [
-        { isActive: true },
-        { status: "active" },
+        { $and: [{ isActive: true }, { status: "active" }] },
+        { $and: [{ isActive: { $exists: false } }, { isLive: true }] },
+        { $and: [{ status: { $exists: false } }, { isLive: true }] },
         { isLive: true },
       ],
     })
@@ -41,8 +43,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as CreateStudyRoomBody;
     const { roomId, createdBy, title, participants = [] } = body;
+    const normalizedRoomId = String(roomId || "").trim().toUpperCase();
+    const normalizedTitle = String(title || "").trim();
 
-    if (!roomId || !createdBy || !title) {
+    if (!normalizedRoomId || !createdBy || !normalizedTitle) {
       return NextResponse.json(
         { message: "roomId, createdBy and title are required" },
         { status: 400 }
@@ -65,13 +69,15 @@ export async function POST(request: NextRequest) {
     const creatorObjectId = new mongoose.Types.ObjectId(createdBy);
 
     const room = await StudyRoom.create({
-      roomId: roomId.trim(),
+      roomId: normalizedRoomId,
       createdBy: creatorObjectId,
-      title: title.trim(),
+      title: normalizedTitle,
       participants:
         participantIds.length > 0
           ? participantIds
           : [creatorObjectId],
+      isActive: true,
+      status: "active",
       isLive: true,
     });
 

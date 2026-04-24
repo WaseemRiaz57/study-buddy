@@ -23,7 +23,7 @@ export async function POST(
     }
 
     const { roomId } = await params;
-    const normalizedRoomId = roomId.toUpperCase();
+    const normalizedRoomId = roomId.trim().toUpperCase();
 
     await maybeAutoCloseStudyRoom(normalizedRoomId);
 

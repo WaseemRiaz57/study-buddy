@@ -62,6 +62,8 @@ async function endSession(
     }
 
     room.isLive = false;
+    (room as any).isActive = false;
+    (room as any).status = "ended";
 
     await room.save();
 
