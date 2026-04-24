@@ -34,7 +34,7 @@ export type LiveVideoRoomRenderState = {
   isMicEnabled: boolean;
   isCameraEnabled: boolean;
   isScreenSharing: boolean;
-  remoteScreenUser: any; 
+  remoteScreenUser: MediaStream | null;
   screenTrack: MediaStreamTrack | null;
   localStream: MediaStream | null; 
   currentUserId: string;
@@ -101,6 +101,7 @@ export default function LiveVideoRoom({
   const [participants, setParticipants] = useState([]);
   const [peers, setPeers] = useState<{ peerID: string, peer: Peer.Instance }[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [remoteScreenUser, setRemoteScreenUser] = useState<MediaStream | null>(null);
 
   // Refs
   const socketRef = useRef<any>();
@@ -167,6 +168,17 @@ export default function LiveVideoRoom({
               ...prev,
               { id: Date.now(), senderId: signal.senderId, text: signal.text },
             ]);
+            return;
+          }
+
+          if (signal.type === 'screen-toggle') {
+            if (signal.isSharing) {
+              const remotePeer = peersRef.current.find((p) => p.peerID === from);
+              const remoteStream = remotePeer?.peer?._remoteStreams?.[0] || null;
+              setRemoteScreenUser(remoteStream);
+            } else {
+              setRemoteScreenUser(null);
+            }
             return;
           }
 
@@ -263,6 +275,13 @@ export default function LiveVideoRoom({
       });
     }
 
+    peersRef.current.forEach((p) => {
+      socketRef.current?.emit('webrtc-signal', {
+        signal: { type: 'screen-toggle', isSharing: false },
+        to: p.peerID,
+      });
+    });
+
     setScreenTrack(null);
     setIsScreenSharing(false);
   }, [screenTrack]);
@@ -284,6 +303,13 @@ export default function LiveVideoRoom({
         });
       }
 
+      peersRef.current.forEach((p) => {
+        socketRef.current?.emit('webrtc-signal', {
+          signal: { type: 'screen-toggle', isSharing: true },
+          to: p.peerID,
+        });
+      });
+
       newScreenTrack.onended = () => {
         revertToCameraTrack(newScreenTrack);
       };
@@ -293,16 +319,10 @@ export default function LiveVideoRoom({
     }
 
     if (screenTrack) {
+      screenTrack.onended = null;
       screenTrack.stop();
-
-      const oldCameraTrack = streamRef.current?.getVideoTracks()[0];
-      if (oldCameraTrack && streamRef.current) {
-        peersRef.current.forEach((p) => {
-          if (!p.peer.destroyed) {
-            p.peer.replaceTrack(screenTrack, oldCameraTrack, streamRef.current);
-          }
-        });
-      }
+      revertToCameraTrack(screenTrack);
+      return;
     }
 
     setScreenTrack(null);
@@ -362,7 +382,7 @@ export default function LiveVideoRoom({
     isMicEnabled,
     isCameraEnabled,
     isScreenSharing,
-    remoteScreenUser: null, 
+    remoteScreenUser,
     screenTrack,
     localStream, 
     currentUserId: effectiveCurrentUserId,
