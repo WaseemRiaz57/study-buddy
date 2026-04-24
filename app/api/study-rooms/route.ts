@@ -10,6 +10,25 @@ interface CreateStudyRoomBody {
   participants?: string[];
 }
 
+export async function GET() {
+  try {
+    await connectDB();
+
+    const rooms = await StudyRoom.find({})
+      .populate("createdBy")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return NextResponse.json({ success: true, data: rooms });
+  } catch (error) {
+    console.error("Get study rooms error:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch study rooms" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as CreateStudyRoomBody;

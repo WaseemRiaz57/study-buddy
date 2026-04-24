@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Globe, Lock, X, Check, Copy, ArrowRight, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 type CreateRoomModalProps = {
   isOpen: boolean;
@@ -13,8 +14,10 @@ type CreateRoomModalProps = {
 
 export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRoomModalProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [step, setStep] = useState<"form" | "success">("form");
   const [topic, setTopic] = useState("");
+  const [description, setDescription] = useState("");
   const [maxParticipants, setMaxParticipants] = useState(8);
   const [privacy, setPrivacy] = useState<"public" | "invite">("public");
   const [roomId, setRoomId] = useState("");
@@ -22,37 +25,96 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
 
+  const getCurrentUserId = () => {
+    const fromSession = String(session?.user?.id || "").trim();
+    if (fromSession) return fromSession;
+
+    if (typeof window === "undefined") return "";
+
+    const directKeys = ["userId", "currentUserId", "id"];
+    for (const key of directKeys) {
+      const value = String(window.localStorage.getItem(key) || "").trim();
+      if (value) return value;
+    }
+
+    const jsonKeys = ["user", "session", "auth", "currentUser"];
+    for (const key of jsonKeys) {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw) as {
+          id?: string;
+          _id?: string;
+          userId?: string;
+          user?: { id?: string; _id?: string; userId?: string };
+        };
+
+        const candidate = String(
+          parsed?.id ||
+            parsed?._id ||
+            parsed?.userId ||
+            parsed?.user?.id ||
+            parsed?.user?._id ||
+            parsed?.user?.userId ||
+            ""
+        ).trim();
+
+        if (candidate) return candidate;
+      } catch {
+        // Ignore invalid JSON in localStorage and continue searching.
+      }
+    }
+
+    return "";
+  };
+
   const handleIgnite = async () => {
-    if (!topic.trim()) return;
+    if (!topic.trim() || !description.trim()) return;
 
     setIsCreating(true);
     setError("");
 
     try {
+      const createdBy = getCurrentUserId();
+      if (!createdBy) {
+        const message = "Could not identify the current user. Please sign in again.";
+        setError(message);
+        alert(message);
+        return;
+      }
+
+      const generatedRoomId =
+        "SB-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+
       const response = await fetch("/api/study-rooms", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          topic: topic.trim(),
-          maxParticipants,
-          privacy: privacy === "invite" ? "Invite" : "Public",
+          title: topic.trim(),
+          roomId: generatedRoomId,
+          createdBy,
+          description: description.trim(),
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data?.message || "Failed to create room.");
+        const message = data?.message || "Failed to create room.";
+        setError(message);
+        alert(message);
         return;
       }
 
-      setRoomId(String(data.roomId || ""));
+      setRoomId(String(data?.room?.roomId || data?.roomId || generatedRoomId));
       setStep("success");
       onCreated?.();
     } catch {
-      setError("Failed to create room. Please try again.");
+      const message = "Failed to create room. Please try again.";
+      setError(message);
+      alert(message);
     } finally {
       setIsCreating(false);
     }
@@ -140,6 +202,19 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
                         </div>
                       </div>
 
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">Description</label>
+                        <textarea
+                          className="w-full px-4 py-3 rounded-xl border outline-none transition-all resize-none
+                            bg-slate-50 border-slate-200 text-slate-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20
+                            dark:bg-white/5 dark:border-white/10 dark:text-white dark:focus:border-[#8c30e8] dark:focus:ring-[#8c30e8]/20"
+                          placeholder="Briefly describe the room goal, agenda, or rules..."
+                          rows={3}
+                          value={description}
+                          onChange={(event) => setDescription(event.target.value)}
+                        />
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
                         {/* Participants Slider */}
                         <div className="space-y-3">
@@ -195,9 +270,9 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
                     <div className="pt-2">
                       <button
                         onClick={handleIgnite}
-                        disabled={!topic.trim() || isCreating}
+                        disabled={!topic.trim() || !description.trim() || isCreating}
                         className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2
-                            ${topic.trim() && !isCreating
+                          ${topic.trim() && description.trim() && !isCreating
                             ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-purple-500/25 hover:scale-[1.02]" 
                             : "bg-slate-300 dark:bg-white/10 cursor-not-allowed text-slate-500 dark:text-gray-500"}`}
                       >

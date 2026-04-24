@@ -20,9 +20,9 @@ import {
   MicOff
 } from "lucide-react";
 
-const LiveVideoRoom = dynamic(() => import("@/components/LiveVideoRoom"), {
+const LiveVideoRoom = dynamic(() => import('@/components/LiveVideoRoom'), {
   ssr: false,
-  loading: () => <p>Starting Camera...</p>,
+  loading: () => <p>Loading Room...</p>,
 });
 
 export default function StudyRoomSessionPage({ params }: { params: Promise<{ roomId: string }> }) {

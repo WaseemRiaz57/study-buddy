@@ -29,26 +29,31 @@ export default function StudyRoomsPage() {
 
     try {
       const response = await fetch("/api/study-rooms", { cache: "no-store" });
-      const data = await response.json();
+      const payload = await response.json();
 
       if (!response.ok) {
-        setRoomsError(data?.message || "Failed to load rooms.");
+        setRoomsError(payload?.message || "Failed to load rooms.");
         return;
       }
 
-      const normalizedRooms: Room[] = Array.isArray(data)
-        ? data.map((room) => ({
+      const rawRooms = Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload)
+          ? payload
+          : [];
+
+      const normalizedRooms: Room[] = rawRooms.map((room) => ({
             _id: String(room._id),
             topic: String(room.topic || "Untitled Room"),
             roomId: String(room.roomId || ""),
             participantsCount:
               typeof room.participantsCount === "number" ? room.participantsCount : 0,
             capacity: typeof room.maxParticipants === "number" ? room.maxParticipants : 20,
-          }))
-        : [];
+          }));
 
       setRooms(normalizedRooms);
-    } catch {
+    } catch (error) {
+      console.log("Fetch Error:", error);
       setRoomsError("Failed to load rooms.");
     } finally {
       setIsLoadingRooms(false);

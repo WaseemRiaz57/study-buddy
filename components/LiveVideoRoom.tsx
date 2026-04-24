@@ -103,7 +103,7 @@ function LiveVideoRoomController({
   const router = useRouter();
   const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID ?? "";
   // Keeps the UID random to avoid collision
-  const [agoraUid] = useState(() => Math.floor(Math.random() * 1000000));
+  const [agoraUid] = useState(() => Math.floor(Math.random() * 65000) + 1);
   
   const effectiveCurrentUserId = String(currentUserId || userId || "").trim();
   const normalizedHostId = String(hostId || "").trim();
