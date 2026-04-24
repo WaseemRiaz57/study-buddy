@@ -13,6 +13,8 @@ type Room = {
   capacity: number;
   hostName: string;
   isLive: boolean;
+  isActive: boolean;
+  status: string;
 };
 
 export default function StudyRoomsPage() {
@@ -57,6 +59,8 @@ export default function StudyRoomsPage() {
             capacity: typeof room.maxParticipants === "number" ? room.maxParticipants : 20,
             hostName: String(room?.createdBy?.name || "Unknown Host"),
             isLive: Boolean(room?.isActive === true || room?.status === "active" || room?.isLive === true),
+            isActive: room?.isActive === true,
+            status: String(room?.status || ""),
           }));
 
       setRooms(normalizedRooms);
@@ -71,6 +75,10 @@ export default function StudyRoomsPage() {
   useEffect(() => {
     loadRooms();
   }, []);
+
+  const activeRooms = rooms.filter(
+    (room) => room.isActive === true || room.status === "active"
+  );
 
   const handleJoinWithCode = async () => {
     const normalizedCode = joinCode.trim().toUpperCase();
@@ -204,13 +212,13 @@ export default function StudyRoomsPage() {
             {/* Note: Removed the "Create Card" from here */}
 
             {/* Room Cards */}
-            {!isLoadingRooms && !roomsError && rooms.length === 0 ? (
+            {!isLoadingRooms && !roomsError && activeRooms.length === 0 ? (
               <div className="col-span-full rounded-2xl p-6 text-center border border-slate-200 bg-white text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-gray-300">
                 No live public rooms right now.
               </div>
             ) : null}
 
-            {rooms.map((room) => (
+            {activeRooms.map((room) => (
               <article
                 key={room._id}
                 onClick={() => router.push(`/dashboard/study-rooms/${room.roomId}`)}
