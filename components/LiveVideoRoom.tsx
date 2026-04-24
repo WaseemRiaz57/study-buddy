@@ -291,14 +291,16 @@ export default function LiveVideoRoom({
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const newScreenTrack = screenStream.getVideoTracks()[0];
 
+      // Keep camera stream intact; only store display track separately.
       setScreenTrack(newScreenTrack);
 
-      const oldCameraTrack = streamRef.current?.getVideoTracks()[0];
+      const cameraStream = streamRef.current;
+      const oldCameraTrack = cameraStream?.getVideoTracks()[0];
 
-      if (oldCameraTrack && newScreenTrack && streamRef.current) {
+      if (oldCameraTrack && newScreenTrack && cameraStream) {
         peersRef.current.forEach((p) => {
           if (!p.peer.destroyed) {
-            p.peer.replaceTrack(oldCameraTrack, newScreenTrack, streamRef.current);
+            p.peer.replaceTrack(oldCameraTrack, newScreenTrack, cameraStream);
           }
         });
       }

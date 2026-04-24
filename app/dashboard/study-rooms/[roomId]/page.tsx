@@ -264,12 +264,10 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
                     <div className="h-full w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-[#110d1b]">
                       <div className="h-full w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-900 dark:border-white/10 relative">
-                        {(liveRoom.isScreenSharing && liveRoom.screenTrack) || liveRoom.remoteScreenUser ? (
-                          liveRoom.remoteScreenUser ? (
-                            <NativeStreamPlayer stream={liveRoom.remoteScreenUser} className="h-full w-full object-cover" />
-                          ) : (
-                            <NativeStreamPlayer stream={liveRoom.screenTrack} muted className="h-full w-full object-cover" />
-                          )
+                        {liveRoom.isScreenSharing && liveRoom.screenTrack ? (
+                          <NativeStreamPlayer stream={liveRoom.screenTrack} muted className="h-full w-full object-cover" />
+                        ) : liveRoom.remoteScreenUser ? (
+                          <NativeStreamPlayer stream={liveRoom.remoteScreenUser} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-sm text-slate-200">
                             Welcome to Study Room
