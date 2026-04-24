@@ -18,14 +18,22 @@ import {
   MicOff
 } from "lucide-react";
 
-// Native Video Player Helper (Replaces Agora's LocalVideoTrack & RemoteUser)
+// Native Video Player Helper (Smarter version for Screen Share Tracks)
 const NativeStreamPlayer = ({ stream, muted = false, className = "" }: any) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  
   useEffect(() => {
     if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+      // Check: Agar yeh akela 'Track' hai, toh usay 'Stream' mein wrap kar do
+      if (stream instanceof MediaStreamTrack) {
+        videoRef.current.srcObject = new MediaStream([stream]);
+      } else {
+        // Agar pehle se poori 'Stream' hai (jaise camera), toh direct chala do
+        videoRef.current.srcObject = stream;
+      }
     }
   }, [stream]);
+  
   return <video ref={videoRef} autoPlay playsInline muted={muted} className={className} />;
 };
 
