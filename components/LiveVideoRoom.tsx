@@ -32,7 +32,8 @@ export type LiveVideoRoomRenderState = {
   isMicEnabled: boolean;
   isCameraEnabled: boolean;
   isScreenSharing: boolean;
-  localStream: MediaStream | null; // Changed from Agora Track to Native Stream
+  remoteScreenUser: any; // 👈 Fixed: Added back for Vercel Build
+  localStream: MediaStream | null; 
   currentUserId: string;
   hostId: string;
   isHost: boolean;
@@ -103,7 +104,7 @@ export default function LiveVideoRoom({
         socketRef.current.emit("join-room", { 
           roomId, 
           userId: effectiveCurrentUserId, 
-          name: `User ${effectiveCurrentUserId.substring(0, 4)}` // Fallback name
+          name: `User ${effectiveCurrentUserId.substring(0, 4)}` 
         });
 
         socketRef.current.on("room-users", (users) => {
@@ -211,7 +212,6 @@ export default function LiveVideoRoom({
   }, []);
 
   const toggleScreenShare = useCallback(() => {
-    // Basic placeholder to keep the interface happy
     alert("Screen sharing requires additional native WebRTC setup in this custom version.");
   }, []);
 
@@ -257,6 +257,7 @@ export default function LiveVideoRoom({
     isMicEnabled,
     isCameraEnabled,
     isScreenSharing,
+    remoteScreenUser: null, // 👈 Fixed: Provided default value for Vercel Build
     localStream, 
     currentUserId: effectiveCurrentUserId,
     hostId: normalizedHostId,
@@ -277,6 +278,7 @@ export default function LiveVideoRoom({
 // Sub-component for rendering incoming WebRTC streams
 const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
   const ref = useRef<HTMLVideoElement>(null);
+  const [hasStream, setHasStream] = useState(false); // 👈 Fixed: Added stream detection state
 
   useEffect(() => {
     if (!peer || peer.destroyed) return;
@@ -284,6 +286,7 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
     const attachStream = (stream: MediaStream) => {
       if (ref.current && stream) {
         ref.current.srcObject = stream;
+        setHasStream(true);
         ref.current.play().catch(e => console.warn("Autoplay blocked:", e));
       }
     };
@@ -303,9 +306,18 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
   return (
     <div className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all bg-black border-slate-200 dark:border-white/10">
       <video ref={ref} autoPlay playsInline className="h-full w-full object-cover" />
-      <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md bg-black/50 text-white font-normal">
+      
+      {/* 👈 Fixed: Added loader if stream is missing */}
+      {!hasStream && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/90 z-0">
+          <span className="text-xs text-gray-400 font-medium animate-pulse">Connecting Video...</span>
+        </div>
+      )}
+
+      <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md bg-black/50 text-white font-normal z-10">
         {name}
       </div>
+      
       {isHost && (
         <button onClick={onRemove} className="absolute top-2 right-2 rounded-md bg-red-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-600 z-10">
           Remove
