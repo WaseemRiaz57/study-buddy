@@ -68,8 +68,20 @@ export default function LiveVideoRoom({
   renderAction,
 }: LiveVideoRoomProps) {
   const router = useRouter();
+  const [stableGuestId] = useState(() => {
+    try {
+      const existingId = sessionStorage.getItem("studyBuddyId");
+      if (existingId) return existingId;
+
+      const generatedId = `Guest-${Math.random().toString(36).slice(2, 10)}`;
+      sessionStorage.setItem("studyBuddyId", generatedId);
+      return generatedId;
+    } catch {
+      return `Guest-${Math.random().toString(36).slice(2, 10)}`;
+    }
+  });
   
-  const effectiveCurrentUserId = String(currentUserId || userId || "").trim();
+  const effectiveCurrentUserId = String(currentUserId || userId || stableGuestId || "").trim();
   const normalizedHostId = String(hostId || "").trim();
   const isHost = typeof isHostProp === "boolean" 
     ? isHostProp 
@@ -150,6 +162,14 @@ export default function LiveVideoRoom({
             return;
           }
 
+          if (signal.type === 'chat') {
+            setMessages((prev) => [
+              ...prev,
+              { id: Date.now(), senderId: signal.senderId, text: signal.text },
+            ]);
+            return;
+          }
+
           const existingPeer = peersRef.current.find(p => p.peerID === from);
 
           if (signal.type === 'offer') {
@@ -165,7 +185,8 @@ export default function LiveVideoRoom({
           const peerObj = peersRef.current.find(p => p.peerID === socketId);
           if (peerObj && !peerObj.peer.destroyed) peerObj.peer.destroy();
           peersRef.current = peersRef.current.filter(p => p.peerID !== socketId);
-          setPeers([...peersRef.current]);
+          setPeers((prev) => prev.filter((p) => p.peerID !== socketId));
+          setParticipants((prev: any[]) => prev.filter((p) => p.socketId !== socketId));
         });
 
         socketRef.current.on("room-ended", () => {
@@ -197,10 +218,6 @@ export default function LiveVideoRoom({
     peer.on("signal", signal => {
       socketRef.current?.emit("webrtc-signal", { signal, to: userToSignal });
     });
-    peer.on('data', (data) => {
-      const incomingMessage = JSON.parse(data.toString());
-      setMessages((prev) => [...prev, incomingMessage]);
-    });
     return peer;
   }
 
@@ -208,10 +225,6 @@ export default function LiveVideoRoom({
     const peer = new Peer({ initiator: false, trickle: true, stream: stream || undefined, config: { iceServers } });
     peer.on("signal", signal => {
       socketRef.current?.emit("webrtc-signal", { signal, to: callerID });
-    });
-    peer.on('data', (data) => {
-      const incomingMessage = JSON.parse(data.toString());
-      setMessages((prev) => [...prev, incomingMessage]);
     });
     peer.signal(incomingSignal);
     return peer;
@@ -300,7 +313,10 @@ export default function LiveVideoRoom({
     const messageObject = { id: Date.now(), senderId: effectiveCurrentUserId, text };
     setMessages((prev) => [...prev, messageObject]);
     peersRef.current.forEach((p) => {
-      p.peer.send(JSON.stringify(messageObject));
+      socketRef.current?.emit('webrtc-signal', {
+        signal: { type: 'chat', text, senderId: effectiveCurrentUserId },
+        to: p.peerID,
+      });
     });
   }, [effectiveCurrentUserId]);
 
