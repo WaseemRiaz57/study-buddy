@@ -32,7 +32,8 @@ export type LiveVideoRoomRenderState = {
   isMicEnabled: boolean;
   isCameraEnabled: boolean;
   isScreenSharing: boolean;
-  remoteScreenUser: any; // 👈 Fixed: Added back for Vercel Build
+  remoteScreenUser: any; 
+  screenTrack: any; // 👈 Fixed: Added screenTrack to satisfy parent component
   localStream: MediaStream | null; 
   currentUserId: string;
   hostId: string;
@@ -257,7 +258,8 @@ export default function LiveVideoRoom({
     isMicEnabled,
     isCameraEnabled,
     isScreenSharing,
-    remoteScreenUser: null, // 👈 Fixed: Provided default value for Vercel Build
+    remoteScreenUser: null, 
+    screenTrack: null, // 👈 Fixed: Added screenTrack to satisfy parent component
     localStream, 
     currentUserId: effectiveCurrentUserId,
     hostId: normalizedHostId,
@@ -278,7 +280,7 @@ export default function LiveVideoRoom({
 // Sub-component for rendering incoming WebRTC streams
 const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
   const ref = useRef<HTMLVideoElement>(null);
-  const [hasStream, setHasStream] = useState(false); // 👈 Fixed: Added stream detection state
+  const [hasStream, setHasStream] = useState(false); 
 
   useEffect(() => {
     if (!peer || peer.destroyed) return;
@@ -307,7 +309,6 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
     <div className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all bg-black border-slate-200 dark:border-white/10">
       <video ref={ref} autoPlay playsInline className="h-full w-full object-cover" />
       
-      {/* 👈 Fixed: Added loader if stream is missing */}
       {!hasStream && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/90 z-0">
           <span className="text-xs text-gray-400 font-medium animate-pulse">Connecting Video...</span>
