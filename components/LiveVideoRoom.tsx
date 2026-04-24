@@ -38,12 +38,14 @@ export type LiveVideoRoomRenderState = {
   currentUserId: string;
   hostId: string;
   isHost: boolean;
+  messages: any[];
   remoteParticipantCards: ReactNode[];
   leaveButtonLabel: string;
   isEndingSession: boolean;
   toggleMic: () => void;
   toggleCamera: () => void;
   toggleScreenShare: () => void;
+  sendMessage: (text: string) => void;
   removeParticipant: (participantUid: string | number) => void;
   leaveRoom: () => Promise<void>;
 };
@@ -83,6 +85,7 @@ export default function LiveVideoRoom({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [participants, setParticipants] = useState([]);
   const [peers, setPeers] = useState<{ peerID: string, peer: Peer.Instance }[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
 
   // Refs
   const socketRef = useRef<any>();
@@ -137,6 +140,13 @@ export default function LiveVideoRoom({
 
         socketRef.current.on("webrtc-signal", (payload: any) => {
           const { signal, from } = payload;
+
+          if (signal.type === 'kick') {
+            alert('You have been removed by the host.');
+            window.location.href = '/dashboard/study-rooms';
+            return;
+          }
+
           const existingPeer = peersRef.current.find(p => p.peerID === from);
 
           if (signal.type === 'offer') {
@@ -160,6 +170,11 @@ export default function LiveVideoRoom({
           window.location.href = '/dashboard/study-rooms';
         });
 
+        socketRef.current.on("you-are-kicked", () => {
+          alert("You have been removed by the host.");
+          window.location.href = '/dashboard/study-rooms';
+        });
+
       })
       .catch((err) => {
         console.error("Media error:", err);
@@ -179,6 +194,10 @@ export default function LiveVideoRoom({
     peer.on("signal", signal => {
       socketRef.current?.emit("webrtc-signal", { signal, to: userToSignal });
     });
+    peer.on('data', (data) => {
+      const incomingMessage = JSON.parse(data.toString());
+      setMessages((prev) => [...prev, incomingMessage]);
+    });
     return peer;
   }
 
@@ -186,6 +205,10 @@ export default function LiveVideoRoom({
     const peer = new Peer({ initiator: false, trickle: true, stream: stream || undefined, config: { iceServers } });
     peer.on("signal", signal => {
       socketRef.current?.emit("webrtc-signal", { signal, to: callerID });
+    });
+    peer.on('data', (data) => {
+      const incomingMessage = JSON.parse(data.toString());
+      setMessages((prev) => [...prev, incomingMessage]);
     });
     peer.signal(incomingSignal);
     return peer;
@@ -216,9 +239,17 @@ export default function LiveVideoRoom({
     alert("Screen sharing requires additional native WebRTC setup in this custom version.");
   }, []);
 
+  const sendMessage = useCallback((text: string) => {
+    const messageObject = { id: Date.now(), senderId: effectiveCurrentUserId, text };
+    setMessages((prev) => [...prev, messageObject]);
+    peersRef.current.forEach((p) => {
+      p.peer.send(JSON.stringify(messageObject));
+    });
+  }, [effectiveCurrentUserId]);
+
   const removeParticipant = useCallback((participantUid: string | number) => {
     if (!isHost) return;
-    console.log("Kick User: ", participantUid);
+    socketRef.current?.emit('webrtc-signal', { signal: { type: 'kick' }, to: participantUid });
   }, [isHost]);
 
   // Leave & End Room
@@ -264,12 +295,14 @@ export default function LiveVideoRoom({
     currentUserId: effectiveCurrentUserId,
     hostId: normalizedHostId,
     isHost,
+    messages,
     remoteParticipantCards,
     leaveButtonLabel: isHost ? "End Session" : "Leave Room",
     isEndingSession,
     toggleMic,
     toggleCamera,
     toggleScreenShare,
+    sendMessage,
     removeParticipant,
     leaveRoom,
   };

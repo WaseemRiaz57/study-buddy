@@ -56,11 +56,13 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
   const [activeTab, setActiveTab] = useState<"chat" | "vault">("chat");
   const [showChat, setShowChat] = useState(true);
+  const [chatInput, setChatInput] = useState('');
   const [seconds, setSeconds] = useState(0);
   const [apiCurrentUserId, setApiCurrentUserId] = useState<string>("");
   const [roomTopic, setRoomTopic] = useState<string>("");
   const [roomHostId, setRoomHostId] = useState<string>("");
   const [isRoomLoading, setIsRoomLoading] = useState(true);
+  const currentUserId = normalizeUserId(apiCurrentUserId || sessionUserId || guestUserId || effectiveCurrentUserId);
 
   useEffect(() => {
     const interval = setInterval(() => setSeconds(s => s + 1), 1000);
@@ -137,7 +139,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   return (
     <LiveVideoRoom
       roomId={normalizedRoomId}
-      currentUserId={normalizeUserId(apiCurrentUserId || sessionUserId || guestUserId || effectiveCurrentUserId)}
+      currentUserId={currentUserId}
       hostId={roomHostId}
       isHost={Boolean((apiCurrentUserId || sessionUserId || guestUserId) && roomHostId && (apiCurrentUserId || sessionUserId || guestUserId) === roomHostId)}
       renderAction={(liveRoom: LiveVideoRoomRenderState) => (
@@ -369,12 +371,29 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                 
                 {/* Messages List */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {/* System Msg */}
-                  <div className="flex justify-center">
-                    <span className="text-[10px] px-2 py-1 rounded-full transition-colors
-                      bg-slate-100 text-slate-500
-                      dark:bg-white/5 dark:text-gray-500">Session Started</span>
-                  </div>
+                  {(!liveRoom.messages || liveRoom.messages.length === 0) ? (
+                    <div className="flex justify-center">
+                      <span className="text-[10px] px-2 py-1 rounded-full transition-colors
+                        bg-slate-100 text-slate-500
+                        dark:bg-white/5 dark:text-gray-500">No messages yet</span>
+                    </div>
+                  ) : (
+                    liveRoom.messages.map((message: any) => {
+                      const isMine = String(message?.senderId || "") === currentUserId;
+
+                      return (
+                        <div key={String(message?.id)} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                          <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm transition-colors ${
+                            isMine
+                              ? "bg-purple-600 text-white dark:bg-[#8c30e8]"
+                              : "bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-gray-100"
+                          }`}>
+                            {String(message?.text || "")}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
 
                 {/* Input Area */}
@@ -387,11 +406,29 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                     <input 
                       type="text" 
                       placeholder="Type a message..." 
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const trimmedMessage = chatInput.trim();
+                          if (!trimmedMessage) return;
+                          liveRoom.sendMessage(trimmedMessage);
+                          setChatInput("");
+                        }
+                      }}
                       className="flex-1 bg-transparent border-none text-sm focus:ring-0 py-2.5 pl-3 transition-colors
                         text-slate-900 placeholder-slate-400
                         dark:text-white dark:placeholder-gray-600"
                     />
-                    <button className="p-2 rounded-full text-white transition-colors bg-purple-600 hover:bg-purple-700 dark:bg-[#8c30e8]">
+                    <button
+                      onClick={() => {
+                        const trimmedMessage = chatInput.trim();
+                        if (!trimmedMessage) return;
+                        liveRoom.sendMessage(trimmedMessage);
+                        setChatInput("");
+                      }}
+                      className="p-2 rounded-full text-white transition-colors bg-purple-600 hover:bg-purple-700 dark:bg-[#8c30e8]"
+                    >
                         <Send size={14} />
                     </button>
                   </div>
