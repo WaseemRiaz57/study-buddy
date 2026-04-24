@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/connectDB";
+import { authOptions } from "@/lib/authOptions";
 import StudyRoom from "@/models/StudyRoom";
 
 function normalizeRoomId(roomId: string): string {
@@ -11,18 +13,27 @@ interface EndSessionBody {
   currentUserId: string;
 }
 
-export async function PATCH(
+async function endSession(
   request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
-    const body = (await request.json()) as EndSessionBody;
-    const { currentUserId } = body;
+    const session = await getServerSession(authOptions);
 
-    if (!currentUserId || !mongoose.Types.ObjectId.isValid(currentUserId)) {
+    let bodyCurrentUserId = "";
+    try {
+      const body = (await request.json()) as Partial<EndSessionBody>;
+      bodyCurrentUserId = String(body?.currentUserId || "").trim();
+    } catch {
+      bodyCurrentUserId = "";
+    }
+
+    const requesterId = String(session?.user?.id || bodyCurrentUserId).trim();
+
+    if (!requesterId || !mongoose.Types.ObjectId.isValid(requesterId)) {
       return NextResponse.json(
-        { message: "Invalid currentUserId" },
-        { status: 400 }
+        { message: "Unauthorized" },
+        { status: 401 }
       );
     }
 
@@ -35,7 +46,7 @@ export async function PATCH(
 
     await connectDB();
 
-    const hostObjectId = new mongoose.Types.ObjectId(currentUserId);
+    const hostObjectId = new mongoose.Types.ObjectId(requesterId);
 
     const room = await StudyRoom.findOne({ roomId: normalizedRoomId });
 
@@ -55,7 +66,7 @@ export async function PATCH(
     await room.save();
 
     return NextResponse.json({
-      message: "Session ended successfully",
+      message: "Session ended successfully. Room marked inactive.",
       roomId: room.roomId,
       isLive: room.isLive,
       updatedAt: room.updatedAt,
@@ -64,4 +75,18 @@ export async function PATCH(
     console.error("End session error:", error);
     return NextResponse.json({ message: "Failed to end session" }, { status: 500 });
   }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ roomId: string }> }
+) {
+  return endSession(request, context);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ roomId: string }> }
+) {
+  return endSession(request, context);
 }
