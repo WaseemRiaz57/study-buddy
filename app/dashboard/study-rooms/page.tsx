@@ -11,6 +11,8 @@ type Room = {
   roomId: string;
   participantsCount: number;
   capacity: number;
+  hostName: string;
+  isLive: boolean;
 };
 
 export default function StudyRoomsPage() {
@@ -44,11 +46,17 @@ export default function StudyRoomsPage() {
 
       const normalizedRooms: Room[] = rawRooms.map((room: any) => ({
             _id: String(room._id),
-            topic: String(room.topic || "Untitled Room"),
+            topic: String(room.title || room.topic || "Untitled Room"),
             roomId: String(room.roomId || ""),
             participantsCount:
-              typeof room.participantsCount === "number" ? room.participantsCount : 0,
+              typeof room.participantsCount === "number"
+                ? room.participantsCount
+                : Array.isArray(room.participants)
+                  ? room.participants.length
+                  : 0,
             capacity: typeof room.maxParticipants === "number" ? room.maxParticipants : 20,
+            hostName: String(room?.createdBy?.name || "Unknown Host"),
+            isLive: Boolean(room?.isActive === true || room?.status === "active" || room?.isLive === true),
           }));
 
       setRooms(normalizedRooms);
@@ -178,13 +186,27 @@ export default function StudyRoomsPage() {
 
           {/* ── ROOM GRID (Cleaned) ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+            {!isLoadingRooms && roomsError ? (
+              <div className="col-span-full rounded-2xl p-6 text-center border border-slate-200 bg-white text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-gray-300">
+                <p className="text-sm text-red-500 font-medium">Unable to load rooms right now. Please try again.</p>
+                <button
+                  onClick={loadRooms}
+                  className="mt-4 px-4 py-2 rounded-xl text-sm font-semibold transition-all
+                    bg-slate-900 text-white hover:bg-slate-800
+                    dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : null}
             
             {/* Note: Removed the "Create Card" from here */}
 
             {/* Room Cards */}
-            {!isLoadingRooms && rooms.length === 0 ? (
+            {!isLoadingRooms && !roomsError && rooms.length === 0 ? (
               <div className="col-span-full rounded-2xl p-6 text-center border border-slate-200 bg-white text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-gray-300">
-                {roomsError || "No live public rooms right now."}
+                No live public rooms right now.
               </div>
             ) : null}
 
@@ -199,10 +221,10 @@ export default function StudyRoomsPage() {
                 {/* Live Badge */}
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-teal-500 dark:bg-[#4fd1c5] animate-pulse" />
-                    <span className="text-xs font-bold text-teal-600 dark:text-[#4fd1c5] tracking-wide uppercase inline-flex items-center gap-1">
+                    <div className={`h-2 w-2 rounded-full ${room.isLive ? "bg-teal-500 dark:bg-[#4fd1c5] animate-pulse" : "bg-slate-400 dark:bg-gray-500"}`} />
+                    <span className={`text-xs font-bold tracking-wide uppercase inline-flex items-center gap-1 ${room.isLive ? "text-teal-600 dark:text-[#4fd1c5]" : "text-slate-500 dark:text-gray-400"}`}>
                       <Radio size={12} />
-                      Live
+                      {room.isLive ? "Live" : "Ended"}
                     </span>
                   </div>
                 </div>
@@ -221,10 +243,8 @@ export default function StudyRoomsPage() {
 
                 {/* Footer */}
                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
-                  <div className="flex -space-x-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-[#0f0c13] bg-slate-200 dark:bg-gray-700" />
-                    ))}
+                  <div className="text-xs font-medium text-slate-500 dark:text-gray-300 truncate pr-3">
+                    Host: <span className="text-slate-700 dark:text-white">{room.hostName}</span>
                   </div>
                   <div className="text-slate-500 dark:text-white/60 text-sm font-medium flex items-center gap-1">
                     <Users size={14} />
