@@ -10,27 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import AgoraRTC, {
-  type IAgoraRTCClient,
-  type IAgoraRTCRemoteUser,
-  type ICameraVideoTrack,
-  type IMicrophoneAudioTrack,
-  type ILocalVideoTrack,
-  type ILocalTrack,
-} from "agora-rtc-sdk-ng";
-import {
-  AgoraRTCProvider,
-  RemoteUser,
-  useJoin,
-  useLocalCameraTrack,
-  useLocalMicrophoneTrack,
-  useLocalScreenTrack,
-  usePublish,
-  useRemoteAudioTracks,
-  useRemoteUsers,
-  useRemoteVideoTracks,
-  useRTCClient,
-} from "agora-rtc-react";
+import { io } from "socket.io-client";
+import Peer from "simple-peer";
+
+// 🚨 UPDATE THIS URL TO YOUR RENDER BACKEND
+const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "https://studybuddy-backend-pl2i.onrender.com";
 
 type LiveVideoRoomProps = {
   roomId: string;
@@ -41,33 +25,18 @@ type LiveVideoRoomProps = {
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
 };
 
-type LiveVideoRoomControllerProps = {
-  roomId: string;
-  isHost?: boolean;
-  currentUserId?: string;
-  hostId?: string;
-  userId?: string;
-  client: IAgoraRTCClient;
-  renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
-};
-
+// Adapted Render State for Native WebRTC
 export type LiveVideoRoomRenderState = {
   isConnected: boolean;
   isJoining: boolean;
-  isTokenLoading: boolean;
-  tokenError: string | null;
   isMicEnabled: boolean;
   isCameraEnabled: boolean;
   isScreenSharing: boolean;
-  localCameraTrack: ICameraVideoTrack | null;
-  localMicrophoneTrack: IMicrophoneAudioTrack | null;
-  screenTrack: ILocalVideoTrack | null;
+  localStream: MediaStream | null; // Changed from Agora Track to Native Stream
   currentUserId: string;
   hostId: string;
   isHost: boolean;
-  remoteUsers: IAgoraRTCRemoteUser[];
   remoteParticipantCards: ReactNode[];
-  remoteScreenUser: IAgoraRTCRemoteUser | null;
   leaveButtonLabel: string;
   isEndingSession: boolean;
   toggleMic: () => void;
@@ -77,178 +46,186 @@ export type LiveVideoRoomRenderState = {
   leaveRoom: () => Promise<void>;
 };
 
-function isProbablyScreenShareUser(user: IAgoraRTCRemoteUser): boolean {
-  const uid = String(user.uid).toLowerCase();
-  if (uid.includes("screen")) {
-    return true;
-  }
+const iceServers = [
+  { urls: "stun:stun.l.google.com:19302" },
+  { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
+  { urls: "stun:global.stun.twilio.com:3478" }
+];
 
-  const mediaTrack = (
-    user.videoTrack as { getMediaStreamTrack?: () => MediaStreamTrack } | undefined
-  )?.getMediaStreamTrack?.();
-  const label = mediaTrack?.label?.toLowerCase() ?? "";
-
-  return label.includes("screen") || label.includes("display") || label.includes("window");
-}
-
-function LiveVideoRoomController({
+export default function LiveVideoRoom({
   roomId,
   isHost: isHostProp,
   currentUserId,
   hostId,
   userId,
-  client,
   renderAction,
-}: LiveVideoRoomControllerProps) {
+}: LiveVideoRoomProps) {
   const router = useRouter();
-  const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID ?? "";
-  // Keeps the UID random to avoid collision
-  const [agoraUid] = useState(() => Math.floor(Math.random() * 65000) + 1);
   
   const effectiveCurrentUserId = String(currentUserId || userId || "").trim();
   const normalizedHostId = String(hostId || "").trim();
-  const derivedIsHost = Boolean(
-    effectiveCurrentUserId &&
-      normalizedHostId &&
-      effectiveCurrentUserId === normalizedHostId
-  );
-  const isHost = typeof isHostProp === "boolean" ? isHostProp : derivedIsHost;
+  const isHost = typeof isHostProp === "boolean" 
+    ? isHostProp 
+    : Boolean(effectiveCurrentUserId && normalizedHostId && effectiveCurrentUserId === normalizedHostId);
 
-  const [token, setToken] = useState<string | null>(null);
-  const [isTokenLoading, setIsTokenLoading] = useState(true);
-  const [tokenError, setTokenError] = useState<string | null>(null);
+  // States
+  const [isConnected, setIsConnected] = useState(false);
+  const [isJoining, setIsJoining] = useState(true);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [participants, setParticipants] = useState([]);
+  const [peers, setPeers] = useState<{ peerID: string, peer: Peer.Instance }[]>([]);
 
-  // Fetch Token
+  // Refs
+  const socketRef = useRef<any>();
+  const streamRef = useRef<MediaStream | null>(null);
+  const peersRef = useRef<{ peerID: string, peer: Peer.Instance }[]>([]);
+
+  // Initialize Connection
   useEffect(() => {
-    let isActive = true;
+    if (!effectiveCurrentUserId || !roomId) return;
 
-    async function fetchRtcToken() {
-      setIsTokenLoading(true);
-      setTokenError(null);
+    socketRef.current = io(SOCKET_SERVER_URL);
 
-      try {
-        if (!roomId) throw new Error("Room ID is required.");
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        setLocalStream(stream);
+        streamRef.current = stream;
+        setIsJoining(false);
+        setIsConnected(true);
 
-        const response = await fetch("/api/agora-token?channelName=" + roomId + "&uid=0");
-        const data = await response.json();
+        socketRef.current.emit("join-room", { 
+          roomId, 
+          userId: effectiveCurrentUserId, 
+          name: `User ${effectiveCurrentUserId.substring(0, 4)}` // Fallback name
+        });
 
-        if (!response.ok || !data?.token) {
-          throw new Error(data?.error || "Failed to fetch RTC token.");
-        }
+        socketRef.current.on("room-users", (users) => {
+          setParticipants(users);
+          const currentSocketIds = users.map((u: any) => u.socketId);
+          
+          // Cleanup stale peers
+          peersRef.current = peersRef.current.filter(p => {
+            if (!currentSocketIds.includes(p.peerID)) {
+              if (!p.peer.destroyed) p.peer.destroy();
+              return false;
+            }
+            return true;
+          });
 
-        if (isActive) setToken(String(data.token));
-      } catch (error) {
-        if (isActive) {
-          setTokenError(error instanceof Error ? error.message : "Unable to fetch room token.");
-        }
-      } finally {
-        if (isActive) setIsTokenLoading(false);
-      }
-    }
+          // Connect to new peers
+          const mySocketId = socketRef.current.id;
+          users.forEach((otherUser: any) => {
+            if (otherUser.socketId !== mySocketId) {
+              const existingPeer = peersRef.current.find(p => p.peerID === otherUser.socketId);
+              if (!existingPeer && mySocketId < otherUser.socketId) {
+                const peer = createPeer(otherUser.socketId, mySocketId, streamRef.current);
+                peersRef.current.push({ peerID: otherUser.socketId, peer });
+              }
+            }
+          });
+          setPeers([...peersRef.current]);
+        });
 
-    void fetchRtcToken();
+        socketRef.current.on("webrtc-signal", (payload: any) => {
+          const { signal, from } = payload;
+          const existingPeer = peersRef.current.find(p => p.peerID === from);
+
+          if (signal.type === 'offer') {
+            const peer = addPeer(signal, from, streamRef.current);
+            peersRef.current.push({ peerID: from, peer });
+            setPeers([...peersRef.current]);
+          } else if (existingPeer && !existingPeer.peer.destroyed) {
+            try { existingPeer.peer.signal(signal); } catch (e) { console.error(e); }
+          }
+        });
+
+        socketRef.current.on("user-left", (socketId: string) => {
+          const peerObj = peersRef.current.find(p => p.peerID === socketId);
+          if (peerObj && !peerObj.peer.destroyed) peerObj.peer.destroy();
+          peersRef.current = peersRef.current.filter(p => p.peerID !== socketId);
+          setPeers([...peersRef.current]);
+        });
+
+        socketRef.current.on("room-ended", () => {
+          alert("This session was ended by the host.");
+          window.location.href = '/dashboard/study-rooms';
+        });
+
+      })
+      .catch((err) => {
+        console.error("Media error:", err);
+        alert("Please allow camera and microphone access.");
+        setIsJoining(false);
+      });
 
     return () => {
-      isActive = false;
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      if (socketRef.current) socketRef.current.disconnect();
+      peersRef.current.forEach(p => { if (!p.peer.destroyed) p.peer.destroy(); });
     };
-  }, [roomId]);
+  }, [roomId, effectiveCurrentUserId]);
 
-  // Init Local Tracks
-  const { localMicrophoneTrack, isLoading: isMicLoading } = useLocalMicrophoneTrack();
-  const { localCameraTrack, isLoading: isCameraLoading } = useLocalCameraTrack();
-  const {
-    screenTrack,
-    isLoading: _isScreenLoading,
-    error: _screenError,
-  } = useLocalScreenTrack(isScreenSharing, {}, "disable");
+  function createPeer(userToSignal: string, callerID: string, stream: MediaStream | null) {
+    const peer = new Peer({ initiator: true, trickle: true, stream: stream || undefined, config: { iceServers } });
+    peer.on("signal", signal => {
+      socketRef.current?.emit("webrtc-signal", { signal, to: userToSignal });
+    });
+    return peer;
+  }
 
-  // Toggle States
-  useEffect(() => {
-    if (localMicrophoneTrack) void localMicrophoneTrack.setEnabled(isMicEnabled);
-  }, [localMicrophoneTrack, isMicEnabled]);
+  function addPeer(incomingSignal: any, callerID: string, stream: MediaStream | null) {
+    const peer = new Peer({ initiator: false, trickle: true, stream: stream || undefined, config: { iceServers } });
+    peer.on("signal", signal => {
+      socketRef.current?.emit("webrtc-signal", { signal, to: callerID });
+    });
+    peer.signal(incomingSignal);
+    return peer;
+  }
 
-  useEffect(() => {
-    if (localCameraTrack) void localCameraTrack.setEnabled(isCameraEnabled);
-  }, [localCameraTrack, isCameraEnabled]);
+  // Toggles
+  const toggleMic = useCallback(() => {
+    if (streamRef.current) {
+      const audioTrack = streamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMicEnabled(audioTrack.enabled);
+      }
+    }
+  }, []);
 
-  // Join Channel
-  const canJoin = Boolean(
-    appId && roomId && token && !isTokenLoading && !tokenError && !isLeaving
-  );
+  const toggleCamera = useCallback(() => {
+    if (streamRef.current) {
+      const videoTrack = streamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsCameraEnabled(videoTrack.enabled);
+      }
+    }
+  }, []);
 
-  const { isConnected, isLoading: isJoinLoading } = useJoin(
-    {
-      appid: appId,
-      channel: roomId,
-      token: token ?? null,
-      uid: agoraUid,
-    },
-    canJoin
-  );
+  const toggleScreenShare = useCallback(() => {
+    // Basic placeholder to keep the interface happy
+    alert("Screen sharing requires additional native WebRTC setup in this custom version.");
+  }, []);
 
-  // Filter out null tracks so Agora doesn't crash if Mic or Camera is blocked
-const tracksToPublish = [localMicrophoneTrack, localCameraTrack].filter(Boolean);
-usePublish(isConnected && tracksToPublish.length > 0 ? tracksToPublish : []);
+  const removeParticipant = useCallback((participantUid: string | number) => {
+    if (!isHost) return;
+    console.log("Kick User: ", participantUid);
+  }, [isHost]);
 
-  // Remote Users Data
-  const remoteUsers = useRemoteUsers();
-  // Call these hooks so Agora automatically subscribes and downloads the remote tracks
-  useRemoteVideoTracks(remoteUsers);
-  useRemoteAudioTracks(remoteUsers);
-
-  const remoteScreenUser = useMemo(() => {
-    return remoteUsers.find((user) => user.hasVideo && isProbablyScreenShareUser(user)) ?? null;
-  }, [remoteUsers]);
-
-  const removeParticipant = useCallback(
-    (participantUid: string | number) => {
-      if (!isHost) return;
-      console.log("Kick User: ", participantUid);
-    },
-    [isHost]
-  );
-
-  const remoteParticipantCards = useMemo(() => {
-    return remoteUsers.map((user) => (
-      <div
-        key={String(user.uid)}
-        className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all bg-white border-slate-200 dark:bg-zinc-800 dark:border-white/10"
-      >
-        <RemoteUser
-          user={user}
-          playVideo={true}
-          playAudio={true}
-          className="h-full w-full object-cover"
-        />
-        <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md transition-colors bg-white/80 text-slate-900 font-bold dark:bg-black/50 dark:text-white dark:font-normal">
-          User {String(user.uid)}
-        </div>
-        {isHost ? (
-          <button
-            onClick={() => removeParticipant(user.uid)}
-            className="absolute top-2 right-2 rounded-md bg-red-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-600 z-10"
-          >
-            Remove
-          </button>
-        ) : null}
-      </div>
-    ));
-  }, [isHost, remoteUsers, removeParticipant]);
-
+  // Leave & End Room
   const updateSessionDatabase = useCallback(async () => {
     if (!isHost) return;
     try {
-      await fetch(`/api/study-rooms/${encodeURIComponent(roomId)}/end-session`, {
-        method: "PATCH",
-      });
-    } catch (error) {
-      console.error("Session end database update error:", error);
-    }
+      await fetch(`/api/study-rooms/${encodeURIComponent(roomId)}/end-session`, { method: "PATCH" });
+    } catch (error) { console.error(error); }
   }, [isHost, roomId]);
 
   const leaveRoom = useCallback(async () => {
@@ -257,63 +234,39 @@ usePublish(isConnected && tracksToPublish.length > 0 ? tracksToPublish : []);
 
     if (isHost) {
       setIsEndingSession(true);
-      try {
-        await updateSessionDatabase();
-      } finally {
-        setIsEndingSession(false);
-      }
+      socketRef.current?.emit("end-room", { roomId });
+      await updateSessionDatabase();
     }
 
-    try {
-      await client.leave();
-    } catch (error) {
-      console.error("Leave room error:", error);
-    } finally {
-      // Clean up tracks ONLY on leave
-      localCameraTrack?.stop();
-      localCameraTrack?.close();
-      localMicrophoneTrack?.stop();
-      localMicrophoneTrack?.close();
-      screenTrack?.stop();
-      screenTrack?.close();
+    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    socketRef.current?.disconnect();
+    router.push("/dashboard/study-rooms");
+  }, [isLeaving, isHost, roomId, router, updateSessionDatabase]);
 
-      router.push("/dashboard");
-    }
-  }, [
-    client,
-    isLeaving,
-    isHost,
-    localCameraTrack,
-    localMicrophoneTrack,
-    router,
-    screenTrack,
-    updateSessionDatabase,
-  ]);
-
-  const leaveButtonLabel = isHost ? "End Session" : "Leave Room";
+  // Render Remote Cards
+  const remoteParticipantCards = useMemo(() => {
+    return peers.map((peerObj) => {
+      const remoteUser = participants.find((p: any) => p.socketId === peerObj.peerID);
+      return <VideoPeer key={peerObj.peerID} peer={peerObj.peer} name={remoteUser?.name || 'User'} isHost={isHost} onRemove={() => removeParticipant(peerObj.peerID)} />;
+    });
+  }, [peers, participants, isHost, removeParticipant]);
 
   const renderState: LiveVideoRoomRenderState = {
     isConnected,
-    isJoining: isJoinLoading || isCameraLoading || isMicLoading,
-    isTokenLoading,
-    tokenError: !appId ? "NEXT_PUBLIC_AGORA_APP_ID is missing." : tokenError,
+    isJoining,
     isMicEnabled,
     isCameraEnabled,
     isScreenSharing,
-    localCameraTrack,
-    localMicrophoneTrack,
-    screenTrack,
+    localStream, 
     currentUserId: effectiveCurrentUserId,
     hostId: normalizedHostId,
     isHost,
-    remoteUsers,
     remoteParticipantCards,
-    remoteScreenUser,
-    leaveButtonLabel,
+    leaveButtonLabel: isHost ? "End Session" : "Leave Room",
     isEndingSession,
-    toggleMic: () => setIsMicEnabled((value) => !value),
-    toggleCamera: () => setIsCameraEnabled((value) => !value),
-    toggleScreenShare: () => setIsScreenSharing((value) => !value),
+    toggleMic,
+    toggleCamera,
+    toggleScreenShare,
     removeParticipant,
     leaveRoom,
   };
@@ -321,29 +274,43 @@ usePublish(isConnected && tracksToPublish.length > 0 ? tracksToPublish : []);
   return <>{renderAction(renderState)}</>;
 }
 
-export default function LiveVideoRoom({
-  roomId,
-  isHost,
-  currentUserId,
-  hostId,
-  userId,
-  renderAction,
-}: LiveVideoRoomProps) {
-  const client = useRTCClient(
-    useMemo(() => AgoraRTC.createClient({ mode: "rtc", codec: "vp8" }), [])
-  );
+// Sub-component for rendering incoming WebRTC streams
+const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
+  const ref = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!peer || peer.destroyed) return;
+
+    const attachStream = (stream: MediaStream) => {
+      if (ref.current && stream) {
+        ref.current.srcObject = stream;
+        ref.current.play().catch(e => console.warn("Autoplay blocked:", e));
+      }
+    };
+
+    peer.on("stream", attachStream);
+    peer.on("track", (track: any, stream: MediaStream) => { if (stream) attachStream(stream); });
+
+    if (peer._remoteStreams && peer._remoteStreams[0]) {
+      attachStream(peer._remoteStreams[0]);
+    }
+
+    return () => {
+      peer.off("stream", attachStream);
+    };
+  }, [peer]);
 
   return (
-    <AgoraRTCProvider client={client}>
-      <LiveVideoRoomController
-        roomId={roomId}
-        isHost={isHost}
-        currentUserId={currentUserId}
-        hostId={hostId}
-        userId={userId}
-        client={client}
-        renderAction={renderAction}
-      />
-    </AgoraRTCProvider>
+    <div className="aspect-video h-full rounded-xl relative overflow-hidden flex-shrink-0 border shadow-sm transition-all bg-black border-slate-200 dark:border-white/10">
+      <video ref={ref} autoPlay playsInline className="h-full w-full object-cover" />
+      <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs backdrop-blur-md bg-black/50 text-white font-normal">
+        {name}
+      </div>
+      {isHost && (
+        <button onClick={onRemove} className="absolute top-2 right-2 rounded-md bg-red-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-600 z-10">
+          Remove
+        </button>
+      )}
+    </div>
   );
-}
+};
