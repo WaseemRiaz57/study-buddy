@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { io } from "socket.io-client";
 import Peer from "simple-peer";
-import { Minus } from "lucide-react";
+import { Mic, MicOff, Minus, Video, VideoOff } from "lucide-react";
 
 // 🚨 UPDATE THIS URL TO YOUR RENDER BACKEND
 const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "https://studybuddy-backend-pl2i.onrender.com";
@@ -90,6 +90,7 @@ export default function LiveVideoRoom({
   // States
   const [isConnected, setIsConnected] = useState(false);
   const [isJoining, setIsJoining] = useState(true);
+  const [hasJoined, setHasJoined] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(true);
@@ -107,110 +108,26 @@ export default function LiveVideoRoom({
   const socketRef = useRef<any>();
   const streamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<{ peerID: string, peer: Peer.Instance }[]>([]);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Initialize Connection
+  // Effect 1: Media only (pre-join preview)
   useEffect(() => {
-    if (!effectiveCurrentUserId || !roomId) return;
-
-    socketRef.current = io(SOCKET_SERVER_URL);
+    let isActive = true;
 
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((stream) => {
+        if (!isActive) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
         setLocalStream(stream);
         streamRef.current = stream;
+        const audioTrack = stream.getAudioTracks()[0];
+        const videoTrack = stream.getVideoTracks()[0];
+        setIsMicEnabled(audioTrack ? audioTrack.enabled : true);
+        setIsCameraEnabled(videoTrack ? videoTrack.enabled : true);
         setIsJoining(false);
-        setIsConnected(true);
-
-        socketRef.current.emit("join-room", { 
-          roomId, 
-          userId: effectiveCurrentUserId, 
-          name: `User ${effectiveCurrentUserId.substring(0, 4)}` 
-        });
-
-        socketRef.current.on("room-users", (users) => {
-          setParticipants(users);
-          const currentSocketIds = users.map((u: any) => u.socketId);
-          
-          // Cleanup stale peers
-          peersRef.current = peersRef.current.filter(p => {
-            if (!currentSocketIds.includes(p.peerID)) {
-              if (!p.peer.destroyed) p.peer.destroy();
-              return false;
-            }
-            return true;
-          });
-
-          // Connect to new peers
-          const mySocketId = socketRef.current.id;
-          users.forEach((otherUser: any) => {
-            if (otherUser.socketId !== mySocketId) {
-              const existingPeer = peersRef.current.find(p => p.peerID === otherUser.socketId);
-              if (!existingPeer && mySocketId < otherUser.socketId) {
-                const peer = createPeer(otherUser.socketId, mySocketId, streamRef.current);
-                peersRef.current.push({ peerID: otherUser.socketId, peer });
-              }
-            }
-          });
-          setPeers([...peersRef.current]);
-        });
-
-        socketRef.current.on("webrtc-signal", (payload: any) => {
-          const { signal, from } = payload;
-
-          if (signal.type === 'kick') {
-            alert('You have been removed by the host.');
-            window.location.href = '/dashboard/study-rooms';
-            return;
-          }
-
-          if (signal.type === 'chat') {
-            setMessages((prev) => [
-              ...prev,
-              { id: Date.now(), senderId: signal.senderId, text: signal.text },
-            ]);
-            return;
-          }
-
-          if (signal.type === 'screen-toggle') {
-            if (signal.isSharing) {
-              const remotePeer = peersRef.current.find((p) => p.peerID === from);
-              const remoteStream = remotePeer?.peer?._remoteStreams?.[0] || null;
-              setRemoteScreenUser(remoteStream);
-            } else {
-              setRemoteScreenUser(null);
-            }
-            return;
-          }
-
-          const existingPeer = peersRef.current.find(p => p.peerID === from);
-
-          if (signal.type === 'offer') {
-            const peer = addPeer(signal, from, streamRef.current);
-            peersRef.current.push({ peerID: from, peer });
-            setPeers([...peersRef.current]);
-          } else if (existingPeer && !existingPeer.peer.destroyed) {
-            try { existingPeer.peer.signal(signal); } catch (e) { console.error(e); }
-          }
-        });
-
-        socketRef.current.on("user-left", (socketId: string) => {
-          const peerObj = peersRef.current.find(p => p.peerID === socketId);
-          if (peerObj && !peerObj.peer.destroyed) peerObj.peer.destroy();
-          peersRef.current = peersRef.current.filter(p => p.peerID !== socketId);
-          setPeers((prev) => prev.filter((p) => p.peerID !== socketId));
-          setParticipants((prev: any[]) => prev.filter((p) => p.socketId !== socketId));
-        });
-
-        socketRef.current.on("room-ended", () => {
-          alert("This session was ended by the host.");
-          window.location.href = '/dashboard/study-rooms';
-        });
-
-        socketRef.current.on("you-are-kicked", () => {
-          alert("You have been removed by the host.");
-          window.location.href = '/dashboard/study-rooms';
-        });
-
       })
       .catch((err) => {
         console.error("Media error:", err);
@@ -219,11 +136,126 @@ export default function LiveVideoRoom({
       });
 
     return () => {
+      isActive = false;
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!previewVideoRef.current || !localStream) return;
+    previewVideoRef.current.srcObject = localStream;
+  }, [localStream]);
+
+  // Effect 2: Socket + WebRTC (only after explicit join)
+  useEffect(() => {
+    if (!hasJoined || !effectiveCurrentUserId || !roomId) return;
+
+    setIsJoining(true);
+    socketRef.current = io(SOCKET_SERVER_URL);
+    setIsConnected(true);
+
+    socketRef.current.emit("join-room", {
+      roomId,
+      userId: effectiveCurrentUserId,
+      name: `User ${effectiveCurrentUserId.substring(0, 4)}`
+    });
+
+    socketRef.current.on("room-users", (users) => {
+      setParticipants(users);
+      const currentSocketIds = users.map((u: any) => u.socketId);
+
+      // Cleanup stale peers
+      peersRef.current = peersRef.current.filter(p => {
+        if (!currentSocketIds.includes(p.peerID)) {
+          if (!p.peer.destroyed) p.peer.destroy();
+          return false;
+        }
+        return true;
+      });
+
+      // Connect to new peers
+      const mySocketId = socketRef.current.id;
+      users.forEach((otherUser: any) => {
+        if (otherUser.socketId !== mySocketId) {
+          const existingPeer = peersRef.current.find(p => p.peerID === otherUser.socketId);
+          if (!existingPeer && mySocketId < otherUser.socketId) {
+            const peer = createPeer(otherUser.socketId, mySocketId, streamRef.current);
+            peersRef.current.push({ peerID: otherUser.socketId, peer });
+          }
+        }
+      });
+      setPeers([...peersRef.current]);
+    });
+
+    socketRef.current.on("webrtc-signal", (payload: any) => {
+      const { signal, from } = payload;
+
+      if (signal.type === 'kick') {
+        alert('You have been removed by the host.');
+        window.location.href = '/dashboard/study-rooms';
+        return;
+      }
+
+      if (signal.type === 'chat') {
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now(), senderId: signal.senderId, text: signal.text },
+        ]);
+        return;
+      }
+
+      if (signal.type === 'screen-toggle') {
+        if (signal.isSharing) {
+          const remotePeer = peersRef.current.find((p) => p.peerID === from);
+          const remoteStream = remotePeer?.peer?._remoteStreams?.[0] || null;
+          setRemoteScreenUser(remoteStream);
+        } else {
+          setRemoteScreenUser(null);
+        }
+        return;
+      }
+
+      const existingPeer = peersRef.current.find(p => p.peerID === from);
+
+      if (signal.type === 'offer') {
+        const peer = addPeer(signal, from, streamRef.current);
+        peersRef.current.push({ peerID: from, peer });
+        setPeers([...peersRef.current]);
+      } else if (existingPeer && !existingPeer.peer.destroyed) {
+        try { existingPeer.peer.signal(signal); } catch (e) { console.error(e); }
+      }
+    });
+
+    socketRef.current.on("user-left", (socketId: string) => {
+      const peerObj = peersRef.current.find(p => p.peerID === socketId);
+      if (peerObj && !peerObj.peer.destroyed) peerObj.peer.destroy();
+      peersRef.current = peersRef.current.filter(p => p.peerID !== socketId);
+      setPeers((prev) => prev.filter((p) => p.peerID !== socketId));
+      setParticipants((prev: any[]) => prev.filter((p) => p.socketId !== socketId));
+    });
+
+    socketRef.current.on("room-ended", () => {
+      alert("This session was ended by the host.");
+      window.location.href = '/dashboard/study-rooms';
+    });
+
+    socketRef.current.on("you-are-kicked", () => {
+      alert("You have been removed by the host.");
+      window.location.href = '/dashboard/study-rooms';
+    });
+
+    setIsJoining(false);
+
+    return () => {
       if (socketRef.current) socketRef.current.disconnect();
       peersRef.current.forEach(p => { if (!p.peer.destroyed) p.peer.destroy(); });
+      peersRef.current = [];
+      setPeers([]);
+      setParticipants([]);
+      setRemoteScreenUser(null);
+      setIsConnected(false);
     };
-  }, [roomId, effectiveCurrentUserId]);
+  }, [hasJoined, roomId, effectiveCurrentUserId]);
 
   function createPeer(userToSignal: string, callerID: string, stream: MediaStream | null) {
     const peer = new Peer({ initiator: true, trickle: true, stream: stream || undefined, config: { iceServers } });
@@ -401,6 +433,59 @@ export default function LiveVideoRoom({
     removeParticipant,
     leaveRoom,
   };
+
+  if (!hasJoined) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-900 dark:bg-[#0f0c1d] dark:text-white p-4">
+        <div className="w-full max-w-4xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-[#161027]">
+          <div className="mb-5">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Ready to join?</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Check your camera and microphone before entering the room.</p>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 aspect-video dark:border-white/10">
+            <video ref={previewVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+          </div>
+
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <button
+              onClick={toggleMic}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+                isMicEnabled
+                  ? "bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+                  : "bg-red-500 text-white hover:bg-red-600"
+              }`}
+            >
+              {isMicEnabled ? <Mic size={16} /> : <MicOff size={16} />}
+              {isMicEnabled ? "Mic On" : "Mic Off"}
+            </button>
+
+            <button
+              onClick={toggleCamera}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+                isCameraEnabled
+                  ? "bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+                  : "bg-red-500 text-white hover:bg-red-600"
+              }`}
+            >
+              {isCameraEnabled ? <Video size={16} /> : <VideoOff size={16} />}
+              {isCameraEnabled ? "Camera On" : "Camera Off"}
+            </button>
+          </div>
+
+          <div className="mt-6 flex items-center justify-center">
+            <button
+              onClick={() => setHasJoined(true)}
+              disabled={!localStream || isJoining}
+              className="rounded-xl bg-gradient-to-r from-[#8c30e8] to-[#6f4bff] px-7 py-3 text-sm font-bold text-white shadow-lg transition-all hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isJoining ? "Preparing..." : "Join Room"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return <>{renderAction(renderState)}</>;
 }
