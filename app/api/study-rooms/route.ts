@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/connectDB";
 import StudyRoom from "@/models/StudyRoom";
 
+export const dynamic = "force-dynamic";
+
 interface CreateStudyRoomBody {
   roomId: string;
   createdBy: string;
@@ -14,8 +16,14 @@ export async function GET() {
   try {
     await connectDB();
 
-    const rooms = await StudyRoom.find({})
-      .populate("createdBy")
+    const rooms = await StudyRoom.find({
+      $or: [
+        { isActive: true },
+        { status: "active" },
+        { isLive: true },
+      ],
+    })
+      .populate("createdBy", "name")
       .sort({ createdAt: -1 })
       .lean();
 
