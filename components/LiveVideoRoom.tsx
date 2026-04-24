@@ -33,7 +33,7 @@ export type LiveVideoRoomRenderState = {
   isCameraEnabled: boolean;
   isScreenSharing: boolean;
   remoteScreenUser: any; 
-  screenTrack: any; // 👈 Fixed: Added screenTrack to satisfy parent component
+  screenTrack: MediaStreamTrack | null;
   localStream: MediaStream | null; 
   currentUserId: string;
   hostId: string;
@@ -81,6 +81,7 @@ export default function LiveVideoRoom({
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenTrack, setScreenTrack] = useState<MediaStreamTrack | null>(null);
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [participants, setParticipants] = useState([]);
@@ -235,9 +236,63 @@ export default function LiveVideoRoom({
     }
   }, []);
 
-  const toggleScreenShare = useCallback(() => {
-    alert("Screen sharing requires additional native WebRTC setup in this custom version.");
-  }, []);
+  const revertToCameraTrack = useCallback((activeScreenTrack?: MediaStreamTrack | null) => {
+    const currentScreenTrack = activeScreenTrack || screenTrack;
+    const oldCameraTrack = streamRef.current?.getVideoTracks()[0];
+
+    if (currentScreenTrack && oldCameraTrack && streamRef.current) {
+      peersRef.current.forEach((p) => {
+        if (!p.peer.destroyed) {
+          p.peer.replaceTrack(currentScreenTrack, oldCameraTrack, streamRef.current);
+        }
+      });
+    }
+
+    setScreenTrack(null);
+    setIsScreenSharing(false);
+  }, [screenTrack]);
+
+  const toggleScreenShare = useCallback(async () => {
+    if (!isScreenSharing) {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const newScreenTrack = screenStream.getVideoTracks()[0];
+
+      setScreenTrack(newScreenTrack);
+
+      const oldCameraTrack = streamRef.current?.getVideoTracks()[0];
+
+      if (oldCameraTrack && newScreenTrack && streamRef.current) {
+        peersRef.current.forEach((p) => {
+          if (!p.peer.destroyed) {
+            p.peer.replaceTrack(oldCameraTrack, newScreenTrack, streamRef.current);
+          }
+        });
+      }
+
+      newScreenTrack.onended = () => {
+        revertToCameraTrack(newScreenTrack);
+      };
+
+      setIsScreenSharing(true);
+      return;
+    }
+
+    if (screenTrack) {
+      screenTrack.stop();
+
+      const oldCameraTrack = streamRef.current?.getVideoTracks()[0];
+      if (oldCameraTrack && streamRef.current) {
+        peersRef.current.forEach((p) => {
+          if (!p.peer.destroyed) {
+            p.peer.replaceTrack(screenTrack, oldCameraTrack, streamRef.current);
+          }
+        });
+      }
+    }
+
+    setScreenTrack(null);
+    setIsScreenSharing(false);
+  }, [isScreenSharing, screenTrack, revertToCameraTrack]);
 
   const sendMessage = useCallback((text: string) => {
     const messageObject = { id: Date.now(), senderId: effectiveCurrentUserId, text };
@@ -290,7 +345,7 @@ export default function LiveVideoRoom({
     isCameraEnabled,
     isScreenSharing,
     remoteScreenUser: null, 
-    screenTrack: null, // 👈 Fixed: Added screenTrack to satisfy parent component
+    screenTrack,
     localStream, 
     currentUserId: effectiveCurrentUserId,
     hostId: normalizedHostId,
