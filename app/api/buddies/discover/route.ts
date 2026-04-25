@@ -32,8 +32,29 @@ export async function GET(req: NextRequest) {
 
   try {
     await connectMongoDB();
+    console.log("[Buddies Discover] Subject received:", subject);
 
     const currentUserId = session!.user.id;
+
+    // Match against common interest field names to avoid missing users due to schema drift.
+    const subjectMatcher = new RegExp(escapeRegex(subject), "i");
+    const interestQuery = {
+      $or: [
+        { subjects: subjectMatcher },
+        { interests: subjectMatcher },
+        { preferences: subjectMatcher },
+      ],
+    };
+
+    const totalUsersBeforeFiltering = await User.countDocuments({
+      role: "student",
+      isOnline: true,
+      ...interestQuery,
+    });
+    console.log(
+      "[Buddies Discover] Total users found before exclusion filtering:",
+      totalUsersBeforeFiltering
+    );
 
     const existingConnections = await BuddyConnection.find(
       {
@@ -52,14 +73,12 @@ export async function GET(req: NextRequest) {
       excludedUserIds.add(recipientId);
     }
 
-    const subjectRegex = new RegExp(`^${escapeRegex(subject)}$`, "i");
-
     const buddies = await User.find(
       {
         _id: { $nin: Array.from(excludedUserIds) },
         role: "student",
         isOnline: true,
-        subjects: subjectRegex,
+        ...interestQuery,
       },
       {
         name: 1,
@@ -71,6 +90,8 @@ export async function GET(req: NextRequest) {
     )
       .sort({ updatedAt: -1 })
       .lean();
+
+    console.log("[Buddies Discover] Buddies after exclusion filtering:", buddies.length);
 
     return NextResponse.json(
       {

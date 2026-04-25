@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Plus, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +37,10 @@ export default function ActivePeersView({
   const displayPeers = peers ?? [];
   const [sendingPeerId, setSendingPeerId] = useState<string | null>(null);
   const [sentPeerIds, setSentPeerIds] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    console.log("[ActivePeersView] Data received from discover fetch:", displayPeers);
+  }, [displayPeers]);
 
   const handleSendRequest = async (peer: Student, peerId: string) => {
     if (!selectedTopic?.trim()) {
@@ -117,8 +121,17 @@ export default function ActivePeersView({
       {/* Empty State */}
       {!loading && displayPeers.length === 0 && (
         <div className="text-center py-20 text-slate-500 dark:text-gray-400">
-          <p className="text-lg font-medium">No peers online right now.</p>
-          <p className="text-sm mt-1">Click &quot;Find New Buddy&quot; to start matchmaking!</p>
+          {selectedTopic?.trim() ? (
+            <>
+              <p className="text-lg font-medium">No buddies found for this topic.</p>
+              <p className="text-sm mt-1">Try another subject or check back when more peers are online.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-medium">No peers online right now.</p>
+              <p className="text-sm mt-1">Click &quot;Find New Buddy&quot; to start matchmaking!</p>
+            </>
+          )}
         </div>
       )}
 

@@ -154,6 +154,7 @@ export default function StudyBuddyPage() {
       const subject = encodeURIComponent(data.subject);
       const res = await fetch(`/api/buddies/discover?subject=${subject}`);
       const result = await res.json();
+      console.log("[StudyBuddy] Discover API response:", result);
 
       if (!res.ok) {
         throw new Error(result.message || "Discover failed");
