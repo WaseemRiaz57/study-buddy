@@ -4,6 +4,8 @@ import { connectMongoDB } from "@/lib/mongodb";
 import BuddyConnection from "@/models/BuddyConnection";
 import User from "@/models/User";
 
+export const dynamic = 'force-dynamic';
+
 function escapeRegex(input: string) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
