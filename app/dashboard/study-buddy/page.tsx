@@ -13,6 +13,7 @@ import MatchRequestNotification from "@/components/study-buddy/MatchRequestNotif
 type ViewState = "dashboard" | "topic" | "loading" | "success";
 
 interface Peer {
+  _id?: string;
   userId: string;
   name: string;
   image: string;
@@ -38,8 +39,9 @@ interface MatchRequest {
 export default function StudyBuddyPage() {
   const [view, setView] = useState<ViewState>("dashboard");
   const [searchData, setSearchData] = useState({ subject: "", topic: "" });
+  const [selectedTopic, setSelectedTopic] = useState("");
   const [peers, setPeers] = useState<Peer[]>([]);
-  const [peersLoading, setPeersLoading] = useState(true);
+  const [peersLoading, setPeersLoading] = useState(false);
 
   const [loadingMode, setLoadingMode] = useState<"search" | "direct">("search");
 
@@ -57,24 +59,6 @@ export default function StudyBuddyPage() {
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const notifPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // ─── Fetch Peers ───
-  const fetchPeers = useCallback(async () => {
-    try {
-      const res = await fetch("/api/study-buddy/peers");
-      if (!res.ok) throw new Error("Failed to fetch peers");
-      const data = await res.json();
-      setPeers(data);
-    } catch {
-      toast.error("Could not load active peers.");
-    } finally {
-      setPeersLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPeers();
-  }, [fetchPeers]);
 
   // ─── Stop Polling Helpers ───
   const stopStatusPolling = useCallback(() => {
@@ -158,92 +142,30 @@ export default function StudyBuddyPage() {
     setView("topic");
   };
 
-  // ─── "Connect" Profile → Direct Request (2-Way Handshake) ───
-  const handleDirectConnect = async (peer: any) => {
-    setMatchedPeerData({
-      name: peer.name,
-      image: peer.image,
-      tags: peer.subjects ?? peer.tags ?? [],
-    });
-    setLoadingMode("direct");
-    setView("loading");
-
-    try {
-      const res = await fetch("/api/study-buddy/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetUserId: peer.userId }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Request failed");
-      }
-
-      const data = await res.json();
-      const sessionId = data.sessionId;
-      setActiveSessionId(sessionId);
-      startStatusPolling(sessionId);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to send request.");
-      setView("dashboard");
-    }
-  };
-
-  // ─── Search Submit → Create request via search flow ───
+  // ─── Search Submit → Discover peers by selected subject ───
   const handleSearch = async (data: { subject: string; topic: string }) => {
     setSearchData(data);
+    setSelectedTopic(data.subject);
+    setPeersLoading(true);
+    setLoadingMode("search");
     setView("loading");
 
     try {
-      const res = await fetch("/api/study-buddy/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) throw new Error("Search failed");
-
+      const subject = encodeURIComponent(data.subject);
+      const res = await fetch(`/api/buddies/discover?subject=${subject}`);
       const result = await res.json();
 
-      if (result.status === "matched" && result.sessionId) {
-        setActiveSessionId(result.sessionId);
-        setMatchedPeerData({
-          name: result.peer.name,
-          image: result.peer.image,
-          tags: result.peer.tags || [],
-        });
-        startStatusPolling(result.sessionId);
-      } else if (result.status === "waiting") {
-        if (!pollingRef.current) {
-          pollingRef.current = setInterval(async () => {
-            try {
-              const pollRes = await fetch("/api/study-buddy/search", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-              });
-              if (!pollRes.ok) return;
-              const pollResult = await pollRes.json();
-              if (pollResult.status === "matched" && pollResult.sessionId) {
-                stopStatusPolling();
-                setActiveSessionId(pollResult.sessionId);
-                setMatchedPeerData({
-                  name: pollResult.peer.name,
-                  image: pollResult.peer.image,
-                  tags: pollResult.peer.tags || [],
-                });
-                startStatusPolling(pollResult.sessionId);
-              }
-            } catch {
-              // silently retry
-            }
-          }, 3000);
-        }
+      if (!res.ok) {
+        throw new Error(result.message || "Discover failed");
       }
+
+      setPeers(Array.isArray(result.matches) ? result.matches : []);
+      setView("dashboard");
     } catch {
       toast.error("Matchmaking failed. Please try again.");
       setView("dashboard");
+    } finally {
+      setPeersLoading(false);
     }
   };
 
@@ -283,7 +205,6 @@ export default function StudyBuddyPage() {
     setSearchData({ subject: "", topic: "" });
     setMatchedPeerData({ name: "", image: "", tags: [] });
     setActiveSessionId(null);
-    fetchPeers();
     startNotifPolling();
   };
 
@@ -329,9 +250,9 @@ export default function StudyBuddyPage() {
             >
               <ActivePeersView 
                 onAddNewAction={handleAddNew} 
-                onConnectAction={handleDirectConnect}
                 peers={peers}
                 loading={peersLoading}
+                selectedTopic={selectedTopic}
               />
             </motion.div>
           )}

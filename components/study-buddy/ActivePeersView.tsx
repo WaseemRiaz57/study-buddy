@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Plus, Sparkles, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Student {
+  _id?: string;
   id?: string;
   userId?: string;
   name: string;
@@ -17,14 +20,66 @@ interface Student {
 
 interface ActivePeersViewProps {
   onAddNewAction: () => void;
-  onConnectAction: (peer: Student) => void;
+  onConnectAction?: (peer: Student) => void;
   peers?: Student[];
   loading?: boolean;
+  selectedTopic?: string;
 }
 
-export default function ActivePeersView({ onAddNewAction, onConnectAction, peers, loading }: ActivePeersViewProps) {
+export default function ActivePeersView({
+  onAddNewAction,
+  onConnectAction,
+  peers,
+  loading,
+  selectedTopic,
+}: ActivePeersViewProps) {
   // Use API peers if provided, otherwise fall back to empty array
   const displayPeers = peers ?? [];
+  const [sendingPeerId, setSendingPeerId] = useState<string | null>(null);
+  const [sentPeerIds, setSentPeerIds] = useState<Record<string, boolean>>({});
+
+  const handleSendRequest = async (peer: Student, peerId: string) => {
+    if (!selectedTopic?.trim()) {
+      toast.error("Please choose a topic before sending a request.");
+      return;
+    }
+
+    const recipientId = peer._id ?? peer.userId ?? peer.id;
+    if (!recipientId) {
+      toast.error("Unable to identify this peer.");
+      return;
+    }
+
+    setSendingPeerId(peerId);
+
+    try {
+      const res = await fetch("/api/buddies/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientId,
+          subject: selectedTopic,
+        }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.message || "Failed to send request.");
+      }
+
+      setSentPeerIds((prev) => ({ ...prev, [peerId]: true }));
+      toast.success("Request sent successfully.");
+      if (onConnectAction) {
+        onConnectAction(peer);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to send request.";
+      toast.error(message);
+    } finally {
+      setSendingPeerId(null);
+    }
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-8">
@@ -71,8 +126,11 @@ export default function ActivePeersView({ onAddNewAction, onConnectAction, peers
       {!loading && (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {displayPeers.map((peer, index) => {
-          const peerId = peer.userId ?? peer.id ?? index.toString();
+          const peerId =
+            peer._id ?? peer.userId ?? peer.id ?? index.toString();
           const peerSubjects = peer.subjects ?? peer.tags ?? [];
+          const isSending = sendingPeerId === peerId;
+          const isSent = Boolean(sentPeerIds[peerId]);
           return (
           <motion.div
             key={peerId}
@@ -80,7 +138,6 @@ export default function ActivePeersView({ onAddNewAction, onConnectAction, peers
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             className="group relative bg-white dark:bg-[#1a1524] border border-slate-200 dark:border-white/10 p-5 rounded-2xl hover:border-[#8c30e8]/50 transition-all cursor-pointer shadow-sm hover:shadow-md"
-            onClick={() => onConnectAction({ ...peer, subjects: peerSubjects })}
           >
             {/* Online Indicator */}
             {peer.isOnline && (
@@ -108,9 +165,22 @@ export default function ActivePeersView({ onAddNewAction, onConnectAction, peers
               ))}
             </div>
 
-            <div className="w-full py-2 rounded-lg border border-slate-200 dark:border-white/10 text-center text-sm font-semibold text-slate-600 dark:text-gray-300 group-hover:bg-[#8c30e8] group-hover:text-white group-hover:border-[#8c30e8] transition-all">
-              Connect
-            </div>
+            <button
+              onClick={() => handleSendRequest({ ...peer, subjects: peerSubjects }, peerId)}
+              disabled={isSending || isSent}
+              className="w-full py-2 rounded-lg border border-slate-200 dark:border-white/10 text-center text-sm font-semibold text-slate-600 dark:text-gray-300 group-hover:bg-[#8c30e8] group-hover:text-white group-hover:border-[#8c30e8] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isSending ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sending...
+                </span>
+              ) : isSent ? (
+                "Request Sent"
+              ) : (
+                "Connect"
+              )}
+            </button>
           </motion.div>
           );
         })}
