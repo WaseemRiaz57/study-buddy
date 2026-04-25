@@ -1,0 +1,93 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/lib/auth-guard";
+import { connectMongoDB } from "@/lib/mongodb";
+import BuddyConnection from "@/models/BuddyConnection";
+import User from "@/models/User";
+
+function escapeRegex(input: string) {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * GET /api/buddies/discover?subject=Math
+ *
+ * Returns online students for a subject excluding:
+ * - current user
+ * - users already linked with current user via pending/accepted BuddyConnection
+ */
+export async function GET(req: NextRequest) {
+  const { error, session } = await requireRole("student");
+  if (error) return error;
+
+  const { searchParams } = new URL(req.url);
+  const rawSubject = searchParams.get("subject");
+  const subject = rawSubject?.trim();
+
+  if (!subject) {
+    return NextResponse.json(
+      { message: "Query parameter 'subject' is required." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    await connectMongoDB();
+
+    const currentUserId = session!.user.id;
+
+    const existingConnections = await BuddyConnection.find(
+      {
+        status: { $in: ["pending", "accepted"] },
+        $or: [{ requester: currentUserId }, { recipient: currentUserId }],
+      },
+      { requester: 1, recipient: 1 }
+    ).lean();
+
+    const excludedUserIds = new Set<string>([currentUserId]);
+
+    for (const connection of existingConnections) {
+      const requesterId = String(connection.requester);
+      const recipientId = String(connection.recipient);
+      excludedUserIds.add(requesterId);
+      excludedUserIds.add(recipientId);
+    }
+
+    const subjectRegex = new RegExp(`^${escapeRegex(subject)}$`, "i");
+
+    const buddies = await User.find(
+      {
+        _id: { $nin: Array.from(excludedUserIds) },
+        role: "student",
+        isOnline: true,
+        subjects: subjectRegex,
+      },
+      {
+        name: 1,
+        email: 1,
+        image: 1,
+        subjects: 1,
+        isOnline: 1,
+      }
+    )
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    return NextResponse.json(
+      {
+        message:
+          buddies.length > 0
+            ? `Found ${buddies.length} available study buddy match(es).`
+            : "No online buddies found for this subject right now.",
+        subject,
+        matches: buddies,
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("Buddies Discover Error:", err);
+    return NextResponse.json(
+      { message: "Internal server error while discovering buddies." },
+      { status: 500 }
+    );
+  }
+}
