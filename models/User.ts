@@ -25,10 +25,12 @@ const userSchema = new Schema(
       enum: ["student", "mentor", "admin"],
       default: "student", // Jo naya sign up karega wo default student banega
     },
+    // Naya feature: Study with Buddy ke liye topics
     subjects: {
       type: [String],
       default: [],
     },
+    // Naya feature: Matchmaking ke liye online status
     isOnline: {
       type: Boolean,
       default: false,
@@ -37,6 +39,7 @@ const userSchema = new Schema(
   { timestamps: true } // Yeh automatically createdAt aur updatedAt fields bana dega
 );
 
+// Next.js mein models ko cache se check karna zaroori hai taake re-compilation error na aaye
 const User = models.User || mongoose.model("User", userSchema);
 
 export default User;
