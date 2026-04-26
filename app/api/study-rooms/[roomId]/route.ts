@@ -4,6 +4,8 @@ import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
 import StudyRoom from "@/models/StudyRoom";
 
+export const dynamic = 'force-dynamic';
+
 function normalizeRoomId(roomId: string): string {
   return roomId.trim().toUpperCase();
 }
@@ -21,6 +23,7 @@ export async function GET(
     const normalizedRoomId = normalizeRoomId(roomId);
     const session = await getServerSession(authOptions);
     const currentUserId = String(session?.user?.id || "").trim();
+    const participantName = session?.user?.name || "Student";
 
     if (!normalizedRoomId) {
       return NextResponse.json({ message: "roomId is required" }, { status: 400 });
@@ -48,10 +51,19 @@ export async function GET(
         : populatedRoom.createdBy) || ""
     ).trim();
 
+    console.log(`[Room API] Room Found. Generating Token for User: ${participantName}`);
+
+    // ==========================================
+    // 🚀 TOKEN GENERATION LOGIC ADDED HERE
+    // ==========================================
+    // Jab LiveKit SDK lagayen toh yahan apna actual token generate karein
+    const token = "dummy_token_for_now_replace_with_livekit_token";
+
     return NextResponse.json({
       room,
       currentUserId,
       hostId,
+      token, // Naya Token parameter frontend ko bhej diya
     });
   } catch (error) {
     console.error("Fetch study room details error:", error);
