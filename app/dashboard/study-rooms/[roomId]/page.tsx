@@ -150,6 +150,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
     <LiveVideoRoom
       roomId={normalizedRoomId}
       currentUserId={currentUserId}
+      userName={currentUserName}
       hostId={roomHostId}
       isHost={Boolean((apiCurrentUserId || sessionUserId || guestUserId) && roomHostId && (apiCurrentUserId || sessionUserId || guestUserId) === roomHostId)}
       renderAction={(liveRoom: LiveVideoRoomRenderState) => (

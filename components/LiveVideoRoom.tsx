@@ -22,6 +22,7 @@ type LiveVideoRoomProps = {
   roomId: string;
   isHost?: boolean;
   currentUserId?: string;
+  userName?: string;
   hostId?: string;
   userId?: string;
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
@@ -90,6 +91,7 @@ export default function LiveVideoRoom({
   roomId,
   isHost: isHostProp,
   currentUserId,
+  userName,
   hostId,
   userId,
   renderAction,
@@ -109,6 +111,7 @@ export default function LiveVideoRoom({
   });
   
   const effectiveCurrentUserId = String(currentUserId || userId || stableGuestId || "").trim();
+  const displayName = String(userName || `User ${effectiveCurrentUserId.substring(0, 4)}` || "User").trim();
   const normalizedHostId = String(hostId || "").trim();
   const isHost = typeof isHostProp === "boolean" 
     ? isHostProp 
@@ -135,8 +138,27 @@ export default function LiveVideoRoom({
   const socketRef = useRef<any>();
   const streamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const remoteScreenOwnerRef = useRef<string | null>(null);
   const peersRef = useRef<{ peerID: string, peer: Peer.Instance }[]>([]);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
+
+  const attachPeerTrackHandlers = useCallback((peer: Peer.Instance, peerID: string) => {
+    peer.on("track", (track: MediaStreamTrack) => {
+      if (track.kind !== "video") return;
+
+      if (isScreenTrack(track)) {
+        remoteScreenOwnerRef.current = peerID;
+        setRemoteScreenUser(new MediaStream([track]));
+
+        track.onended = () => {
+          if (remoteScreenOwnerRef.current === peerID) {
+            remoteScreenOwnerRef.current = null;
+            setRemoteScreenUser(null);
+          }
+        };
+      }
+    });
+  }, []);
 
   // Effect 1: Media only (pre-join preview)
   useEffect(() => {
@@ -185,7 +207,7 @@ export default function LiveVideoRoom({
     socketRef.current.emit("join-room", {
       roomId,
       userId: effectiveCurrentUserId,
-      name: `User ${effectiveCurrentUserId.substring(0, 4)}`
+      name: displayName
     });
 
     socketRef.current.on("room-users", (users) => {
@@ -234,12 +256,16 @@ export default function LiveVideoRoom({
 
       if (signal.type === 'screen-toggle') {
         if (signal.isSharing) {
+          remoteScreenOwnerRef.current = from;
           const remotePeer = peersRef.current.find((p) => p.peerID === from);
           const remoteStreams = remotePeer?.peer?._remoteStreams || [];
           const remoteScreenTrack = getScreenTrackFromStreams(remoteStreams);
           setRemoteScreenUser(remoteScreenTrack ? new MediaStream([remoteScreenTrack]) : null);
         } else {
-          setRemoteScreenUser(null);
+          if (remoteScreenOwnerRef.current === from) {
+            remoteScreenOwnerRef.current = null;
+            setRemoteScreenUser(null);
+          }
         }
         return;
       }
@@ -248,6 +274,7 @@ export default function LiveVideoRoom({
 
       if (signal.type === 'offer') {
         const peer = addPeer(signal, from, streamRef.current);
+        attachPeerTrackHandlers(peer, from);
         peersRef.current.push({ peerID: from, peer });
         setPeers([...peersRef.current]);
       } else if (existingPeer && !existingPeer.peer.destroyed) {
@@ -261,6 +288,10 @@ export default function LiveVideoRoom({
       peersRef.current = peersRef.current.filter(p => p.peerID !== socketId);
       setPeers((prev) => prev.filter((p) => p.peerID !== socketId));
       setParticipants((prev: any[]) => prev.filter((p) => p.socketId !== socketId));
+      if (remoteScreenOwnerRef.current === socketId) {
+        remoteScreenOwnerRef.current = null;
+        setRemoteScreenUser(null);
+      }
     });
 
     socketRef.current.on("room-ended", () => {
@@ -281,16 +312,18 @@ export default function LiveVideoRoom({
       peersRef.current = [];
       setPeers([]);
       setParticipants([]);
+      remoteScreenOwnerRef.current = null;
       setRemoteScreenUser(null);
       setIsConnected(false);
     };
-  }, [hasJoined, roomId, effectiveCurrentUserId]);
+  }, [attachPeerTrackHandlers, hasJoined, roomId, effectiveCurrentUserId, displayName]);
 
   function createPeer(userToSignal: string, callerID: string, stream: MediaStream | null) {
     const peer = new Peer({ initiator: true, trickle: true, stream: stream || undefined, config: { iceServers } });
     peer.on("signal", signal => {
       socketRef.current?.emit("webrtc-signal", { signal, to: userToSignal });
     });
+    attachPeerTrackHandlers(peer, userToSignal);
     return peer;
   }
 
@@ -573,6 +606,7 @@ export default function LiveVideoRoom({
 // Sub-component for rendering incoming WebRTC streams
 const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
   const ref = useRef<HTMLVideoElement>(null);
+  const lastCameraStreamRef = useRef<MediaStream | null>(null);
   const [hasStream, setHasStream] = useState(false); 
   const [isMinimized, setIsMinimized] = useState(false);
 
@@ -583,9 +617,9 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
       if (ref.current && stream) {
         const cameraOnly = getCameraOnlyStream(stream);
         if (!cameraOnly) {
-          setHasStream(false);
           return;
         }
+        lastCameraStreamRef.current = cameraOnly;
         ref.current.srcObject = cameraOnly;
         setHasStream(true);
         ref.current.play().catch(e => console.warn("Autoplay blocked:", e));
