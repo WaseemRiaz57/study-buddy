@@ -25,6 +25,11 @@ const NativeStreamPlayer = ({ stream, muted = false, className = "" }: any) => {
   
   useEffect(() => {
     if (videoRef.current && stream) {
+      console.log("[MainTile] Binding incoming stream to video element:", {
+        isTrack: stream instanceof MediaStreamTrack,
+        muted,
+      });
+
       // Check: Agar yeh akela 'Track' hai, toh usay 'Stream' mein wrap kar do
       if (stream instanceof MediaStreamTrack) {
         videoRef.current.srcObject = new MediaStream([stream]);
@@ -32,6 +37,23 @@ const NativeStreamPlayer = ({ stream, muted = false, className = "" }: any) => {
         // Agar pehle se poori 'Stream' hai (jaise camera), toh direct chala do
         videoRef.current.srcObject = stream;
       }
+
+      videoRef.current
+        .play()
+        .then(() => {
+          const boundStream = videoRef.current?.srcObject as MediaStream | null;
+          console.log("[MainTile] Screen-share video playback started:", {
+            hasBoundStream: Boolean(boundStream),
+            videoTracks: boundStream?.getVideoTracks().map((t) => ({
+              id: t.id,
+              label: t.label,
+              state: t.readyState,
+            })),
+          });
+        })
+        .catch((error) => {
+          console.error("[MainTile] Screen-share video playback failed:", error);
+        });
     }
   }, [stream]);
   

@@ -151,16 +151,63 @@ export default function LiveVideoRoom({
   const peersRef = useRef<{ peerID: string, peer: Peer.Instance }[]>([]);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
 
+  const refreshRemoteScreenShare = useCallback((reason: string) => {
+    // In this WebRTC stack there is no LiveKit-style per-track permission gate;
+    // subscribers receive all tracks over the established peer connection.
+    console.log("[Subscriber] Refresh screen share source:", {
+      reason,
+      peerCount: peersRef.current.length,
+      localSharing: isScreenSharing,
+    });
+
+    const uniquePeers = Array.from(
+      new Map(peersRef.current.map((peerObj) => [peerObj.peerID, peerObj])).values()
+    );
+
+    for (const peerObj of uniquePeers) {
+      const remoteStreams = peerObj.peer?._remoteStreams || [];
+      const remoteScreenTrack = getScreenTrackFromStreams(remoteStreams);
+
+      if (remoteScreenTrack && remoteScreenTrack.readyState === "live") {
+        remoteScreenOwnerRef.current = peerObj.peerID;
+        setRemoteScreenUser(new MediaStream([remoteScreenTrack]));
+        console.log("[Subscriber] Screen share track subscribed:", {
+          owner: peerObj.peerID,
+          trackId: remoteScreenTrack.id,
+          trackState: remoteScreenTrack.readyState,
+          source: "screen-share",
+        });
+        return;
+      }
+    }
+
+    if (remoteScreenOwnerRef.current || remoteScreenUser) {
+      console.log("[Subscriber] No active remote screen-share track found.");
+      remoteScreenOwnerRef.current = null;
+      setRemoteScreenUser(null);
+    }
+  }, [isScreenSharing, remoteScreenUser]);
+
   const attachPeerTrackHandlers = useCallback((peer: Peer.Instance, peerID: string) => {
     peer.on("track", (track: MediaStreamTrack) => {
       if (track.kind !== "video") return;
 
       if (isScreenTrack(track)) {
+        console.log("[Subscriber] Incoming screen-share track:", {
+          owner: peerID,
+          trackId: track.id,
+          source: "screen-share",
+          state: track.readyState,
+        });
         remoteScreenOwnerRef.current = peerID;
         setRemoteScreenUser(new MediaStream([track]));
 
         track.onended = () => {
           if (remoteScreenOwnerRef.current === peerID) {
+            console.log("[Subscriber] Screen-share track ended:", {
+              owner: peerID,
+              trackId: track.id,
+            });
             remoteScreenOwnerRef.current = null;
             setRemoteScreenUser(null);
           }
@@ -250,6 +297,7 @@ export default function LiveVideoRoom({
         }
       });
       setPeers([...peersRef.current]);
+      setTimeout(() => refreshRemoteScreenShare("room-users"), 0);
     });
 
     socketRef.current.on("webrtc-signal", (payload: any) => {
@@ -271,16 +319,20 @@ export default function LiveVideoRoom({
 
       if (signal.type === 'screen-toggle') {
         if (signal.isSharing) {
+          console.log("[Subscriber] screen-toggle received: sharing=true", { from });
           remoteScreenOwnerRef.current = from;
           const remotePeer = peersRef.current.find((p) => p.peerID === from);
           const remoteStreams = remotePeer?.peer?._remoteStreams || [];
           const remoteScreenTrack = getScreenTrackFromStreams(remoteStreams);
           setRemoteScreenUser(remoteScreenTrack ? new MediaStream([remoteScreenTrack]) : null);
+          setTimeout(() => refreshRemoteScreenShare("screen-toggle-on"), 250);
         } else {
+          console.log("[Subscriber] screen-toggle received: sharing=false", { from });
           if (remoteScreenOwnerRef.current === from) {
             remoteScreenOwnerRef.current = null;
             setRemoteScreenUser(null);
           }
+          setTimeout(() => refreshRemoteScreenShare("screen-toggle-off"), 0);
         }
         return;
       }
@@ -302,6 +354,7 @@ export default function LiveVideoRoom({
         attachPeerTrackHandlers(peer, from);
         peersRef.current.push({ peerID: from, peer });
         setPeers([...peersRef.current]);
+        setTimeout(() => refreshRemoteScreenShare("offer-added-peer"), 300);
       } else if (existingPeer && !existingPeer.peer.destroyed) {
         try { existingPeer.peer.signal(signal); } catch (e) { console.error(e); }
       }
@@ -317,6 +370,7 @@ export default function LiveVideoRoom({
         remoteScreenOwnerRef.current = null;
         setRemoteScreenUser(null);
       }
+      setTimeout(() => refreshRemoteScreenShare("user-left"), 0);
     });
 
     socketRef.current.on("room-ended", () => {
@@ -341,7 +395,17 @@ export default function LiveVideoRoom({
       setRemoteScreenUser(null);
       setIsConnected(false);
     };
-  }, [attachPeerTrackHandlers, hasJoined, roomId, effectiveCurrentUserId, displayName]);
+  }, [attachPeerTrackHandlers, hasJoined, roomId, effectiveCurrentUserId, displayName, refreshRemoteScreenShare]);
+
+  useEffect(() => {
+    if (!hasJoined) return;
+
+    const interval = setInterval(() => {
+      refreshRemoteScreenShare("periodic-scan");
+    }, 1200);
+
+    return () => clearInterval(interval);
+  }, [hasJoined, refreshRemoteScreenShare]);
 
   function createPeer(userToSignal: string, callerID: string, stream: MediaStream | null) {
     console.log("[Publisher] Creating outbound peer:", {
