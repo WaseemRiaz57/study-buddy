@@ -15,7 +15,10 @@ function escapeRegex(input: string) {
  *
  * Returns online students for a subject excluding:
  * - current user
- * - users already linked with current user via pending/accepted BuddyConnection
+ * - accepted buddies
+ * - users who sent a pending request to the current user
+ * * Includes:
+ * - Users to whom current user sent a pending request (marked as requestStatus: "pending")
  */
 export async function GET(req: NextRequest) {
   const { error, session } = await requireRole("student");
@@ -51,31 +54,31 @@ export async function GET(req: NextRequest) {
       ],
     };
 
-    const totalUsersBeforeFiltering = await User.countDocuments({
-      role: "student",
-      isOnline: true,
-      ...interestQuery,
-    });
-    console.log(
-      "[Buddies Discover] Total users found before exclusion filtering:",
-      totalUsersBeforeFiltering
-    );
-
-    const existingConnections = await BuddyConnection.find(
-      {
-        status: { $in: ["pending", "accepted"] },
-        $or: [{ requester: currentUserId }, { recipient: currentUserId }],
-      },
-      { requester: 1, recipient: 1 }
-    ).lean();
+    // User ke saray connections dhoondo
+    const existingConnections = await BuddyConnection.find({
+      $or: [{ requester: currentUserId }, { recipient: currentUserId }],
+    }).lean();
 
     const excludedUserIds = new Set<string>([currentUserId]);
+    const pendingSentUserIds = new Set<string>(); // Jinhe maine request bheji hai
 
     for (const connection of existingConnections) {
       const requesterId = String(connection.requester);
       const recipientId = String(connection.recipient);
-      excludedUserIds.add(requesterId);
-      excludedUserIds.add(recipientId);
+
+      if (connection.status === "accepted") {
+        // Agar dost ban chukay hain toh list se nikal do
+        excludedUserIds.add(requesterId);
+        excludedUserIds.add(recipientId);
+      } else if (connection.status === "pending") {
+        if (requesterId === currentUserId) {
+          // Maine request bheji hai -> Inko exclude nahi karna, sirf pending mark karna hai
+          pendingSentUserIds.add(recipientId);
+        } else {
+          // Unhon ne mujhe request bheji hai -> Discovery list se nikal do
+          excludedUserIds.add(requesterId);
+        }
+      }
     }
 
     const buddies = await User.find(
@@ -90,22 +93,31 @@ export async function GET(req: NextRequest) {
         email: 1,
         image: 1,
         subjects: 1,
+        currentStudyTopic: 1,
         isOnline: 1,
       }
     )
       .sort({ updatedAt: -1 })
       .lean();
 
-    console.log("[Buddies Discover] Buddies after exclusion filtering:", buddies.length);
+    // Frontend ke liye har user ke sath uska "requestStatus" attach karein
+    const formattedBuddies = buddies.map(buddy => {
+      return {
+        ...buddy,
+        requestStatus: pendingSentUserIds.has(String(buddy._id)) ? "pending" : "none"
+      };
+    });
+
+    console.log("[Buddies Discover] Buddies after exclusion filtering:", formattedBuddies.length);
 
     return NextResponse.json(
       {
         message:
-          buddies.length > 0
-            ? `Found ${buddies.length} available study buddy match(es).`
+          formattedBuddies.length > 0
+            ? `Found ${formattedBuddies.length} available study buddy match(es).`
             : "No online buddies found for this subject right now.",
         subject,
-        matches: buddies,
+        matches: formattedBuddies, // Yeh updated array frontend par jayegi
       },
       { status: 200 }
     );
