@@ -37,6 +37,14 @@ interface IncomingRequest {
   status: "pending";
 }
 
+interface AcceptedRequestConnection {
+  _id: string;
+  subject?: string;
+  recipient?: {
+    name?: string;
+  };
+}
+
 export default function StudyBuddyPage() {
   const router = useRouter();
   const [view, setView] = useState<ViewState>("dashboard");
@@ -57,6 +65,8 @@ export default function StudyBuddyPage() {
   });
 
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
+  const [acceptedConnection, setAcceptedConnection] =
+    useState<AcceptedRequestConnection | null>(null);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -84,6 +94,34 @@ export default function StudyBuddyPage() {
     };
 
     fetchIncomingRequests();
+  }, []);
+
+  // ─── Poll accepted outgoing buddy request for sender session alert ───
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchAcceptedConnection = async () => {
+      try {
+        const res = await fetch("/api/buddies/requests/accepted");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted) return;
+
+        setAcceptedConnection(data?.connection ?? null);
+      } catch {
+        if (mounted) {
+          setAcceptedConnection(null);
+        }
+      }
+    };
+
+    fetchAcceptedConnection();
+    const interval = setInterval(fetchAcceptedConnection, 4000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // ─── Poll Session Status (User A) ───
@@ -228,6 +266,32 @@ export default function StudyBuddyPage() {
       </div>
 
       <main className="relative z-10 w-full h-full pt-6">
+        {acceptedConnection && view === "dashboard" && (
+          <section className="w-full max-w-6xl mx-auto px-4 mb-6">
+            <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-400/25 rounded-2xl p-5 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+                    Active Session
+                  </h2>
+                  <p className="text-sm text-emerald-700/90 dark:text-emerald-200/90 mt-1">
+                    Your request was accepted!
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(`/dashboard/study-rooms/${acceptedConnection._id}`)
+                  }
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                >
+                  Join Video Room
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
         {incomingRequests.length > 0 && view === "dashboard" && (
           <section className="w-full max-w-6xl mx-auto px-4 mb-6">
             <div className="bg-white dark:bg-[#1a1524] border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm">
