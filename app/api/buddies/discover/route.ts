@@ -38,13 +38,16 @@ export async function GET(req: NextRequest) {
 
     const currentUserId = session!.user.id;
 
-    // Match against common interest field names to avoid missing users due to schema drift.
+    // List current user under the searched topic so others can discover them.
+    await User.findByIdAndUpdate(currentUserId, {
+      currentStudyTopic: subject,
+    });
+
     const subjectMatcher = new RegExp(escapeRegex(subject), "i");
     const interestQuery = {
       $or: [
         { subjects: subjectMatcher },
-        { interests: subjectMatcher },
-        { preferences: subjectMatcher },
+        { currentStudyTopic: subjectMatcher },
       ],
     };
 
