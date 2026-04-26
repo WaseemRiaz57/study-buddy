@@ -1,6 +1,10 @@
 import mongoose, { Document, Model, Schema, Types } from "mongoose";
 
-export type BuddyConnectionStatus = "pending" | "accepted" | "rejected";
+export type BuddyConnectionStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "completed";
 
 export interface IBuddyConnection extends Document {
   requester: Types.ObjectId;
@@ -30,7 +34,7 @@ const buddyConnectionSchema = new Schema<IBuddyConnection>(
     },
     status: {
       type: String,
-      enum: ["pending", "accepted", "rejected"],
+      enum: ["pending", "accepted", "rejected", "completed"],
       default: "pending",
     },
   },
