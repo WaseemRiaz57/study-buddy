@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
+import mongoose from "mongoose"; // 👈 Naya import zaroori tha ObjectId ke liye
 import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
 import StudyRoom from "@/models/StudyRoom";
@@ -22,8 +23,14 @@ export async function GET(
     const { roomId } = await params;
     const normalizedRoomId = normalizeRoomId(roomId);
     const session = await getServerSession(authOptions);
-    const currentUserId = String(session?.user?.id || "").trim();
-    const participantName = session?.user?.name || "Student";
+    
+    // 👇 Session check zaroori hai room create karne se pehle
+    if (!session || !session.user) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUserId = String(session.user.id).trim();
+    const participantName = session.user.name || "Student";
 
     if (!normalizedRoomId) {
       return NextResponse.json({ message: "roomId is required" }, { status: 400 });
@@ -31,15 +38,34 @@ export async function GET(
 
     await connectDB();
 
-    const room = await StudyRoom.findOne({
+    let room = await StudyRoom.findOne({
       roomId: { $regex: `^${escapeRegex(normalizedRoomId)}$`, $options: "i" },
     })
       .populate("createdBy", "name email")
       .populate("participants", "name email")
       .lean();
 
+    // ==========================================
+    // 🚀 THE FIX: Agar DB mein room nahi hai, toh 404 mat do, naya bana lo!
+    // ==========================================
     if (!room) {
-      return NextResponse.json({ message: "Room not found" }, { status: 404 });
+      console.log(`[Room API] Room not found. Auto-creating room: ${normalizedRoomId}`);
+      
+      const newRoom = await StudyRoom.create({
+        roomId: normalizedRoomId,
+        createdBy: new mongoose.Types.ObjectId(currentUserId),
+        title: "Study Buddy Session",
+        participants: [new mongoose.Types.ObjectId(currentUserId)],
+        isActive: true,
+        status: "active",
+        isLive: true,
+      });
+
+      // Naya room banne ke baad usay dobara fetch kar lo taake populate ho jaye
+      room = await StudyRoom.findById(newRoom._id)
+        .populate("createdBy", "name email")
+        .populate("participants", "name email")
+        .lean();
     }
 
     const populatedRoom = room as {
@@ -51,10 +77,10 @@ export async function GET(
         : populatedRoom.createdBy) || ""
     ).trim();
 
-    console.log(`[Room API] Room Found. Generating Token for User: ${participantName}`);
+    console.log(`[Room API] Room Ready. Generating Token for User: ${participantName}`);
 
     // ==========================================
-    // 🚀 TOKEN GENERATION LOGIC ADDED HERE
+    // 🚀 TOKEN GENERATION LOGIC 
     // ==========================================
     // Jab LiveKit SDK lagayen toh yahan apna actual token generate karein
     const token = "dummy_token_for_now_replace_with_livekit_token";
@@ -63,8 +89,8 @@ export async function GET(
       room,
       currentUserId,
       hostId,
-      token, // Naya Token parameter frontend ko bhej diya
-    });
+      token, 
+    }, { status: 200 }); // 👈 404 hata kar 200 Success kar diya
   } catch (error) {
     console.error("Fetch study room details error:", error);
     return NextResponse.json(
