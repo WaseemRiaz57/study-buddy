@@ -442,16 +442,26 @@ export default function LiveVideoRoom({
     if (isLeaving) return;
     setIsLeaving(true);
 
-    if (isHost) {
-      setIsEndingSession(true);
-      socketRef.current?.emit("end-room", { roomId });
-      await updateSessionDatabase();
-    }
+    try {
+      await fetch("/api/buddies/requests/end", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId: roomId }),
+      });
 
-    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-    if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop());
-    socketRef.current?.disconnect();
-    router.push("/dashboard/study-rooms");
+      if (isHost) {
+        setIsEndingSession(true);
+        socketRef.current?.emit("end-room", { roomId });
+        await updateSessionDatabase();
+      }
+    } catch (error) {
+      console.error("Leave Room Error:", error);
+    } finally {
+      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+      if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach((t) => t.stop());
+      socketRef.current?.disconnect();
+      router.push("/dashboard/study-buddy");
+    }
   }, [isLeaving, isHost, roomId, router, updateSessionDatabase]);
 
   const handleCancelPreJoin = useCallback(() => {
