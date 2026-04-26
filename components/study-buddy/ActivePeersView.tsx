@@ -142,6 +142,8 @@ export default function ActivePeersView({
           const peerId =
             peer._id ?? peer.userId ?? peer.id ?? index.toString();
           const peerSubjects = peer.subjects ?? peer.tags ?? [];
+          const visibleSubjects = peerSubjects.slice(0, 3);
+          const remainingSubjectsCount = Math.max(peerSubjects.length - 3, 0);
           const isSending = sendingPeerId === peerId;
           const isSent = Boolean(sentPeerIds[peerId]);
           return (
@@ -165,17 +167,26 @@ export default function ActivePeersView({
                 <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-[#8c30e8] transition-colors">
                   {peer.name}
                 </h3>
+                {peerSubjects.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {visibleSubjects.map((sub) => (
+                      <span
+                        key={`${peerId}-${sub}`}
+                        className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 border border-slate-200 dark:border-white/5"
+                      >
+                        {sub}
+                      </span>
+                    ))}
+                    {remainingSubjectsCount > 0 && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-white/5">
+                        +{remainingSubjectsCount} more
+                      </span>
+                    )}
+                  </div>
+                )}
                 {peer.major && <p className="text-xs text-slate-500 dark:text-gray-400">{peer.major}</p>}
                 {peer.university && <p className="text-xs text-slate-400 dark:text-gray-500">{peer.university}</p>}
               </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2 mb-4">
-              {peerSubjects.map(sub => (
-                <span key={sub} className="text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 border border-slate-200 dark:border-white/5">
-                  {sub}
-                </span>
-              ))}
             </div>
 
             <button
