@@ -25,7 +25,7 @@ const userSchema = new Schema(
       enum: ["student", "mentor", "admin"],
       default: "student", // Jo naya sign up karega wo default student banega
     },
-    // Naya feature: Study with Buddy ke liye topics
+    // Naya feature: Study with Buddy ke liye topics (Static Profile)
     subjects: {
       type: [String],
       default: [],
@@ -34,6 +34,11 @@ const userSchema = new Schema(
     isOnline: {
       type: Boolean,
       default: false,
+    },
+    // Naya feature: Dynamic Presence (Aaj ka focus / Custom Session)
+    currentStudyTopic: {
+      type: String,
+      default: "", // Default khali hoga. Jab user search karega toh yeh update hoga.
     },
   },
   { timestamps: true } // Yeh automatically createdAt aur updatedAt fields bana dega
