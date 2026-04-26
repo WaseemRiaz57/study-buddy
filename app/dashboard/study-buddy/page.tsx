@@ -8,7 +8,6 @@ import ActivePeersView from "@/components/study-buddy/ActivePeersView";
 import TopicSelectionView from "@/components/study-buddy/TopicSelectionView";
 import MatchingLoader from "@/components/study-buddy/MatchingLoader";
 import MatchSuccess from "@/components/study-buddy/MatchSuccess";
-import MatchRequestNotification from "@/components/study-buddy/MatchRequestNotification";
 
 type ViewState = "dashboard" | "topic" | "loading" | "success";
 
@@ -24,16 +23,17 @@ interface Peer {
   tags: string[];
 }
 
-interface MatchRequest {
-  sessionId: string;
+interface IncomingRequest {
+  _id: string;
   requester: {
-    id: string;
+    _id: string;
     name: string;
     email: string;
     image: string;
+    subjects?: string[];
   };
   subject: string;
-  topic: string;
+  status: "pending";
 }
 
 export default function StudyBuddyPage() {
@@ -54,11 +54,9 @@ export default function StudyBuddyPage() {
     tags: [] as string[],
   });
 
-  // Incoming match requests (User B)
-  const [incomingRequests, setIncomingRequests] = useState<MatchRequest[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const notifPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ─── Stop Polling Helpers ───
   const stopStatusPolling = useCallback(() => {
@@ -68,38 +66,23 @@ export default function StudyBuddyPage() {
     }
   }, []);
 
-  const stopNotifPolling = useCallback(() => {
-    if (notifPollingRef.current) {
-      clearInterval(notifPollingRef.current);
-      notifPollingRef.current = null;
-    }
-  }, []);
-
-  // ─── Poll for Incoming Notifications (User B) ───
-  const startNotifPolling = useCallback(() => {
-    if (notifPollingRef.current) return;
-
-    const poll = async () => {
+  // ─── Fetch incoming pending buddy requests ───
+  useEffect(() => {
+    const fetchIncomingRequests = async () => {
       try {
-        const res = await fetch("/api/study-buddy/notifications");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.notifications && data.notifications.length > 0) {
-          setIncomingRequests(data.notifications);
+        const res = await fetch("/api/buddies/requests/incoming");
+        if (!res.ok) {
+          throw new Error("Failed to fetch incoming requests");
         }
+        const data = await res.json();
+        setIncomingRequests(Array.isArray(data) ? data : []);
       } catch {
-        // silently retry
+        setIncomingRequests([]);
       }
     };
 
-    poll();
-    notifPollingRef.current = setInterval(poll, 4000);
+    fetchIncomingRequests();
   }, []);
-
-  useEffect(() => {
-    startNotifPolling();
-    return () => stopNotifPolling();
-  }, [startNotifPolling, stopNotifPolling]);
 
   // ─── Poll Session Status (User A) ───
   const startStatusPolling = useCallback(
@@ -177,26 +160,12 @@ export default function StudyBuddyPage() {
     }
   };
 
-  // ─── User B: Accept Request ───
-  const handleRequestAccepted = (
-    sessionId: string,
-    peerName: string,
-    peerImage: string
-  ) => {
-    stopNotifPolling();
-    setIncomingRequests((prev) =>
-      prev.filter((r) => r.sessionId !== sessionId)
-    );
-    setActiveSessionId(sessionId);
-    setMatchedPeerData({ name: peerName, image: peerImage, tags: [] });
-    setView("success");
+  const handleAcceptIncoming = (connectionId: string) => {
+    console.log("Accept connection:", connectionId);
   };
 
-  // ─── User B: Decline Request ───
-  const handleRequestDeclined = (sessionId: string) => {
-    setIncomingRequests((prev) =>
-      prev.filter((r) => r.sessionId !== sessionId)
-    );
+  const handleDeclineIncoming = (connectionId: string) => {
+    console.log("Decline connection:", connectionId);
   };
 
   // ─── Close / Reset ───
@@ -206,7 +175,6 @@ export default function StudyBuddyPage() {
     setSearchData({ subject: "", topic: "" });
     setMatchedPeerData({ name: "", image: "", tags: [] });
     setActiveSessionId(null);
-    startNotifPolling();
   };
 
   const handleCancelLoading = () => {
@@ -219,9 +187,8 @@ export default function StudyBuddyPage() {
   useEffect(() => {
     return () => {
       stopStatusPolling();
-      stopNotifPolling();
     };
-  }, [stopStatusPolling, stopNotifPolling]);
+  }, [stopStatusPolling]);
 
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-[#0f0a16] text-slate-900 dark:text-white overflow-hidden font-sans transition-colors duration-300">
@@ -231,16 +198,57 @@ export default function StudyBuddyPage() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-pink-500/10 rounded-full blur-[120px]" />
       </div>
 
-      {/* ── Incoming Match Request Notifications (User B) ── */}
-      {incomingRequests.length > 0 && view !== "loading" && view !== "success" && (
-        <MatchRequestNotification
-          request={incomingRequests[0]}
-          onAcceptedAction={handleRequestAccepted}
-          onDeclinedAction={handleRequestDeclined}
-        />
-      )}
-
       <main className="relative z-10 w-full h-full pt-6">
+        {incomingRequests.length > 0 && view === "dashboard" && (
+          <section className="w-full max-w-6xl mx-auto px-4 mb-6">
+            <div className="bg-white dark:bg-[#1a1524] border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+                Pending Requests
+              </h2>
+              <div className="space-y-3">
+                {incomingRequests.map((request) => (
+                  <div
+                    key={request._id}
+                    className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-slate-200 dark:border-white/10 rounded-xl p-4 bg-slate-50/70 dark:bg-white/[0.03]"
+                  >
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-white">
+                        {request.requester?.name || "Unknown requester"}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(request.requester?.subjects || []).map((subj) => (
+                          <span
+                            key={`${request._id}-${subj}`}
+                            className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 border border-slate-200 dark:border-white/5"
+                          >
+                            {subj}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptIncoming(request._id)}
+                        className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeclineIncoming(request._id)}
+                        className="px-4 py-2 rounded-lg text-sm font-semibold bg-rose-500 hover:bg-rose-600 text-white transition-colors"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         <AnimatePresence mode="wait">
           
           {view === "dashboard" && (
