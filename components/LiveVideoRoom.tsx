@@ -59,6 +59,33 @@ const iceServers = [
   { urls: "stun:global.stun.twilio.com:3478" }
 ];
 
+function isScreenTrack(track?: MediaStreamTrack | null): boolean {
+  if (!track) return false;
+  const label = String(track.label || "").toLowerCase();
+  const hint = String((track as any).contentHint || "").toLowerCase();
+  return (
+    label.includes("screen") ||
+    label.includes("window") ||
+    label.includes("display") ||
+    hint.includes("detail")
+  );
+}
+
+function getScreenTrackFromStreams(streams: MediaStream[]): MediaStreamTrack | null {
+  for (const stream of streams || []) {
+    const track = stream.getVideoTracks().find((t) => isScreenTrack(t));
+    if (track) return track;
+  }
+  return null;
+}
+
+function getCameraOnlyStream(stream?: MediaStream | null): MediaStream | null {
+  if (!stream) return null;
+  const cameraTrack = stream.getVideoTracks().find((t) => !isScreenTrack(t));
+  if (!cameraTrack) return null;
+  return new MediaStream([cameraTrack]);
+}
+
 export default function LiveVideoRoom({
   roomId,
   isHost: isHostProp,
@@ -107,6 +134,7 @@ export default function LiveVideoRoom({
   // Refs
   const socketRef = useRef<any>();
   const streamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<{ peerID: string, peer: Peer.Instance }[]>([]);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -207,8 +235,9 @@ export default function LiveVideoRoom({
       if (signal.type === 'screen-toggle') {
         if (signal.isSharing) {
           const remotePeer = peersRef.current.find((p) => p.peerID === from);
-          const remoteStream = remotePeer?.peer?._remoteStreams?.[0] || null;
-          setRemoteScreenUser(remoteStream);
+          const remoteStreams = remotePeer?.peer?._remoteStreams || [];
+          const remoteScreenTrack = getScreenTrackFromStreams(remoteStreams);
+          setRemoteScreenUser(remoteScreenTrack ? new MediaStream([remoteScreenTrack]) : null);
         } else {
           setRemoteScreenUser(null);
         }
@@ -295,44 +324,23 @@ export default function LiveVideoRoom({
     }
   }, []);
 
-  const revertToCameraTrack = useCallback((activeScreenTrack?: MediaStreamTrack | null) => {
-    const currentScreenTrack = activeScreenTrack || screenTrack;
-    const oldCameraTrack = streamRef.current?.getVideoTracks()[0];
-
-    if (currentScreenTrack && oldCameraTrack && streamRef.current) {
-      peersRef.current.forEach((p) => {
-        if (!p.peer.destroyed) {
-          p.peer.replaceTrack(currentScreenTrack, oldCameraTrack, streamRef.current);
-        }
-      });
-    }
-
-    peersRef.current.forEach((p) => {
-      socketRef.current?.emit('webrtc-signal', {
-        signal: { type: 'screen-toggle', isSharing: false },
-        to: p.peerID,
-      });
-    });
-
-    setScreenTrack(null);
-    setIsScreenSharing(false);
-  }, [screenTrack]);
-
   const toggleScreenShare = useCallback(async () => {
     if (!isScreenSharing) {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const newScreenTrack = screenStream.getVideoTracks()[0];
 
-      // Keep camera stream intact; only store display track separately.
+      // Keep camera track intact and publish screen as a separate track.
       setScreenTrack(newScreenTrack);
+      screenStreamRef.current = screenStream;
 
-      const cameraStream = streamRef.current;
-      const oldCameraTrack = cameraStream?.getVideoTracks()[0];
-
-      if (oldCameraTrack && newScreenTrack && cameraStream) {
+      if (newScreenTrack && screenStreamRef.current) {
         peersRef.current.forEach((p) => {
           if (!p.peer.destroyed) {
-            p.peer.replaceTrack(oldCameraTrack, newScreenTrack, cameraStream);
+            try {
+              p.peer.addTrack(newScreenTrack, screenStreamRef.current);
+            } catch (err) {
+              console.error("Failed to add screen track:", err);
+            }
           }
         });
       }
@@ -345,7 +353,28 @@ export default function LiveVideoRoom({
       });
 
       newScreenTrack.onended = () => {
-        revertToCameraTrack(newScreenTrack);
+        if (newScreenTrack && screenStreamRef.current) {
+          peersRef.current.forEach((p) => {
+            if (!p.peer.destroyed) {
+              try {
+                p.peer.removeTrack(newScreenTrack, screenStreamRef.current as MediaStream);
+              } catch (err) {
+                console.error("Failed to remove screen track:", err);
+              }
+            }
+          });
+        }
+
+        peersRef.current.forEach((p) => {
+          socketRef.current?.emit('webrtc-signal', {
+            signal: { type: 'screen-toggle', isSharing: false },
+            to: p.peerID,
+          });
+        });
+
+        setScreenTrack(null);
+        setIsScreenSharing(false);
+        screenStreamRef.current = null;
       };
 
       setIsScreenSharing(true);
@@ -354,14 +383,36 @@ export default function LiveVideoRoom({
 
     if (screenTrack) {
       screenTrack.onended = null;
+      if (screenStreamRef.current) {
+        peersRef.current.forEach((p) => {
+          if (!p.peer.destroyed) {
+            try {
+              p.peer.removeTrack(screenTrack, screenStreamRef.current as MediaStream);
+            } catch (err) {
+              console.error("Failed to remove screen track:", err);
+            }
+          }
+        });
+      }
+
       screenTrack.stop();
-      revertToCameraTrack(screenTrack);
+      peersRef.current.forEach((p) => {
+        socketRef.current?.emit('webrtc-signal', {
+          signal: { type: 'screen-toggle', isSharing: false },
+          to: p.peerID,
+        });
+      });
+
+      setScreenTrack(null);
+      setIsScreenSharing(false);
+      screenStreamRef.current = null;
       return;
     }
 
     setScreenTrack(null);
     setIsScreenSharing(false);
-  }, [isScreenSharing, screenTrack, revertToCameraTrack]);
+    screenStreamRef.current = null;
+  }, [isScreenSharing, screenTrack]);
 
   const sendMessage = useCallback((text: string) => {
     const messageObject = { id: Date.now(), senderId: effectiveCurrentUserId, text };
@@ -398,6 +449,7 @@ export default function LiveVideoRoom({
     }
 
     if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop());
     socketRef.current?.disconnect();
     router.push("/dashboard/study-rooms");
   }, [isLeaving, isHost, roomId, router, updateSessionDatabase]);
@@ -519,7 +571,12 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
 
     const attachStream = (stream: MediaStream) => {
       if (ref.current && stream) {
-        ref.current.srcObject = stream;
+        const cameraOnly = getCameraOnlyStream(stream);
+        if (!cameraOnly) {
+          setHasStream(false);
+          return;
+        }
+        ref.current.srcObject = cameraOnly;
         setHasStream(true);
         ref.current.play().catch(e => console.warn("Autoplay blocked:", e));
       }
