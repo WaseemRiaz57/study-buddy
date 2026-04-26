@@ -80,6 +80,14 @@ function getScreenTrackFromStreams(streams: MediaStream[]): MediaStreamTrack | n
   return null;
 }
 
+function getCameraTrackFromStreams(streams: MediaStream[]): MediaStreamTrack | null {
+  for (const stream of streams || []) {
+    const track = stream.getVideoTracks().find((t) => !isScreenTrack(t));
+    if (track) return track;
+  }
+  return null;
+}
+
 function getCameraOnlyStream(stream?: MediaStream | null): MediaStream | null {
   if (!stream) return null;
   const cameraTrack = stream.getVideoTracks().find((t) => !isScreenTrack(t));
@@ -280,6 +288,16 @@ export default function LiveVideoRoom({
       const existingPeer = peersRef.current.find(p => p.peerID === from);
 
       if (signal.type === 'offer') {
+        if (existingPeer && !existingPeer.peer.destroyed) {
+          console.log("[Subscriber] Duplicate offer received, reusing peer:", from);
+          try {
+            existingPeer.peer.signal(signal);
+          } catch (err) {
+            console.error("[Subscriber] Failed to process duplicate offer:", err);
+          }
+          return;
+        }
+
         const peer = addPeer(signal, from, streamRef.current);
         attachPeerTrackHandlers(peer, from);
         peersRef.current.push({ peerID: from, peer });
@@ -538,10 +556,30 @@ export default function LiveVideoRoom({
 
   // Render Remote Cards
   const remoteParticipantCards = useMemo(() => {
-    return peers.map((peerObj) => {
-      const remoteUser = participants.find((p: any) => p.socketId === peerObj.peerID);
-      return <VideoPeer key={peerObj.peerID} peer={peerObj.peer} name={remoteUser?.name || 'User'} isHost={isHost} onRemove={() => removeParticipant(peerObj.peerID)} />;
-    });
+    const uniquePeers = Array.from(
+      new Map(peers.map((peerObj) => [peerObj.peerID, peerObj])).values()
+    );
+
+    return uniquePeers
+      .filter((peerObj) => {
+        const remoteStreams = peerObj.peer?._remoteStreams || [];
+        const cameraTrack = getCameraTrackFromStreams(remoteStreams);
+
+        // Camera rail should only contain participant camera feeds (not screen share tracks).
+        return Boolean(cameraTrack?.id);
+      })
+      .map((peerObj) => {
+        const remoteUser = participants.find((p: any) => p.socketId === peerObj.peerID);
+        return (
+          <VideoPeer
+            key={peerObj.peerID}
+            peer={peerObj.peer}
+            name={remoteUser?.name || 'User'}
+            isHost={isHost}
+            onRemove={() => removeParticipant(peerObj.peerID)}
+          />
+        );
+      });
   }, [peers, participants, isHost, removeParticipant]);
 
   const renderState: LiveVideoRoomRenderState = {
