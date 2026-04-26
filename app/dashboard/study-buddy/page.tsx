@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 import ActivePeersView from "@/components/study-buddy/ActivePeersView";
 import TopicSelectionView from "@/components/study-buddy/TopicSelectionView";
@@ -37,6 +38,7 @@ interface IncomingRequest {
 }
 
 export default function StudyBuddyPage() {
+  const router = useRouter();
   const [view, setView] = useState<ViewState>("dashboard");
   const [searchData, setSearchData] = useState({ subject: "", topic: "" });
   const [selectedTopic, setSelectedTopic] = useState("");
@@ -160,12 +162,39 @@ export default function StudyBuddyPage() {
     }
   };
 
-  const handleAcceptIncoming = (connectionId: string) => {
-    console.log("Accept connection:", connectionId);
-  };
+  const handleRespond = async (
+    connectionId: string,
+    action: "accept" | "decline"
+  ) => {
+    try {
+      const res = await fetch("/api/buddies/requests/respond", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId, action }),
+      });
 
-  const handleDeclineIncoming = (connectionId: string) => {
-    console.log("Decline connection:", connectionId);
+      const result = await res.json();
+      if (!res.ok || !result?.ok) {
+        throw new Error(result?.message || "Failed to respond to request.");
+      }
+
+      if (action === "accept") {
+        toast.success("Request accepted. Redirecting to study room...");
+        router.push(`/dashboard/study-rooms/${connectionId}`);
+        return;
+      }
+
+      setIncomingRequests((prev) =>
+        prev.filter((request) => request._id !== connectionId)
+      );
+      toast.success("Request declined.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to respond to request.";
+      toast.error(message);
+    }
   };
 
   // ─── Close / Reset ───
@@ -229,14 +258,14 @@ export default function StudyBuddyPage() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleAcceptIncoming(request._id)}
+                        onClick={() => handleRespond(request._id, "accept")}
                         className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
                       >
                         Accept
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeclineIncoming(request._id)}
+                        onClick={() => handleRespond(request._id, "decline")}
                         className="px-4 py-2 rounded-lg text-sm font-semibold bg-rose-500 hover:bg-rose-600 text-white transition-colors"
                       >
                         Decline
