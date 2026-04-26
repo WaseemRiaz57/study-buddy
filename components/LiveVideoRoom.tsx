@@ -84,7 +84,8 @@ function getCameraOnlyStream(stream?: MediaStream | null): MediaStream | null {
   if (!stream) return null;
   const cameraTrack = stream.getVideoTracks().find((t) => !isScreenTrack(t));
   if (!cameraTrack) return null;
-  return new MediaStream([cameraTrack]);
+  const audioTracks = stream.getAudioTracks();
+  return new MediaStream([cameraTrack, ...audioTracks]);
 }
 
 export default function LiveVideoRoom({
@@ -175,6 +176,12 @@ export default function LiveVideoRoom({
         streamRef.current = stream;
         const audioTrack = stream.getAudioTracks()[0];
         const videoTrack = stream.getVideoTracks()[0];
+        console.log("[Media] Local tracks ready:", {
+          hasAudioTrack: Boolean(audioTrack),
+          hasVideoTrack: Boolean(videoTrack),
+          audioTrackState: audioTrack?.readyState,
+          audioTrackEnabled: audioTrack?.enabled,
+        });
         setIsMicEnabled(audioTrack ? audioTrack.enabled : true);
         setIsCameraEnabled(videoTrack ? videoTrack.enabled : true);
         setIsJoining(false);
@@ -319,18 +326,40 @@ export default function LiveVideoRoom({
   }, [attachPeerTrackHandlers, hasJoined, roomId, effectiveCurrentUserId, displayName]);
 
   function createPeer(userToSignal: string, callerID: string, stream: MediaStream | null) {
+    console.log("[Publisher] Creating outbound peer:", {
+      to: userToSignal,
+      hasLocalAudio: Boolean(stream?.getAudioTracks()?.length),
+      hasLocalVideo: Boolean(stream?.getVideoTracks()?.length),
+    });
     const peer = new Peer({ initiator: true, trickle: true, stream: stream || undefined, config: { iceServers } });
     peer.on("signal", signal => {
       socketRef.current?.emit("webrtc-signal", { signal, to: userToSignal });
+    });
+    peer.on("connect", () => {
+      console.log("[Publisher] Peer connected:", userToSignal);
+    });
+    peer.on("error", (err) => {
+      console.error("[Publisher] Peer error:", userToSignal, err);
     });
     attachPeerTrackHandlers(peer, userToSignal);
     return peer;
   }
 
   function addPeer(incomingSignal: any, callerID: string, stream: MediaStream | null) {
+    console.log("[Subscriber] Creating inbound peer:", {
+      from: callerID,
+      hasLocalAudio: Boolean(stream?.getAudioTracks()?.length),
+      hasLocalVideo: Boolean(stream?.getVideoTracks()?.length),
+    });
     const peer = new Peer({ initiator: false, trickle: true, stream: stream || undefined, config: { iceServers } });
     peer.on("signal", signal => {
       socketRef.current?.emit("webrtc-signal", { signal, to: callerID });
+    });
+    peer.on("connect", () => {
+      console.log("[Subscriber] Peer connected:", callerID);
+    });
+    peer.on("error", (err) => {
+      console.error("[Subscriber] Peer error:", callerID, err);
     });
     peer.signal(incomingSignal);
     return peer;
@@ -606,6 +635,7 @@ export default function LiveVideoRoom({
 // Sub-component for rendering incoming WebRTC streams
 const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
   const ref = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const lastCameraStreamRef = useRef<MediaStream | null>(null);
   const [hasStream, setHasStream] = useState(false); 
   const [isMinimized, setIsMinimized] = useState(false);
@@ -624,10 +654,44 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
         setHasStream(true);
         ref.current.play().catch(e => console.warn("Autoplay blocked:", e));
       }
+
+      if (audioRef.current && stream) {
+        const audioTrack = stream.getAudioTracks()[0];
+        if (audioTrack) {
+          const remoteAudioStream = new MediaStream([audioTrack]);
+          audioRef.current.srcObject = remoteAudioStream;
+          audioRef.current.muted = false;
+          audioRef.current.volume = 1;
+          audioRef.current
+            .play()
+            .then(() => {
+              console.log("[Subscriber] Remote microphone track playing:", {
+                participant: name,
+                trackState: audioTrack.readyState,
+                enabled: audioTrack.enabled,
+              });
+            })
+            .catch((error) => {
+              console.error("[Subscriber] Remote microphone playback failed:", {
+                participant: name,
+                error,
+              });
+            });
+        }
+      }
     };
 
     peer.on("stream", attachStream);
-    peer.on("track", (track: any, stream: MediaStream) => { if (stream) attachStream(stream); });
+    peer.on("track", (track: any, stream: MediaStream) => {
+      if (track?.kind === "audio") {
+        console.log("[Subscriber] Remote microphone track subscribed:", {
+          participant: name,
+          trackState: track.readyState,
+          enabled: track.enabled,
+        });
+      }
+      if (stream) attachStream(stream);
+    });
 
     if (peer._remoteStreams && peer._remoteStreams[0]) {
       attachStream(peer._remoteStreams[0]);
@@ -657,6 +721,7 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
       {!isMinimized ? (
         <>
           <video ref={ref} autoPlay playsInline className="h-full w-full object-cover" />
+          <audio ref={audioRef} autoPlay playsInline className="hidden" />
 
           {!hasStream && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/90 z-0">
