@@ -9,6 +9,7 @@ interface Student {
   _id?: string;
   id?: string;
   userId?: string;
+  requestStatus?: "pending" | "none";
   name: string;
   major?: string;
   university?: string;
@@ -145,7 +146,8 @@ export default function ActivePeersView({
           const visibleSubjects = peerSubjects.slice(0, 3);
           const remainingSubjectsCount = Math.max(peerSubjects.length - 3, 0);
           const isSending = sendingPeerId === peerId;
-          const isSent = Boolean(sentPeerIds[peerId]);
+          const isPendingRequest = peer.requestStatus === "pending";
+          const isSent = Boolean(sentPeerIds[peerId]) || isPendingRequest;
           return (
           <motion.div
             key={peerId}
@@ -190,9 +192,14 @@ export default function ActivePeersView({
             </div>
 
             <button
+              type="button"
               onClick={() => handleSendRequest({ ...peer, subjects: peerSubjects }, peerId)}
               disabled={isSending || isSent}
-              className="w-full py-2 rounded-lg border border-slate-200 dark:border-white/10 text-center text-sm font-semibold text-slate-600 dark:text-gray-300 group-hover:bg-[#8c30e8] group-hover:text-white group-hover:border-[#8c30e8] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              className={`w-full py-2 rounded-lg border text-center text-sm font-semibold transition-all disabled:cursor-not-allowed ${
+                isSent
+                  ? "bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 opacity-70"
+                  : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 group-hover:bg-[#8c30e8] group-hover:text-white group-hover:border-[#8c30e8]"
+              }`}
             >
               {isSending ? (
                 <span className="inline-flex items-center gap-2">
