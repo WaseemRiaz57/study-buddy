@@ -402,6 +402,16 @@ export default function LiveVideoRoom({
     router.push("/dashboard/study-rooms");
   }, [isLeaving, isHost, roomId, router, updateSessionDatabase]);
 
+  const handleCancelPreJoin = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setLocalStream(null);
+    setHasJoined(false);
+    router.push("/dashboard/study-buddy");
+  }, [router]);
+
   // Render Remote Cards
   const remoteParticipantCards = useMemo(() => {
     return peers.map((peerObj) => {
@@ -473,10 +483,18 @@ export default function LiveVideoRoom({
             </button>
           </div>
 
-          <div className="mt-6 flex items-center justify-center">
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <button
+              onClick={handleCancelPreJoin}
+              type="button"
+              className="rounded-xl border border-slate-300 bg-slate-100 px-7 py-3 text-sm font-bold text-slate-700 transition-all hover:bg-slate-200 dark:border-white/15 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/15"
+            >
+              Cancel
+            </button>
             <button
               onClick={() => setHasJoined(true)}
               disabled={!localStream || isJoining}
+              type="button"
               className="rounded-xl bg-gradient-to-r from-[#8c30e8] to-[#6f4bff] px-7 py-3 text-sm font-bold text-white shadow-lg transition-all hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isJoining ? "Preparing..." : "Join Room"}
