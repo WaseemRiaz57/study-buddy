@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Plus, Sparkles, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { BookOpen, Loader2, Plus, Sparkles, Trash2, Users } from "lucide-react";
 
 interface Student {
   _id?: string;
@@ -19,217 +18,263 @@ interface Student {
   tags?: string[];
 }
 
+interface StudyBuddyListing {
+  _id: string;
+  subject: string;
+  topic: string;
+  status: string;
+  createdAt?: string;
+  student?: {
+    _id: string;
+    name: string;
+    image: string;
+  } | null;
+}
+
 interface ActivePeersViewProps {
   onAddNewAction: () => void;
   onConnectAction?: (peer: Student) => void;
   peers?: Student[];
+  myListings?: StudyBuddyListing[];
+  otherListings?: StudyBuddyListing[];
   loading?: boolean;
   selectedTopic?: string;
+  onCancelListing?: (listingId: string) => Promise<void> | void;
+  onConnectListing?: (listing: StudyBuddyListing) => Promise<void> | void;
+}
+
+function ListingAvatar({ name, image }: { name: string; image?: string }) {
+  const initials =
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "SB";
+
+  return (
+    <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border-2 border-slate-100 bg-slate-100 dark:border-white/10 dark:bg-white/10">
+      {image ? (
+        <img src={image} alt={name} className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500 text-sm font-bold text-white">
+          {initials}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ActivePeersView({
   onAddNewAction,
-  onConnectAction,
-  peers,
+  myListings = [],
+  otherListings = [],
   loading,
-  selectedTopic,
+  onCancelListing,
+  onConnectListing,
 }: ActivePeersViewProps) {
-  // Use API peers if provided, otherwise fall back to empty array
-  const displayPeers = peers ?? [];
-  const [sendingPeerId, setSendingPeerId] = useState<string | null>(null);
-  const [sentPeerIds, setSentPeerIds] = useState<Record<string, boolean>>({});
+  const [cancellingListingId, setCancellingListingId] = useState<string | null>(null);
+  const [connectingListingId, setConnectingListingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log("[ActivePeersView] Data received from discover fetch:", displayPeers);
-  }, [displayPeers]);
+  const handleCancel = async (listingId: string) => {
+    if (!onCancelListing) return;
 
-  const handleSendRequest = async (peer: Student, peerId: string) => {
-    if (!selectedTopic?.trim()) {
-      toast.error("Please choose a topic before sending a request.");
-      return;
-    }
-
-    const recipientId = peer._id ?? peer.userId ?? peer.id;
-    if (!recipientId) {
-      toast.error("Unable to identify this peer.");
-      return;
-    }
-
-    setSendingPeerId(peerId);
-
+    setCancellingListingId(listingId);
     try {
-      const res = await fetch("/api/buddies/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipientId,
-          subject: selectedTopic,
-        }),
-      });
-
-      const result = await res.json();
-      if (!res.ok) {
-        throw new Error(result.message || "Failed to send request.");
-      }
-
-      setSentPeerIds((prev) => ({ ...prev, [peerId]: true }));
-      toast.success("Request sent successfully.");
-      if (onConnectAction) {
-        onConnectAction(peer);
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to send request.";
-      toast.error(message);
+      await onCancelListing(listingId);
     } finally {
-      setSendingPeerId(null);
+      setCancellingListingId(null);
+    }
+  };
+
+  const handleConnect = async (listing: StudyBuddyListing) => {
+    if (!onConnectListing) return;
+
+    setConnectingListingId(listing._id);
+    try {
+      await onConnectListing(listing);
+    } finally {
+      setConnectingListingId(null);
     }
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-8">
-      
-      {/* Header & Add New Button */}
-      <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8">
+      <div className="mb-8 flex flex-col items-center justify-between gap-4 md:flex-row">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-3xl font-bold text-slate-900 dark:text-white">
             <Users className="text-[#8c30e8]" /> Study Buddy
           </h1>
           <p className="text-slate-500 dark:text-gray-400">
-            Connect with peers currently online.
+            Create listings and connect with peers ready to study.
           </p>
         </div>
 
-        {/* Add New (Start Matching) Button */}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onAddNewAction}
-          className="flex items-center gap-2 bg-gradient-to-r from-[#8c30e8] to-[#e830d5] text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all"
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#8c30e8] to-[#e830d5] px-6 py-3 font-bold text-white shadow-lg shadow-purple-500/30 transition-all hover:shadow-purple-500/50"
         >
           <Plus size={20} />
-          Find New Buddy
+          Create Listing
         </motion.button>
       </div>
 
-      {/* Loading State */}
-      {loading && (
+      {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-[#8c30e8]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#8c30e8]" />
         </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && displayPeers.length === 0 && (
-        <div className="text-center py-20 text-slate-500 dark:text-gray-400">
-          {selectedTopic?.trim() ? (
-            <>
-              <p className="text-lg font-medium">No buddies found for this topic.</p>
-              <p className="text-sm mt-1">Try another subject or check back when more peers are online.</p>
-            </>
-          ) : (
-            <>
-              <p className="text-lg font-medium">No peers online right now.</p>
-              <p className="text-sm mt-1">Click &quot;Find New Buddy&quot; to start matchmaking!</p>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Peers Grid */}
-      {!loading && (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {displayPeers.map((peer, index) => {
-          const peerId =
-            peer._id ?? peer.userId ?? peer.id ?? index.toString();
-          const peerSubjects = peer.subjects ?? peer.tags ?? [];
-          const visibleSubjects = peerSubjects.slice(0, 3);
-          const remainingSubjectsCount = Math.max(peerSubjects.length - 3, 0);
-          const isSending = sendingPeerId === peerId;
-          const isPendingRequest = peer.requestStatus === "pending";
-          const isSent = Boolean(sentPeerIds[peerId]) || isPendingRequest;
-          return (
-          <motion.div
-            key={peerId}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="group relative bg-white dark:bg-[#1a1524] border border-slate-200 dark:border-white/10 p-5 rounded-2xl hover:border-[#8c30e8]/50 transition-all cursor-pointer shadow-sm hover:shadow-md"
-          >
-            {/* Online Indicator */}
-            {peer.isOnline && (
-              <span className="absolute top-5 right-5 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#1a1524] rounded-full" />
-            )}
-
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-slate-100 dark:border-white/10">
-                <img src={peer.image || "/placeholder-avatar.png"} alt={peer.name} className="w-full h-full object-cover" />
-              </div>
+      ) : (
+        <div className="space-y-8">
+          <section>
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-[#8c30e8] transition-colors">
-                  {peer.name}
-                </h3>
-                {peerSubjects.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {visibleSubjects.map((sub) => (
-                      <span
-                        key={`${peerId}-${sub}`}
-                        className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 border border-slate-200 dark:border-white/5"
-                      >
-                        {sub}
-                      </span>
-                    ))}
-                    {remainingSubjectsCount > 0 && (
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-white/5">
-                        +{remainingSubjectsCount} more
-                      </span>
-                    )}
-                  </div>
-                )}
-                {peer.major && <p className="text-xs text-slate-500 dark:text-gray-400">{peer.major}</p>}
-                {peer.university && <p className="text-xs text-slate-400 dark:text-gray-500">{peer.university}</p>}
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                  My Active Listings
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-gray-400">
+                  Manage the subjects you are currently listed for.
+                </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleSendRequest({ ...peer, subjects: peerSubjects }, peerId)}
-              disabled={isSending || isSent}
-              className={`w-full py-2 rounded-lg border text-center text-sm font-semibold transition-all disabled:cursor-not-allowed ${
-                isSent
-                  ? "bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 opacity-70"
-                  : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 group-hover:bg-[#8c30e8] group-hover:text-white group-hover:border-[#8c30e8]"
-              }`}
-            >
-              {isSending ? (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Sending...
-                </span>
-              ) : isSent ? (
-                "Request Sent"
-              ) : (
-                "Connect"
-              )}
-            </button>
-          </motion.div>
-          );
-        })}
+            {myListings.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 p-6 text-sm text-slate-500 dark:border-white/10 dark:bg-[#1a1524]/70 dark:text-gray-400">
+                You do not have any active listings yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {myListings.map((listing, index) => {
+                  const isCancelling = cancellingListingId === listing._id;
 
-        {/* Placeholder Card for "Add New" visual */}
-        <motion.div
-          onClick={onAddNewAction}
-          whileHover={{ scale: 1.02 }}
-          className="border-2 border-dashed border-slate-300 dark:border-white/10 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#8c30e8] hover:bg-slate-50 dark:hover:bg-white/5 transition-all min-h-[200px]"
-        >
-          <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-3 text-slate-400 dark:text-gray-500 group-hover:text-[#8c30e8]">
-            <Sparkles size={24} />
-          </div>
-          <h3 className="font-bold text-slate-900 dark:text-white">Discover More</h3>
-          <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">Match with new students</p>
-        </motion.div>
+                  return (
+                    <motion.div
+                      key={listing._id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#1a1524]"
+                    >
+                      <div className="mb-4 flex items-start gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
+                          <BookOpen size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+                            Subject
+                          </p>
+                          <h3 className="truncate text-lg font-bold text-slate-900 dark:text-white">
+                            {listing.subject}
+                          </h3>
+                          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
+                            {listing.topic || "General topic"}
+                          </p>
+                        </div>
+                      </div>
 
-      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleCancel(listing._id)}
+                        disabled={isCancelling}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20"
+                      >
+                        {isCancelling ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={16} />
+                        )}
+                        Cancel Listing
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                Looking for Study Partners
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-gray-400">
+                Join a peer who is actively looking for a study partner.
+              </p>
+            </div>
+
+            {otherListings.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 p-8 text-center text-slate-500 dark:border-white/10 dark:bg-[#1a1524]/70 dark:text-gray-400">
+                <Sparkles className="mx-auto mb-3 h-7 w-7 text-[#8c30e8]" />
+                <p className="text-lg font-medium">No open listings right now.</p>
+                <p className="mt-1 text-sm">Create a listing and we will show it to other students.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {otherListings.map((listing, index) => {
+                  const studentName = listing.student?.name || "Study Buddy";
+                  const studentImage = listing.student?.image || "";
+                  const isConnecting = connectingListingId === listing._id;
+
+                  return (
+                    <motion.div
+                      key={listing._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.06 }}
+                      className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-[#8c30e8]/50 hover:shadow-md dark:border-white/10 dark:bg-[#1a1524]"
+                    >
+                      <div className="mb-5 flex items-center gap-4">
+                        <ListingAvatar name={studentName} image={studentImage} />
+                        <div className="min-w-0">
+                          <h3 className="truncate font-bold text-slate-900 transition-colors group-hover:text-[#8c30e8] dark:text-white">
+                            {studentName}
+                          </h3>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-300">
+                            Searching now
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mb-5 space-y-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+                            Subject
+                          </p>
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            {listing.subject}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+                            Topic
+                          </p>
+                          <p className="text-sm text-slate-600 dark:text-gray-300">
+                            {listing.topic || "General topic"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleConnect(listing)}
+                        disabled={isConnecting}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#8c30e8] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isConnecting ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Users size={16} />
+                        )}
+                        Connect
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
       )}
     </div>
   );

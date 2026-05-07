@@ -25,8 +25,86 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json().catch(() => ({}));
+    const listingId = String(body?.listingId || body?.matchId || "").trim();
     const subject = String(body?.subject || "").trim();
     const topic = String(body?.topic || "").trim();
+
+    await connectDB();
+
+    const currentUserObjectId = new mongoose.Types.ObjectId(currentUserId);
+
+    if (listingId) {
+      if (!mongoose.Types.ObjectId.isValid(listingId)) {
+        return NextResponse.json(
+          { message: "Invalid listing id." },
+          { status: 400 }
+        );
+      }
+
+      const matchedBuddy = await BuddyMatch.findOneAndUpdate(
+        {
+          _id: listingId,
+          status: "Searching",
+          studentId: { $ne: currentUserObjectId },
+        },
+        {
+          $set: {
+            status: "Pending",
+            matchedPeerId: currentUserObjectId,
+          },
+        },
+        { new: true }
+      ).lean();
+
+      if (!matchedBuddy) {
+        return NextResponse.json(
+          { message: "Listing is no longer available." },
+          { status: 404 }
+        );
+      }
+
+      const peerId = String(matchedBuddy.studentId);
+      const room = await createStudyBuddyMatchRoom({
+        hostId: currentUserId,
+        peerId,
+        subject: matchedBuddy.subject,
+      });
+
+      const updatedMatch = await BuddyMatch.findByIdAndUpdate(
+        matchedBuddy._id,
+        { $set: { roomId: room.roomObjectId } },
+        { new: true }
+      ).lean();
+
+      const peer = await User.findById(peerId, "name image").lean();
+
+      await Promise.all([
+        StudyProfile.findOneAndUpdate(
+          { userId: currentUserId },
+          { $set: { isLookingForMatch: false } }
+        ),
+        StudyProfile.findOneAndUpdate(
+          { userId: peerId },
+          { $set: { isLookingForMatch: false } }
+        ),
+      ]);
+
+      return NextResponse.json(
+        {
+          message: "Match found.",
+          matchFound: true,
+          matchId: String(matchedBuddy._id),
+          roomId: room.roomId,
+          peer: {
+            id: peerId,
+            name: peer?.name || "Study Buddy",
+            image: peer?.image || "",
+          },
+          match: updatedMatch || matchedBuddy,
+        },
+        { status: 200 }
+      );
+    }
 
     if (!subject) {
       return NextResponse.json(
@@ -34,10 +112,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    await connectDB();
-
-    const currentUserObjectId = new mongoose.Types.ObjectId(currentUserId);
 
     await StudyProfile.findOneAndUpdate(
       { userId: currentUserId },

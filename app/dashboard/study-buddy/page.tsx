@@ -24,6 +24,19 @@ interface Peer {
   tags: string[];
 }
 
+export interface StudyBuddyListing {
+  _id: string;
+  subject: string;
+  topic: string;
+  status: string;
+  createdAt?: string;
+  student?: {
+    _id: string;
+    name: string;
+    image: string;
+  } | null;
+}
+
 interface IncomingRequest {
   _id: string;
   requester: {
@@ -52,6 +65,8 @@ export default function StudyBuddyPage() {
   const [selectedTopic, setSelectedTopic] = useState("");
   const [peers, setPeers] = useState<Peer[]>([]);
   const [peersLoading, setPeersLoading] = useState(false);
+  const [myListings, setMyListings] = useState<StudyBuddyListing[]>([]);
+  const [otherListings, setOtherListings] = useState<StudyBuddyListing[]>([]);
 
   const [loadingMode, setLoadingMode] = useState<"search" | "direct">("search");
 
@@ -77,6 +92,36 @@ export default function StudyBuddyPage() {
       pollingRef.current = null;
     }
   }, []);
+
+  const fetchActiveListings = useCallback(async () => {
+    setPeersLoading(true);
+
+    try {
+      const res = await fetch("/api/study-buddy/listings/active");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to fetch active listings.");
+      }
+
+      setMyListings(Array.isArray(data.myListings) ? data.myListings : []);
+      setOtherListings(Array.isArray(data.otherListings) ? data.otherListings : []);
+    } catch (error) {
+      setMyListings([]);
+      setOtherListings([]);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch active listings."
+      );
+    } finally {
+      setPeersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchActiveListings();
+  }, [fetchActiveListings]);
 
   // ─── Fetch incoming pending buddy requests ───
   useEffect(() => {
@@ -217,6 +262,7 @@ export default function StudyBuddyPage() {
 
       setPeers([]);
       startStatusPolling(matchId);
+      void fetchActiveListings();
       setView("loading");
     } catch (error) {
       toast.error(
@@ -227,6 +273,70 @@ export default function StudyBuddyPage() {
       setView("dashboard");
     } finally {
       setPeersLoading(false);
+    }
+  };
+
+  const handleCancelListing = async (listingId: string) => {
+    try {
+      const res = await fetch(
+        `/api/study-buddy/listings/${encodeURIComponent(listingId)}`,
+        { method: "DELETE" }
+      );
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result?.message || "Failed to cancel listing.");
+      }
+
+      toast.success("Listing cancelled.");
+      await fetchActiveListings();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to cancel listing."
+      );
+    }
+  };
+
+  const handleConnectListing = async (listing: StudyBuddyListing) => {
+    setLoadingMode("direct");
+    setView("loading");
+
+    try {
+      const res = await fetch("/api/study-buddy/find", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: listing._id }),
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result?.message || "Failed to connect with listing.");
+      }
+
+      const roomId = String(result.roomId || "").trim();
+      const peer = result.peer || listing.student || {};
+
+      if (!roomId) {
+        throw new Error("Connected, but no roomId was returned.");
+      }
+
+      setActiveSessionId(roomId);
+      setMatchedPeerData({
+        name: peer.name || "Study Buddy",
+        image: peer.image || "",
+        tags: [],
+      });
+      await fetchActiveListings();
+      router.push(`/dashboard/study-rooms/${encodeURIComponent(roomId)}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect with listing."
+      );
+      setView("dashboard");
     }
   };
 
@@ -390,8 +500,12 @@ export default function StudyBuddyPage() {
               <ActivePeersView 
                 onAddNewAction={handleAddNew} 
                 peers={peers}
+                myListings={myListings}
+                otherListings={otherListings}
                 loading={peersLoading}
                 selectedTopic={selectedTopic}
+                onCancelListing={handleCancelListing}
+                onConnectListing={handleConnectListing}
               />
             </motion.div>
           )}
