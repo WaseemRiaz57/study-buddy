@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-guard";
 import { connectMongoDB } from "@/lib/mongodb";
+import BuddyMatch from "@/models/BuddyMatch";
 import BuddyConnection from "@/models/BuddyConnection";
 import User from "@/models/User";
 import mongoose from "mongoose";
 
 interface RequestBody {
+  listingId?: string;
   recipientId?: string;
   subject?: string;
 }
@@ -17,8 +19,36 @@ export async function POST(req: Request) {
 
   try {
     const body = (await req.json()) as RequestBody;
-    const recipientId = String(body.recipientId || "").trim();
-    const subject = String(body.subject || "").trim().slice(0, 100);
+    const listingId = String(body.listingId || "").trim();
+    let recipientId = String(body.recipientId || "").trim();
+    let subject = String(body.subject || "").trim().slice(0, 100);
+    const requesterId = session!.user.id;
+
+    await connectMongoDB();
+
+    if (listingId) {
+      if (!mongoose.Types.ObjectId.isValid(listingId)) {
+        return NextResponse.json(
+          { message: "Valid listingId is required" },
+          { status: 400 }
+        );
+      }
+
+      const listing = await BuddyMatch.findOne({
+        _id: listingId,
+        status: "Searching",
+      }).lean();
+
+      if (!listing) {
+        return NextResponse.json(
+          { message: "Listing is no longer available" },
+          { status: 404 }
+        );
+      }
+
+      recipientId = String(listing.studentId);
+      subject = String(listing.subject || subject).trim().slice(0, 100);
+    }
 
     if (!mongoose.Types.ObjectId.isValid(recipientId) || !subject) {
       return NextResponse.json(
@@ -27,16 +57,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const requesterId = session!.user.id;
-
     if (requesterId === recipientId) {
       return NextResponse.json(
         { message: "You cannot send a request to yourself" },
         { status: 400 }
       );
     }
-
-    await connectMongoDB();
 
     const recipient = await User.findOne({ _id: recipientId, role: "student" }).select("_id");
     if (!recipient) {

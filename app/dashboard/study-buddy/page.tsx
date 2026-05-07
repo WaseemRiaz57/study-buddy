@@ -171,13 +171,14 @@ export default function StudyBuddyPage() {
 
   // ─── Poll Session Status (User A) ───
   const startStatusPolling = useCallback(
-    (matchId: string) => {
+    (id: string, type: "request" | "match" = "request") => {
       if (pollingRef.current) clearInterval(pollingRef.current);
 
       pollingRef.current = setInterval(async () => {
         try {
+          const queryParam = type === "match" ? "matchId" : "requestId";
           const res = await fetch(
-            `/api/study-buddy/status?matchId=${encodeURIComponent(matchId)}`
+            `/api/study-buddy/status?${queryParam}=${encodeURIComponent(id)}`
           );
           if (!res.ok) return;
           const data = await res.json();
@@ -261,7 +262,7 @@ export default function StudyBuddyPage() {
       }
 
       setPeers([]);
-      startStatusPolling(matchId);
+      startStatusPolling(matchId, "match");
       void fetchActiveListings();
       setView("loading");
     } catch (error) {
@@ -301,40 +302,47 @@ export default function StudyBuddyPage() {
 
   const handleConnectListing = async (listing: StudyBuddyListing) => {
     setLoadingMode("direct");
-    setView("loading");
 
     try {
-      const res = await fetch("/api/study-buddy/find", {
+      const recipientId = String(listing.student?._id || "").trim();
+
+      if (!recipientId) {
+        throw new Error("Unable to identify the listing owner.");
+      }
+
+      const res = await fetch("/api/buddies/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listingId: listing._id }),
+        body: JSON.stringify({
+          listingId: listing._id,
+          recipientId,
+        }),
       });
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result?.message || "Failed to connect with listing.");
+        throw new Error(result?.message || "Failed to send request.");
       }
 
-      const roomId = String(result.roomId || "").trim();
-      const peer = result.peer || listing.student || {};
+      const requestId = String(result.connection?._id || result.requestId || "").trim();
 
-      if (!roomId) {
-        throw new Error("Connected, but no roomId was returned.");
+      if (!requestId) {
+        throw new Error("Request sent, but no requestId was returned.");
       }
 
-      setActiveSessionId(roomId);
       setMatchedPeerData({
-        name: peer.name || "Study Buddy",
-        image: peer.image || "",
+        name: listing.student?.name || "Study Buddy",
+        image: listing.student?.image || "",
         tags: [],
       });
-      await fetchActiveListings();
-      router.push(`/dashboard/study-rooms/${encodeURIComponent(roomId)}`);
+      toast.success("Request sent! Waiting for approval...");
+      setView("loading");
+      startStatusPolling(requestId);
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to connect with listing."
+          : "Failed to send request."
       );
       setView("dashboard");
     }

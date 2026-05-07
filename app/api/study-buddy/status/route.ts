@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/authOptions";
 import { requireRole } from "@/lib/auth-guard";
 import { connectMongoDB } from "@/lib/mongodb";
 import { setStudentOnline, setStudentOffline } from "@/lib/redis";
+import BuddyConnection from "@/models/BuddyConnection";
 import BuddyMatch from "@/models/BuddyMatch";
 import StudyRoom from "@/models/StudyRoom";
 import StudySession from "@/models/StudySession";
@@ -37,6 +38,14 @@ type LeanStudyRoom = {
   roomId: string;
 };
 
+type LeanBuddyConnection = {
+  _id: { toString(): string };
+  requester: { toString(): string };
+  recipient: { toString(): string };
+  subject: string;
+  status: "pending" | "accepted" | "rejected" | "completed";
+};
+
 // GET /api/study-buddy/status?sessionId=... — User A polls to check if User B responded
 export async function GET(req: Request) {
   try {
@@ -48,8 +57,69 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
+    const requestId = searchParams.get("requestId");
     const matchId = searchParams.get("matchId");
     const sessionId = searchParams.get("sessionId");
+
+    if (requestId) {
+      if (!mongoose.Types.ObjectId.isValid(requestId)) {
+        return NextResponse.json(
+          { message: "A valid requestId query param is required." },
+          { status: 400 }
+        );
+      }
+
+      await connectMongoDB();
+
+      const connection = (await BuddyConnection.findById(requestId).lean()) as
+        | LeanBuddyConnection
+        | null;
+
+      if (!connection) {
+        return NextResponse.json(
+          { requestId, status: "rejected", matchFound: false },
+          { status: 200 }
+        );
+      }
+
+      const requesterId = connection.requester.toString();
+      const recipientId = connection.recipient.toString();
+
+      if (requesterId !== currentUserId && recipientId !== currentUserId) {
+        return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+      }
+
+      if (connection.status === "pending") {
+        return NextResponse.json({
+          requestId,
+          status: "pending",
+          matchFound: false,
+        });
+      }
+
+      if (connection.status !== "accepted") {
+        return NextResponse.json({
+          requestId,
+          status: "rejected",
+          matchFound: false,
+        });
+      }
+
+      const peerId = requesterId === currentUserId ? recipientId : requesterId;
+      const peer = (await User.findById(peerId, "name image").lean()) as LeanPeer | null;
+
+      return NextResponse.json({
+        requestId,
+        matchFound: true,
+        status: "accepted",
+        roomId: requestId,
+        peer: {
+          id: peerId,
+          name: peer?.name || "Study Buddy",
+          image: peer?.image || "",
+        },
+      });
+    }
 
     if (matchId) {
       if (!mongoose.Types.ObjectId.isValid(matchId)) {
@@ -130,7 +200,7 @@ export async function GET(req: Request) {
 
     if (!sessionId || !mongoose.Types.ObjectId.isValid(sessionId)) {
       return NextResponse.json(
-        { message: "A valid matchId or sessionId query param is required." },
+        { message: "A valid requestId, matchId, or sessionId query param is required." },
         { status: 400 }
       );
     }
