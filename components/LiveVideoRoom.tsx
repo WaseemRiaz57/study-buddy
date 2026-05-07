@@ -282,6 +282,14 @@ export default function LiveVideoRoom({
       syncRoomState(room);
     };
 
+    const handleParticipantDisconnected = (participant: RemoteParticipant) => {
+      const participantName =
+        participant.name || participant.identity || "A participant";
+
+      handleRoomChanged();
+      toast.info(`${participantName} has left the study room.`);
+    };
+
     const handleTrackSubscribed = (
       track: RemoteTrack,
       publication: RemoteTrackPublication,
@@ -406,7 +414,7 @@ export default function LiveVideoRoom({
 
     room
       .on(RoomEvent.ParticipantConnected, handleRoomChanged)
-      .on(RoomEvent.ParticipantDisconnected, handleRoomChanged)
+      .on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
       .on(RoomEvent.TrackPublished, handleRoomChanged)
       .on(RoomEvent.TrackUnpublished, handleRoomChanged)
       .on(RoomEvent.TrackMuted, handleRoomChanged)
