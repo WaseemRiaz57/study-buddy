@@ -541,7 +541,7 @@ export default function Home() {
   const springY = useSpring(mousePos.y * 20, { stiffness: 40, damping: 20 });
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground overflow-hidden font-sans">
+    <div className="landing-page relative min-h-screen bg-background text-foreground overflow-hidden font-sans">
 
       {/* ── BACKGROUND ORBS ── */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">

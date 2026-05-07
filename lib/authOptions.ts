@@ -5,6 +5,7 @@ import { connectMongoDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { type Role } from "@/store/useUserStore";
 import { cookies } from "next/headers";
+import { hashPassword, isPasswordHash, verifyPassword } from "@/lib/password";
 
 declare module "next-auth" {
   interface Session {
@@ -27,7 +28,17 @@ declare module "next-auth/jwt" {
 
 function normalizeRole(role: unknown): Role {
   const r = String(role).toUpperCase();
-  return r === "MENTOR" ? "MENTOR" : "STUDENT";
+  if (r === "ADMIN") return "ADMIN";
+  if (r === "MENTOR") return "MENTOR";
+  return "STUDENT";
+}
+
+function normalizeSignupRole(role: unknown): "student" | "mentor" {
+  return String(role).toLowerCase() === "mentor" ? "mentor" : "student";
+}
+
+function normalizeEmail(email: unknown): string {
+  return String(email || "").trim().toLowerCase();
 }
 
 export const authOptions: NextAuthOptions = {
@@ -44,15 +55,24 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email aur Password dono zaroori hain");
+        const email = normalizeEmail(credentials?.email);
+        const password = String(credentials?.password || "");
+
+        if (!email || !password) {
+          throw new Error("Email and password are required");
         }
 
         await connectMongoDB();
-        const user = await User.findOne({ email: credentials.email }).lean();
+        const user = await User.findOne({ email });
 
-        if (!user) throw new Error("Is email se koi account nahi mila");
-        if (user.password !== credentials.password) throw new Error("Ghalat password");
+        if (!user || !(await verifyPassword(password, user.password))) {
+          throw new Error("Invalid email or password");
+        }
+
+        if (!isPasswordHash(user.password)) {
+          user.password = await hashPassword(password);
+          await user.save();
+        }
 
         return {
           id: String(user._id),
@@ -75,7 +95,9 @@ export const authOptions: NextAuthOptions = {
 
           if (!userExists) {
             const cookieStore = await cookies();
-            const intendedRole = cookieStore.get("intended_role")?.value || "student";
+            const intendedRole = normalizeSignupRole(
+              cookieStore.get("intended_role")?.value
+            );
 
             await User.create({
               name: user.name,
@@ -106,7 +128,7 @@ export const authOptions: NextAuthOptions = {
           token.id = user.id;
           token.email = user.email;
           token.name = user.name;
-          token.role = normalizeRole((user as any).role);
+          token.role = normalizeRole((user as { role?: unknown }).role);
         }
       }
       token.role = normalizeRole(token.role);

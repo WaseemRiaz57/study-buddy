@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import mongoose from "mongoose";
+import { getServerSession } from "next-auth";
 import { connectDB } from "@/lib/connectDB";
+import { authOptions } from "@/lib/authOptions";
 import StudyRoom from "@/models/StudyRoom";
 
 export const dynamic = "force-dynamic";
@@ -8,13 +10,17 @@ export const revalidate = 0;
 
 interface CreateStudyRoomBody {
   roomId: string;
-  createdBy: string;
   title: string;
-  participants?: string[];
+  maxParticipants?: number;
 }
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
 
     const rooms = await StudyRoom.find({
@@ -41,41 +47,41 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || !mongoose.Types.ObjectId.isValid(session.user.id)) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await request.json()) as CreateStudyRoomBody;
-    const { roomId, createdBy, title, participants = [] } = body;
+    const { roomId, title } = body;
     const normalizedRoomId = String(roomId || "").trim().toUpperCase();
     const normalizedTitle = String(title || "").trim();
+    const maxParticipants = Number(body.maxParticipants || 8);
 
-    if (!normalizedRoomId || !createdBy || !normalizedTitle) {
+    if (!/^[A-Z0-9-]{3,32}$/.test(normalizedRoomId) || !normalizedTitle) {
       return NextResponse.json(
-        { message: "roomId, createdBy and title are required" },
+        { message: "Valid roomId and title are required" },
         { status: 400 }
       );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(createdBy)) {
+    if (!Number.isInteger(maxParticipants) || maxParticipants < 2 || maxParticipants > 20) {
       return NextResponse.json(
-        { message: "Invalid createdBy user id" },
+        { message: "maxParticipants must be an integer between 2 and 20" },
         { status: 400 }
       );
     }
 
     await connectDB();
 
-    const participantIds = participants
-      .filter((id) => mongoose.Types.ObjectId.isValid(id))
-      .map((id) => new mongoose.Types.ObjectId(id));
-
-    const creatorObjectId = new mongoose.Types.ObjectId(createdBy);
+    const creatorObjectId = new mongoose.Types.ObjectId(session.user.id);
 
     const room = await StudyRoom.create({
       roomId: normalizedRoomId,
       createdBy: creatorObjectId,
       title: normalizedTitle,
-      participants:
-        participantIds.length > 0
-          ? participantIds
-          : [creatorObjectId],
+      participants: [creatorObjectId],
+      maxParticipants,
       isActive: true,
       status: "active",
       isLive: true,

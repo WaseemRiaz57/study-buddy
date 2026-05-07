@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import BuddyConnection from "@/models/BuddyConnection";
+import mongoose from "mongoose";
 
 interface RespondBody {
   connectionId?: string;
@@ -25,11 +26,11 @@ export async function PATCH(req: Request) {
 
     const { connectionId, action } = (await req.json()) as RespondBody;
 
-    if (!connectionId || !action || !["accept", "decline"].includes(action)) {
+    if (!mongoose.Types.ObjectId.isValid(connectionId || "") || !action || !["accept", "decline"].includes(action)) {
       return NextResponse.json(
         {
           ok: false,
-          message: "connectionId and action ('accept' | 'decline') are required.",
+          message: "Valid connectionId and action ('accept' | 'decline') are required.",
         },
         { status: 400 }
       );

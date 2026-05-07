@@ -32,7 +32,7 @@ export async function GET() {
     }
 
     return NextResponse.json(progress);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ message: "Error fetching progress" }, { status: 500 });
   }
 }
@@ -44,15 +44,24 @@ export async function POST(req: Request) {
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const { minutes } = await req.json(); // Kitne minute focus kiya (e.g., 25)
+    const focusMinutes = Number(minutes);
+
+    if (!Number.isInteger(focusMinutes) || focusMinutes < 1 || focusMinutes > 240) {
+      return NextResponse.json(
+        { message: "minutes must be an integer between 1 and 240." },
+        { status: 400 }
+      );
+    }
+
     await connectMongoDB();
 
     const progress = await UserProgress.findOne({ userId: session.user.email });
     if (!progress) return NextResponse.json({ message: "Progress not found" }, { status: 404 });
 
     // XP calculate karein (1 minute = 10 XP)
-    const earnedXp = minutes * 10;
+    const earnedXp = focusMinutes * 10;
     progress.xp += earnedXp;
-    progress.todayMinutes += minutes;
+    progress.todayMinutes += focusMinutes;
     progress.lastActiveDate = new Date();
 
     // Level up logic (Har 1000 XP par naya level)
@@ -62,7 +71,7 @@ export async function POST(req: Request) {
     await progress.save();
 
     return NextResponse.json({ progress, earnedXp });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ message: "Error updating focus session" }, { status: 500 });
   }
 }

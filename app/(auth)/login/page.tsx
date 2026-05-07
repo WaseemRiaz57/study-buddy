@@ -68,7 +68,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="relative min-h-screen bg-background text-foreground flex items-center justify-center px-6 py-16 overflow-hidden">
+    <main className="auth-page relative min-h-screen bg-background text-foreground flex items-center justify-center px-6 py-16 overflow-hidden">
       
       {/* Animated Background Glows */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">

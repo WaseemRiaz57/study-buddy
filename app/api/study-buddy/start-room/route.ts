@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     await connectMongoDB();
 
-    let studentAId = currentUserId;
+    const studentAId = currentUserId;
     let studentBId: string | null = null;
     let resolvedSubject = subject || "";
 

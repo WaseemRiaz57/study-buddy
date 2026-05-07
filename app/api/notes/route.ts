@@ -1,14 +1,29 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 
-const OLLAMA_ENDPOINT = "http://143.244.133.231:11434/api/generate";
+const OLLAMA_ENDPOINT = process.env.OLLAMA_GENERATE_URL || "http://143.244.133.231:11434/api/generate";
+const MAX_PROMPT_CHARS = 8000;
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const userPrompt = body?.prompt;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!userPrompt || typeof userPrompt !== "string") {
+    const body = await req.json();
+    const userPrompt = String(body?.prompt || "").trim();
+
+    if (!userPrompt) {
       return NextResponse.json({ message: "Prompt is required" }, { status: 400 });
+    }
+
+    if (userPrompt.length > MAX_PROMPT_CHARS) {
+      return NextResponse.json(
+        { message: `Prompt must be ${MAX_PROMPT_CHARS} characters or fewer.` },
+        { status: 400 }
+      );
     }
 
     const ollamaResponse = await fetch(OLLAMA_ENDPOINT, {
@@ -24,9 +39,8 @@ export async function POST(req: Request) {
     });
 
     if (!ollamaResponse.ok) {
-      const errorText = await ollamaResponse.text();
       return NextResponse.json(
-        { message: "Failed to get response from AI server", details: errorText },
+        { message: "Failed to get response from AI server" },
         { status: ollamaResponse.status }
       );
     }

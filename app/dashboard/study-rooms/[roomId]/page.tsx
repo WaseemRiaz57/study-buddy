@@ -19,6 +19,10 @@ import {
   Minus
 } from "lucide-react";
 
+function isPlaybackAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
 // Native Video Player Helper (Smarter version for Screen Share Tracks)
 const NativeStreamPlayer = ({ stream, muted = false, className = "" }: any) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -52,6 +56,10 @@ const NativeStreamPlayer = ({ stream, muted = false, className = "" }: any) => {
           });
         })
         .catch((error) => {
+          if (isPlaybackAbortError(error)) {
+            return;
+          }
+
           console.error("[MainTile] Screen-share video playback failed:", error);
         });
     }

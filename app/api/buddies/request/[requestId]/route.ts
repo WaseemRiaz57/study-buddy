@@ -4,6 +4,7 @@ import { connectMongoDB } from "@/lib/mongodb";
 import BuddyConnection, {
   type BuddyConnectionStatus,
 } from "@/models/BuddyConnection";
+import mongoose from "mongoose";
 
 interface PatchRequestBody {
   status?: BuddyConnectionStatus;
@@ -22,9 +23,9 @@ export async function PATCH(
     const requesterAction = (await req.json()) as PatchRequestBody;
     const nextStatus = requesterAction.status;
 
-    if (!requestId?.trim()) {
+    if (!mongoose.Types.ObjectId.isValid(requestId)) {
       return NextResponse.json(
-        { message: "requestId is required" },
+        { message: "Valid requestId is required" },
         { status: 400 }
       );
     }

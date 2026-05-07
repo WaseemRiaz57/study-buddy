@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-guard";
 import { connectMongoDB } from "@/lib/mongodb";
 import BuddyConnection from "@/models/BuddyConnection";
+import User from "@/models/User";
+import mongoose from "mongoose";
 
 interface RequestBody {
   recipientId?: string;
@@ -15,12 +17,12 @@ export async function POST(req: Request) {
 
   try {
     const body = (await req.json()) as RequestBody;
-    const recipientId = body.recipientId?.trim();
-    const subject = body.subject?.trim();
+    const recipientId = String(body.recipientId || "").trim();
+    const subject = String(body.subject || "").trim().slice(0, 100);
 
-    if (!recipientId || !subject) {
+    if (!mongoose.Types.ObjectId.isValid(recipientId) || !subject) {
       return NextResponse.json(
-        { message: "recipientId and subject are required" },
+        { message: "Valid recipientId and subject are required" },
         { status: 400 }
       );
     }
@@ -35,6 +37,14 @@ export async function POST(req: Request) {
     }
 
     await connectMongoDB();
+
+    const recipient = await User.findOne({ _id: recipientId, role: "student" }).select("_id");
+    if (!recipient) {
+      return NextResponse.json(
+        { message: "Recipient not found or unavailable" },
+        { status: 404 }
+      );
+    }
 
     const existingConnection = await BuddyConnection.findOne({
       $or: [

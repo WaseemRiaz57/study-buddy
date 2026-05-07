@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-// @ts-ignore - pdf-parse-fork handles ESM/CommonJS better for Vercel builds
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+// @ts-expect-error - pdf-parse-fork handles ESM/CommonJS better for Vercel builds
 import pdf from 'pdf-parse-fork';
 import {
   ALLOWED_UPLOAD_EXTENSIONS,
@@ -7,7 +9,9 @@ import {
   isAllowedUploadType,
 } from "@/lib/study-room-constants";
 
-const OLLAMA_URL = "http://143.244.133.231:11434/api/generate";
+const OLLAMA_URL = process.env.OLLAMA_GENERATE_URL || "http://143.244.133.231:11434/api/generate";
+const MAX_PROMPT_CHARS = 8000;
+const MAX_EXTRACTED_TEXT_CHARS = 60000;
 
 export const runtime = "nodejs";
 
@@ -105,7 +109,7 @@ async function parseIncomingRequest(req: Request): Promise<IncomingPayload> {
       const text = (await extractTextFromFile(fileEntry)).trim();
       return {
         userPrompt,
-        extractedFileText: text,
+        extractedFileText: text.slice(0, MAX_EXTRACTED_TEXT_CHARS),
         outputMode,
         validationError: null,
       };
@@ -168,6 +172,11 @@ function buildSystemPrompt(outputMode: OutputMode, hasFileText: boolean): string
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const { userPrompt, extractedFileText, outputMode, validationError } =
       await parseIncomingRequest(req);
 
@@ -177,6 +186,13 @@ export async function POST(req: Request) {
 
     if (!userPrompt || typeof userPrompt !== "string") {
       return NextResponse.json({ message: "userPrompt is required" }, { status: 400 });
+    }
+
+    if (userPrompt.length > MAX_PROMPT_CHARS) {
+      return NextResponse.json(
+        { message: `userPrompt must be ${MAX_PROMPT_CHARS} characters or fewer.` },
+        { status: 400 }
+      );
     }
 
     const hasFileText = extractedFileText.length > 0;
@@ -206,9 +222,8 @@ export async function POST(req: Request) {
     });
 
     if (!ollamaResponse.ok) {
-      const details = await ollamaResponse.text();
       return NextResponse.json(
-        { message: "Failed to generate content", details },
+        { message: "Failed to generate content" },
         { status: ollamaResponse.status }
       );
     }

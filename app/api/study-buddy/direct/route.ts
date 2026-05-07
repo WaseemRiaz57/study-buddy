@@ -15,8 +15,9 @@ export async function POST(req: Request) {
     }
 
     const { targetUserId } = await req.json();
+    const normalizedTargetUserId = String(targetUserId || "").trim().toLowerCase();
 
-    if (!targetUserId) {
+    if (!normalizedTargetUserId) {
       return NextResponse.json(
         { message: "targetUserId is required" },
         { status: 400 }
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     }
 
     // targetUserId is an email — resolve to User _id
-    const targetUser = await User.findOne({ email: targetUserId });
+    const targetUser = await User.findOne({ email: normalizedTargetUserId });
     if (!targetUser) {
       return NextResponse.json(
         { message: "Target user not found" },
@@ -39,7 +40,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const targetProfile = await StudyProfile.findOne({ userId: targetUserId });
+    if (currentUser._id.toString() === targetUser._id.toString()) {
+      return NextResponse.json(
+        { message: "Cannot create a session with yourself" },
+        { status: 400 }
+      );
+    }
+
+    if (targetUser.role !== "student") {
+      return NextResponse.json(
+        { message: "Target user is not available for study buddy sessions." },
+        { status: 400 }
+      );
+    }
+
+    const targetProfile = await StudyProfile.findOne({ userId: normalizedTargetUserId });
 
     const newSession = await StudySession.create({
       requesterId: currentUser._id,
@@ -56,7 +71,7 @@ export async function POST(req: Request) {
         name: targetProfile?.name || targetUser.name,
         image: targetProfile?.image || targetUser.image || "",
         tags: targetProfile?.tags || [],
-        userId: targetUserId,
+        userId: normalizedTargetUserId,
       },
     });
   } catch (error) {

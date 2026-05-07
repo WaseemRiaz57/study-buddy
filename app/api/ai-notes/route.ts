@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import AINote from "@/models/AINote";
 
+const allowedNoteTypes = new Set(["notes", "summarizer", "quiz"]);
+
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -11,6 +13,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+
+    
     const url = new URL(req.url);
     const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 6), 1), 20);
 
@@ -34,18 +38,28 @@ export async function POST(req: Request) {
     }
 
     const { title, content, type } = await req.json();
+    const normalizedTitle = String(title || "").trim();
+    const normalizedContent = String(content || "").trim();
+    const normalizedType = String(type || "").trim();
 
-    if (!title || !content || !type) {
+    if (!normalizedTitle || !normalizedContent || !allowedNoteTypes.has(normalizedType)) {
       return NextResponse.json({ message: "title, content, and type are required" }, { status: 400 });
+    }
+
+    if (normalizedTitle.length > 160 || normalizedContent.length > 50000) {
+      return NextResponse.json(
+        { message: "AI note title or content is too long" },
+        { status: 400 }
+      );
     }
 
     await connectMongoDB();
 
     const savedNote = await AINote.create({
       userId: session.user.email,
-      title,
-      content,
-      type,
+      title: normalizedTitle,
+      content: normalizedContent,
+      type: normalizedType,
     });
 
     return NextResponse.json(savedNote, { status: 201 });

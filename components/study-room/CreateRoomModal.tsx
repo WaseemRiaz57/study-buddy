@@ -25,49 +25,6 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
 
-  const getCurrentUserId = () => {
-    const fromSession = String(session?.user?.id || "").trim();
-    if (fromSession) return fromSession;
-
-    if (typeof window === "undefined") return "";
-
-    const directKeys = ["userId", "currentUserId", "id"];
-    for (const key of directKeys) {
-      const value = String(window.localStorage.getItem(key) || "").trim();
-      if (value) return value;
-    }
-
-    const jsonKeys = ["user", "session", "auth", "currentUser"];
-    for (const key of jsonKeys) {
-      const raw = window.localStorage.getItem(key);
-      if (!raw) continue;
-      try {
-        const parsed = JSON.parse(raw) as {
-          id?: string;
-          _id?: string;
-          userId?: string;
-          user?: { id?: string; _id?: string; userId?: string };
-        };
-
-        const candidate = String(
-          parsed?.id ||
-            parsed?._id ||
-            parsed?.userId ||
-            parsed?.user?.id ||
-            parsed?.user?._id ||
-            parsed?.user?.userId ||
-            ""
-        ).trim();
-
-        if (candidate) return candidate;
-      } catch {
-        // Ignore invalid JSON in localStorage and continue searching.
-      }
-    }
-
-    return "";
-  };
-
   const handleIgnite = async () => {
     if (!topic.trim() || !description.trim()) return;
 
@@ -75,8 +32,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
     setError("");
 
     try {
-      const createdBy = getCurrentUserId();
-      if (!createdBy) {
+      if (!session?.user?.id) {
         const message = "Could not identify the current user. Please sign in again.";
         setError(message);
         alert(message);
@@ -94,7 +50,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
         body: JSON.stringify({
           title: topic.trim(),
           roomId: generatedRoomId,
-          createdBy,
+          maxParticipants,
           description: description.trim(),
         }),
       });

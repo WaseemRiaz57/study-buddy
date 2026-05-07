@@ -24,6 +24,21 @@ function getCloudinaryResourceType(fileName: string): "raw" | "image" {
   return rawFileExtensions.has(extension) ? "raw" : "image";
 }
 
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function sanitizePublicIdFileName(fileName: string): string {
+  const extension = getLowerCaseExtension(fileName);
+  const baseName = fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+
+  return `${baseName || "resource"}${extension}`;
+}
+
 function uploadToCloudinary(buffer: Buffer, fileName: string, folder = "study-buddy/resources") {
   return new Promise<{
     secure_url: string;
@@ -38,7 +53,7 @@ function uploadToCloudinary(buffer: Buffer, fileName: string, folder = "study-bu
       {
         folder,
         resource_type: resourceType,
-        public_id: `${Date.now()}-${fileName.replace(/\s+/g, "-")}`,
+        public_id: `${Date.now()}-${sanitizePublicIdFileName(fileName)}`,
       },
       (error, result) => {
         if (error || !result) {
@@ -139,19 +154,24 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     await connectMongoDB();
 
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search")?.trim();
+    const search = String(searchParams.get("search") || "").trim().slice(0, 100);
 
     const query: Record<string, unknown> = {};
 
     if (search) {
-      query.title = { $regex: search, $options: "i" };
+      query.title = { $regex: escapeRegex(search), $options: "i" };
     }
 
     const resources = await Resource.find(query)
-      .populate("uploadedBy", "name email")
+      .populate("uploadedBy", "name")
       .sort({ createdAt: -1 })
       .lean();
 

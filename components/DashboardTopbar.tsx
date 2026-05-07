@@ -6,16 +6,18 @@ import { BookOpen, Flame, Coins, Moon, Sun } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useUserStore } from "@/store/useUserStore";
 import { NotificationBell } from "./NotificationBell";
+import { useState } from "react";
 
 export function DashboardTopbar() {
   const { resolvedTheme, setTheme } = useTheme();
   const { data: session, status } = useSession();
   const { role } = useUserStore();
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const fullName = session?.user?.name || "User";
   const firstName = session?.user?.name?.split(" ")[0] || "User";
   const userEmail = session?.user?.email || "";
-  const userImage = session?.user?.image || "";
+  const userImage = avatarFailed ? "" : session?.user?.image || "";
   const userInitials = fullName
     .split(" ")
     .filter(Boolean)
@@ -178,7 +180,13 @@ export function DashboardTopbar() {
               <div className="relative cursor-pointer group">
                 <div className="w-10 h-10 rounded-full ring-2 ring-background ring-offset-2 ring-offset-primary/20 overflow-hidden bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
                   {userImage ? (
-                    <img src={userImage} alt={fullName} className="h-full w-full object-cover" />
+                    <img
+                      src={userImage}
+                      alt={fullName}
+                      className="h-full w-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={() => setAvatarFailed(true)}
+                    />
                   ) : (
                     userInitials
                   )}
@@ -189,7 +197,13 @@ export function DashboardTopbar() {
           ) : (
             <div className="w-10 h-10 rounded-full ring-2 ring-primary/20 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold cursor-pointer hover:shadow-lg transition-shadow">
               {userImage ? (
-                <img src={userImage} alt={fullName} className="h-full w-full object-cover" />
+                <img
+                  src={userImage}
+                  alt={fullName}
+                  className="h-full w-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarFailed(true)}
+                />
               ) : (
                 userInitials
               )}

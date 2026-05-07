@@ -9,26 +9,13 @@ function normalizeRoomId(roomId: string): string {
   return roomId.trim();
 }
 
-interface EndSessionBody {
-  currentUserId: string;
-}
-
 async function endSession(
   request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-
-    let bodyCurrentUserId = "";
-    try {
-      const body = (await request.json()) as Partial<EndSessionBody>;
-      bodyCurrentUserId = String(body?.currentUserId || "").trim();
-    } catch {
-      bodyCurrentUserId = "";
-    }
-
-    const requesterId = String(session?.user?.id || bodyCurrentUserId).trim();
+    const requesterId = String(session?.user?.id || "").trim();
 
     if (!requesterId || !mongoose.Types.ObjectId.isValid(requesterId)) {
       return NextResponse.json(

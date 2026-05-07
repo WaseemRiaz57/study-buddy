@@ -129,7 +129,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground px-4 py-12 flex flex-col items-center justify-center transition-colors duration-300 relative overflow-hidden">
+    <main className="auth-page min-h-screen bg-background text-foreground px-4 py-12 flex flex-col items-center justify-center transition-colors duration-300 relative overflow-hidden">
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent-mint/10 rounded-full blur-[120px]" />

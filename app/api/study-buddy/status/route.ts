@@ -6,6 +6,20 @@ import { connectMongoDB } from "@/lib/mongodb";
 import { setStudentOnline, setStudentOffline } from "@/lib/redis";
 import StudySession from "@/models/StudySession";
 import User from "@/models/User";
+import mongoose from "mongoose";
+
+type LeanStudySession = {
+  _id: { toString(): string };
+  requesterId: { toString(): string };
+  receiverId: { toString(): string };
+  status: string;
+  selectedMode?: "chat" | "video" | null;
+};
+
+type LeanPeer = {
+  name?: string;
+  image?: string;
+};
 
 // GET /api/study-buddy/status?sessionId=... — User A polls to check if User B responded
 export async function GET(req: Request) {
@@ -18,9 +32,9 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
 
-    if (!sessionId) {
+    if (!sessionId || !mongoose.Types.ObjectId.isValid(sessionId)) {
       return NextResponse.json(
-        { message: "sessionId query param is required." },
+        { message: "A valid sessionId query param is required." },
         { status: 400 }
       );
     }
@@ -32,7 +46,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    const studySession = await StudySession.findById(sessionId).lean() as any;
+    const studySession = (await StudySession.findById(sessionId).lean()) as
+      | LeanStudySession
+      | null;
     if (!studySession) {
       return NextResponse.json(
         { message: "Session not found" },
@@ -43,11 +59,18 @@ export async function GET(req: Request) {
     // Determine who the "other" user is
     const isRequester =
       studySession.requesterId.toString() === currentUser._id.toString();
+    const isReceiver =
+      studySession.receiverId.toString() === currentUser._id.toString();
+
+    if (!isRequester && !isReceiver) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
+
     const peerId = isRequester
       ? studySession.receiverId
       : studySession.requesterId;
 
-    const peer = await User.findById(peerId, "name image").lean() as any;
+    const peer = (await User.findById(peerId, "name image").lean()) as LeanPeer | null;
 
     return NextResponse.json({
       sessionId: studySession._id.toString(),

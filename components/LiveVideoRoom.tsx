@@ -96,6 +96,10 @@ function getCameraOnlyStream(stream?: MediaStream | null): MediaStream | null {
   return new MediaStream([cameraTrack, ...audioTracks]);
 }
 
+function isPlaybackAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
 export default function LiveVideoRoom({
   roomId,
   isHost: isHostProp,
@@ -754,7 +758,13 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
         lastCameraStreamRef.current = cameraOnly;
         ref.current.srcObject = cameraOnly;
         setHasStream(true);
-        ref.current.play().catch(e => console.warn("Autoplay blocked:", e));
+        ref.current.play().catch((error) => {
+          if (isPlaybackAbortError(error)) {
+            return;
+          }
+
+          console.warn("Autoplay blocked:", error);
+        });
       }
 
       if (audioRef.current && stream) {
@@ -774,6 +784,10 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
               });
             })
             .catch((error) => {
+              if (isPlaybackAbortError(error)) {
+                return;
+              }
+
               console.error("[Subscriber] Remote microphone playback failed:", {
                 participant: name,
                 error,

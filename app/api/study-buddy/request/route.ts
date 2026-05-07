@@ -5,6 +5,10 @@ import StudySession from "@/models/StudySession";
 import BuddyMatch from "@/models/BuddyMatch";
 import User from "@/models/User";
 
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // POST /api/study-buddy/request — Student creates a pending BuddyMatch + StudySession
 export async function POST(req: Request) {
   try {
@@ -13,8 +17,11 @@ export async function POST(req: Request) {
     if (error) return error;
 
     const { targetUserId, subject, topic } = await req.json();
+    const normalizedTargetUserId = String(targetUserId || "").trim();
+    const normalizedSubject = String(subject || "General").trim().slice(0, 100) || "General";
+    const normalizedTopic = String(topic || "").trim().slice(0, 160);
 
-    if (!targetUserId) {
+    if (!normalizedTargetUserId) {
       return NextResponse.json(
         { message: "targetUserId is required" },
         { status: 400 }
@@ -33,9 +40,9 @@ export async function POST(req: Request) {
     // targetUserId can be an email or _id — resolve to User document
     const targetUser = await User.findOne({
       $or: [
-        { email: targetUserId },
-        ...(targetUserId.match(/^[0-9a-fA-F]{24}$/)
-          ? [{ _id: targetUserId }]
+        { email: normalizedTargetUserId.toLowerCase() },
+        ...(normalizedTargetUserId.match(/^[0-9a-fA-F]{24}$/)
+          ? [{ _id: normalizedTargetUserId }]
           : []),
       ],
     });
@@ -72,13 +79,13 @@ export async function POST(req: Request) {
     );
 
     // ── Create BuddyMatch record with "Pending" status ───────────
-    const matchSubject = subject || "General";
+    const matchSubject = normalizedSubject;
 
     // Check for existing pending match to avoid duplicates
     const existingMatch = await BuddyMatch.findOne({
       studentId: currentUser._id,
       matchedPeerId: targetUser._id,
-      subject: { $regex: new RegExp(`^${matchSubject}$`, "i") },
+      subject: { $regex: new RegExp(`^${escapeRegex(matchSubject)}$`, "i") },
       status: "Pending",
     });
 
@@ -99,8 +106,8 @@ export async function POST(req: Request) {
       requesterId: currentUser._id,
       receiverId: targetUser._id,
       status: "pending",
-      subject: subject || "",
-      topic: topic || "",
+      subject: normalizedSubject,
+      topic: normalizedTopic,
     });
 
     return NextResponse.json(

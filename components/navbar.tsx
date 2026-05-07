@@ -2,7 +2,7 @@
 
 import { Sparkles, Menu, X, Moon, Sun, User, Settings } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react"; // 👈 NextAuth import
@@ -15,8 +15,9 @@ const navItems = [
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   
   // 👇 Auth Session Check
   const { data: session, status } = useSession();
@@ -31,6 +32,34 @@ export function Navbar() {
   };
 
   const isDark = resolvedTheme === "dark";
+  const profileImage = avatarFailed ? "" : session?.user?.image;
+  const renderThemeIcon = () => {
+    if (!mounted) {
+      return null;
+    }
+
+    return isDark ? (
+      <motion.div
+        key="sun"
+        initial={{ rotate: -90, opacity: 0 }}
+        animate={{ rotate: 0, opacity: 1 }}
+        exit={{ rotate: 90, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        <Sun className="h-4 w-4 text-primary" strokeWidth={2.5} />
+      </motion.div>
+    ) : (
+      <motion.div
+        key="moon"
+        initial={{ rotate: 90, opacity: 0 }}
+        animate={{ rotate: 0, opacity: 1 }}
+        exit={{ rotate: -90, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        <Moon className="h-4 w-4 text-primary" strokeWidth={2.5} />
+      </motion.div>
+    );
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl transition-colors">
@@ -116,8 +145,14 @@ export function Navbar() {
               </Link>
               <Link href="/dashboard/settings" className="size-8 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center hover:scale-105 transition-transform" title="My Profile">
                  {/* Agar Google Image hai toh yahan image lag sakti hai, warna default user icon */}
-                 {session.user?.image ? (
-                   <img src={session.user.image} alt="Profile" className="size-full rounded-full object-cover" />
+                 {profileImage ? (
+                   <img
+                     src={profileImage}
+                     alt="Profile"
+                     className="size-full rounded-full object-cover"
+                     referrerPolicy="no-referrer"
+                     onError={() => setAvatarFailed(true)}
+                   />
                  ) : (
                    <User className="w-4 h-4" />
                  )}
@@ -145,76 +180,30 @@ export function Navbar() {
           
           {/* Desktop Theme Toggle */}
           <motion.button
+            type="button"
             onClick={toggleTheme}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="rounded-full p-2.5 bg-card border border-border hover:border-primary/50 transition-all"
+            className="flex size-9 items-center justify-center rounded-full bg-card border border-border hover:border-primary/50 transition-all"
             aria-label="Toggle theme"
           >
-            {!mounted ? (
-                <div className="h-4 w-4" /> 
-            ) : (
-                <AnimatePresence mode="wait" initial={false}>
-                {isDark ? (
-                    <motion.div
-                    key="sun"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    >
-                    <Sun className="h-4 w-4 text-primary" strokeWidth={2.5} />
-                    </motion.div>
-                ) : (
-                    <motion.div
-                    key="moon"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    >
-                    <Moon className="h-4 w-4 text-primary" strokeWidth={2.5} />
-                    </motion.div>
-                )}
-                </AnimatePresence>
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {renderThemeIcon()}
+            </AnimatePresence>
           </motion.button>
         </div>
 
         {/* Mobile Theme Toggle */}
         <motion.button
+          type="button"
           onClick={toggleTheme}
           whileTap={{ scale: 0.9 }}
-          className="md:hidden rounded-full p-2 bg-card border border-border ml-2"
+          className="md:hidden flex size-8 items-center justify-center rounded-full bg-card border border-border ml-2"
           aria-label="Toggle theme"
         >
-          {!mounted ? (
-             <div className="h-4 w-4" /> 
-          ) : (
             <AnimatePresence mode="wait" initial={false}>
-                {isDark ? (
-                <motion.div
-                    key="sun"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                >
-                    <Sun className="h-4 w-4 text-primary" strokeWidth={2.5} />
-                </motion.div>
-                ) : (
-                <motion.div
-                    key="moon"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                >
-                    <Moon className="h-4 w-4 text-primary" strokeWidth={2.5} />
-                </motion.div>
-                )}
+              {renderThemeIcon()}
             </AnimatePresence>
-          )}
         </motion.button>
       </div>
 

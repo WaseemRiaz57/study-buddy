@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import BuddyConnection from "@/models/BuddyConnection";
+import mongoose from "mongoose";
 
 interface EndRequestBody {
   connectionId?: string;
@@ -24,11 +25,11 @@ export async function PATCH(req: Request) {
 
     const { connectionId } = (await req.json()) as EndRequestBody;
 
-    if (!connectionId) {
+    if (!mongoose.Types.ObjectId.isValid(connectionId || "")) {
       return NextResponse.json(
         {
           ok: false,
-          message: "connectionId is required.",
+          message: "Valid connectionId is required.",
         },
         { status: 400 }
       );

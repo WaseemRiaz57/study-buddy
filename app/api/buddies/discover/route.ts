@@ -37,7 +37,6 @@ export async function GET(req: NextRequest) {
 
   try {
     await connectMongoDB();
-    console.log("[Buddies Discover] Subject received:", subject);
 
     const currentUserId = session!.user.id;
 
@@ -90,7 +89,6 @@ export async function GET(req: NextRequest) {
       },
       {
         name: 1,
-        email: 1,
         image: 1,
         subjects: 1,
         currentStudyTopic: 1,
@@ -107,8 +105,6 @@ export async function GET(req: NextRequest) {
         requestStatus: pendingSentUserIds.has(String(buddy._id)) ? "pending" : "none"
       };
     });
-
-    console.log("[Buddies Discover] Buddies after exclusion filtering:", formattedBuddies.length);
 
     return NextResponse.json(
       {

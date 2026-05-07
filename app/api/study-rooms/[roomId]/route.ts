@@ -36,13 +36,17 @@ export async function GET(
       return NextResponse.json({ message: "roomId is required" }, { status: 400 });
     }
 
+    if (!/^[A-Z0-9-]{3,32}$/.test(normalizedRoomId)) {
+      return NextResponse.json({ message: "Invalid roomId" }, { status: 400 });
+    }
+
     await connectDB();
 
     let room = await StudyRoom.findOne({
       roomId: { $regex: `^${escapeRegex(normalizedRoomId)}$`, $options: "i" },
     })
-      .populate("createdBy", "name email")
-      .populate("participants", "name email")
+      .populate("createdBy", "name")
+      .populate("participants", "name")
       .lean();
 
     // ==========================================
@@ -63,8 +67,8 @@ export async function GET(
 
       // Naya room banne ke baad usay dobara fetch kar lo taake populate ho jaye
       room = await StudyRoom.findById(newRoom._id)
-        .populate("createdBy", "name email")
-        .populate("participants", "name email")
+        .populate("createdBy", "name")
+        .populate("participants", "name")
         .lean();
     }
 
