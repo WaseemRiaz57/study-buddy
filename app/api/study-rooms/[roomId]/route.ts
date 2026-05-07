@@ -19,19 +19,24 @@ function escapeRegex(text: string): string {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ roomId: string }> }
+  { params }: { params: Promise<{ roomId: string }> | { roomId: string } }
 ) {
   try {
-    const { roomId } = await params;
+    // Handling Next.js 14/15 params correctly
+    const resolvedParams = await params;
+    const { roomId } = resolvedParams;
     const normalizedRoomId = normalizeRoomId(roomId);
+    
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
+    if (!session || !session.user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const currentUserId = String(session.user.id).trim();
+    // Fallback if ID is missing
+    const currentUserId = String(session.user.id || session.user.email || "guest").trim();
     const participantName = session.user.name || "Student";
+    
     const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
     const liveKitApiKey = process.env.LIVEKIT_API_KEY;
     const liveKitApiSecret = process.env.LIVEKIT_API_SECRET;
@@ -40,61 +45,42 @@ export async function GET(
       return NextResponse.json({ message: "roomId is required" }, { status: 400 });
     }
 
-    if (!/^[A-Z0-9-]{3,32}$/.test(normalizedRoomId)) {
-      return NextResponse.json({ message: "Invalid roomId" }, { status: 400 });
-    }
-
     if (!liveKitUrl || !liveKitApiKey || !liveKitApiSecret) {
-      return NextResponse.json(
-        { message: "LiveKit environment variables are not configured." },
-        { status: 500 }
-      );
+      console.error("❌ ERROR: LiveKit environment variables are missing.");
+      return NextResponse.json({ message: "LiveKit config missing" }, { status: 500 });
     }
 
     await connectDB();
 
     let room = await StudyRoom.findOne({
       roomId: { $regex: `^${escapeRegex(normalizedRoomId)}$`, $options: "i" },
-    })
-      .populate("createdBy", "name")
-      .populate("participants", "name")
-      .lean();
+    }).lean();
 
     if (!room) {
-      console.log(`[Room API] Room not found. Auto-creating room: ${normalizedRoomId}`);
+      console.log(`[Room API] Auto-creating room: ${normalizedRoomId}`);
 
-      const creatorObjectId = new mongoose.Types.ObjectId(currentUserId);
+      // 🛑 THE BUG FIX: Safely handling non-MongoDB IDs (like Google Auth IDs)
+      const isValidObjectId = mongoose.Types.ObjectId.isValid(currentUserId);
+      const creatorId = isValidObjectId ? new mongoose.Types.ObjectId(currentUserId) : currentUserId;
+
       const newRoom = await StudyRoom.create({
         roomId: normalizedRoomId,
-        createdBy: creatorObjectId,
+        createdBy: creatorId,
         title: "Study Buddy Session",
-        participants: [creatorObjectId],
+        participants: [creatorId],
         isActive: true,
         status: "active",
         isLive: true,
       });
 
-      room = await StudyRoom.findById(newRoom._id)
-        .populate("createdBy", "name")
-        .populate("participants", "name")
-        .lean();
+      room = await StudyRoom.findById(newRoom._id).lean();
     }
 
-    const populatedRoom = room as {
-      createdBy?: { _id?: unknown } | unknown;
-    };
-    const hostId = String(
-      (typeof populatedRoom.createdBy === "object" && populatedRoom.createdBy !== null
-        ? (populatedRoom.createdBy as { _id?: unknown })._id
-        : populatedRoom.createdBy) || ""
-    ).trim();
-
-    console.log(`[Room API] Generating LiveKit token for room: ${normalizedRoomId}`);
+    console.log(`[Room API] Generating LiveKit token for user: ${participantName}`);
 
     const accessToken = new AccessToken(liveKitApiKey, liveKitApiSecret, {
       identity: currentUserId,
       name: participantName,
-      ttl: "2h",
     });
 
     accessToken.addGrant({
@@ -112,14 +98,13 @@ export async function GET(
         room,
         roomName: normalizedRoomId,
         currentUserId,
-        hostId,
         token,
         liveKitUrl,
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Fetch study room details error:", error);
+    console.error("❌ Fetch study room details error:", error);
     return NextResponse.json(
       { message: "Failed to fetch room details" },
       { status: 500 }
