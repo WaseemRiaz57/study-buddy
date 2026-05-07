@@ -39,12 +39,18 @@ type LiveVideoRoomProps = {
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
 };
 
-type RoomControlAction = "MUTE_NOTIFY" | "UNMUTE_NOTIFY" | "REMOVE_NOTIFY" | "SESSION_ENDED";
+type RoomControlAction =
+  | "MUTE_NOTIFY"
+  | "REQUEST_UNMUTE"
+  | "UNMUTE_NOTIFY"
+  | "REMOVE_NOTIFY"
+  | "SESSION_ENDED";
 
 type RoomControlMessage = {
   action: RoomControlAction;
   message: string;
   redirectTo?: string;
+  muteAllMode?: boolean;
 };
 
 export type LiveVideoRoomRenderState = {
@@ -170,7 +176,37 @@ export default function LiveVideoRoom({
   const [moderatingParticipants, setModeratingParticipants] = useState<Record<string, boolean>>({});
   const [isModeratingAllParticipants, setIsModeratingAllParticipants] = useState(false);
   const [sessionEndedMessage, setSessionEndedMessage] = useState("");
+  const [isMicLockedByHost, setIsMicLockedByHost] = useState(false);
+  const [isHostMuteAllMode, setIsHostMuteAllMode] = useState(false);
   const sessionEndRedirectTimerRef = useRef<number | null>(null);
+  const hostMuteAllModeRef = useRef(false);
+
+  useEffect(() => {
+    hostMuteAllModeRef.current = isHostMuteAllMode;
+  }, [isHostMuteAllMode]);
+
+  async function enableMicrophoneFromHostSignal() {
+    if (hostMuteAllModeRef.current) {
+      toast.error("Mute All is enabled. The host needs to unmute the room first.", {
+        icon: <MicOff size={16} />,
+      });
+      return;
+    }
+
+    const room = roomRef.current;
+
+    if (room) {
+      await room.localParticipant.setMicrophoneEnabled(true);
+      syncRoomState(room);
+    } else {
+      previewStreamRef.current?.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+      });
+      setIsMicEnabled(true);
+    }
+
+    setIsMicLockedByHost(false);
+  }
 
   const syncRoomState = useCallback((room: Room) => {
     const participants = Array.from(room.remoteParticipants.values());
@@ -290,15 +326,39 @@ export default function LiveVideoRoom({
           }
 
           if (parsed.action === "MUTE_NOTIFY") {
+            if (typeof parsed.muteAllMode === "boolean") {
+              setIsHostMuteAllMode(parsed.muteAllMode);
+            }
+
+            setIsMicLockedByHost(true);
             toast.warning(message || "You have been muted by the host.", {
               icon: <MicOff size={16} />,
             });
             return;
           }
 
-          if (parsed.action === "UNMUTE_NOTIFY") {
-            toast.success(message || "You have been unmuted by the host.", {
+          if (parsed.action === "REQUEST_UNMUTE" || parsed.action === "UNMUTE_NOTIFY") {
+            if (typeof parsed.muteAllMode === "boolean") {
+              setIsHostMuteAllMode(parsed.muteAllMode);
+            }
+
+            if (parsed.muteAllMode) {
+              toast.warning("Mute All is still enabled. You cannot unmute yet.", {
+                icon: <MicOff size={16} />,
+              });
+              return;
+            }
+
+            setIsMicLockedByHost(false);
+            toast.success(message || "The host has allowed you to unmute.", {
               icon: <Mic size={16} />,
+              action: {
+                label: "Turn mic on",
+                onClick: () => {
+                  void enableMicrophoneFromHostSignal();
+                },
+              },
+              duration: 8000,
             });
             return;
           }
@@ -440,8 +500,27 @@ export default function LiveVideoRoom({
     const room = roomRef.current;
     const nextEnabled = !isMicEnabled;
 
+    if (!isHost && nextEnabled && isHostMuteAllMode) {
+      toast.error("Mute All is enabled. The host needs to unmute the room first.", {
+        icon: <MicOff size={16} />,
+      });
+      return;
+    }
+
+    if (!isHost && nextEnabled && isMicLockedByHost) {
+      toast.info("Your mic was muted by the host. Wait for the host's unmute request.", {
+        icon: <MicOff size={16} />,
+      });
+      return;
+    }
+
     if (room && isConnected) {
-      void room.localParticipant.setMicrophoneEnabled(nextEnabled).then(() => syncRoomState(room));
+      void room.localParticipant.setMicrophoneEnabled(nextEnabled).then(() => {
+        if (nextEnabled) {
+          setIsMicLockedByHost(false);
+        }
+        syncRoomState(room);
+      });
       return;
     }
 
@@ -451,7 +530,10 @@ export default function LiveVideoRoom({
         track.enabled = nextEnabled;
       });
     setIsMicEnabled(nextEnabled);
-  }, [isConnected, isMicEnabled, syncRoomState]);
+    if (nextEnabled) {
+      setIsMicLockedByHost(false);
+    }
+  }, [isConnected, isHost, isHostMuteAllMode, isMicEnabled, isMicLockedByHost, syncRoomState]);
 
   const toggleCamera = useCallback(() => {
     const room = roomRef.current;
@@ -529,6 +611,13 @@ export default function LiveVideoRoom({
       }));
 
       try {
+        if (action === "mute" && muted === false && isHostMuteAllMode) {
+          toast.error("Mute All is enabled. Use Unmute All before allowing one participant to unmute.", {
+            icon: <MicOff size={16} />,
+          });
+          return;
+        }
+
         if (action === "remove") {
           await publishRoomControlMessage(
             {
@@ -553,10 +642,11 @@ export default function LiveVideoRoom({
 
           await publishRoomControlMessage(
             {
-              action: muted ? "MUTE_NOTIFY" : "UNMUTE_NOTIFY",
+              action: muted ? "MUTE_NOTIFY" : "REQUEST_UNMUTE",
               message: muted
                 ? "You have been muted by the host."
-                : "You have been unmuted by the host.",
+                : "The host is requesting you to turn your mic back on.",
+              muteAllMode: false,
             },
             [participantIdentity]
           );
@@ -577,7 +667,7 @@ export default function LiveVideoRoom({
         });
       }
     },
-    [isHost, publishRoomControlMessage, roomId, syncRoomState]
+    [isHost, isHostMuteAllMode, publishRoomControlMessage, roomId, syncRoomState]
   );
 
   const muteParticipant = useCallback(
@@ -612,6 +702,7 @@ export default function LiveVideoRoom({
 
       try {
         await setRoomMicrophonesMutedAction({ roomId, muted });
+        setIsHostMuteAllMode(muted);
 
         const room = roomRef.current;
         const destinationIdentities = room
@@ -621,10 +712,11 @@ export default function LiveVideoRoom({
         if (destinationIdentities.length > 0) {
           await publishRoomControlMessage(
             {
-              action: muted ? "MUTE_NOTIFY" : "UNMUTE_NOTIFY",
+              action: muted ? "MUTE_NOTIFY" : "REQUEST_UNMUTE",
               message: muted
                 ? "You have been muted by the host."
-                : "You have been unmuted by the host.",
+                : "The host is requesting everyone to turn microphones back on.",
+              muteAllMode: muted,
             },
             destinationIdentities
           );
@@ -778,7 +870,7 @@ export default function LiveVideoRoom({
               onClick={toggleMic}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
                 isMicEnabled
-                  ? "bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+                  ? "bg-purple-600 text-white hover:bg-purple-700 dark:bg-[#8c30e8] dark:hover:brightness-110"
                   : "bg-red-500 text-white hover:bg-red-600"
               }`}
             >
@@ -971,7 +1063,7 @@ function LiveKitRemoteParticipantCard({
             className={`rounded-md p-1.5 text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
               isMicMuted
                 ? "bg-red-500 hover:bg-red-600"
-                : "bg-emerald-500 hover:bg-emerald-600"
+                : "bg-purple-600 hover:bg-purple-700 dark:bg-[#8c30e8]"
             }`}
             aria-label={isMicMuted ? `Unmute ${name}` : `Mute ${name}`}
             title={isMicMuted ? "Unmute" : "Mute"}

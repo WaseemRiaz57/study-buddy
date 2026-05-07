@@ -282,7 +282,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
               <button
                 onClick={liveRoom.unmuteAllParticipants}
                 disabled={liveRoom.isModeratingAllParticipants}
-                className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition-all hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-bold text-purple-700 transition-all hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-300 dark:hover:bg-purple-500/20"
               >
                 <Mic size={15} /> Unmute All
               </button>
@@ -483,7 +483,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                     <button
                       onClick={liveRoom.unmuteAllParticipants}
                       disabled={liveRoom.isModeratingAllParticipants}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#8c30e8]"
                     >
                       <Mic size={14} /> Unmute All
                     </button>
@@ -644,7 +644,7 @@ function ControlBtn({ isActive, onClick, iconOn: IconOn, iconOff: IconOff }: any
       onClick={onClick}
       className={`p-3 rounded-xl transition-all duration-200 ${
         isActive 
-          ? 'bg-transparent text-slate-600 hover:bg-slate-100 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white' 
+          ? 'bg-purple-600 text-white hover:bg-purple-700 dark:bg-[#8c30e8] dark:hover:brightness-110'
           : 'bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-500/20'
       }`}
     >

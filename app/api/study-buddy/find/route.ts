@@ -1,47 +1,125 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth-guard";
-import { findBuddy } from "@/lib/matchmaking";
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import mongoose from "mongoose";
+import { authOptions } from "@/lib/authOptions";
+import { connectDB } from "@/lib/connectDB";
+import BuddyMatch from "@/models/BuddyMatch";
+import StudyProfile from "@/models/StudyProfile";
 
-/**
- * GET /api/study-buddy/find?subject=Mathematics
- *
- * Triggers the FindBuddy matchmaking algorithm (UC-12 / FR-6).
- * Restricted to students only — mentors should use "My Students" instead.
- */
-export async function GET(req: NextRequest) {
-  // ── Role check (students only) ──────────────────────────────────
-  const { error, session } = await requireRole("student");
-  if (error) return error;
-
-  // ── Validate query params ────────────────────────────────────────
-  const { searchParams } = new URL(req.url);
-  const subject = searchParams.get("subject");
-
-  if (!subject || subject.trim().length === 0) {
-    return NextResponse.json(
-      { message: "Query parameter 'subject' is required." },
-      { status: 400 }
-    );
-  }
-
+export async function POST(request: Request) {
   try {
-    const studentId = session!.user.id;
-    const matches = await findBuddy(studentId, subject.trim());
+    const session = await getServerSession(authOptions);
+    const currentUserId = String(session?.user?.id || "").trim();
+
+    if (!currentUserId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(currentUserId)) {
+      return NextResponse.json(
+        { message: "Invalid user session." },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const subject = String(body?.subject || "").trim();
+    const topic = String(body?.topic || "").trim();
+
+    if (!subject) {
+      return NextResponse.json(
+        { message: "Subject is required." },
+        { status: 400 }
+      );
+    }
+
+    await connectDB();
+
+    const currentUserObjectId = new mongoose.Types.ObjectId(currentUserId);
+
+    await StudyProfile.findOneAndUpdate(
+      { userId: currentUserId },
+      {
+        $set: {
+          name: session?.user?.name || "Student",
+          image: session?.user?.image || "",
+          isOnline: true,
+          isLookingForMatch: true,
+          currentSubject: subject,
+          currentTopic: topic,
+        },
+        $setOnInsert: {
+          tags: [],
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    const matchedBuddy = await BuddyMatch.findOneAndUpdate(
+      {
+        status: "Searching",
+        subject,
+        studentId: { $ne: currentUserObjectId },
+      },
+      {
+        $set: {
+          status: "Pending",
+          matchedPeerId: currentUserObjectId,
+        },
+      },
+      { new: true, sort: { createdAt: 1 } }
+    ).lean();
+
+    if (matchedBuddy) {
+      await Promise.all([
+        StudyProfile.findOneAndUpdate(
+          { userId: currentUserId },
+          { $set: { isLookingForMatch: false } }
+        ),
+        StudyProfile.findOneAndUpdate(
+          { userId: String(matchedBuddy.studentId) },
+          { $set: { isLookingForMatch: false } }
+        ),
+      ]);
+
+      return NextResponse.json(
+        {
+          message: "Match found.",
+          matchFound: true,
+          match: matchedBuddy,
+        },
+        { status: 200 }
+      );
+    }
+
+    let waitingMatch = await BuddyMatch.findOne({
+      studentId: currentUserObjectId,
+      subject,
+      status: "Searching",
+    }).lean();
+
+    if (!waitingMatch) {
+      waitingMatch = await BuddyMatch.create({
+        studentId: currentUserObjectId,
+        subject,
+        topic,
+        status: "Searching",
+      }).then((match) => match.toObject());
+    }
 
     return NextResponse.json(
       {
-        message:
-          matches.length > 0
-            ? `Found ${matches.length} study buddy match(es).`
-            : "No online buddies found for this subject right now.",
-        matches,
+        message: "Waiting for peer.",
+        matchFound: false,
+        status: "Waiting for peer",
+        match: waitingMatch,
       },
       { status: 200 }
     );
-  } catch (err) {
-    console.error("FindBuddy Error:", err);
+  } catch (error) {
+    console.error("Find Buddy Error:", error);
     return NextResponse.json(
-      { message: "Internal server error while finding buddies." },
+      { message: "Internal server error while finding a buddy." },
       { status: 500 }
     );
   }
