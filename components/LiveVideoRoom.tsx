@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Room,
   RoomEvent,
@@ -19,7 +20,7 @@ import {
   type RemoteTrackPublication,
 } from "livekit-client";
 import { motion } from "framer-motion";
-import { Mic, MicOff, Minus, Video, VideoOff } from "lucide-react";
+import { LogOut, Mic, MicOff, Minus, ShieldAlert, Video, VideoOff } from "lucide-react";
 import {
   removeParticipantFromLiveKitRoomAction,
   setParticipantMicrophoneMutedAction,
@@ -36,6 +37,14 @@ type LiveVideoRoomProps = {
   hostId?: string;
   userId?: string;
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
+};
+
+type RoomControlAction = "MUTE_NOTIFY" | "UNMUTE_NOTIFY" | "REMOVE_NOTIFY" | "SESSION_ENDED";
+
+type RoomControlMessage = {
+  action: RoomControlAction;
+  message: string;
+  redirectTo?: string;
 };
 
 export type LiveVideoRoomRenderState = {
@@ -70,6 +79,13 @@ export type LiveVideoRoomRenderState = {
   removeParticipant: (participantUid: string | number) => void;
   leaveRoom: () => Promise<void>;
 };
+
+const ROOM_CONTROL_TOPIC = "room-control";
+const DASHBOARD_REDIRECT_PATH = "/dashboard";
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 function isPlaybackAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
@@ -153,6 +169,8 @@ export default function LiveVideoRoom({
   const [roomVersion, setRoomVersion] = useState(0);
   const [moderatingParticipants, setModeratingParticipants] = useState<Record<string, boolean>>({});
   const [isModeratingAllParticipants, setIsModeratingAllParticipants] = useState(false);
+  const [sessionEndedMessage, setSessionEndedMessage] = useState("");
+  const sessionEndRedirectTimerRef = useRef<number | null>(null);
 
   const syncRoomState = useCallback((room: Room) => {
     const participants = Array.from(room.remoteParticipants.values());
@@ -252,6 +270,56 @@ export default function LiveVideoRoom({
       _kind?: unknown,
       topic?: string
     ) => {
+      if (topic === ROOM_CONTROL_TOPIC) {
+        try {
+          const parsed = JSON.parse(new TextDecoder().decode(payload)) as RoomControlMessage;
+          const message = String(parsed.message || "").trim();
+
+          if (parsed.action === "SESSION_ENDED") {
+            setSessionEndedMessage(message || "This study session has ended.");
+
+            if (sessionEndRedirectTimerRef.current) {
+              window.clearTimeout(sessionEndRedirectTimerRef.current);
+            }
+
+            sessionEndRedirectTimerRef.current = window.setTimeout(() => {
+              void room.disconnect();
+              router.push(parsed.redirectTo || DASHBOARD_REDIRECT_PATH);
+            }, 3500);
+            return;
+          }
+
+          if (parsed.action === "MUTE_NOTIFY") {
+            toast.warning(message || "You have been muted by the host.", {
+              icon: <MicOff size={16} />,
+            });
+            return;
+          }
+
+          if (parsed.action === "UNMUTE_NOTIFY") {
+            toast.success(message || "You have been unmuted by the host.", {
+              icon: <Mic size={16} />,
+            });
+            return;
+          }
+
+          if (parsed.action === "REMOVE_NOTIFY") {
+            toast.error(message || "You have been removed from the room.", {
+              icon: <ShieldAlert size={16} />,
+              duration: 3500,
+            });
+
+            window.setTimeout(() => {
+              router.push(DASHBOARD_REDIRECT_PATH);
+            }, 2200);
+          }
+        } catch (error) {
+          console.warn("[LiveKit] Invalid room-control payload:", error);
+        }
+
+        return;
+      }
+
       if (topic && topic !== "chat") return;
 
       try {
@@ -338,6 +406,10 @@ export default function LiveVideoRoom({
 
     return () => {
       isActive = false;
+      if (sessionEndRedirectTimerRef.current) {
+        window.clearTimeout(sessionEndRedirectTimerRef.current);
+        sessionEndRedirectTimerRef.current = null;
+      }
       room.disconnect();
       roomRef.current = null;
       setRemoteParticipants([]);
@@ -345,7 +417,24 @@ export default function LiveVideoRoom({
       setScreenTrack(null);
       setIsConnected(false);
     };
-  }, [hasJoined, roomId, token, liveKitUrl, syncRoomState]);
+  }, [hasJoined, roomId, token, liveKitUrl, router, syncRoomState]);
+
+  const publishRoomControlMessage = useCallback(
+    async (message: RoomControlMessage, destinationIdentities?: string[]) => {
+      const room = roomRef.current;
+      if (!room || !isConnected) return;
+
+      await room.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify(message)),
+        {
+          reliable: true,
+          topic: ROOM_CONTROL_TOPIC,
+          destinationIdentities,
+        }
+      );
+    },
+    [isConnected]
+  );
 
   const toggleMic = useCallback(() => {
     const room = roomRef.current;
@@ -441,6 +530,15 @@ export default function LiveVideoRoom({
 
       try {
         if (action === "remove") {
+          await publishRoomControlMessage(
+            {
+              action: "REMOVE_NOTIFY",
+              message: "You have been removed from this StudyBuddy room by the host.",
+            },
+            [participantIdentity]
+          );
+          await wait(900);
+
           await removeParticipantFromLiveKitRoomAction({
             roomId,
             participantIdentity,
@@ -452,6 +550,16 @@ export default function LiveVideoRoom({
             trackSid,
             muted: muted ?? true,
           });
+
+          await publishRoomControlMessage(
+            {
+              action: muted ? "MUTE_NOTIFY" : "UNMUTE_NOTIFY",
+              message: muted
+                ? "You have been muted by the host."
+                : "You have been unmuted by the host.",
+            },
+            [participantIdentity]
+          );
         }
 
         const room = roomRef.current;
@@ -469,7 +577,7 @@ export default function LiveVideoRoom({
         });
       }
     },
-    [isHost, roomId, syncRoomState]
+    [isHost, publishRoomControlMessage, roomId, syncRoomState]
   );
 
   const muteParticipant = useCallback(
@@ -506,6 +614,22 @@ export default function LiveVideoRoom({
         await setRoomMicrophonesMutedAction({ roomId, muted });
 
         const room = roomRef.current;
+        const destinationIdentities = room
+          ? Array.from(room.remoteParticipants.values()).map((participant) => participant.identity)
+          : [];
+
+        if (destinationIdentities.length > 0) {
+          await publishRoomControlMessage(
+            {
+              action: muted ? "MUTE_NOTIFY" : "UNMUTE_NOTIFY",
+              message: muted
+                ? "You have been muted by the host."
+                : "You have been unmuted by the host.",
+            },
+            destinationIdentities
+          );
+        }
+
         if (room) {
           syncRoomState(room);
         }
@@ -516,7 +640,7 @@ export default function LiveVideoRoom({
         setIsModeratingAllParticipants(false);
       }
     },
-    [isHost, isModeratingAllParticipants, roomId, syncRoomState]
+    [isHost, isModeratingAllParticipants, publishRoomControlMessage, roomId, syncRoomState]
   );
 
   const muteAllParticipants = useCallback(() => {
@@ -561,6 +685,13 @@ export default function LiveVideoRoom({
 
       if (isHost) {
         setIsEndingSession(true);
+        setSessionEndedMessage("The host has ended this StudyBuddy session.");
+        await publishRoomControlMessage({
+          action: "SESSION_ENDED",
+          message: "The host has ended this StudyBuddy session.",
+          redirectTo: DASHBOARD_REDIRECT_PATH,
+        });
+        await wait(2500);
         await updateSessionDatabase();
       }
     } catch (error) {
@@ -568,9 +699,9 @@ export default function LiveVideoRoom({
     } finally {
       previewStreamRef.current?.getTracks().forEach((track) => track.stop());
       await roomRef.current?.disconnect();
-      router.push("/dashboard/study-buddy");
+      router.push(DASHBOARD_REDIRECT_PATH);
     }
-  }, [isHost, isLeaving, roomId, router, updateSessionDatabase]);
+  }, [isHost, isLeaving, publishRoomControlMessage, roomId, router, updateSessionDatabase]);
 
   const handleCancelPreJoin = useCallback(() => {
     previewStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -690,7 +821,38 @@ export default function LiveVideoRoom({
     );
   }
 
-  return <>{renderAction(renderState)}</>;
+  return (
+    <>
+      {renderAction(renderState)}
+      {sessionEndedMessage ? (
+        <SessionEndedModal message={sessionEndedMessage} />
+      ) : null}
+    </>
+  );
+}
+
+function SessionEndedModal({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl dark:border-white/10 dark:bg-[#161027]"
+      >
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
+          <LogOut size={22} />
+        </div>
+        <h2 className="text-xl font-bold text-slate-950 dark:text-white">Session Ended</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-gray-300">
+          {message}
+        </p>
+        <p className="mt-4 text-xs font-medium text-slate-500 dark:text-gray-400">
+          Redirecting to your dashboard...
+        </p>
+      </motion.div>
+    </div>
+  );
 }
 
 function LiveKitRemoteParticipantCard({
