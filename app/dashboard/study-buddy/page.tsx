@@ -126,28 +126,29 @@ export default function StudyBuddyPage() {
 
   // ─── Poll Session Status (User A) ───
   const startStatusPolling = useCallback(
-    (sessionId: string) => {
+    (matchId: string) => {
       if (pollingRef.current) clearInterval(pollingRef.current);
 
       pollingRef.current = setInterval(async () => {
         try {
           const res = await fetch(
-            `/api/study-buddy/status?sessionId=${sessionId}`
+            `/api/study-buddy/status?matchId=${encodeURIComponent(matchId)}`
           );
           if (!res.ok) return;
           const data = await res.json();
 
-          if (data.status === "accepted") {
+          if (data.matchFound && data.roomId) {
             stopStatusPolling();
+            setActiveSessionId(String(data.roomId));
             setMatchedPeerData({
-              name: data.peer.name,
-              image: data.peer.image,
+              name: data.peer?.name || "Study Buddy",
+              image: data.peer?.image || "",
               tags: [],
             });
-            setView("success");
+            router.push(`/dashboard/study-rooms/${encodeURIComponent(String(data.roomId))}`);
           } else if (data.status === "rejected") {
             stopStatusPolling();
-            toast.info("Your study request was declined.");
+            toast.info("Your study match was cancelled.");
             setView("dashboard");
             setActiveSessionId(null);
           }
@@ -156,7 +157,7 @@ export default function StudyBuddyPage() {
         }
       }, 3000);
     },
-    [stopStatusPolling]
+    [router, stopStatusPolling]
   );
 
   // ─── "Add New" → Search Mode ───
@@ -174,19 +175,55 @@ export default function StudyBuddyPage() {
     setView("loading");
 
     try {
-      const subject = encodeURIComponent(data.subject);
-      const res = await fetch(`/api/buddies/discover?subject=${subject}`);
+      const res = await fetch("/api/study-buddy/find", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: data.subject,
+          topic: data.topic,
+        }),
+      });
       const result = await res.json();
-      console.log("[StudyBuddy] Discover API response:", result);
+      console.log("[StudyBuddy] Find API response:", result);
 
       if (!res.ok) {
-        throw new Error(result.message || "Discover failed");
+        throw new Error(result.message || "Matchmaking failed");
       }
 
-      setPeers(Array.isArray(result.matches) ? result.matches : []);
-      setView("dashboard");
-    } catch {
-      toast.error("Matchmaking failed. Please try again.");
+      if (result.matchFound) {
+        const roomId = String(result.roomId || result.match?.roomId || "").trim();
+        const peer = result.peer || result.matchedPeer || {};
+
+        if (!roomId) {
+          throw new Error("Match found, but no roomId was returned.");
+        }
+
+        setActiveSessionId(roomId);
+        setMatchedPeerData({
+          name: peer.name || "Study Buddy",
+          image: peer.image || "",
+          tags: [],
+        });
+
+        router.push(`/dashboard/study-rooms/${encodeURIComponent(roomId)}`);
+        return;
+      }
+
+      const matchId = String(result.matchId || result.match?._id || "").trim();
+
+      if (!matchId) {
+        throw new Error("Waiting match was created, but no matchId was returned.");
+      }
+
+      setPeers([]);
+      startStatusPolling(matchId);
+      setView("loading");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Matchmaking failed. Please try again."
+      );
       setView("dashboard");
     } finally {
       setPeersLoading(false);

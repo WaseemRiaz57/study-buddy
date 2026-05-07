@@ -3,8 +3,10 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
+import { createStudyBuddyMatchRoom } from "@/lib/study-buddy-match-room";
 import BuddyMatch from "@/models/BuddyMatch";
 import StudyProfile from "@/models/StudyProfile";
+import User from "@/models/User";
 
 export async function POST(request: Request) {
   try {
@@ -71,13 +73,28 @@ export async function POST(request: Request) {
     ).lean();
 
     if (matchedBuddy) {
+      const peerId = String(matchedBuddy.studentId);
+      const room = await createStudyBuddyMatchRoom({
+        hostId: currentUserId,
+        peerId,
+        subject,
+      });
+
+      const updatedMatch = await BuddyMatch.findByIdAndUpdate(
+        matchedBuddy._id,
+        { $set: { roomId: room.roomObjectId } },
+        { new: true }
+      ).lean();
+
+      const peer = await User.findById(peerId, "name image").lean();
+
       await Promise.all([
         StudyProfile.findOneAndUpdate(
           { userId: currentUserId },
           { $set: { isLookingForMatch: false } }
         ),
         StudyProfile.findOneAndUpdate(
-          { userId: String(matchedBuddy.studentId) },
+          { userId: peerId },
           { $set: { isLookingForMatch: false } }
         ),
       ]);
@@ -86,7 +103,14 @@ export async function POST(request: Request) {
         {
           message: "Match found.",
           matchFound: true,
-          match: matchedBuddy,
+          matchId: String(matchedBuddy._id),
+          roomId: room.roomId,
+          peer: {
+            id: peerId,
+            name: peer?.name || "Study Buddy",
+            image: peer?.image || "",
+          },
+          match: updatedMatch || matchedBuddy,
         },
         { status: 200 }
       );
@@ -111,6 +135,7 @@ export async function POST(request: Request) {
       {
         message: "Waiting for peer.",
         matchFound: false,
+        matchId: String(waitingMatch._id),
         status: "Waiting for peer",
         match: waitingMatch,
       },

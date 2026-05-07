@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/authOptions";
 import { requireRole } from "@/lib/auth-guard";
 import { connectMongoDB } from "@/lib/mongodb";
 import { setStudentOnline, setStudentOffline } from "@/lib/redis";
+import BuddyMatch from "@/models/BuddyMatch";
+import StudyRoom from "@/models/StudyRoom";
 import StudySession from "@/models/StudySession";
 import User from "@/models/User";
 import mongoose from "mongoose";
@@ -21,27 +23,121 @@ type LeanPeer = {
   image?: string;
 };
 
+type LeanBuddyMatch = {
+  _id: { toString(): string };
+  studentId: { toString(): string };
+  matchedPeerId?: { toString(): string } | null;
+  subject: string;
+  status: "Searching" | "Pending" | "Connected" | "Rejected";
+  roomId?: { toString(): string } | null;
+};
+
+type LeanStudyRoom = {
+  _id: { toString(): string };
+  roomId: string;
+};
+
 // GET /api/study-buddy/status?sessionId=... — User A polls to check if User B responded
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const currentUserId = String(session?.user?.id || "").trim();
+
+    if (!currentUserId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
+    const matchId = searchParams.get("matchId");
     const sessionId = searchParams.get("sessionId");
+
+    if (matchId) {
+      if (!mongoose.Types.ObjectId.isValid(matchId)) {
+        return NextResponse.json(
+          { message: "A valid matchId query param is required." },
+          { status: 400 }
+        );
+      }
+
+      await connectMongoDB();
+
+      const match = (await BuddyMatch.findById(matchId).lean()) as
+        | LeanBuddyMatch
+        | null;
+
+      if (!match) {
+        return NextResponse.json({ message: "Match not found" }, { status: 404 });
+      }
+
+      const studentId = match.studentId.toString();
+      const matchedPeerId = match.matchedPeerId?.toString() || "";
+      const isStudent = studentId === currentUserId;
+      const isMatchedPeer = matchedPeerId === currentUserId;
+
+      if (!isStudent && !isMatchedPeer) {
+        return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+      }
+
+      if (match.status === "Rejected") {
+        return NextResponse.json({
+          matchId,
+          matchFound: false,
+          status: "rejected",
+        });
+      }
+
+      if (match.status === "Searching" || !matchedPeerId) {
+        return NextResponse.json({
+          matchId,
+          matchFound: false,
+          status: "Searching",
+        });
+      }
+
+      const peerId = isStudent ? matchedPeerId : studentId;
+      let room = match.roomId
+        ? ((await StudyRoom.findById(match.roomId).lean()) as LeanStudyRoom | null)
+        : null;
+
+      if (!room) {
+        return NextResponse.json({
+          matchId,
+          matchFound: false,
+          status: "Pending",
+        });
+      }
+
+      if (match.status !== "Connected") {
+        await BuddyMatch.findByIdAndUpdate(matchId, {
+          $set: { status: "Connected" },
+        });
+      }
+
+      const peer = (await User.findById(peerId, "name image").lean()) as LeanPeer | null;
+
+      return NextResponse.json({
+        matchId,
+        matchFound: true,
+        status: "matched",
+        roomId: room?.roomId || "",
+        peer: {
+          id: peerId,
+          name: peer?.name || "Study Buddy",
+          image: peer?.image || "",
+        },
+      });
+    }
 
     if (!sessionId || !mongoose.Types.ObjectId.isValid(sessionId)) {
       return NextResponse.json(
-        { message: "A valid sessionId query param is required." },
+        { message: "A valid matchId or sessionId query param is required." },
         { status: 400 }
       );
     }
 
     await connectMongoDB();
 
-    const currentUser = await User.findOne({ email: session.user.email });
+    const currentUser = await User.findById(currentUserId);
     if (!currentUser) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
