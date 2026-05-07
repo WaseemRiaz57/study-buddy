@@ -10,16 +10,21 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Room,
+  RoomEvent,
+  Track,
+  type RemoteParticipant,
+  type RemoteTrack,
+  type RemoteTrackPublication,
+} from "livekit-client";
 import { motion } from "framer-motion";
-import { io } from "socket.io-client";
-import Peer from "simple-peer";
 import { Mic, MicOff, Minus, Video, VideoOff } from "lucide-react";
-
-// 🚨 UPDATE THIS URL TO YOUR RENDER BACKEND
-const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "https://studybuddy-backend-pl2i.onrender.com";
 
 type LiveVideoRoomProps = {
   roomId: string;
+  token?: string;
+  liveKitUrl?: string;
   isHost?: boolean;
   currentUserId?: string;
   userName?: string;
@@ -28,7 +33,6 @@ type LiveVideoRoomProps = {
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
 };
 
-// Adapted Render State for Native WebRTC
 export type LiveVideoRoomRenderState = {
   isConnected: boolean;
   isJoining: boolean;
@@ -37,7 +41,7 @@ export type LiveVideoRoomRenderState = {
   isScreenSharing: boolean;
   remoteScreenUser: MediaStream | null;
   screenTrack: MediaStreamTrack | null;
-  localStream: MediaStream | null; 
+  localStream: MediaStream | null;
   currentUserId: string;
   hostId: string;
   isHost: boolean;
@@ -53,55 +57,40 @@ export type LiveVideoRoomRenderState = {
   leaveRoom: () => Promise<void>;
 };
 
-const iceServers = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-  { urls: "stun:stun2.l.google.com:19302" },
-  { urls: "stun:global.stun.twilio.com:3478" }
-];
-
-function isScreenTrack(track?: MediaStreamTrack | null): boolean {
-  if (!track) return false;
-  const label = String(track.label || "").toLowerCase();
-  const hint = String((track as any).contentHint || "").toLowerCase();
-  return (
-    label.includes("screen") ||
-    label.includes("window") ||
-    label.includes("display") ||
-    hint.includes("detail")
-  );
-}
-
-function getScreenTrackFromStreams(streams: MediaStream[]): MediaStreamTrack | null {
-  for (const stream of streams || []) {
-    const track = stream.getVideoTracks().find((t) => isScreenTrack(t));
-    if (track) return track;
-  }
-  return null;
-}
-
-function getCameraTrackFromStreams(streams: MediaStream[]): MediaStreamTrack | null {
-  for (const stream of streams || []) {
-    const track = stream.getVideoTracks().find((t) => !isScreenTrack(t));
-    if (track) return track;
-  }
-  return null;
-}
-
-function getCameraOnlyStream(stream?: MediaStream | null): MediaStream | null {
-  if (!stream) return null;
-  const cameraTrack = stream.getVideoTracks().find((t) => !isScreenTrack(t));
-  if (!cameraTrack) return null;
-  const audioTracks = stream.getAudioTracks();
-  return new MediaStream([cameraTrack, ...audioTracks]);
-}
-
 function isPlaybackAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+function getLocalStreamFromRoom(room: Room): MediaStream | null {
+  const tracks: MediaStreamTrack[] = [];
+  const cameraTrack = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track
+    ?.mediaStreamTrack;
+  const microphoneTrack = room.localParticipant.getTrackPublication(Track.Source.Microphone)
+    ?.track?.mediaStreamTrack;
+
+  if (cameraTrack) tracks.push(cameraTrack);
+  if (microphoneTrack) tracks.push(microphoneTrack);
+
+  return tracks.length > 0 ? new MediaStream(tracks) : null;
+}
+
+function getRemoteScreenStream(participants: RemoteParticipant[]): MediaStream | null {
+  for (const participant of participants) {
+    const screenTrack = participant.getTrackPublication(Track.Source.ScreenShare)?.track
+      ?.mediaStreamTrack;
+
+    if (screenTrack && screenTrack.readyState === "live") {
+      return new MediaStream([screenTrack]);
+    }
+  }
+
+  return null;
+}
+
 export default function LiveVideoRoom({
   roomId,
+  token,
+  liveKitUrl,
   isHost: isHostProp,
   currentUserId,
   userName,
@@ -122,468 +111,312 @@ export default function LiveVideoRoom({
       return `Guest-${Math.random().toString(36).slice(2, 10)}`;
     }
   });
-  
-  const effectiveCurrentUserId = String(currentUserId || userId || stableGuestId || "").trim();
-  const displayName = String(userName || `User ${effectiveCurrentUserId.substring(0, 4)}` || "User").trim();
-  const normalizedHostId = String(hostId || "").trim();
-  const isHost = typeof isHostProp === "boolean" 
-    ? isHostProp 
-    : Boolean(effectiveCurrentUserId && normalizedHostId && effectiveCurrentUserId === normalizedHostId);
 
-  // States
+  const effectiveCurrentUserId = String(currentUserId || userId || stableGuestId || "").trim();
+  const normalizedHostId = String(hostId || "").trim();
+  const isHost =
+    typeof isHostProp === "boolean"
+      ? isHostProp
+      : Boolean(effectiveCurrentUserId && normalizedHostId && effectiveCurrentUserId === normalizedHostId);
+
+  const roomRef = useRef<Room | null>(null);
+  const previewStreamRef = useRef<MediaStream | null>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+
+  const [hasJoined, setHasJoined] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isJoining, setIsJoining] = useState(true);
-  const [hasJoined, setHasJoined] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isCameraEnabled, setIsCameraEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenTrack, setScreenTrack] = useState<MediaStreamTrack | null>(null);
-  
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [participants, setParticipants] = useState([]);
-  const [peers, setPeers] = useState<{ peerID: string, peer: Peer.Instance }[]>([]);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [remoteParticipants, setRemoteParticipants] = useState<RemoteParticipant[]>([]);
   const [remoteScreenUser, setRemoteScreenUser] = useState<MediaStream | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [roomVersion, setRoomVersion] = useState(0);
 
-  // Refs
-  const socketRef = useRef<any>();
-  const streamRef = useRef<MediaStream | null>(null);
-  const screenStreamRef = useRef<MediaStream | null>(null);
-  const remoteScreenOwnerRef = useRef<string | null>(null);
-  const peersRef = useRef<{ peerID: string, peer: Peer.Instance }[]>([]);
-  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const syncRoomState = useCallback((room: Room) => {
+    const participants = Array.from(room.remoteParticipants.values());
+    const localScreenPublication = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);
 
-  const refreshRemoteScreenShare = useCallback((reason: string) => {
-    // In this WebRTC stack there is no LiveKit-style per-track permission gate;
-    // subscribers receive all tracks over the established peer connection.
-    console.log("[Subscriber] Refresh screen share source:", {
-      reason,
-      peerCount: peersRef.current.length,
-      localSharing: isScreenSharing,
-    });
-
-    const uniquePeers = Array.from(
-      new Map(peersRef.current.map((peerObj) => [peerObj.peerID, peerObj])).values()
-    );
-
-    for (const peerObj of uniquePeers) {
-      const remoteStreams = peerObj.peer?._remoteStreams || [];
-      const remoteScreenTrack = getScreenTrackFromStreams(remoteStreams);
-
-      if (remoteScreenTrack && remoteScreenTrack.readyState === "live") {
-        remoteScreenOwnerRef.current = peerObj.peerID;
-        setRemoteScreenUser(new MediaStream([remoteScreenTrack]));
-        console.log("[Subscriber] Screen share track subscribed:", {
-          owner: peerObj.peerID,
-          trackId: remoteScreenTrack.id,
-          trackState: remoteScreenTrack.readyState,
-          source: "screen-share",
-        });
-        return;
-      }
-    }
-
-    if (remoteScreenOwnerRef.current || remoteScreenUser) {
-      console.log("[Subscriber] No active remote screen-share track found.");
-      remoteScreenOwnerRef.current = null;
-      setRemoteScreenUser(null);
-    }
-  }, [isScreenSharing, remoteScreenUser]);
-
-  const attachPeerTrackHandlers = useCallback((peer: Peer.Instance, peerID: string) => {
-    peer.on("track", (track: MediaStreamTrack) => {
-      if (track.kind !== "video") return;
-
-      if (isScreenTrack(track)) {
-        console.log("[Subscriber] Incoming screen-share track:", {
-          owner: peerID,
-          trackId: track.id,
-          source: "screen-share",
-          state: track.readyState,
-        });
-        remoteScreenOwnerRef.current = peerID;
-        setRemoteScreenUser(new MediaStream([track]));
-
-        track.onended = () => {
-          if (remoteScreenOwnerRef.current === peerID) {
-            console.log("[Subscriber] Screen-share track ended:", {
-              owner: peerID,
-              trackId: track.id,
-            });
-            remoteScreenOwnerRef.current = null;
-            setRemoteScreenUser(null);
-          }
-        };
-      }
-    });
+    setRemoteParticipants(participants);
+    setRemoteScreenUser(getRemoteScreenStream(participants));
+    setLocalStream(getLocalStreamFromRoom(room));
+    setScreenTrack(localScreenPublication?.track?.mediaStreamTrack ?? null);
+    setIsScreenSharing(Boolean(localScreenPublication?.track && !localScreenPublication.isMuted));
+    setIsMicEnabled(room.localParticipant.isMicrophoneEnabled);
+    setIsCameraEnabled(room.localParticipant.isCameraEnabled);
+    setRoomVersion((version) => version + 1);
   }, []);
 
-  // Effect 1: Media only (pre-join preview)
   useEffect(() => {
     let isActive = true;
 
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
       .then((stream) => {
         if (!isActive) {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
 
+        previewStreamRef.current = stream;
         setLocalStream(stream);
-        streamRef.current = stream;
-        const audioTrack = stream.getAudioTracks()[0];
-        const videoTrack = stream.getVideoTracks()[0];
-        console.log("[Media] Local tracks ready:", {
-          hasAudioTrack: Boolean(audioTrack),
-          hasVideoTrack: Boolean(videoTrack),
-          audioTrackState: audioTrack?.readyState,
-          audioTrackEnabled: audioTrack?.enabled,
-        });
-        setIsMicEnabled(audioTrack ? audioTrack.enabled : true);
-        setIsCameraEnabled(videoTrack ? videoTrack.enabled : true);
+        setIsMicEnabled(stream.getAudioTracks()[0]?.enabled ?? true);
+        setIsCameraEnabled(stream.getVideoTracks()[0]?.enabled ?? true);
         setIsJoining(false);
       })
-      .catch((err) => {
-        console.error("Media error:", err);
+      .catch((error) => {
+        console.error("Media error:", error);
         alert("Please allow camera and microphone access.");
         setIsJoining(false);
       });
 
     return () => {
       isActive = false;
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      previewStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
   useEffect(() => {
-    if (!previewVideoRef.current || !localStream) return;
+    if (!previewVideoRef.current || !localStream || hasJoined) return;
     previewVideoRef.current.srcObject = localStream;
-  }, [localStream]);
+  }, [hasJoined, localStream]);
 
-  // Effect 2: Socket + WebRTC (only after explicit join)
   useEffect(() => {
-    if (!hasJoined || !effectiveCurrentUserId || !roomId) return;
+    if (!hasJoined || !roomId || !token || !liveKitUrl) return;
 
-    setIsJoining(true);
-    socketRef.current = io(SOCKET_SERVER_URL);
-    setIsConnected(true);
-
-    socketRef.current.emit("join-room", {
-      roomId,
-      userId: effectiveCurrentUserId,
-      name: displayName
+    let isActive = true;
+    const room = new Room({
+      adaptiveStream: true,
+      dynacast: true,
     });
 
-    socketRef.current.on("room-users", (users) => {
-      setParticipants(users);
-      const currentSocketIds = users.map((u: any) => u.socketId);
+    roomRef.current = room;
 
-      // Cleanup stale peers
-      peersRef.current = peersRef.current.filter(p => {
-        if (!currentSocketIds.includes(p.peerID)) {
-          if (!p.peer.destroyed) p.peer.destroy();
-          return false;
-        }
-        return true;
-      });
-
-      // Connect to new peers
-      const mySocketId = socketRef.current.id;
-      users.forEach((otherUser: any) => {
-        if (otherUser.socketId !== mySocketId) {
-          const existingPeer = peersRef.current.find(p => p.peerID === otherUser.socketId);
-          if (!existingPeer && mySocketId < otherUser.socketId) {
-            const peer = createPeer(otherUser.socketId, mySocketId, streamRef.current);
-            peersRef.current.push({ peerID: otherUser.socketId, peer });
+    const subscribeToExistingPublications = () => {
+      room.remoteParticipants.forEach((participant) => {
+        participant.getTrackPublications().forEach((publication: RemoteTrackPublication) => {
+          if (!publication.isSubscribed) {
+            publication.setSubscribed(true);
           }
-        }
+        });
       });
-      setPeers([...peersRef.current]);
-      setTimeout(() => refreshRemoteScreenShare("room-users"), 0);
-    });
+    };
 
-    socketRef.current.on("webrtc-signal", (payload: any) => {
-      const { signal, from } = payload;
+    const handleRoomChanged = () => {
+      subscribeToExistingPublications();
+      syncRoomState(room);
+    };
 
-      if (signal.type === 'kick') {
-        alert('You have been removed by the host.');
-        window.location.href = '/dashboard/study-rooms';
-        return;
-      }
+    const handleTrackSubscribed = (
+      track: RemoteTrack,
+      publication: RemoteTrackPublication,
+      participant: RemoteParticipant
+    ) => {
+      console.log("[LiveKit] trackSubscribed", {
+        roomId,
+        participant: participant.identity,
+        source: publication.source,
+        kind: track.kind,
+      });
+      syncRoomState(room);
+    };
 
-      if (signal.type === 'chat') {
+    const handleTrackUnsubscribed = () => {
+      syncRoomState(room);
+    };
+
+    const handleDataReceived = (
+      payload: Uint8Array,
+      participant?: RemoteParticipant,
+      _kind?: unknown,
+      topic?: string
+    ) => {
+      if (topic && topic !== "chat") return;
+
+      try {
+        const parsed = JSON.parse(new TextDecoder().decode(payload));
         setMessages((prev) => [
           ...prev,
-          { id: Date.now(), senderId: signal.senderId, text: signal.text },
+          {
+            id: parsed.id || Date.now(),
+            senderId: parsed.senderId || participant?.identity || "remote",
+            text: String(parsed.text || ""),
+          },
         ]);
-        return;
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            senderId: participant?.identity || "remote",
+            text: new TextDecoder().decode(payload),
+          },
+        ]);
       }
+    };
 
-      if (signal.type === 'screen-toggle') {
-        if (signal.isSharing) {
-          console.log("[Subscriber] screen-toggle received: sharing=true", { from });
-          remoteScreenOwnerRef.current = from;
-          const remotePeer = peersRef.current.find((p) => p.peerID === from);
-          const remoteStreams = remotePeer?.peer?._remoteStreams || [];
-          const remoteScreenTrack = getScreenTrackFromStreams(remoteStreams);
-          setRemoteScreenUser(remoteScreenTrack ? new MediaStream([remoteScreenTrack]) : null);
-          setTimeout(() => refreshRemoteScreenShare("screen-toggle-on"), 250);
-        } else {
-          console.log("[Subscriber] screen-toggle received: sharing=false", { from });
-          if (remoteScreenOwnerRef.current === from) {
-            remoteScreenOwnerRef.current = null;
-            setRemoteScreenUser(null);
-          }
-          setTimeout(() => refreshRemoteScreenShare("screen-toggle-off"), 0);
-        }
-        return;
-      }
+    room
+      .on(RoomEvent.ParticipantConnected, handleRoomChanged)
+      .on(RoomEvent.ParticipantDisconnected, handleRoomChanged)
+      .on(RoomEvent.TrackPublished, handleRoomChanged)
+      .on(RoomEvent.TrackUnpublished, handleRoomChanged)
+      .on(RoomEvent.TrackMuted, handleRoomChanged)
+      .on(RoomEvent.TrackUnmuted, handleRoomChanged)
+      .on(RoomEvent.LocalTrackPublished, handleRoomChanged)
+      .on(RoomEvent.LocalTrackUnpublished, handleRoomChanged)
+      .on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
+      .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
+      .on(RoomEvent.DataReceived, handleDataReceived)
+      .on(RoomEvent.Disconnected, () => {
+        setIsConnected(false);
+      });
 
-      const existingPeer = peersRef.current.find(p => p.peerID === from);
+    async function connectToRoom() {
+      setIsJoining(true);
 
-      if (signal.type === 'offer') {
-        if (existingPeer && !existingPeer.peer.destroyed) {
-          console.log("[Subscriber] Duplicate offer received, reusing peer:", from);
-          try {
-            existingPeer.peer.signal(signal);
-          } catch (err) {
-            console.error("[Subscriber] Failed to process duplicate offer:", err);
-          }
+      try {
+        await room.connect(liveKitUrl, token, { autoSubscribe: true });
+
+        if (!isActive) {
+          await room.disconnect();
           return;
         }
 
-        const peer = addPeer(signal, from, streamRef.current);
-        attachPeerTrackHandlers(peer, from);
-        peersRef.current.push({ peerID: from, peer });
-        setPeers([...peersRef.current]);
-        setTimeout(() => refreshRemoteScreenShare("offer-added-peer"), 300);
-      } else if (existingPeer && !existingPeer.peer.destroyed) {
-        try { existingPeer.peer.signal(signal); } catch (e) { console.error(e); }
+        const shouldEnableCamera = isCameraEnabled;
+        const shouldEnableMic = isMicEnabled;
+
+        previewStreamRef.current?.getTracks().forEach((track) => track.stop());
+        previewStreamRef.current = null;
+
+        await Promise.all([
+          room.localParticipant.setCameraEnabled(shouldEnableCamera),
+          room.localParticipant.setMicrophoneEnabled(shouldEnableMic),
+        ]);
+
+        await room.startAudio().catch((error) => {
+          if (!isPlaybackAbortError(error)) {
+            console.warn("[LiveKit] Audio playback needs a user gesture:", error);
+          }
+        });
+
+        subscribeToExistingPublications();
+        syncRoomState(room);
+        setIsConnected(true);
+      } catch (error) {
+        console.error("[LiveKit] Failed to connect:", error);
+        alert("Could not connect to the video room. Please check your LiveKit configuration.");
+        setHasJoined(false);
+      } finally {
+        if (isActive) {
+          setIsJoining(false);
+        }
       }
-    });
+    }
 
-    socketRef.current.on("user-left", (socketId: string) => {
-      const peerObj = peersRef.current.find(p => p.peerID === socketId);
-      if (peerObj && !peerObj.peer.destroyed) peerObj.peer.destroy();
-      peersRef.current = peersRef.current.filter(p => p.peerID !== socketId);
-      setPeers((prev) => prev.filter((p) => p.peerID !== socketId));
-      setParticipants((prev: any[]) => prev.filter((p) => p.socketId !== socketId));
-      if (remoteScreenOwnerRef.current === socketId) {
-        remoteScreenOwnerRef.current = null;
-        setRemoteScreenUser(null);
-      }
-      setTimeout(() => refreshRemoteScreenShare("user-left"), 0);
-    });
-
-    socketRef.current.on("room-ended", () => {
-      alert("This session was ended by the host.");
-      window.location.href = '/dashboard/study-rooms';
-    });
-
-    socketRef.current.on("you-are-kicked", () => {
-      alert("You have been removed by the host.");
-      window.location.href = '/dashboard/study-rooms';
-    });
-
-    setIsJoining(false);
+    void connectToRoom();
 
     return () => {
-      if (socketRef.current) socketRef.current.disconnect();
-      peersRef.current.forEach(p => { if (!p.peer.destroyed) p.peer.destroy(); });
-      peersRef.current = [];
-      setPeers([]);
-      setParticipants([]);
-      remoteScreenOwnerRef.current = null;
+      isActive = false;
+      room.disconnect();
+      roomRef.current = null;
+      setRemoteParticipants([]);
       setRemoteScreenUser(null);
+      setScreenTrack(null);
       setIsConnected(false);
     };
-  }, [attachPeerTrackHandlers, hasJoined, roomId, effectiveCurrentUserId, displayName, refreshRemoteScreenShare]);
+  }, [hasJoined, roomId, token, liveKitUrl, syncRoomState]);
 
-  useEffect(() => {
-    if (!hasJoined) return;
-
-    const interval = setInterval(() => {
-      refreshRemoteScreenShare("periodic-scan");
-    }, 1200);
-
-    return () => clearInterval(interval);
-  }, [hasJoined, refreshRemoteScreenShare]);
-
-  function createPeer(userToSignal: string, callerID: string, stream: MediaStream | null) {
-    console.log("[Publisher] Creating outbound peer:", {
-      to: userToSignal,
-      hasLocalAudio: Boolean(stream?.getAudioTracks()?.length),
-      hasLocalVideo: Boolean(stream?.getVideoTracks()?.length),
-    });
-    const peer = new Peer({ initiator: true, trickle: true, stream: stream || undefined, config: { iceServers } });
-    peer.on("signal", signal => {
-      socketRef.current?.emit("webrtc-signal", { signal, to: userToSignal });
-    });
-    peer.on("connect", () => {
-      console.log("[Publisher] Peer connected:", userToSignal);
-    });
-    peer.on("error", (err) => {
-      console.error("[Publisher] Peer error:", userToSignal, err);
-    });
-    attachPeerTrackHandlers(peer, userToSignal);
-    return peer;
-  }
-
-  function addPeer(incomingSignal: any, callerID: string, stream: MediaStream | null) {
-    console.log("[Subscriber] Creating inbound peer:", {
-      from: callerID,
-      hasLocalAudio: Boolean(stream?.getAudioTracks()?.length),
-      hasLocalVideo: Boolean(stream?.getVideoTracks()?.length),
-    });
-    const peer = new Peer({ initiator: false, trickle: true, stream: stream || undefined, config: { iceServers } });
-    peer.on("signal", signal => {
-      socketRef.current?.emit("webrtc-signal", { signal, to: callerID });
-    });
-    peer.on("connect", () => {
-      console.log("[Subscriber] Peer connected:", callerID);
-    });
-    peer.on("error", (err) => {
-      console.error("[Subscriber] Peer error:", callerID, err);
-    });
-    peer.signal(incomingSignal);
-    return peer;
-  }
-
-  // Toggles
   const toggleMic = useCallback(() => {
-    if (streamRef.current) {
-      const audioTrack = streamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsMicEnabled(audioTrack.enabled);
-      }
+    const room = roomRef.current;
+    const nextEnabled = !isMicEnabled;
+
+    if (room && isConnected) {
+      void room.localParticipant.setMicrophoneEnabled(nextEnabled).then(() => syncRoomState(room));
+      return;
     }
-  }, []);
+
+    previewStreamRef.current
+      ?.getAudioTracks()
+      .forEach((track) => {
+        track.enabled = nextEnabled;
+      });
+    setIsMicEnabled(nextEnabled);
+  }, [isConnected, isMicEnabled, syncRoomState]);
 
   const toggleCamera = useCallback(() => {
-    if (streamRef.current) {
-      const videoTrack = streamRef.current.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsCameraEnabled(videoTrack.enabled);
-      }
+    const room = roomRef.current;
+    const nextEnabled = !isCameraEnabled;
+
+    if (room && isConnected) {
+      void room.localParticipant.setCameraEnabled(nextEnabled).then(() => syncRoomState(room));
+      return;
     }
-  }, []);
 
-  const toggleScreenShare = useCallback(async () => {
-    if (!isScreenSharing) {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const newScreenTrack = screenStream.getVideoTracks()[0];
-
-      // Keep camera track intact and publish screen as a separate track.
-      setScreenTrack(newScreenTrack);
-      screenStreamRef.current = screenStream;
-
-      if (newScreenTrack && screenStreamRef.current) {
-        peersRef.current.forEach((p) => {
-          if (!p.peer.destroyed) {
-            try {
-              p.peer.addTrack(newScreenTrack, screenStreamRef.current);
-            } catch (err) {
-              console.error("Failed to add screen track:", err);
-            }
-          }
-        });
-      }
-
-      peersRef.current.forEach((p) => {
-        socketRef.current?.emit('webrtc-signal', {
-          signal: { type: 'screen-toggle', isSharing: true },
-          to: p.peerID,
-        });
+    previewStreamRef.current
+      ?.getVideoTracks()
+      .forEach((track) => {
+        track.enabled = nextEnabled;
       });
+    setIsCameraEnabled(nextEnabled);
+  }, [isCameraEnabled, isConnected, syncRoomState]);
 
-      newScreenTrack.onended = () => {
-        if (newScreenTrack && screenStreamRef.current) {
-          peersRef.current.forEach((p) => {
-            if (!p.peer.destroyed) {
-              try {
-                p.peer.removeTrack(newScreenTrack, screenStreamRef.current as MediaStream);
-              } catch (err) {
-                console.error("Failed to remove screen track:", err);
-              }
-            }
-          });
+  const toggleScreenShare = useCallback(() => {
+    const room = roomRef.current;
+    if (!room || !isConnected) return;
+
+    const nextEnabled = !isScreenSharing;
+    void room.localParticipant
+      .setScreenShareEnabled(nextEnabled, { audio: true })
+      .then(() => syncRoomState(room))
+      .catch((error) => {
+        if (nextEnabled) {
+          console.error("[LiveKit] Screen share failed:", error);
         }
+      });
+  }, [isConnected, isScreenSharing, syncRoomState]);
 
-        peersRef.current.forEach((p) => {
-          socketRef.current?.emit('webrtc-signal', {
-            signal: { type: 'screen-toggle', isSharing: false },
-            to: p.peerID,
-          });
-        });
+  const sendMessage = useCallback(
+    (text: string) => {
+      const trimmedText = text.trim();
+      if (!trimmedText) return;
 
-        setScreenTrack(null);
-        setIsScreenSharing(false);
-        screenStreamRef.current = null;
+      const message = {
+        id: Date.now(),
+        senderId: effectiveCurrentUserId,
+        text: trimmedText,
       };
 
-      setIsScreenSharing(true);
-      return;
-    }
+      setMessages((prev) => [...prev, message]);
 
-    if (screenTrack) {
-      screenTrack.onended = null;
-      if (screenStreamRef.current) {
-        peersRef.current.forEach((p) => {
-          if (!p.peer.destroyed) {
-            try {
-              p.peer.removeTrack(screenTrack, screenStreamRef.current as MediaStream);
-            } catch (err) {
-              console.error("Failed to remove screen track:", err);
-            }
-          }
-        });
-      }
+      const room = roomRef.current;
+      if (!room || !isConnected) return;
 
-      screenTrack.stop();
-      peersRef.current.forEach((p) => {
-        socketRef.current?.emit('webrtc-signal', {
-          signal: { type: 'screen-toggle', isSharing: false },
-          to: p.peerID,
-        });
-      });
-
-      setScreenTrack(null);
-      setIsScreenSharing(false);
-      screenStreamRef.current = null;
-      return;
-    }
-
-    setScreenTrack(null);
-    setIsScreenSharing(false);
-    screenStreamRef.current = null;
-  }, [isScreenSharing, screenTrack]);
-
-  const sendMessage = useCallback((text: string) => {
-    const messageObject = { id: Date.now(), senderId: effectiveCurrentUserId, text };
-    setMessages((prev) => [...prev, messageObject]);
-    peersRef.current.forEach((p) => {
-      socketRef.current?.emit('webrtc-signal', {
-        signal: { type: 'chat', text, senderId: effectiveCurrentUserId },
-        to: p.peerID,
-      });
-    });
-  }, [effectiveCurrentUserId]);
+      void room.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify(message)),
+        { reliable: true, topic: "chat" }
+      );
+    },
+    [effectiveCurrentUserId, isConnected]
+  );
 
   const removeParticipant = useCallback((participantUid: string | number) => {
-    if (!isHost) return;
-    socketRef.current?.emit('webrtc-signal', { signal: { type: 'kick' }, to: participantUid });
-  }, [isHost]);
+    console.warn("Participant removal requires a server-side LiveKit RoomService endpoint.", participantUid);
+  }, []);
 
-  // Leave & End Room
   const updateSessionDatabase = useCallback(async () => {
     if (!isHost) return;
     try {
-      await fetch(`/api/study-rooms/${encodeURIComponent(roomId)}/end-session`, { method: "PATCH" });
-    } catch (error) { console.error(error); }
+      await fetch(`/api/study-rooms/${encodeURIComponent(roomId)}/end-session`, {
+        method: "PATCH",
+      });
+    } catch (error) {
+      console.error(error);
+    }
   }, [isHost, roomId]);
 
   const leaveRoom = useCallback(async () => {
@@ -599,56 +432,38 @@ export default function LiveVideoRoom({
 
       if (isHost) {
         setIsEndingSession(true);
-        socketRef.current?.emit("end-room", { roomId });
         await updateSessionDatabase();
       }
     } catch (error) {
       console.error("Leave Room Error:", error);
     } finally {
-      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
-      if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach((t) => t.stop());
-      socketRef.current?.disconnect();
+      previewStreamRef.current?.getTracks().forEach((track) => track.stop());
+      await roomRef.current?.disconnect();
       router.push("/dashboard/study-buddy");
     }
-  }, [isLeaving, isHost, roomId, router, updateSessionDatabase]);
+  }, [isHost, isLeaving, roomId, router, updateSessionDatabase]);
 
   const handleCancelPreJoin = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
+    previewStreamRef.current?.getTracks().forEach((track) => track.stop());
+    previewStreamRef.current = null;
     setLocalStream(null);
     setHasJoined(false);
     router.push("/dashboard/study-buddy");
   }, [router]);
 
-  // Render Remote Cards
-  const remoteParticipantCards = useMemo(() => {
-    const uniquePeers = Array.from(
-      new Map(peers.map((peerObj) => [peerObj.peerID, peerObj])).values()
-    );
-
-    return uniquePeers
-      .filter((peerObj) => {
-        const remoteStreams = peerObj.peer?._remoteStreams || [];
-        const cameraTrack = getCameraTrackFromStreams(remoteStreams);
-
-        // Camera rail should only contain participant camera feeds (not screen share tracks).
-        return Boolean(cameraTrack?.id);
-      })
-      .map((peerObj) => {
-        const remoteUser = participants.find((p: any) => p.socketId === peerObj.peerID);
-        return (
-          <VideoPeer
-            key={peerObj.peerID}
-            peer={peerObj.peer}
-            name={remoteUser?.name || 'User'}
-            isHost={isHost}
-            onRemove={() => removeParticipant(peerObj.peerID)}
-          />
-        );
-      });
-  }, [peers, participants, isHost, removeParticipant]);
+  const remoteParticipantCards = useMemo(
+    () =>
+      remoteParticipants.map((participant) => (
+        <LiveKitRemoteParticipantCard
+          key={participant.identity}
+          participant={participant}
+          isHost={isHost}
+          onRemove={() => removeParticipant(participant.identity)}
+          updateKey={roomVersion}
+        />
+      )),
+    [isHost, remoteParticipants, removeParticipant, roomVersion]
+  );
 
   const renderState: LiveVideoRoomRenderState = {
     isConnected,
@@ -658,7 +473,7 @@ export default function LiveVideoRoom({
     isScreenSharing,
     remoteScreenUser,
     screenTrack,
-    localStream, 
+    localStream,
     currentUserId: effectiveCurrentUserId,
     hostId: normalizedHostId,
     isHost,
@@ -675,6 +490,8 @@ export default function LiveVideoRoom({
   };
 
   if (!hasJoined) {
+    const isJoinDisabled = !localStream || isJoining || !token || !liveKitUrl;
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-900 dark:bg-[#0f0c1d] dark:text-white p-4">
         <div className="w-full max-w-4xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-[#161027]">
@@ -723,11 +540,11 @@ export default function LiveVideoRoom({
             </button>
             <button
               onClick={() => setHasJoined(true)}
-              disabled={!localStream || isJoining}
+              disabled={isJoinDisabled}
               type="button"
               className="rounded-xl bg-gradient-to-r from-[#8c30e8] to-[#6f4bff] px-7 py-3 text-sm font-bold text-white shadow-lg transition-all hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isJoining ? "Preparing..." : "Join Room"}
+              {isJoining || !token || !liveKitUrl ? "Preparing..." : "Join Room"}
             </button>
           </div>
         </div>
@@ -738,85 +555,60 @@ export default function LiveVideoRoom({
   return <>{renderAction(renderState)}</>;
 }
 
-// Sub-component for rendering incoming WebRTC streams
-const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
-  const ref = useRef<HTMLVideoElement>(null);
+function LiveKitRemoteParticipantCard({
+  participant,
+  isHost,
+  onRemove,
+  updateKey,
+}: {
+  participant: RemoteParticipant;
+  isHost: boolean;
+  onRemove: () => void;
+  updateKey: number;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const lastCameraStreamRef = useRef<MediaStream | null>(null);
-  const [hasStream, setHasStream] = useState(false); 
+  const [hasVideo, setHasVideo] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
-    if (!peer || peer.destroyed) return;
+    const videoElement = videoRef.current;
+    const audioElement = audioRef.current;
+    const videoTrack = participant.getTrackPublication(Track.Source.Camera)?.track;
+    const audioTrack = participant.getTrackPublication(Track.Source.Microphone)?.track;
 
-    const attachStream = (stream: MediaStream) => {
-      if (ref.current && stream) {
-        const cameraOnly = getCameraOnlyStream(stream);
-        if (!cameraOnly) {
-          return;
+    if (videoElement && videoTrack) {
+      videoTrack.attach(videoElement);
+      setHasVideo(true);
+      videoElement.play().catch((error) => {
+        if (!isPlaybackAbortError(error)) {
+          console.warn("[LiveKit] Remote video playback failed:", error);
         }
-        lastCameraStreamRef.current = cameraOnly;
-        ref.current.srcObject = cameraOnly;
-        setHasStream(true);
-        ref.current.play().catch((error) => {
-          if (isPlaybackAbortError(error)) {
-            return;
-          }
+      });
+    } else {
+      setHasVideo(false);
+    }
 
-          console.warn("Autoplay blocked:", error);
-        });
-      }
-
-      if (audioRef.current && stream) {
-        const audioTrack = stream.getAudioTracks()[0];
-        if (audioTrack) {
-          const remoteAudioStream = new MediaStream([audioTrack]);
-          audioRef.current.srcObject = remoteAudioStream;
-          audioRef.current.muted = false;
-          audioRef.current.volume = 1;
-          audioRef.current
-            .play()
-            .then(() => {
-              console.log("[Subscriber] Remote microphone track playing:", {
-                participant: name,
-                trackState: audioTrack.readyState,
-                enabled: audioTrack.enabled,
-              });
-            })
-            .catch((error) => {
-              if (isPlaybackAbortError(error)) {
-                return;
-              }
-
-              console.error("[Subscriber] Remote microphone playback failed:", {
-                participant: name,
-                error,
-              });
-            });
+    if (audioElement && audioTrack) {
+      audioTrack.attach(audioElement);
+      audioElement.play().catch((error) => {
+        if (!isPlaybackAbortError(error)) {
+          console.warn("[LiveKit] Remote audio playback failed:", error);
         }
-      }
-    };
-
-    peer.on("stream", attachStream);
-    peer.on("track", (track: any, stream: MediaStream) => {
-      if (track?.kind === "audio") {
-        console.log("[Subscriber] Remote microphone track subscribed:", {
-          participant: name,
-          trackState: track.readyState,
-          enabled: track.enabled,
-        });
-      }
-      if (stream) attachStream(stream);
-    });
-
-    if (peer._remoteStreams && peer._remoteStreams[0]) {
-      attachStream(peer._remoteStreams[0]);
+      });
     }
 
     return () => {
-      peer.off("stream", attachStream);
+      if (videoElement && videoTrack) {
+        videoTrack.detach(videoElement);
+      }
+      if (audioElement && audioTrack) {
+        audioTrack.detach(audioElement);
+      }
     };
-  }, [peer]);
+  }, [participant, updateKey]);
+
+  const name = participant.name || participant.identity || "User";
 
   return (
     <motion.div
@@ -836,10 +628,10 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
 
       {!isMinimized ? (
         <>
-          <video ref={ref} autoPlay playsInline className="h-full w-full object-cover" />
+          <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
           <audio ref={audioRef} autoPlay playsInline className="hidden" />
 
-          {!hasStream && (
+          {!hasVideo && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/90 z-0">
               <span className="text-xs text-gray-400 font-medium animate-pulse">Connecting Video...</span>
             </div>
@@ -864,4 +656,4 @@ const VideoPeer = ({ peer, name, isHost, onRemove }: any) => {
       )}
     </motion.div>
   );
-};
+}

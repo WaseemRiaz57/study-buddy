@@ -101,6 +101,9 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const [apiCurrentUserId, setApiCurrentUserId] = useState<string>("");
   const [roomTopic, setRoomTopic] = useState<string>("");
   const [roomHostId, setRoomHostId] = useState<string>("");
+  const [liveKitToken, setLiveKitToken] = useState<string>("");
+  const [liveKitUrl, setLiveKitUrl] = useState<string>("");
+  const [liveKitRoomName, setLiveKitRoomName] = useState<string>("");
   const [isRoomLoading, setIsRoomLoading] = useState(true);
   const currentUserId = normalizeUserId(apiCurrentUserId || sessionUserId || guestUserId || effectiveCurrentUserId);
 
@@ -141,6 +144,9 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
           );
 
           setApiCurrentUserId(fetchedCurrentUserId);
+          setLiveKitToken(String(data?.token || ""));
+          setLiveKitUrl(String(data?.liveKitUrl || ""));
+          setLiveKitRoomName(String(data?.roomName || normalizedRoomId).trim());
           setRoomTopic(
             typeof room?.title === "string"
               ? room.title
@@ -155,6 +161,9 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
           setApiCurrentUserId("");
           setRoomTopic("");
           setRoomHostId("");
+          setLiveKitToken("");
+          setLiveKitUrl("");
+          setLiveKitRoomName("");
         }
       } finally {
         if (isActive) {
@@ -178,7 +187,9 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
   return (
     <LiveVideoRoom
-      roomId={normalizedRoomId}
+      roomId={liveKitRoomName || normalizedRoomId}
+      token={liveKitToken}
+      liveKitUrl={liveKitUrl}
       currentUserId={currentUserId}
       userName={currentUserName}
       hostId={roomHostId}
