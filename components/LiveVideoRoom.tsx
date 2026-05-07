@@ -53,6 +53,7 @@ export type LiveVideoRoomRenderState = {
   toggleCamera: () => void;
   toggleScreenShare: () => void;
   sendMessage: (text: string) => void;
+  muteParticipant: (participantUid: string | number, trackSid?: string) => void;
   removeParticipant: (participantUid: string | number) => void;
   leaveRoom: () => Promise<void>;
 };
@@ -137,6 +138,7 @@ export default function LiveVideoRoom({
   const [remoteScreenUser, setRemoteScreenUser] = useState<MediaStream | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [roomVersion, setRoomVersion] = useState(0);
+  const [moderatingParticipants, setModeratingParticipants] = useState<Record<string, boolean>>({});
 
   const syncRoomState = useCallback((room: Room) => {
     const participants = Array.from(room.remoteParticipants.values());
@@ -404,9 +406,85 @@ export default function LiveVideoRoom({
     [effectiveCurrentUserId, isConnected]
   );
 
-  const removeParticipant = useCallback((participantUid: string | number) => {
-    console.warn("Participant removal requires a server-side LiveKit RoomService endpoint.", participantUid);
-  }, []);
+  const moderateParticipant = useCallback(
+    async ({
+      action,
+      participantIdentity,
+      trackSid,
+      muted,
+    }: {
+      action: "mute" | "remove";
+      participantIdentity: string;
+      trackSid?: string;
+      muted?: boolean;
+    }) => {
+      if (!isHost || !participantIdentity) return;
+
+      setModeratingParticipants((prev) => ({
+        ...prev,
+        [participantIdentity]: true,
+      }));
+
+      try {
+        const response = await fetch(
+          `/api/study-rooms/${encodeURIComponent(roomId)}/moderation`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action,
+              participantIdentity,
+              trackSid,
+              muted,
+            }),
+          }
+        );
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to moderate participant.");
+        }
+
+        const room = roomRef.current;
+        if (room) {
+          syncRoomState(room);
+        }
+      } catch (error) {
+        console.error("[LiveKit] Moderation failed:", error);
+        alert(error instanceof Error ? error.message : "Failed to moderate participant.");
+      } finally {
+        setModeratingParticipants((prev) => {
+          const next = { ...prev };
+          delete next[participantIdentity];
+          return next;
+        });
+      }
+    },
+    [isHost, roomId, syncRoomState]
+  );
+
+  const muteParticipant = useCallback(
+    (participantUid: string | number, trackSid?: string) => {
+      void moderateParticipant({
+        action: "mute",
+        participantIdentity: String(participantUid),
+        trackSid,
+        muted: true,
+      });
+    },
+    [moderateParticipant]
+  );
+
+  const removeParticipant = useCallback(
+    (participantUid: string | number) => {
+      void moderateParticipant({
+        action: "remove",
+        participantIdentity: String(participantUid),
+      });
+    },
+    [moderateParticipant]
+  );
 
   const updateSessionDatabase = useCallback(async () => {
     if (!isHost) return;
@@ -458,11 +536,13 @@ export default function LiveVideoRoom({
           key={participant.identity}
           participant={participant}
           isHost={isHost}
+          isModerating={Boolean(moderatingParticipants[participant.identity])}
+          onMute={(trackSid) => muteParticipant(participant.identity, trackSid)}
           onRemove={() => removeParticipant(participant.identity)}
           updateKey={roomVersion}
         />
       )),
-    [isHost, remoteParticipants, removeParticipant, roomVersion]
+    [isHost, moderatingParticipants, muteParticipant, remoteParticipants, removeParticipant, roomVersion]
   );
 
   const renderState: LiveVideoRoomRenderState = {
@@ -485,6 +565,7 @@ export default function LiveVideoRoom({
     toggleCamera,
     toggleScreenShare,
     sendMessage,
+    muteParticipant,
     removeParticipant,
     leaveRoom,
   };
@@ -558,11 +639,15 @@ export default function LiveVideoRoom({
 function LiveKitRemoteParticipantCard({
   participant,
   isHost,
+  isModerating,
+  onMute,
   onRemove,
   updateKey,
 }: {
   participant: RemoteParticipant;
   isHost: boolean;
+  isModerating: boolean;
+  onMute: (trackSid?: string) => void;
   onRemove: () => void;
   updateKey: number;
 }) {
@@ -570,12 +655,16 @@ function LiveKitRemoteParticipantCard({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [hasVideo, setHasVideo] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isMicMuted, setIsMicMuted] = useState(false);
 
   useEffect(() => {
     const videoElement = videoRef.current;
     const audioElement = audioRef.current;
     const videoTrack = participant.getTrackPublication(Track.Source.Camera)?.track;
-    const audioTrack = participant.getTrackPublication(Track.Source.Microphone)?.track;
+    const audioPublication = participant.getTrackPublication(Track.Source.Microphone);
+    const audioTrack = audioPublication?.track;
+
+    setIsMicMuted(Boolean(audioPublication?.isMuted));
 
     if (videoElement && videoTrack) {
       videoTrack.attach(videoElement);
@@ -609,6 +698,7 @@ function LiveKitRemoteParticipantCard({
   }, [participant, updateKey]);
 
   const name = participant.name || participant.identity || "User";
+  const microphoneTrackSid = participant.getTrackPublication(Track.Source.Microphone)?.trackSid;
 
   return (
     <motion.div
@@ -626,19 +716,24 @@ function LiveKitRemoteParticipantCard({
         <Minus size={12} />
       </button>
 
-      {!isMinimized ? (
-        <>
-          <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
-          <audio ref={audioRef} autoPlay playsInline className="hidden" />
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className={`h-full w-full object-cover transition-opacity ${
+          isMinimized ? "opacity-0" : "opacity-100"
+        }`}
+      />
+      <audio ref={audioRef} autoPlay playsInline className="hidden" />
 
-          {!hasVideo && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/90 z-0">
-              <span className="text-xs text-gray-400 font-medium animate-pulse">Connecting Video...</span>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gray-800/90">
+      {!isMinimized && !hasVideo && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/90 z-0">
+          <span className="text-xs text-gray-400 font-medium animate-pulse">Connecting Video...</span>
+        </div>
+      )}
+
+      {isMinimized && (
+        <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-gray-800/90">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-xs font-semibold text-white">
             {String(name || "U").slice(0, 1).toUpperCase()}
           </div>
@@ -650,9 +745,22 @@ function LiveKitRemoteParticipantCard({
       </div>
 
       {isHost && !isMinimized && (
-        <button onClick={onRemove} className="absolute top-2 right-2 rounded-md bg-red-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-600 z-10">
-          Remove
-        </button>
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+          <button
+            onClick={() => onMute(microphoneTrackSid)}
+            disabled={isModerating || isMicMuted}
+            className="rounded-md bg-amber-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isMicMuted ? "Muted" : "Mute"}
+          </button>
+          <button
+            onClick={onRemove}
+            disabled={isModerating}
+            className="rounded-md bg-red-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Remove
+          </button>
+        </div>
       )}
     </motion.div>
   );

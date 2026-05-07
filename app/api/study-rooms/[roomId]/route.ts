@@ -17,9 +17,18 @@ function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function resolveRoomHostId(room: unknown): string {
+  const createdBy = (room as { createdBy?: { _id?: unknown } | unknown })?.createdBy;
+  return String(
+    createdBy && typeof createdBy === "object" && "_id" in createdBy
+      ? (createdBy as { _id?: unknown })._id
+      : createdBy || ""
+  ).trim();
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ roomId: string }> | { roomId: string } }
+  { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
     // Handling Next.js 14/15 params correctly
@@ -76,6 +85,9 @@ export async function GET(
       room = await StudyRoom.findById(newRoom._id).lean();
     }
 
+    const hostId = resolveRoomHostId(room);
+    const isHost = Boolean(hostId && currentUserId === hostId);
+
     console.log(`[Room API] Generating LiveKit token for user: ${participantName}`);
 
     const accessToken = new AccessToken(liveKitApiKey, liveKitApiSecret, {
@@ -89,6 +101,12 @@ export async function GET(
       canPublish: true,
       canSubscribe: true,
       canPublishData: true,
+      ...(isHost
+        ? ({
+            canAdmin: true,
+            roomAdmin: true,
+          } as { canAdmin: true; roomAdmin: true })
+        : {}),
     });
 
     const token = await accessToken.toJwt();
@@ -98,6 +116,8 @@ export async function GET(
         room,
         roomName: normalizedRoomId,
         currentUserId,
+        hostId,
+        isHost,
         token,
         liveKitUrl,
       },
