@@ -270,6 +270,24 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
         
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
+          {liveRoom.isHost ? (
+            <div className="hidden sm:flex items-center gap-2">
+              <button
+                onClick={liveRoom.muteAllParticipants}
+                disabled={liveRoom.isModeratingAllParticipants}
+                className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 transition-all hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+              >
+                <MicOff size={15} /> Mute All
+              </button>
+              <button
+                onClick={liveRoom.unmuteAllParticipants}
+                disabled={liveRoom.isModeratingAllParticipants}
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition-all hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+              >
+                <Mic size={15} /> Unmute All
+              </button>
+            </div>
+          ) : null}
           <button onClick={() => void liveRoom.leaveRoom()} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-red-500/20 transition-all flex items-center gap-2">
             <PhoneOff size={16} /> <span className="hidden sm:inline">{liveRoom.leaveButtonLabel}</span>
           </button>
@@ -447,16 +465,34 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
           ) : null}
 
           {/* Host Management Panel */}
-          {!hasScreenShare && liveRoom.isHost ? (
+          {liveRoom.isHost ? (
             <div className="px-4 pb-4">
               <div className="rounded-xl border border-slate-200 bg-white p-3 dark:bg-[#1a1524] dark:border-white/10">
-                <div className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
-                  Manage Participants
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+                    Manage Participants
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={liveRoom.muteAllParticipants}
+                      disabled={liveRoom.isModeratingAllParticipants}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <MicOff size={14} /> Mute All
+                    </button>
+                    <button
+                      onClick={liveRoom.unmuteAllParticipants}
+                      disabled={liveRoom.isModeratingAllParticipants}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Mic size={14} /> Unmute All
+                    </button>
+                  </div>
                 </div>
                 {(!liveRoom.remoteParticipantCards || liveRoom.remoteParticipantCards.length === 0) ? (
                   <p className="text-xs text-slate-500 dark:text-gray-400">No participants to manage.</p>
                 ) : (
-                  <p className="text-xs text-slate-500 dark:text-gray-400">Participants can be managed directly on their video cards.</p>
+                  <p className="text-xs text-slate-500 dark:text-gray-400">Use the mic icon on each video card for one participant, or update everyone at once here.</p>
                 )}
               </div>
             </div>

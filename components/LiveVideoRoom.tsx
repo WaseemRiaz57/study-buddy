@@ -20,6 +20,11 @@ import {
 } from "livekit-client";
 import { motion } from "framer-motion";
 import { Mic, MicOff, Minus, Video, VideoOff } from "lucide-react";
+import {
+  removeParticipantFromLiveKitRoomAction,
+  setParticipantMicrophoneMutedAction,
+  setRoomMicrophonesMutedAction,
+} from "@/app/actions/livekit-moderation";
 
 type LiveVideoRoomProps = {
   roomId: string;
@@ -49,11 +54,19 @@ export type LiveVideoRoomRenderState = {
   remoteParticipantCards: ReactNode[];
   leaveButtonLabel: string;
   isEndingSession: boolean;
+  isModeratingAllParticipants: boolean;
   toggleMic: () => void;
   toggleCamera: () => void;
   toggleScreenShare: () => void;
   sendMessage: (text: string) => void;
   muteParticipant: (participantUid: string | number, trackSid?: string) => void;
+  setParticipantMicMuted: (
+    participantUid: string | number,
+    muted: boolean,
+    trackSid?: string
+  ) => void;
+  muteAllParticipants: () => void;
+  unmuteAllParticipants: () => void;
   removeParticipant: (participantUid: string | number) => void;
   leaveRoom: () => Promise<void>;
 };
@@ -139,6 +152,7 @@ export default function LiveVideoRoom({
   const [messages, setMessages] = useState<any[]>([]);
   const [roomVersion, setRoomVersion] = useState(0);
   const [moderatingParticipants, setModeratingParticipants] = useState<Record<string, boolean>>({});
+  const [isModeratingAllParticipants, setIsModeratingAllParticipants] = useState(false);
 
   const syncRoomState = useCallback((room: Room) => {
     const participants = Array.from(room.remoteParticipants.values());
@@ -426,24 +440,18 @@ export default function LiveVideoRoom({
       }));
 
       try {
-        const response = await fetch(
-          `/api/study-rooms/${encodeURIComponent(roomId)}/moderation`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action,
-              participantIdentity,
-              trackSid,
-              muted,
-            }),
-          }
-        );
-
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(data?.message || "Failed to moderate participant.");
+        if (action === "remove") {
+          await removeParticipantFromLiveKitRoomAction({
+            roomId,
+            participantIdentity,
+          });
+        } else {
+          await setParticipantMicrophoneMutedAction({
+            roomId,
+            participantIdentity,
+            trackSid,
+            muted: muted ?? true,
+          });
         }
 
         const room = roomRef.current;
@@ -475,6 +483,49 @@ export default function LiveVideoRoom({
     },
     [moderateParticipant]
   );
+
+  const setParticipantMicMuted = useCallback(
+    (participantUid: string | number, muted: boolean, trackSid?: string) => {
+      void moderateParticipant({
+        action: "mute",
+        participantIdentity: String(participantUid),
+        trackSid,
+        muted,
+      });
+    },
+    [moderateParticipant]
+  );
+
+  const setAllParticipantsMuted = useCallback(
+    async (muted: boolean) => {
+      if (!isHost || isModeratingAllParticipants) return;
+
+      setIsModeratingAllParticipants(true);
+
+      try {
+        await setRoomMicrophonesMutedAction({ roomId, muted });
+
+        const room = roomRef.current;
+        if (room) {
+          syncRoomState(room);
+        }
+      } catch (error) {
+        console.error("[LiveKit] Bulk moderation failed:", error);
+        alert(error instanceof Error ? error.message : "Failed to update participant microphones.");
+      } finally {
+        setIsModeratingAllParticipants(false);
+      }
+    },
+    [isHost, isModeratingAllParticipants, roomId, syncRoomState]
+  );
+
+  const muteAllParticipants = useCallback(() => {
+    void setAllParticipantsMuted(true);
+  }, [setAllParticipantsMuted]);
+
+  const unmuteAllParticipants = useCallback(() => {
+    void setAllParticipantsMuted(false);
+  }, [setAllParticipantsMuted]);
 
   const removeParticipant = useCallback(
     (participantUid: string | number) => {
@@ -537,12 +588,14 @@ export default function LiveVideoRoom({
           participant={participant}
           isHost={isHost}
           isModerating={Boolean(moderatingParticipants[participant.identity])}
-          onMute={(trackSid) => muteParticipant(participant.identity, trackSid)}
+          onSetMicMuted={(muted, trackSid) =>
+            setParticipantMicMuted(participant.identity, muted, trackSid)
+          }
           onRemove={() => removeParticipant(participant.identity)}
           updateKey={roomVersion}
         />
       )),
-    [isHost, moderatingParticipants, muteParticipant, remoteParticipants, removeParticipant, roomVersion]
+    [isHost, moderatingParticipants, remoteParticipants, removeParticipant, roomVersion, setParticipantMicMuted]
   );
 
   const renderState: LiveVideoRoomRenderState = {
@@ -561,11 +614,15 @@ export default function LiveVideoRoom({
     remoteParticipantCards,
     leaveButtonLabel: isHost ? "End Session" : "Leave Room",
     isEndingSession,
+    isModeratingAllParticipants,
     toggleMic,
     toggleCamera,
     toggleScreenShare,
     sendMessage,
     muteParticipant,
+    setParticipantMicMuted,
+    muteAllParticipants,
+    unmuteAllParticipants,
     removeParticipant,
     leaveRoom,
   };
@@ -640,14 +697,14 @@ function LiveKitRemoteParticipantCard({
   participant,
   isHost,
   isModerating,
-  onMute,
+  onSetMicMuted,
   onRemove,
   updateKey,
 }: {
   participant: RemoteParticipant;
   isHost: boolean;
   isModerating: boolean;
-  onMute: (trackSid?: string) => void;
+  onSetMicMuted: (muted: boolean, trackSid?: string) => void;
   onRemove: () => void;
   updateKey: number;
 }) {
@@ -747,11 +804,17 @@ function LiveKitRemoteParticipantCard({
       {isHost && !isMinimized && (
         <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
           <button
-            onClick={() => onMute(microphoneTrackSid)}
-            disabled={isModerating || isMicMuted}
-            className="rounded-md bg-amber-500 px-2 py-1 text-[10px] font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => onSetMicMuted(!isMicMuted, microphoneTrackSid)}
+            disabled={isModerating || !microphoneTrackSid}
+            className={`rounded-md p-1.5 text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+              isMicMuted
+                ? "bg-red-500 hover:bg-red-600"
+                : "bg-emerald-500 hover:bg-emerald-600"
+            }`}
+            aria-label={isMicMuted ? `Unmute ${name}` : `Mute ${name}`}
+            title={isMicMuted ? "Unmute" : "Mute"}
           >
-            {isMicMuted ? "Muted" : "Mute"}
+            {isMicMuted ? <MicOff size={14} /> : <Mic size={14} />}
           </button>
           <button
             onClick={onRemove}
