@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { requireRole } from "@/lib/auth-guard";
 import { connectMongoDB } from "@/lib/mongodb";
+import { createStudyBuddyMatchRoom } from "@/lib/study-buddy-match-room";
 import { setStudentOnline, setStudentOffline } from "@/lib/redis";
 import BuddyConnection from "@/models/BuddyConnection";
 import BuddyMatch from "@/models/BuddyMatch";
@@ -43,6 +44,7 @@ type LeanBuddyConnection = {
   requester: { toString(): string };
   recipient: { toString(): string };
   subject: string;
+  roomId?: string;
   status: "pending" | "accepted" | "rejected" | "completed";
 };
 
@@ -106,13 +108,27 @@ export async function GET(req: Request) {
       }
 
       const peerId = requesterId === currentUserId ? recipientId : requesterId;
+      let roomId = String(connection.roomId || "").trim();
+
+      if (!roomId) {
+        const createdRoom = await createStudyBuddyMatchRoom({
+          hostId: recipientId,
+          peerId: requesterId,
+          subject: connection.subject,
+        });
+        roomId = createdRoom.roomId;
+        await BuddyConnection.findByIdAndUpdate(requestId, {
+          $set: { roomId },
+        });
+      }
+
       const peer = (await User.findById(peerId, "name image").lean()) as LeanPeer | null;
 
       return NextResponse.json({
         requestId,
         matchFound: true,
         status: "accepted",
-        roomId: requestId,
+        roomId,
         peer: {
           id: peerId,
           name: peer?.name || "Study Buddy",

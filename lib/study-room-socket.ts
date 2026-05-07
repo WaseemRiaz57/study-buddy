@@ -14,12 +14,22 @@ type StudyRoomJoinPayload = {
   userId?: string;
 };
 
+type StudyBuddyIdentifyPayload = {
+  userId?: string;
+};
+
+type BuddyRequestAcceptedPayload = {
+  roomId: string;
+  requestId: string;
+};
+
 type StudyRoomSocketData = {
   roomMemberships?: string[];
   roomUserId?: string;
 };
 
 const autoCloseTimers = new Map<string, NodeJS.Timeout>();
+let studyRoomNamespace: Namespace | null = null;
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -31,6 +41,10 @@ function normalizeRoomId(roomId: string): string {
 
 function roomChannel(roomId: string): string {
   return `room:${normalizeRoomId(roomId)}`;
+}
+
+function userChannel(userId: string): string {
+  return `user:${userId.trim()}`;
 }
 
 function getSocketData(socket: Socket): StudyRoomSocketData {
@@ -155,14 +169,49 @@ async function handleDisconnectingEvent(socket: Socket): Promise<void> {
   }
 }
 
+function handleStudyBuddyIdentifyEvent(
+  socket: Socket,
+  payload: StudyBuddyIdentifyPayload
+): void {
+  if (!isNonEmptyString(payload.userId)) {
+    socket.emit("study-room:error", {
+      message: "userId is required for study-buddy:identify",
+    });
+    return;
+  }
+
+  socket.join(userChannel(payload.userId));
+  socket.emit("study-buddy:identified", {
+    userId: payload.userId.trim(),
+    namespace: STUDY_ROOM_SOCKET_NAMESPACE,
+  });
+}
+
+export function emitBuddyRequestAccepted(
+  requesterId: string,
+  payload: BuddyRequestAcceptedPayload
+): boolean {
+  if (!studyRoomNamespace || !isNonEmptyString(requesterId)) {
+    return false;
+  }
+
+  studyRoomNamespace.to(userChannel(requesterId)).emit("buddy-request-accepted", payload);
+  return true;
+}
+
 /**
  * Registers the dedicated Socket.IO namespace for study rooms.
  * Namespace path is fixed to /study-room.
  */
 export function registerStudyRoomNamespace(io: Server): Namespace {
   const namespace = io.of(STUDY_ROOM_SOCKET_NAMESPACE);
+  studyRoomNamespace = namespace;
 
   namespace.on("connection", (socket: Socket) => {
+    socket.on("study-buddy:identify", (payload: StudyBuddyIdentifyPayload) => {
+      handleStudyBuddyIdentifyEvent(socket, payload);
+    });
+
     socket.on("study-room:join", async (payload: StudyRoomJoinPayload) => {
       await handleJoinEvent(socket, payload);
     });

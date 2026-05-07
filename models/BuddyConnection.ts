@@ -10,6 +10,7 @@ export interface IBuddyConnection extends Document {
   requester: Types.ObjectId;
   recipient: Types.ObjectId;
   subject: string;
+  roomId?: string;
   status: BuddyConnectionStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -31,6 +32,11 @@ const buddyConnectionSchema = new Schema<IBuddyConnection>(
       type: String,
       required: true,
       trim: true,
+    },
+    roomId: {
+      type: String,
+      trim: true,
+      default: "",
     },
     status: {
       type: String,

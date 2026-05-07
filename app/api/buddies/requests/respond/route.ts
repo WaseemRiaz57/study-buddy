@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { createStudyBuddyMatchRoom } from "@/lib/study-buddy-match-room";
+import { emitBuddyRequestAccepted } from "@/lib/study-room-socket";
 import BuddyConnection from "@/models/BuddyConnection";
 import mongoose from "mongoose";
 
@@ -60,13 +62,27 @@ export async function PATCH(req: Request) {
     }
 
     if (action === "accept") {
+      const requesterId = String(connection.requester);
+      const room = await createStudyBuddyMatchRoom({
+        hostId: session.user.id,
+        peerId: requesterId,
+        subject: connection.subject,
+      });
+
       connection.status = "accepted";
+      connection.roomId = room.roomId;
       await connection.save();
+
+      emitBuddyRequestAccepted(requesterId, {
+        roomId: room.roomId,
+        requestId: String(connection._id),
+      });
 
       return NextResponse.json(
         {
           ok: true,
           message: "Study buddy request accepted successfully.",
+          roomId: room.roomId,
           connection,
         },
         { status: 200 }

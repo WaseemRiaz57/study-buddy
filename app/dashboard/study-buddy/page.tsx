@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { io, type Socket } from "socket.io-client";
 
 import ActivePeersView from "@/components/study-buddy/ActivePeersView";
 import TopicSelectionView from "@/components/study-buddy/TopicSelectionView";
@@ -60,6 +62,7 @@ interface AcceptedRequestConnection {
 
 export default function StudyBuddyPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [view, setView] = useState<ViewState>("dashboard");
   const [searchData, setSearchData] = useState({ subject: "", topic: "" });
   const [selectedTopic, setSelectedTopic] = useState("");
@@ -82,8 +85,10 @@ export default function StudyBuddyPage() {
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
   const [acceptedConnection, setAcceptedConnection] =
     useState<AcceptedRequestConnection | null>(null);
+  const [acceptedRoomId, setAcceptedRoomId] = useState<string | null>(null);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   // ─── Stop Polling Helpers ───
   const stopStatusPolling = useCallback(() => {
@@ -122,6 +127,43 @@ export default function StudyBuddyPage() {
   useEffect(() => {
     void fetchActiveListings();
   }, [fetchActiveListings]);
+
+  useEffect(() => {
+    const userId = String(session?.user?.id || "").trim();
+
+    if (!userId) return;
+
+    const socket = io("/study-room", {
+      transports: ["websocket", "polling"],
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("study-buddy:identify", { userId });
+    });
+
+    socket.on(
+      "buddy-request-accepted",
+      (payload: { roomId?: string; requestId?: string }) => {
+        const roomId = String(payload?.roomId || "").trim();
+
+        if (!roomId) return;
+
+        stopStatusPolling();
+        setAcceptedRoomId(roomId);
+        setActiveSessionId(roomId);
+        setView("dashboard");
+        toast.success("Match Found!");
+      }
+    );
+
+    return () => {
+      socket.off("buddy-request-accepted");
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [session?.user?.id, stopStatusPolling]);
 
   // ─── Fetch incoming pending buddy requests ───
   useEffect(() => {
@@ -373,7 +415,7 @@ export default function StudyBuddyPage() {
 
       if (action === "accept") {
         toast.success("Request accepted. Redirecting to study room...");
-        router.push(`/dashboard/study-rooms/${connectionId}`);
+        router.push(`/dashboard/study-rooms/${result.roomId || connectionId}`);
         return;
       }
 
@@ -441,6 +483,32 @@ export default function StudyBuddyPage() {
                   className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
                 >
                   Join Video Room
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {acceptedRoomId && view === "dashboard" && (
+          <section className="w-full max-w-6xl mx-auto px-4 mb-6">
+            <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-400/25 rounded-2xl p-5 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-purple-700 dark:text-purple-300">
+                    Match Found!
+                  </h2>
+                  <p className="text-sm text-purple-700/90 dark:text-purple-200/90 mt-1">
+                    Your study buddy accepted the request.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(`/dashboard/study-rooms/${acceptedRoomId}`)
+                  }
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+                >
+                  Join Study Room
                 </button>
               </div>
             </div>
