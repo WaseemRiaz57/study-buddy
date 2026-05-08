@@ -1,6 +1,13 @@
 "use client";
 
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -76,11 +83,34 @@ function formatSessionDate(value?: string) {
   });
 }
 
+function normalizeGoalsForSave(goals: string[]) {
+  return goals.map((goal) => goal.trim()).filter(Boolean);
+}
+
+function buildPrepSaveKey({
+  goals,
+  privateNotes,
+  attachments,
+}: {
+  goals: string[];
+  privateNotes: string;
+  attachments: SessionAttachment[];
+}) {
+  return JSON.stringify({
+    goals: normalizeGoalsForSave(goals),
+    privateNotes,
+    attachments,
+  });
+}
+
 export default function PrepRoomPage() {
   const params = useParams();
   const router = useRouter();
   const { data: authSession } = useSession();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasLoadedSessionRef = useRef(false);
+  const lastSavedPrepRef = useRef("");
   const sessionId = String(params.id || "");
 
   const [sessionDetail, setSessionDetail] = useState<MentorSessionDetail | null>(null);
@@ -131,6 +161,12 @@ export default function PrepRoomPage() {
           setGoals(loadedSession.goals ?? []);
           setPrivateNotes(loadedSession.privateNotes ?? "");
           setAttachments(loadedSession.attachments ?? []);
+          lastSavedPrepRef.current = buildPrepSaveKey({
+            goals: loadedSession.goals ?? [],
+            privateNotes: loadedSession.privateNotes ?? "",
+            attachments: loadedSession.attachments ?? [],
+          });
+          hasLoadedSessionRef.current = true;
         }
       } catch (error) {
         if (isActive) {
@@ -154,48 +190,111 @@ export default function PrepRoomPage() {
     };
   }, [sessionId]);
 
-  async function saveChanges(nextAttachments = attachments) {
-    try {
-      setIsSaving(true);
-
-      const payload: {
-        goals: string[];
-        privateNotes?: string;
-        attachments: SessionAttachment[];
-      } = {
-        goals: goals.map((goal) => goal.trim()).filter(Boolean),
+  const saveChanges = useCallback(
+    async ({
+      nextGoals = goals,
+      nextPrivateNotes = privateNotes,
+      nextAttachments = attachments,
+      showToast = true,
+    }: {
+      nextGoals?: string[];
+      nextPrivateNotes?: string;
+      nextAttachments?: SessionAttachment[];
+      showToast?: boolean;
+    } = {}) => {
+      const normalizedGoals = normalizeGoalsForSave(nextGoals);
+      const nextSaveKey = buildPrepSaveKey({
+        goals: normalizedGoals,
+        privateNotes: nextPrivateNotes,
         attachments: nextAttachments,
-      };
-
-      if (isMentor) {
-        payload.privateNotes = privateNotes;
-      }
-
-      const response = await fetch(`/api/sessions/${sessionId}/prep`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
       });
-      const data = await response.json().catch(() => null);
 
-      if (!response.ok) {
-        throw new Error(data?.message || "Failed to save prep notes.");
+      if (nextSaveKey === lastSavedPrepRef.current) {
+        return;
       }
 
-      const updatedSession = data as MentorSessionDetail;
-      setSessionDetail(updatedSession);
-      setGoals(updatedSession.goals ?? payload.goals);
-      setPrivateNotes(updatedSession.privateNotes ?? privateNotes);
-      setAttachments(updatedSession.attachments ?? nextAttachments);
-      toast.success("Notes Saved!");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save prep notes."
-      );
-    } finally {
-      setIsSaving(false);
+      try {
+        setIsSaving(true);
+
+        const payload: {
+          goals: string[];
+          privateNotes?: string;
+          attachments: SessionAttachment[];
+        } = {
+          goals: normalizedGoals,
+          attachments: nextAttachments,
+        };
+
+        if (isMentor) {
+          payload.privateNotes = nextPrivateNotes;
+        }
+
+        const response = await fetch(`/api/sessions/${sessionId}/prep`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to save prep notes.");
+        }
+
+        const updatedSession = data as MentorSessionDetail;
+        const savedGoals = updatedSession.goals ?? payload.goals;
+        const savedPrivateNotes = updatedSession.privateNotes ?? nextPrivateNotes;
+        const savedAttachments = updatedSession.attachments ?? nextAttachments;
+
+        lastSavedPrepRef.current = buildPrepSaveKey({
+          goals: savedGoals,
+          privateNotes: savedPrivateNotes,
+          attachments: savedAttachments,
+        });
+
+        setSessionDetail(updatedSession);
+        setGoals(savedGoals);
+        setPrivateNotes(savedPrivateNotes);
+        setAttachments(savedAttachments);
+
+        if (showToast) {
+          toast.success("Notes Saved", { duration: 1400 });
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to save prep notes."
+        );
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [attachments, goals, isMentor, privateNotes, sessionId]
+  );
+
+  useEffect(() => {
+    if (!hasLoadedSessionRef.current || !sessionDetail?._id) return;
+
+    const nextSaveKey = buildPrepSaveKey({
+      goals,
+      privateNotes,
+      attachments,
+    });
+
+    if (nextSaveKey === lastSavedPrepRef.current) return;
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
     }
-  }
+
+    saveTimerRef.current = setTimeout(() => {
+      void saveChanges();
+    }, 850);
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [attachments, goals, privateNotes, saveChanges, sessionDetail?._id]);
 
   function addGoal() {
     const trimmedGoal = newGoal.trim();
@@ -203,6 +302,22 @@ export default function PrepRoomPage() {
 
     setGoals((currentGoals) => [...currentGoals, trimmedGoal]);
     setNewGoal("");
+  }
+
+  function completeGoal(index: number) {
+    setGoals((currentGoals) =>
+      currentGoals.filter((_, itemIndex) => itemIndex !== index)
+    );
+  }
+
+  function saveNotesOnBlur() {
+    if (!isMentor) return;
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+
+    void saveChanges();
   }
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -234,7 +349,7 @@ export default function PrepRoomPage() {
       ];
 
       setAttachments(nextAttachments);
-      await saveChanges(nextAttachments);
+      await saveChanges({ nextAttachments, showToast: false });
       toast.success("File uploaded to Vault.");
     } catch (error) {
       toast.error(
@@ -344,6 +459,12 @@ export default function PrepRoomPage() {
                       key={`${index}-${goal}`}
                       className="flex items-center gap-2 rounded-lg bg-slate-100 p-3 dark:bg-white/5"
                     >
+                      <input
+                        type="checkbox"
+                        onChange={() => completeGoal(index)}
+                        className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                        aria-label={`Complete goal: ${goal}`}
+                      />
                       <input
                         value={goal}
                         onChange={(event) =>
@@ -517,6 +638,7 @@ export default function PrepRoomPage() {
                 <textarea
                   value={privateNotes}
                   onChange={(event) => setPrivateNotes(event.target.value)}
+                  onBlur={saveNotesOnBlur}
                   className="h-full min-h-[320px] w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 placeholder-slate-400 outline-none focus:border-primary focus:bg-slate-100 focus:ring-1 focus:ring-primary dark:border-white/[0.08] dark:bg-black/20 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:bg-black/30"
                   placeholder="Add private talking points for this session..."
                 />
