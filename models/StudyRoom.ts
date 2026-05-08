@@ -1,10 +1,19 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export type WaitingListStatus = "waiting" | "admitted" | "declined";
+
+export interface IWaitingListEntry {
+  userId: string;
+  userName: string;
+  status: WaitingListStatus;
+}
+
 export interface IStudyRoom extends Document {
   roomId: string;
   createdBy: mongoose.Types.ObjectId;
   title: string;
   participants: mongoose.Types.ObjectId[];
+  waitingList: IWaitingListEntry[];
   maxParticipants?: number;
   isActive: boolean;
   status: string;
@@ -34,6 +43,29 @@ const StudyRoomSchema = new Schema<IStudyRoom>(
     participants: {
       type: [Schema.Types.ObjectId],
       ref: "User",
+      default: [],
+    },
+    waitingList: {
+      type: [
+        {
+          userId: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          userName: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          status: {
+            type: String,
+            enum: ["waiting", "admitted", "declined"],
+            default: "waiting",
+            required: true,
+          },
+        },
+      ],
       default: [],
     },
     maxParticipants: {
