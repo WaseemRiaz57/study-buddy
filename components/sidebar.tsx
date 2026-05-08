@@ -32,6 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useUserStore, type Role } from "@/store/useUserStore";
+import { markStudyBuddyOffline } from "@/hooks/useOfflinePresence";
 
 /* ------------------------------------------------------------------ */
 /* Nav item definition                                               */
@@ -106,6 +107,11 @@ export function Sidebar() {
 
     return true;
   });
+
+  const handleLogout = async () => {
+    markStudyBuddyOffline();
+    await signOut({ callbackUrl: "/" });
+  };
 
   return (
     <aside
@@ -295,7 +301,7 @@ export function Sidebar() {
 
         {/* Logout Button */}
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
+          onClick={handleLogout}
           className={`
             group relative flex items-center gap-3 w-full rounded-xl
             text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-300
