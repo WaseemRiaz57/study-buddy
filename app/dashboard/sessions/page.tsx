@@ -1,154 +1,62 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link"; // <-- Added this line
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
+  Award,
   Calendar,
-  Plus,
-  TrendingUp,
-  Star,
   ChevronLeft,
   ChevronRight,
-  Video,
   Clock,
-  User,
-  Award,
+  Loader2,
+  Plus,
   Settings,
+  Star,
+  TrendingUp,
+  User,
+  Video,
 } from "lucide-react";
 
-/* ═══════════════════════════════════════════════════════════════════ */
-/* TYPES                                                              */
-/* ═══════════════════════════════════════════════════════════════════ */
-
 type EventColor = "emerald" | "purple" | "blue";
+type SessionStatus = "pending" | "accepted" | "rejected" | "completed";
+type RequestAction = "accept" | "reject";
 
-interface TimelineEvent {
+type PopulatedStudent = {
+  _id?: string;
+  name?: string;
+  image?: string;
+  email?: string;
+};
+
+type MentorSession = {
+  _id: string;
+  studentId?: PopulatedStudent | string;
+  subject: string;
+  scheduledAt: string;
+  duration: number;
+  status: SessionStatus;
+  roomId?: string;
+};
+
+type MentorStats = {
+  totalEarnings: number;
+  rating: number;
+  uniqueStudentsTaught: number;
+  upcomingSessions: number;
+};
+
+type TimelineEvent = {
+  id: string;
   title: string;
   time: string;
   color: EventColor;
-  student?: string;
-}
-
-interface AgendaSession {
-  id: number;
-  title: string;
   student: string;
-  avatar: string;
-  time: string;
-  timeEnd?: string;
-  endingIn?: string;
-  isActive?: boolean;
-}
+};
 
-interface PendingRequest {
-  id: number;
-  title: string;
-  student: string;
-  duration: string;
-}
-
-/* ═══════════════════════════════════════════════════════════════════ */
-/* MOCK DATA                                                          */
-/* ═══════════════════════════════════════════════════════════════════ */
-
-const stats = [
-  { label: "Total Sessions", value: "42", trend: "12%", icon: TrendingUp },
-  { label: "Hours Mentored", value: "85h", trend: "5%", icon: TrendingUp },
-  { label: "Student Rating", value: "4.9", trend: "+0.1", icon: Star },
-];
-
-/* Days header: name + date, with Tue as "today" */
-const weekDays = [
-  { name: "Mon", date: 23 },
-  { name: "Tue", date: 24, isToday: true },
-  { name: "Wed", date: 25 },
-  { name: "Thu", date: 26 },
-  { name: "Fri", date: 27 },
-];
-
-/* Grid events mapped by [hourIndex][dayIndex] — null = empty cell */
-type CellData = TimelineEvent | null;
-
-const timelineGrid: CellData[][] = [
-  // 9 AM row  — Mon, Tue, Wed, Thu, Fri
-  [
-    { title: "Math: Calculus", time: "9:00 - 10:00", color: "emerald" },
-    null,
-    { title: "Python Basics", time: "9:00 - 10:30", color: "purple" },
-    null,
-    { title: "Math: Algebra", time: "9:00 - 10:00", color: "emerald" },
-  ],
-  // 10 AM row
-  [
-    null,
-    {
-      title: "Physics: Mechanics",
-      time: "10:00 - 11:00",
-      color: "blue",
-      student: "Alice M.",
-    },
-    null,
-    { title: "Java Advanced", time: "10:00 - 11:30", color: "purple" },
-    null,
-  ],
-  // 11 AM row
-  [
-    { title: "Web Dev: React", time: "11:00 - 12:00", color: "purple" },
-    null,
-    { title: "Math: Geometry", time: "11:00 - 12:00", color: "emerald" },
-    null,
-    { title: "Physics: Optics", time: "11:00 - 12:00", color: "blue" },
-  ],
-];
-
-const hourLabels = ["9 AM", "10 AM", "11 AM", "12 PM"];
-
-const agendaSessions: AgendaSession[] = [
-  {
-    id: 1,
-    title: "Physics: Mechanics",
-    student: "Alice M.",
-    avatar: "AM",
-    time: "10:00 AM",
-    timeEnd: "11:00 AM",
-    endingIn: "Ending in 15m",
-    isActive: true,
-  },
-  {
-    id: 2,
-    title: "Math: Trig",
-    student: "Tom H.",
-    avatar: "TH",
-    time: "2:00 PM",
-  },
-  {
-    id: 3,
-    title: "Coding: React",
-    student: "Sarah J.",
-    avatar: "SJ",
-    time: "4:30 PM",
-  },
-];
-
-const initialRequests: PendingRequest[] = [
-  {
-    id: 1,
-    title: "Intro to Physics",
-    student: "Mike T.",
-    duration: "45m",
-  },
-  {
-    id: 2,
-    title: "Calculus Review",
-    student: "Jen L.",
-    duration: "60m",
-  },
-];
-
-/* ═══════════════════════════════════════════════════════════════════ */
-/* COLOR MAP                                                          */
-/* ═══════════════════════════════════════════════════════════════════ */
+const START_HOUR = 8;
+const END_HOUR = 18;
 
 const colorMap: Record<
   EventColor,
@@ -183,297 +91,493 @@ const colorMap: Record<
   },
 };
 
-/* ═══════════════════════════════════════════════════════════════════ */
-/* SUB-COMPONENTS                                                     */
-/* ═══════════════════════════════════════════════════════════════════ */
+function getStudent(session: MentorSession): PopulatedStudent {
+  return typeof session.studentId === "object" && session.studentId !== null
+    ? session.studentId
+    : {};
+}
 
-/** Stat card */
+function getStudentName(session: MentorSession) {
+  return getStudent(session).name || "Student";
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function formatHour(hour: number) {
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour} ${suffix}`;
+}
+
+function formatTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "TBD";
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatTimeRange(session: MentorSession) {
+  const start = new Date(session.scheduledAt);
+  if (Number.isNaN(start.getTime())) return "Time TBD";
+
+  const end = new Date(start.getTime() + session.duration * 60 * 1000);
+  return `${formatTime(start.toISOString())} - ${formatTime(end.toISOString())}`;
+}
+
+function isSameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function getMonday(date: Date) {
+  const monday = new Date(date);
+  const day = monday.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setDate(monday.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+function getWeekDays() {
+  const monday = getMonday(new Date());
+
+  return Array.from({ length: 5 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+
+    return {
+      name: date.toLocaleDateString("en-US", { weekday: "short" }),
+      date: date.getDate(),
+      dateObj: date,
+      isToday: isSameDay(date, new Date()),
+    };
+  });
+}
+
+function getSessionColor(session: MentorSession): EventColor {
+  if (session.status === "completed") return "emerald";
+  if (session.subject.toLowerCase().includes("math")) return "purple";
+  return "blue";
+}
+
+function buildTimelineGrid(sessions: MentorSession[], weekDays: ReturnType<typeof getWeekDays>) {
+  const rows = END_HOUR - START_HOUR + 1;
+  const grid: Array<Array<TimelineEvent | null>> = Array.from({ length: rows }, () =>
+    Array.from({ length: 5 }, () => null)
+  );
+
+  sessions
+    .filter((session) => session.status === "accepted" || session.status === "completed")
+    .forEach((session) => {
+      const scheduledAt = new Date(session.scheduledAt);
+      if (Number.isNaN(scheduledAt.getTime())) return;
+
+      const dayIndex = weekDays.findIndex((day) => isSameDay(day.dateObj, scheduledAt));
+      const rowIndex = scheduledAt.getHours() - START_HOUR;
+
+      if (dayIndex < 0 || rowIndex < 0 || rowIndex >= rows) return;
+
+      grid[rowIndex][dayIndex] = {
+        id: session._id,
+        title: session.subject,
+        time: formatTimeRange(session),
+        color: getSessionColor(session),
+        student: getStudentName(session),
+      };
+    });
+
+  return grid;
+}
+
 function StatCard({
-  stat,
+  label,
+  value,
+  icon: Icon,
   i,
 }: {
-  stat: (typeof stats)[number];
+  label: string;
+  value: string;
+  icon: typeof TrendingUp;
   i: number;
 }) {
-  const Icon = stat.icon;
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: i * 0.08 }}
-      className="p-5 rounded-xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-1"
+      className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-surface-dark"
     >
       <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-        {stat.label}
+        {label}
       </span>
       <div className="flex items-end gap-2">
         <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-          {stat.value}
+          {value}
         </span>
-        <span className="text-xs font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-          <Icon className="w-3.5 h-3.5" />
-          {stat.trend}
+        <span className="flex items-center gap-0.5 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+          <Icon className="h-3.5 w-3.5" />
         </span>
       </div>
     </motion.div>
   );
 }
 
-/** Single timeline cell */
 function TimelineCell({
   event,
   isToday,
-  showTimeLine,
 }: {
-  event: CellData;
+  event: TimelineEvent | null;
   isToday: boolean;
-  showTimeLine: boolean;
 }) {
   const todayBg = isToday ? "bg-primary/5 dark:bg-primary/5" : "";
-  const c = event ? colorMap[event.color] : null;
+  const colors = event ? colorMap[event.color] : null;
 
   return (
     <div
-      className={`border-r border-b border-slate-200 dark:border-slate-800 h-24 relative ${todayBg} ${
+      className={`relative h-24 border-b border-r border-slate-200 dark:border-slate-800 ${todayBg} ${
         event ? "p-1" : ""
       }`}
     >
-      {/* Current time indicator */}
-      {showTimeLine && (
-        <div className="absolute top-1/2 left-0 w-full border-t-2 border-red-500 z-20 flex items-center pointer-events-none">
-          <div className="w-2 h-2 bg-red-500 rounded-full -ml-1" />
-        </div>
-      )}
-
-      {event && c && (
-        <div
-          className={`w-full h-full ${c.bg} border ${c.border} rounded-md p-2 ${c.ring} hover:shadow-md transition-all cursor-pointer`}
+      {event && colors && (
+        <Link
+          href={`/dashboard/sessions/${event.id}/prep`}
+          className={`block h-full w-full rounded-md border p-2 transition-all hover:shadow-md ${colors.bg} ${colors.border} ${colors.ring}`}
         >
-          <p className={`text-xs font-bold ${c.title} truncate`}>
+          <p className={`truncate text-xs font-bold ${colors.title}`}>
             {event.title}
           </p>
-          {event.time && (
-            <p className={`text-[10px] ${c.sub} mt-0.5`}>{event.time}</p>
-          )}
-          {event.student && (
-            <div className="flex items-center gap-1 mt-1">
-              <div className="w-4 h-4 rounded-full bg-blue-200 dark:bg-blue-700 flex items-center justify-center">
-                <User className="w-2.5 h-2.5 text-blue-600 dark:text-blue-300" />
-              </div>
-              <p className={`text-[10px] ${c.sub}`}>{event.student}</p>
+          <p className={`mt-0.5 text-[10px] ${colors.sub}`}>{event.time}</p>
+          <div className="mt-1 flex items-center gap-1">
+            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-200 dark:bg-blue-700">
+              <User className="h-2.5 w-2.5 text-blue-600 dark:text-blue-300" />
             </div>
-          )}
-        </div>
+            <p className={`truncate text-[10px] ${colors.sub}`}>{event.student}</p>
+          </div>
+        </Link>
       )}
     </div>
   );
 }
 
-/** Active-now agenda card with shimmer join button */
-function ActiveSessionCard({ session }: { session: AgendaSession }) {
+function AgendaCard({ session }: { session: MentorSession }) {
+  const studentName = getStudentName(session);
+  const student = getStudent(session);
+  const initials = getInitials(studentName) || "ST";
+  const scheduledAt = new Date(session.scheduledAt);
+  const endAt = new Date(scheduledAt.getTime() + session.duration * 60 * 1000);
+  const isActive = scheduledAt <= new Date() && endAt > new Date();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden bg-gradient-to-br from-white to-slate-50 dark:from-surface-dark dark:to-slate-900 rounded-xl p-4 border border-primary/30 shadow-lg ring-1 ring-primary/20"
+      className={`rounded-xl border p-4 transition-colors ${
+        isActive
+          ? "border-primary/30 bg-gradient-to-br from-white to-slate-50 shadow-lg ring-1 ring-primary/20 dark:from-surface-dark dark:to-slate-900"
+          : "border-slate-200 bg-white hover:border-primary/50 dark:border-slate-700 dark:bg-surface-dark"
+      }`}
     >
-      {/* NOW badge */}
-      <div className="absolute top-0 right-0 px-3 py-1 bg-primary text-white text-xs font-bold rounded-bl-lg">
-        NOW
-      </div>
+      {isActive && (
+        <div className="mb-3 inline-flex rounded-lg bg-primary px-3 py-1 text-xs font-bold text-white">
+          NOW
+        </div>
+      )}
 
-      <div className="flex items-start gap-4 mb-4">
-        {/* Avatar */}
+      <div className="mb-4 flex items-start gap-4">
         <div className="relative">
-          <div className="w-12 h-12 rounded-full border-2 border-primary p-0.5 flex items-center justify-center bg-primary/10 dark:bg-primary/20">
-            <span className="text-sm font-bold text-primary">
-              {session.avatar}
-            </span>
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-primary/10 p-0.5 dark:bg-primary/20">
+            {student.image ? (
+              <img src={student.image} alt={studentName} className="h-full w-full rounded-full object-cover" />
+            ) : (
+              <span className="text-sm font-bold text-primary">{initials}</span>
+            )}
           </div>
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white dark:bg-surface-dark rounded-full flex items-center justify-center border border-slate-200 dark:border-slate-700">
-            <Award className="w-3 h-3 text-amber-500" />
+          <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white dark:border-slate-700 dark:bg-surface-dark">
+            <Award className="h-3 w-3 text-amber-500" />
           </div>
         </div>
 
-        <div>
-          <h4 className="font-bold text-slate-900 dark:text-slate-100 text-base">
-            {session.title}
+        <div className="min-w-0">
+          <h4 className="truncate text-base font-bold text-slate-900 dark:text-slate-100">
+            {session.subject}
           </h4>
-          <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
-            <User className="w-3.5 h-3.5" />
-            {session.student} • Scholar
+          <p className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+            <User className="h-3.5 w-3.5" />
+            {studentName}
           </p>
         </div>
       </div>
 
-      {/* Time info */}
-      <div className="flex items-center gap-2 mb-4 text-sm text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-lg">
-        <Clock className="w-4 h-4 text-primary" />
-        <span>
-          {session.time} - {session.timeEnd}
-        </span>
-        <span className="mx-1 text-slate-300">|</span>
-        <span className="font-medium text-red-500">{session.endingIn}</span>
+      <div className="mb-4 flex items-center gap-2 rounded-lg bg-slate-100 p-2 text-sm text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+        <Clock className="h-4 w-4 text-primary" />
+        <span>{formatTimeRange(session)}</span>
       </div>
 
-      {/* 👇 Added Link here to navigate to Prep Room */}
-      <Link href={`/dashboard/sessions/${session.id}/prep`} className="block w-full">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          className="relative w-full py-2.5 bg-primary text-white font-bold rounded-lg overflow-hidden group hover:shadow-lg hover:shadow-primary/40 transition-all"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer-slide_2s_infinite]" />
-          <span className="relative z-10 flex items-center justify-center gap-2">
-            <Video className="w-5 h-5" />
-            Join Session
-          </span>
-        </motion.button>
-      </Link>
-    </motion.div>
-  );
-}
-
-/** Upcoming session card */
-function UpcomingCard({
-  session,
-  faded,
-}: {
-  session: AgendaSession;
-  faded?: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`bg-white dark:bg-surface-dark rounded-xl p-4 border border-slate-200 dark:border-slate-700 hover:border-primary/50 transition-colors ${
-        faded ? "opacity-80" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
-            {session.avatar}
-          </div>
-          <div>
-            <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-              {session.title}
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {session.student}
-            </p>
-          </div>
-        </div>
-        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold rounded">
-          {session.time}
-        </span>
-      </div>
-
-      {!faded && (
-        <div className="flex gap-2">
-          {/* 👇 Added Link here to navigate to Prep Room */}
-          <Link href={`/dashboard/sessions/${session.id}/prep`} className="flex-1">
-            <button className="w-full py-1.5 text-xs font-bold text-primary border border-primary/20 bg-primary/5 hover:bg-primary/10 rounded transition-colors">
-              View Prep
+      <div className="flex gap-2">
+        <Link href={`/dashboard/sessions/${session._id}/prep`} className="flex-1">
+          <button className="w-full rounded py-2 text-xs font-bold text-primary border border-primary/20 bg-primary/5 transition-colors hover:bg-primary/10">
+            View Prep
+          </button>
+        </Link>
+        {session.roomId ? (
+          <Link href={`/dashboard/study-rooms/${session.roomId}`} className="flex-1">
+            <button className="w-full rounded bg-primary py-2 text-xs font-bold text-white transition-colors hover:bg-primary/90">
+              Join Session
             </button>
           </Link>
-        </div>
-      )}
+        ) : (
+          <button
+            disabled
+            className="flex-1 rounded bg-slate-200 py-2 text-xs font-bold text-slate-400 dark:bg-slate-800"
+          >
+            Join Session
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 }
 
-/** Pending request card */
 function RequestCard({
-  req,
-  onAccept,
-  onReschedule,
+  session,
+  isResponding,
+  onRespond,
 }: {
-  req: PendingRequest;
-  onAccept: () => void;
-  onReschedule: () => void;
+  session: MentorSession;
+  isResponding: boolean;
+  onRespond: (id: string, action: RequestAction) => void;
 }) {
+  const studentName = getStudentName(session);
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50"
+      className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-700/50 dark:bg-slate-800/50"
     >
-      <div className="flex justify-between items-start mb-2">
+      <div className="mb-2 flex items-start justify-between">
         <div>
           <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-            {req.title}
+            {session.subject}
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Requested by {req.student}
+            Requested by {studentName}
           </p>
         </div>
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600">
-          {req.duration}
+        <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-medium text-slate-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400">
+          {session.duration}m
         </span>
       </div>
       <div className="flex gap-2">
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={onAccept}
-          className="flex-1 py-1.5 bg-primary text-white text-xs font-bold rounded hover:bg-primary/90 transition-all hover:shadow-md hover:shadow-primary/20"
+          onClick={() => onRespond(session._id, "accept")}
+          disabled={isResponding}
+          className="flex flex-1 items-center justify-center gap-2 rounded bg-primary py-1.5 text-xs font-bold text-white transition-all hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
+          {isResponding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Accept
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={onReschedule}
-          className="flex-1 py-1.5 bg-transparent border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          onClick={() => onRespond(session._id, "reject")}
+          disabled={isResponding}
+          className="flex flex-1 items-center justify-center gap-2 rounded border border-slate-300 bg-transparent py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:text-slate-300"
         >
-          Reschedule
+          {isResponding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          Decline
         </motion.button>
       </div>
     </motion.div>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
-/* MAIN PAGE                                                          */
-/* ═══════════════════════════════════════════════════════════════════ */
-
 export default function SessionsPage() {
-  const [requests, setRequests] = useState(initialRequests);
+  const [sessions, setSessions] = useState<MentorSession[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<MentorStats>({
+    totalEarnings: 0,
+    rating: 0,
+    uniqueStudentsTaught: 0,
+    upcomingSessions: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [respondingSessionId, setRespondingSessionId] = useState<string | null>(null);
 
-  const dismiss = (id: number) =>
-    setRequests((prev) => prev.filter((r) => r.id !== id));
+  const weekDays = useMemo(() => getWeekDays(), []);
+  const hourLabels = useMemo(
+    () => Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => formatHour(START_HOUR + index)),
+    []
+  );
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchData() {
+      try {
+        setIsLoading(true);
+        const [sessionsResponse, statsResponse] = await Promise.all([
+          fetch("/api/mentor/sessions"),
+          fetch("/api/mentor/dashboard/stats"),
+        ]);
+
+        const [sessionsData, statsData] = await Promise.all([
+          sessionsResponse.json().catch(() => null),
+          statsResponse.json().catch(() => null),
+        ]);
+
+        if (!sessionsResponse.ok) {
+          throw new Error(sessionsData?.message || "Failed to load mentor sessions.");
+        }
+
+        if (!statsResponse.ok) {
+          throw new Error(statsData?.message || "Failed to load mentor stats.");
+        }
+
+        if (isActive) {
+          setSessions(sessionsData as MentorSession[]);
+          setDashboardStats({
+            totalEarnings: Number(statsData?.totalEarnings ?? 0),
+            rating: Number(statsData?.rating ?? 0),
+            uniqueStudentsTaught: Number(statsData?.uniqueStudentsTaught ?? 0),
+            upcomingSessions: Number(statsData?.upcomingSessions ?? 0),
+          });
+        }
+      } catch (error) {
+        if (isActive) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load sessions."
+          );
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    fetchData();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const topStats = useMemo(() => {
+    const totalSessions = sessions.length;
+    const hoursMentored = sessions
+      .filter((session) => session.status === "completed")
+      .reduce((sum, session) => sum + session.duration / 60, 0);
+
+    return [
+      {
+        label: "Total Sessions",
+        value: isLoading ? "..." : String(totalSessions),
+        icon: TrendingUp,
+      },
+      {
+        label: "Hours Mentored",
+        value: isLoading ? "..." : `${hoursMentored.toFixed(1)}h`,
+        icon: TrendingUp,
+      },
+      {
+        label: "Student Rating",
+        value: isLoading ? "..." : dashboardStats.rating.toFixed(1),
+        icon: Star,
+      },
+    ];
+  }, [dashboardStats.rating, isLoading, sessions]);
+
+  const timelineGrid = useMemo(
+    () => buildTimelineGrid(sessions, weekDays),
+    [sessions, weekDays]
+  );
+
+  const todaysAgenda = useMemo(
+    () =>
+      sessions.filter(
+        (session) =>
+          session.status === "accepted" && isSameDay(new Date(session.scheduledAt), new Date())
+      ),
+    [sessions]
+  );
+
+  const pendingRequests = useMemo(
+    () => sessions.filter((session) => session.status === "pending"),
+    [sessions]
+  );
+
+  async function handleRespond(sessionId: string, action: RequestAction) {
+    try {
+      setRespondingSessionId(sessionId);
+
+      const response = await fetch(`/api/sessions/${sessionId}/respond`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to respond to session.");
+      }
+
+      setSessions((currentSessions) =>
+        currentSessions.map((session) =>
+          session._id === sessionId ? (result as MentorSession) : session
+        )
+      );
+
+      toast.success(action === "accept" ? "Session Accepted!" : "Session Declined.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to respond to session."
+      );
+    } finally {
+      setRespondingSessionId(null);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
-      <main className="w-full max-w-[1440px] mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-8">
-        {/* ─── Page Header ──────────────────────────────────────── */}
+      <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 p-4 md:p-6 lg:p-8">
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4"
+          className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end"
         >
           <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-slate-50 tracking-tight">
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 md:text-4xl">
               Session Command
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 text-base">
+            <p className="mt-2 text-base text-slate-500 dark:text-slate-400">
               Manage your mentorship schedule and incoming requests.
             </p>
           </div>
 
-          <div className="flex gap-3 items-center">
-            
-            {/* 👇 LINK TO AVAILABILITY SETTINGS ADDED HERE 👇 */}
+          <div className="flex items-center gap-3">
             <Link href="/dashboard/sessions/availability">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center p-2.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm tooltip-trigger relative group"
+                className="group relative flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-surface-dark dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                <Settings className="w-[18px] h-[18px]" />
-                {/* Tooltip */}
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-max px-2 py-1 bg-slate-900 dark:bg-white text-white dark:text-black text-xs font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <Settings className="h-[18px] w-[18px]" />
+                <span className="pointer-events-none absolute -bottom-10 left-1/2 w-max -translate-x-1/2 rounded bg-slate-900 px-2 py-1 text-xs font-bold text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-white dark:text-black">
                   Availability Settings
                 </span>
               </motion.button>
@@ -482,166 +586,135 @@ export default function SessionsPage() {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.96 }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-surface-dark border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-surface-dark dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              <Calendar className="w-[18px] h-[18px]" />
+              <Calendar className="h-[18px] w-[18px]" />
               Sync Calendar
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.96 }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25"
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-colors hover:bg-primary/90"
             >
-              <Plus className="w-[18px] h-[18px]" />
+              <Plus className="h-[18px] w-[18px]" />
               New Session
             </motion.button>
           </div>
         </motion.div>
 
-        {/* ─── Dashboard 12-col Grid ────────────────────────────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* ── LEFT: Stats + Timeline (8 cols) ──────────────────── */}
-          <div className="xl:col-span-8 flex flex-col gap-6">
-            {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {stats.map((s, i) => (
-                <StatCard key={s.label} stat={s} i={i} />
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          <div className="flex flex-col gap-6 xl:col-span-8">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {topStats.map((stat, index) => (
+                <StatCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} i={index} />
               ))}
             </div>
 
-            {/* Timeline */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="flex flex-col bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-h-[400px] h-full"
+              className="flex min-h-[400px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-surface-dark"
             >
-              {/* Timeline header bar */}
-              <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/20">
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
+              <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/20">
+                <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
+                  <Calendar className="h-5 w-5 text-primary" />
                   Weekly Timeline
                 </h2>
-                <div className="flex gap-2 items-center">
-                  <button className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors">
-                    <ChevronLeft className="w-5 h-5" />
+                <div className="flex items-center gap-2">
+                  <button className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 px-2">
-                    Oct 23 – 29
+                  <span className="px-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    This Week
                   </span>
-                  <button className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-slate-500 transition-colors">
-                    <ChevronRight className="w-5 h-5" />
+                  <button className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">
+                    <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               </div>
 
-              {/* Scrollable grid */}
-              <div className="flex-1 overflow-auto timeline-scroll relative">
-                <div className="min-w-[800px] grid grid-cols-[80px_repeat(5,1fr)]">
-                  {/* ── Header row ─────────────────────────────────── */}
-                  <div className="sticky top-0 z-10 bg-white dark:bg-surface-dark border-b border-slate-200 dark:border-slate-800 py-3" />
-                  {weekDays.map((d) => (
+              <div className="timeline-scroll relative flex-1 overflow-auto">
+                <div className="grid min-w-[900px] grid-cols-[80px_repeat(5,1fr)]">
+                  <div className="sticky top-0 z-10 border-b border-slate-200 bg-white py-3 dark:border-slate-800 dark:bg-surface-dark" />
+                  {weekDays.map((day) => (
                     <div
-                      key={d.name}
-                      className={`sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 py-3 text-center ${
-                        d.isToday
-                          ? "text-primary font-bold bg-primary/5 dark:bg-primary/10"
-                          : "text-slate-700 dark:text-slate-300 font-bold bg-white dark:bg-surface-dark"
+                      key={day.name}
+                      className={`sticky top-0 z-10 border-b border-slate-200 py-3 text-center dark:border-slate-800 ${
+                        day.isToday
+                          ? "bg-primary/5 font-bold text-primary dark:bg-primary/10"
+                          : "bg-white font-bold text-slate-700 dark:bg-surface-dark dark:text-slate-300"
                       }`}
                     >
-                      <span className="text-sm">{d.name}</span>
-                      <span
-                        className={`block text-xs font-normal ${
-                          d.isToday
-                            ? "text-primary/70"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        {d.date}
+                      <span className="text-sm">{day.name}</span>
+                      <span className={`block text-xs font-normal ${day.isToday ? "text-primary/70" : "text-slate-400"}`}>
+                        {day.date}
                       </span>
                     </div>
                   ))}
 
-                  {/* ── Hour rows 9-11 AM ──────────────────────────── */}
-                  {hourLabels.slice(0, 3).map((label, rowIdx) => (
-                    <React.Fragment key={label}>
-                      {/* Hour label */}
-                      <div className="border-r border-slate-200 dark:border-slate-800 text-xs text-slate-400 font-medium py-3 px-2 text-right -mt-2.5">
+                  {hourLabels.map((label, rowIndex) => (
+                    <div key={label} className="contents">
+                      <div className="-mt-2.5 border-r border-slate-200 px-2 py-3 text-right text-xs font-medium text-slate-400 dark:border-slate-800">
                         {label}
                       </div>
-
-                      {/* 5 day cells */}
-                      {weekDays.map((day, colIdx) => (
+                      {weekDays.map((day, columnIndex) => (
                         <TimelineCell
-                          key={`${rowIdx}-${colIdx}`}
-                          event={timelineGrid[rowIdx]?.[colIdx] ?? null}
-                          isToday={!!day.isToday}
-                          showTimeLine={
-                            /* show the red line on Tue 10 AM cell */
-                            !!day.isToday && rowIdx === 1
-                          }
+                          key={`${rowIndex}-${columnIndex}`}
+                          event={timelineGrid[rowIndex]?.[columnIndex] ?? null}
+                          isToday={day.isToday}
                         />
                       ))}
-                    </React.Fragment>
+                    </div>
                   ))}
-
-                  {/* ── 12 PM — Lunch Break row ────────────────────── */}
-                  <div className="border-r border-slate-200 dark:border-slate-800 text-xs text-slate-400 font-medium py-3 px-2 text-right -mt-2.5">
-                    12 PM
-                  </div>
-                  <div className="col-span-5 border-b border-slate-200 dark:border-slate-800 h-24 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-center">
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                      Lunch Break
-                    </span>
-                  </div>
                 </div>
               </div>
             </motion.div>
           </div>
 
-          {/* ── RIGHT: Agenda + Requests (4 cols) ────────────────── */}
-          <div className="xl:col-span-4 flex flex-col gap-6">
-            {/* Today's Agenda */}
+          <div className="flex flex-col gap-6 xl:col-span-4">
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg p-4 flex flex-col h-full"
+              className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-800 dark:bg-surface-dark"
             >
-              <div className="flex justify-between items-center mb-6">
+              <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                   Today&apos;s Agenda
                 </h3>
-                <button className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+                <button className="text-sm font-medium text-primary transition-colors hover:text-primary/80">
                   View All
                 </button>
               </div>
 
               <div className="flex flex-col gap-4 overflow-y-auto pr-2">
-                {agendaSessions.map((s, idx) =>
-                  s.isActive ? (
-                    <ActiveSessionCard key={s.id} session={s} />
-                  ) : (
-                    <UpcomingCard
-                      key={s.id}
-                      session={s}
-                      faded={idx === agendaSessions.length - 1}
-                    />
-                  )
+                {isLoading ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Loading agenda...
+                  </div>
+                ) : todaysAgenda.length === 0 ? (
+                  <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700">
+                    No accepted sessions scheduled for today.
+                  </div>
+                ) : (
+                  todaysAgenda.map((session) => (
+                    <AgendaCard key={session._id} session={session} />
+                  ))
                 )}
               </div>
             </motion.div>
 
-            {/* Pending Requests */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-white dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md p-5 backdrop-blur-sm bg-opacity-80 dark:bg-opacity-80"
+              className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-md backdrop-blur-sm dark:border-slate-800 dark:bg-surface-dark/80"
             >
-              <div className="flex items-center gap-2 mb-4">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 text-xs font-bold">
-                  {requests.length}
+              <div className="mb-4 flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                  {pendingRequests.length}
                 </span>
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                   Pending Requests
@@ -649,16 +722,27 @@ export default function SessionsPage() {
               </div>
 
               <div className="flex flex-col gap-3">
-                <AnimatePresence mode="popLayout">
-                  {requests.map((r) => (
-                    <RequestCard
-                      key={r.id}
-                      req={r}
-                      onAccept={() => dismiss(r.id)}
-                      onReschedule={() => dismiss(r.id)}
-                    />
-                  ))}
-                </AnimatePresence>
+                {isLoading ? (
+                  <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-500 dark:bg-slate-800/50">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Loading requests...
+                  </div>
+                ) : pendingRequests.length === 0 ? (
+                  <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500 dark:bg-slate-800/50">
+                    No pending requests.
+                  </div>
+                ) : (
+                  <AnimatePresence mode="popLayout">
+                    {pendingRequests.map((session) => (
+                      <RequestCard
+                        key={session._id}
+                        session={session}
+                        isResponding={respondingSessionId === session._id}
+                        onRespond={handleRespond}
+                      />
+                    ))}
+                  </AnimatePresence>
+                )}
               </div>
             </motion.div>
           </div>
