@@ -16,6 +16,10 @@ type VaultViewProps = {
   ) => void;
 };
 
+function getDownloadUrl(originalUrl: string) {
+  return originalUrl.replace("/upload/", "/upload/fl_attachment/");
+}
+
 export default function VaultView({
   senderName,
   sharedFiles,
@@ -107,7 +111,7 @@ export default function VaultView({
           sharedFiles.map((file) => (
             <a
               key={`${file.url}-${file.name}`}
-              href={file.url}
+              href={getDownloadUrl(file.url)}
               target="_blank"
               rel="noreferrer"
               download={file.name}
