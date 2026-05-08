@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   Search,
   Star,
@@ -10,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import BookingModal, { type Mentor } from "@/components/mentorship/BookingModal";
 import SuccessView from "@/components/mentorship/SuccessView";
@@ -25,6 +27,21 @@ interface FilterOption {
   dot?: boolean;          // green "available now" dot
 }
 
+interface MentorApiResponse {
+  id: string;
+  name?: string;
+  email?: string;
+  image?: string;
+  subjects?: string[];
+  hourlyRate?: number;
+  rating?: number;
+  bio?: string;
+  availability?: Array<{
+    day: string;
+    timeSlots: string[];
+  }>;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Data                                                               */
 /* ------------------------------------------------------------------ */
@@ -38,92 +55,76 @@ const FILTERS: FilterOption[] = [
   { id: "history", label: "History" },
 ];
 
-const MENTORS: Mentor[] = [
-  {
-    id: 1,
-    name: "Sarah Jenkins",
-    role: "PhD Candidate, Stanford",
-    company: "Stanford University",
-    hourlyRate: 45,
-    rating: 4.9,
-    reviews: 124,
-    avatar: "",
-    tags: ["Math", "Calculus", "SAT Prep"],
-    category: "math",
-    bio: "Specializing in Calculus, Linear Algebra, and preparing students for SAT Math sections.",
-    available: true,
-  },
-  {
-    id: 2,
-    name: "David Chen",
-    role: "MSc Comp Sci, MIT",
-    company: "Massachusetts Institute of Technology",
-    hourlyRate: 60,
-    rating: 5.0,
-    reviews: 89,
-    avatar: "",
-    tags: ["Coding", "Python", "Algorithms"],
-    category: "cs",
-    bio: "Expert in Python, Data Structures, and Algorithms. Former Google intern.",
-    available: false,
-  },
-  {
-    id: 3,
-    name: "Elena Rodriguez",
-    role: "BA English Lit, Yale",
-    company: "Yale University",
-    hourlyRate: 40,
-    rating: 4.8,
-    reviews: 210,
-    avatar: "",
-    tags: ["English", "Writing", "Essay"],
-    category: "literature",
-    bio: "Creative writing coach and essay editor. Helping you craft the perfect college essay.",
-    available: true,
-  },
-  {
-    id: 4,
-    name: "Marcus Johnson",
-    role: "MBA, Harvard Business School",
-    company: "Harvard University",
-    hourlyRate: 75,
-    rating: 4.7,
-    reviews: 56,
-    avatar: "",
-    tags: ["Business", "Economics", "Leadership"],
-    category: "business",
-    bio: "Business strategy, economics, and leadership development for aspiring entrepreneurs.",
-    available: false,
-  },
-  {
-    id: 5,
-    name: "Aisha Patel",
-    role: "PhD Chemistry, Berkeley",
-    company: "UC Berkeley",
-    hourlyRate: 50,
-    rating: 4.9,
-    reviews: 189,
-    avatar: "",
-    tags: ["Chemistry", "Science", "Pre-med"],
-    category: "science",
-    bio: "Making organic chemistry understandable and fun. Specialized in pre-med track support.",
-    available: true,
-  },
-  {
-    id: 6,
-    name: "James Wilson",
-    role: "MA History, Oxford",
-    company: "Oxford University",
-    hourlyRate: 35,
-    rating: 4.6,
-    reviews: 42,
-    avatar: "",
-    tags: ["History", "Humanities", "Research"],
-    category: "history",
-    bio: "Bringing history to life through storytelling. Specialized in European and World History.",
-    available: false,
-  },
-];
+const CATEGORY_KEYWORDS: Record<Exclude<Category, "all">, string[]> = {
+  math: ["math", "calculus", "algebra", "geometry", "statistics"],
+  cs: ["computer", "coding", "programming", "python", "algorithms", "cs"],
+  literature: ["literature", "english", "writing", "essay"],
+  business: ["business", "economics", "finance", "marketing"],
+  science: ["science", "chemistry", "biology", "physics"],
+  history: ["history", "humanities"],
+};
+
+function getMentorCategory(subjects: string[]): Category {
+  const searchableSubjects = subjects.join(" ").toLowerCase();
+
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((keyword) => searchableSubjects.includes(keyword))) {
+      return category as Category;
+    }
+  }
+
+  return "all";
+}
+
+function mapMentorFromApi(mentor: MentorApiResponse): Mentor {
+  const subjects = mentor.subjects ?? [];
+  const availability = mentor.availability ?? [];
+
+  return {
+    id: mentor.id,
+    name: mentor.name || "Mentor",
+    role: "StudyBuddy Mentor",
+    company: "Mentor Marketplace",
+    hourlyRate: mentor.hourlyRate ?? 0,
+    rating: mentor.rating ?? 0,
+    reviews: 0,
+    avatar: mentor.image ?? "",
+    tags: subjects,
+    category: getMentorCategory(subjects),
+    bio: mentor.bio || "Ready to help you make progress in your next session.",
+    available: availability.some((day) => day.timeSlots.length > 0),
+    availability,
+  };
+}
+
+function combineDateAndTime(date: Date, time: string) {
+  const scheduledAt = new Date(date);
+  const twentyFourHourMatch = time.trim().match(/^(\d{1,2}):(\d{2})$/);
+  const twelveHourMatch = time.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+
+  if (twentyFourHourMatch) {
+    scheduledAt.setHours(
+      Number(twentyFourHourMatch[1]),
+      Number(twentyFourHourMatch[2]),
+      0,
+      0
+    );
+    return scheduledAt;
+  }
+
+  if (twelveHourMatch) {
+    let hour = Number(twelveHourMatch[1]);
+    const minute = Number(twelveHourMatch[2]);
+    const meridiem = twelveHourMatch[3].toUpperCase();
+
+    if (meridiem === "PM" && hour !== 12) hour += 12;
+    if (meridiem === "AM" && hour === 12) hour = 0;
+
+    scheduledAt.setHours(hour, minute, 0, 0);
+  }
+
+  return scheduledAt;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Mentor Card  (matches the HTML glass-card layout)                  */
@@ -168,7 +169,15 @@ function MentorCard({
         <div className="relative">
           <div className="w-20 h-20 rounded-full p-[3px] bg-gradient-to-br from-gray-100 to-white dark:from-white/10 dark:to-white/5 shadow-sm">
             <div className="flex w-full h-full items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-400 text-white font-bold text-xl">
-              {initials}
+              {mentor.avatar ? (
+                <img
+                  src={mentor.avatar}
+                  alt={mentor.name}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                initials
+              )}
             </div>
           </div>
           {/* Status dot */}
@@ -190,7 +199,7 @@ function MentorCard({
             </span>
           </div>
           <span className="text-xs text-gray-400 dark:text-slate-500 font-medium">
-            {mentor.reviews} sessions
+            {mentor.reviews > 0 ? `${mentor.reviews} sessions` : "New mentor"}
           </span>
         </div>
       </div>
@@ -208,7 +217,7 @@ function MentorCard({
 
       {/* Tags */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {mentor.tags.map((tag) => (
+        {mentor.tags.slice(0, 4).map((tag) => (
           <span
             key={tag}
             className="px-3 py-1 bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-slate-300 text-xs rounded-full font-medium"
@@ -249,16 +258,119 @@ function MentorCard({
 export default function MentorshipPage() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<Category>("all");
+  const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [isLoadingMentors, setIsLoadingMentors] = useState(true);
+  const [mentorLoadError, setMentorLoadError] = useState<string | null>(null);
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
+  const [isBooking, setIsBooking] = useState(false);
   const [booking, setBooking] = useState<{
     mentor: Mentor;
     date: Date;
     time: string;
   } | null>(null);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    let isActive = true;
+
+    async function fetchMentors() {
+      try {
+        setIsLoadingMentors(true);
+        setMentorLoadError(null);
+
+        const response = await fetch("/api/mentors", {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error("Unable to load mentors right now.");
+        }
+
+        const data = (await response.json()) as MentorApiResponse[];
+        if (isActive) {
+          setMentors(data.map(mapMentorFromApi));
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        if (isActive) {
+          setMentorLoadError(
+            error instanceof Error ? error.message : "Unable to load mentors right now."
+          );
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingMentors(false);
+        }
+      }
+    }
+
+    fetchMentors();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, []);
+
+  async function handleConfirmBooking(mentor: Mentor, date: Date, time: string) {
+    const scheduledAt = combineDateAndTime(date, time);
+
+    try {
+      setIsBooking(true);
+
+      const response = await fetch("/api/sessions/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mentorId: mentor.id,
+          subject: "Selected Subject",
+          scheduledAt: scheduledAt.toISOString(),
+          duration: 60,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Could not book this session.");
+      }
+
+      const xpResponse = await fetch("/api/progress/xp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ xp: 50 }),
+      });
+
+      if (!xpResponse.ok) {
+        toast.warning("Session booked, but XP could not be awarded yet.");
+      } else {
+        toast.success("Session booked! +50 XP awarded.");
+      }
+
+      setSelectedMentor(null);
+      setBooking({
+        mentor,
+        date: scheduledAt,
+        time: scheduledAt.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not book this session."
+      );
+    } finally {
+      setIsBooking(false);
+    }
+  }
+
   /* Filtered list */
   const filtered = useMemo(() => {
-    let list = MENTORS;
+    let list = mentors;
 
     if (activeFilter !== "all") {
       list = list.filter((m) => m.category === activeFilter);
@@ -275,7 +387,7 @@ export default function MentorshipPage() {
     }
 
     return list;
-  }, [activeFilter, search]);
+  }, [activeFilter, mentors, search]);
 
   return (
     <div className="relative min-h-screen transition-colors">
@@ -359,24 +471,35 @@ export default function MentorshipPage() {
         </div>
 
         {/* ── Mentor Grid ── */}
-        <motion.div
-          layout
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-        >
-          <AnimatePresence mode="popLayout">
-            {filtered.map((mentor, i) => (
-              <MentorCard
-                key={mentor.id}
-                mentor={mentor}
-                onBook={setSelectedMentor}
-                index={i}
-              />
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        {isLoadingMentors ? (
+          <div className="flex items-center justify-center py-20 text-text-muted dark:text-slate-400">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />
+            Loading mentors...
+          </div>
+        ) : mentorLoadError ? (
+          <div className="rounded-2xl border border-red-200/70 bg-red-50/80 p-6 text-center text-sm font-medium text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+            {mentorLoadError}
+          </div>
+        ) : (
+          <motion.div
+            layout
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+          >
+            <AnimatePresence mode="popLayout">
+              {filtered.map((mentor, i) => (
+                <MentorCard
+                  key={mentor.id}
+                  mentor={mentor}
+                  onBook={setSelectedMentor}
+                  index={i}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )}
 
         {/* Empty state */}
-        {filtered.length === 0 && (
+        {!isLoadingMentors && !mentorLoadError && filtered.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -427,7 +550,7 @@ export default function MentorshipPage() {
         </motion.div>
 
         {/* ── Pagination ── */}
-        {filtered.length > 0 && (
+        {!isLoadingMentors && !mentorLoadError && filtered.length > 0 && (
           <div className="flex justify-center mt-12 mb-8">
             <nav className="inline-flex rounded-xl shadow-sm border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-white/[0.05] backdrop-blur-md overflow-hidden">
               <button className="inline-flex items-center px-4 py-3 text-sm font-medium text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-white/10 hover:text-primary transition-colors gap-1">
@@ -460,11 +583,13 @@ export default function MentorshipPage() {
         <BookingModal
           isOpen={!!selectedMentor}
           mentor={selectedMentor}
-          onClose={() => setSelectedMentor(null)}
-          onConfirm={(mentor, date, time) => {
-            setSelectedMentor(null);
-            setBooking({ mentor, date, time });
+          onClose={() => {
+            if (!isBooking) {
+              setSelectedMentor(null);
+            }
           }}
+          onConfirm={handleConfirmBooking}
+          isConfirming={isBooking}
         />
       )}
 

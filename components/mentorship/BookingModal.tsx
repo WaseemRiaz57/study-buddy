@@ -11,17 +11,16 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
-  Video,
   MessageSquare,
-  Briefcase,
   Award,
+  Loader2,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Shared Mentor type (re-exported from page)                         */
 /* ------------------------------------------------------------------ */
 export interface Mentor {
-  id: number;
+  id: string;
   name: string;
   role: string;
   company: string;
@@ -33,6 +32,12 @@ export interface Mentor {
   category: string;
   bio: string;
   available: boolean;
+  availability: MentorAvailability[];
+}
+
+export interface MentorAvailability {
+  day: string;
+  timeSlots: string[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -43,6 +48,7 @@ interface BookingModalProps {
   onClose: () => void;
   mentor: Mentor;
   onConfirm: (mentor: Mentor, date: Date, time: string) => void;
+  isConfirming?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -76,16 +82,66 @@ function isBeforeToday(date: Date) {
   return date < today;
 }
 
-function isWeekend(date: Date) {
-  const d = date.getDay();
-  return d === 0 || d === 6;
+function normalizeDay(day: string) {
+  return day.trim().slice(0, 3).toLowerCase();
 }
 
-/* ------------------------------------------------------------------ */
-/*  Time slot data                                                     */
-/* ------------------------------------------------------------------ */
-const MORNING_SLOTS = ["9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM"];
-const AFTERNOON_SLOTS = ["1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM"];
+function parseTimeSlot(slot: string) {
+  const normalized = slot.trim();
+  const twelveHourMatch = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+
+  if (twelveHourMatch) {
+    const [, hourRaw, minuteRaw, meridiemRaw] = twelveHourMatch;
+    let hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+    const meridiem = meridiemRaw.toUpperCase();
+
+    if (meridiem === "PM" && hour !== 12) hour += 12;
+    if (meridiem === "AM" && hour === 12) hour = 0;
+
+    return { hour, minute };
+  }
+
+  const twentyFourHourMatch = normalized.match(/^(\d{1,2}):(\d{2})$/);
+
+  if (!twentyFourHourMatch) return null;
+
+  return {
+    hour: Number(twentyFourHourMatch[1]),
+    minute: Number(twentyFourHourMatch[2]),
+  };
+}
+
+function formatTimeSlot(slot: string) {
+  const parsed = parseTimeSlot(slot);
+
+  if (!parsed) return slot;
+
+  const date = new Date();
+  date.setHours(parsed.hour, parsed.minute, 0, 0);
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getSlotPeriod(slot: string) {
+  const parsed = parseTimeSlot(slot);
+
+  if (!parsed) return "Available";
+  if (parsed.hour < 12) return "Morning";
+  if (parsed.hour < 17) return "Afternoon";
+  return "Evening";
+}
+
+function groupTimeSlots(slots: string[]) {
+  return slots.reduce<Record<string, string[]>>((groups, slot) => {
+    const period = getSlotPeriod(slot);
+    groups[period] = [...(groups[period] ?? []), slot];
+    return groups;
+  }, {});
+}
 
 /* ------------------------------------------------------------------ */
 /*  Stat card                                                          */
@@ -112,6 +168,7 @@ export default function BookingModal({
   onClose,
   mentor,
   onConfirm,
+  isConfirming = false,
 }: BookingModalProps) {
   const today = useMemo(() => new Date(), []);
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -173,7 +230,37 @@ export default function BookingModal({
     });
   }, []);
 
+  const availabilityByDay = useMemo(() => {
+    const map = new Map<string, string[]>();
+
+    for (const availability of mentor.availability ?? []) {
+      const slots = availability.timeSlots
+        .map((slot) => slot.trim())
+        .filter(Boolean);
+
+      if (slots.length > 0) {
+        map.set(normalizeDay(availability.day), slots);
+      }
+    }
+
+    return map;
+  }, [mentor.availability]);
+
+  const getSlotsForDate = useCallback(
+    (date: Date) => {
+      const day = date.toLocaleDateString("en-US", { weekday: "short" });
+      return availabilityByDay.get(normalizeDay(day)) ?? [];
+    },
+    [availabilityByDay]
+  );
+
+  const selectedDateSlots = selectedDate ? getSlotsForDate(selectedDate) : [];
+  const groupedSlots = useMemo(
+    () => groupTimeSlots(selectedDateSlots),
+    [selectedDateSlots]
+  );
   const canConfirm = selectedDate !== null && selectedTime !== null;
+  const canSubmit = canConfirm && !isConfirming;
 
   const initials = mentor.name
     .split(" ")
@@ -384,7 +471,8 @@ export default function BookingModal({
                         return <div key={`empty-${i}`} className="aspect-square" />;
                       }
 
-                      const disabled = isBeforeToday(date) || isWeekend(date);
+                      const dateSlots = getSlotsForDate(date);
+                      const disabled = isBeforeToday(date) || dateSlots.length === 0;
                       const isToday = isSameDay(date, today);
                       const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
 
@@ -429,47 +517,27 @@ export default function BookingModal({
                       transition={{ duration: 0.2 }}
                       className="space-y-5"
                     >
-                      {/* Morning */}
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-px flex-1 bg-slate-200/70 dark:bg-white/10" />
-                          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted dark:text-slate-500">
-                            Morning
-                          </span>
-                          <div className="h-px flex-1 bg-slate-200/70 dark:bg-white/10" />
+                      {Object.entries(groupedSlots).map(([period, slots]) => (
+                        <div key={period} className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-px flex-1 bg-slate-200/70 dark:bg-white/10" />
+                            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted dark:text-slate-500">
+                              {period}
+                            </span>
+                            <div className="h-px flex-1 bg-slate-200/70 dark:bg-white/10" />
+                          </div>
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            {slots.map((slot) => (
+                              <TimeSlotButton
+                                key={slot}
+                                time={formatTimeSlot(slot)}
+                                isSelected={selectedTime === slot}
+                                onClick={() => setSelectedTime(slot)}
+                              />
+                            ))}
+                          </div>
                         </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {MORNING_SLOTS.map((slot) => (
-                            <TimeSlotButton
-                              key={slot}
-                              time={slot}
-                              isSelected={selectedTime === slot}
-                              onClick={() => setSelectedTime(slot)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Afternoon */}
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-px flex-1 bg-slate-200/70 dark:bg-white/10" />
-                          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted dark:text-slate-500">
-                            Afternoon
-                          </span>
-                          <div className="h-px flex-1 bg-slate-200/70 dark:bg-white/10" />
-                        </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {AFTERNOON_SLOTS.map((slot) => (
-                            <TimeSlotButton
-                              key={slot}
-                              time={slot}
-                              isSelected={selectedTime === slot}
-                              onClick={() => setSelectedTime(slot)}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                      ))}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -486,7 +554,7 @@ export default function BookingModal({
                     >
                       <CheckCircle2 size={18} className="shrink-0" />
                       <span>
-                        <b>{formattedDate}</b> at <b>{selectedTime}</b> — Ready to book!
+                        <b>{formattedDate}</b> at <b>{formatTimeSlot(selectedTime ?? "")}</b> - Ready to book!
                       </span>
                     </motion.div>
                   )}
@@ -521,21 +589,25 @@ export default function BookingModal({
                 </button>
                 <button
                   onClick={() => {
-                    if (selectedDate && selectedTime) {
+                    if (selectedDate && selectedTime && !isConfirming) {
                       onConfirm(mentor, selectedDate, selectedTime);
                     }
                   }}
-                  disabled={!canConfirm}
+                  disabled={!canSubmit}
                   className={`
                     flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-bold transition-all
-                    ${canConfirm
+                    ${canSubmit
                       ? "bg-gradient-to-r from-primary to-purple-400 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0"
                       : "bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-slate-600 cursor-not-allowed"
                     }
                   `}
                 >
-                  <CheckCircle2 size={16} />
-                  Confirm Booking
+                  {isConfirming ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={16} />
+                  )}
+                  {isConfirming ? "Booking..." : "Confirm Booking"}
                 </button>
               </div>
             </div>
