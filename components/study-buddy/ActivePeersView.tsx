@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Loader2, Plus, Sparkles, Trash2, Users } from "lucide-react";
+import { BookOpen, Loader2, Plus, Send, Sparkles, Trash2, Users } from "lucide-react";
 
 interface Student {
   _id?: string;
@@ -31,19 +31,31 @@ interface StudyBuddyListing {
   } | null;
 }
 
+interface SuggestedPeer {
+  userId: string;
+  name: string;
+  image?: string;
+  tags?: string[];
+  sharedTags?: string[];
+  sharedTagCount?: number;
+}
+
 interface ActivePeersViewProps {
   onAddNewAction: () => void;
   onConnectAction?: (peer: Student) => void;
   peers?: Student[];
   myListings?: StudyBuddyListing[];
   otherListings?: StudyBuddyListing[];
+  suggestedPeers?: SuggestedPeer[];
   loading?: boolean;
+  suggestedPeersLoading?: boolean;
   selectedTopic?: string;
   onCancelListing?: (listingId: string) => Promise<void> | void;
   onConnectListing?: (listing: StudyBuddyListing) => Promise<void> | void;
+  onPingSuggestedPeer?: (peer: SuggestedPeer) => Promise<void> | void;
 }
 
-function ListingAvatar({ name, image }: { name: string; image?: string }) {
+function ProfileAvatar({ name, image }: { name: string; image?: string }) {
   const initials =
     name
       .split(" ")
@@ -69,12 +81,16 @@ export default function ActivePeersView({
   onAddNewAction,
   myListings = [],
   otherListings = [],
+  suggestedPeers = [],
   loading,
+  suggestedPeersLoading,
   onCancelListing,
   onConnectListing,
+  onPingSuggestedPeer,
 }: ActivePeersViewProps) {
   const [cancellingListingId, setCancellingListingId] = useState<string | null>(null);
   const [connectingListingId, setConnectingListingId] = useState<string | null>(null);
+  const [pingingPeerId, setPingingPeerId] = useState<string | null>(null);
 
   const handleCancel = async (listingId: string) => {
     if (!onCancelListing) return;
@@ -95,6 +111,17 @@ export default function ActivePeersView({
       await onConnectListing(listing);
     } finally {
       setConnectingListingId(null);
+    }
+  };
+
+  const handlePing = async (peer: SuggestedPeer) => {
+    if (!onPingSuggestedPeer) return;
+
+    setPingingPeerId(peer.userId);
+    try {
+      await onPingSuggestedPeer(peer);
+    } finally {
+      setPingingPeerId(null);
     }
   };
 
@@ -225,7 +252,7 @@ export default function ActivePeersView({
                       className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-[#8c30e8]/50 hover:shadow-md dark:border-white/10 dark:bg-[#1a1524]"
                     >
                       <div className="mb-5 flex items-center gap-4">
-                        <ListingAvatar name={studentName} image={studentImage} />
+                        <ProfileAvatar name={studentName} image={studentImage} />
                         <div className="min-w-0">
                           <h3 className="truncate font-bold text-slate-900 transition-colors group-hover:text-[#8c30e8] dark:text-white">
                             {studentName}
@@ -267,6 +294,93 @@ export default function ActivePeersView({
                           <Users size={16} />
                         )}
                         Connect
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                Active Now
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-gray-400">
+                Online peers sorted by shared interests.
+              </p>
+            </div>
+
+            {suggestedPeersLoading ? (
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 p-5 text-sm text-slate-500 dark:border-white/10 dark:bg-[#1a1524]/70 dark:text-gray-400">
+                <Loader2 className="h-4 w-4 animate-spin text-[#8c30e8]" />
+                Finding online peers...
+              </div>
+            ) : suggestedPeers.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 p-6 text-sm text-slate-500 dark:border-white/10 dark:bg-[#1a1524]/70 dark:text-gray-400">
+                No online peers with study profiles right now.
+              </div>
+            ) : (
+              <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:thin]">
+                {suggestedPeers.map((peer, index) => {
+                  const visibleTags = (peer.sharedTags?.length ? peer.sharedTags : peer.tags || [])
+                    .filter(Boolean)
+                    .slice(0, 3);
+                  const isPinging = pingingPeerId === peer.userId;
+
+                  return (
+                    <motion.div
+                      key={peer.userId}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.04 }}
+                      className="min-w-[240px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-[#8c30e8]/50 hover:shadow-md dark:border-white/10 dark:bg-[#1a1524]"
+                    >
+                      <div className="mb-4 flex items-center gap-3">
+                        <div className="relative">
+                          <ProfileAvatar name={peer.name || "Study Buddy"} image={peer.image} />
+                          <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 dark:border-[#1a1524]" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate font-bold text-slate-900 dark:text-white">
+                            {peer.name || "Study Buddy"}
+                          </h3>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-300">
+                            Online
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mb-4 flex min-h-[28px] flex-wrap gap-1.5">
+                        {visibleTags.length > 0 ? (
+                          visibleTags.map((tag) => (
+                            <span
+                              key={`${peer.userId}-${tag}`}
+                              className="rounded-full border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 dark:border-purple-400/20 dark:bg-purple-500/10 dark:text-purple-200"
+                            >
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-400 dark:text-gray-500">
+                            No tags yet
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => void handlePing(peer)}
+                        disabled={isPinging}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#8c30e8]/25 bg-[#8c30e8]/10 px-4 py-2 text-sm font-semibold text-[#7a24d2] transition-colors hover:bg-[#8c30e8] hover:text-white disabled:cursor-not-allowed disabled:opacity-60 dark:text-purple-200 dark:hover:text-white"
+                      >
+                        {isPinging ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Send size={16} />
+                        )}
+                        Ping
                       </button>
                     </motion.div>
                   );

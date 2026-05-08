@@ -9,6 +9,7 @@ import BuddyConnection from "@/models/BuddyConnection";
 import BuddyMatch from "@/models/BuddyMatch";
 import StudyRoom from "@/models/StudyRoom";
 import StudySession from "@/models/StudySession";
+import StudyProfile from "@/models/StudyProfile";
 import User from "@/models/User";
 import mongoose from "mongoose";
 
@@ -295,9 +296,27 @@ export async function POST(req: Request) {
       await setStudentOffline(studentId);
     }
 
-    // Update MongoDB fallback
+    // Update MongoDB fallback and the profile collection used by Suggested Peers.
     await connectMongoDB();
     await User.findByIdAndUpdate(studentId, { isOnline: !!online });
+    await StudyProfile.updateOne(
+      { userId: studentId },
+      {
+        $set: {
+          isOnline: !!online,
+        },
+        $setOnInsert: {
+          userId: studentId,
+          name: session!.user.name || "Study Buddy",
+          image: session!.user.image || "",
+          isLookingForMatch: false,
+          currentSubject: "",
+          currentTopic: "",
+          tags: [],
+        },
+      },
+      { upsert: true }
+    );
 
     return NextResponse.json(
       { message: `Status set to ${online ? "online" : "offline"}.` },

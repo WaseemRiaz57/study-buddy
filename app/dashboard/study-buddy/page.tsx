@@ -39,6 +39,15 @@ export interface StudyBuddyListing {
   } | null;
 }
 
+interface SuggestedPeer {
+  userId: string;
+  name: string;
+  image?: string;
+  tags?: string[];
+  sharedTags?: string[];
+  sharedTagCount?: number;
+}
+
 interface IncomingRequest {
   _id: string;
   requester: {
@@ -70,6 +79,8 @@ export default function StudyBuddyPage() {
   const [peersLoading, setPeersLoading] = useState(false);
   const [myListings, setMyListings] = useState<StudyBuddyListing[]>([]);
   const [otherListings, setOtherListings] = useState<StudyBuddyListing[]>([]);
+  const [suggestedPeers, setSuggestedPeers] = useState<SuggestedPeer[]>([]);
+  const [suggestedPeersLoading, setSuggestedPeersLoading] = useState(false);
 
   const [loadingMode, setLoadingMode] = useState<"search" | "direct">("search");
 
@@ -127,6 +138,34 @@ export default function StudyBuddyPage() {
   useEffect(() => {
     void fetchActiveListings();
   }, [fetchActiveListings]);
+
+  const fetchSuggestedPeers = useCallback(async () => {
+    setSuggestedPeersLoading(true);
+
+    try {
+      const res = await fetch("/api/study-buddy/suggested-peers");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to fetch online peers.");
+      }
+
+      setSuggestedPeers(Array.isArray(data.peers) ? data.peers : []);
+    } catch (error) {
+      setSuggestedPeers([]);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch online peers."
+      );
+    } finally {
+      setSuggestedPeersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchSuggestedPeers();
+  }, [fetchSuggestedPeers]);
 
   useEffect(() => {
     const userId = String(session?.user?.id || "").trim();
@@ -390,6 +429,59 @@ export default function StudyBuddyPage() {
     }
   };
 
+  const handlePingSuggestedPeer = async (peer: SuggestedPeer) => {
+    setLoadingMode("direct");
+
+    try {
+      const recipientId = String(peer.userId || "").trim();
+      const subject =
+        searchData.subject ||
+        peer.sharedTags?.[0] ||
+        peer.tags?.[0] ||
+        "General Study";
+
+      if (!recipientId) {
+        throw new Error("Unable to identify this peer.");
+      }
+
+      const res = await fetch("/api/buddies/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientId,
+          subject,
+        }),
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result?.message || "Failed to send invitation.");
+      }
+
+      const requestId = String(result.connection?._id || result.requestId || "").trim();
+
+      if (!requestId) {
+        throw new Error("Invitation sent, but no requestId was returned.");
+      }
+
+      setMatchedPeerData({
+        name: peer.name || "Study Buddy",
+        image: peer.image || "",
+        tags: peer.tags || [],
+      });
+      toast.success("Ping sent! Waiting for approval...");
+      setView("loading");
+      startStatusPolling(requestId);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to send invitation."
+      );
+      setView("dashboard");
+    }
+  };
+
   // ─── Animation finished callback from MatchingLoader ───
   const handleMatchFound = () => {
     if (matchedPeerData.name && activeSessionId) {
@@ -578,10 +670,13 @@ export default function StudyBuddyPage() {
                 peers={peers}
                 myListings={myListings}
                 otherListings={otherListings}
+                suggestedPeers={suggestedPeers}
                 loading={peersLoading}
+                suggestedPeersLoading={suggestedPeersLoading}
                 selectedTopic={selectedTopic}
                 onCancelListing={handleCancelListing}
                 onConnectListing={handleConnectListing}
+                onPingSuggestedPeer={handlePingSuggestedPeer}
               />
             </motion.div>
           )}
