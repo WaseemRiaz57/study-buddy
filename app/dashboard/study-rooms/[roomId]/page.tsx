@@ -554,7 +554,11 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                 dark:bg-[#0f0a16] dark:border-white/5"
             >
               {activeTab === "vault" ? (
-                <VaultView senderName={currentUserName} />
+                <VaultView
+                  senderName={currentUserName}
+                  sharedFiles={liveRoom.sharedFiles}
+                  onShareFile={liveRoom.shareVaultFile}
+                />
               ) : (
               <div className="flex-1 flex flex-col min-h-0">
                 {/* Chat Container */}

@@ -53,6 +53,15 @@ type RoomControlMessage = {
   muteAllMode?: boolean;
 };
 
+export type VaultSharedFile = {
+  id: string;
+  url: string;
+  name: string;
+  format: string;
+  senderId: string;
+  senderName: string;
+};
+
 export type LiveVideoRoomRenderState = {
   isConnected: boolean;
   isJoining: boolean;
@@ -66,6 +75,7 @@ export type LiveVideoRoomRenderState = {
   hostId: string;
   isHost: boolean;
   messages: any[];
+  sharedFiles: VaultSharedFile[];
   remoteParticipantCards: ReactNode[];
   leaveButtonLabel: string;
   isEndingSession: boolean;
@@ -74,6 +84,12 @@ export type LiveVideoRoomRenderState = {
   toggleCamera: () => void;
   toggleScreenShare: () => void;
   sendMessage: (text: string) => void;
+  shareVaultFile: (
+    file: Omit<VaultSharedFile, "id" | "senderId" | "senderName"> & {
+      id?: string;
+      senderName?: string;
+    }
+  ) => void;
   muteParticipant: (participantUid: string | number, trackSid?: string) => void;
   setParticipantMicMuted: (
     participantUid: string | number,
@@ -87,6 +103,7 @@ export type LiveVideoRoomRenderState = {
 };
 
 const ROOM_CONTROL_TOPIC = "room-control";
+const VAULT_FILE_TOPIC = "vault-file";
 const DASHBOARD_REDIRECT_PATH = "/dashboard";
 
 function wait(ms: number) {
@@ -172,6 +189,7 @@ export default function LiveVideoRoom({
   const [remoteParticipants, setRemoteParticipants] = useState<RemoteParticipant[]>([]);
   const [remoteScreenUser, setRemoteScreenUser] = useState<MediaStream | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
+  const [sharedFiles, setSharedFiles] = useState<VaultSharedFile[]>([]);
   const [roomVersion, setRoomVersion] = useState(0);
   const [moderatingParticipants, setModeratingParticipants] = useState<Record<string, boolean>>({});
   const [isModeratingAllParticipants, setIsModeratingAllParticipants] = useState(false);
@@ -388,6 +406,39 @@ export default function LiveVideoRoom({
         return;
       }
 
+      if (topic === VAULT_FILE_TOPIC) {
+        try {
+          const parsed = JSON.parse(new TextDecoder().decode(payload));
+          const nextFile: VaultSharedFile = {
+            id: String(parsed.id || `${Date.now()}-${parsed.url || parsed.name || "vault"}`),
+            url: String(parsed.url || parsed.secure_url || ""),
+            name: String(parsed.name || parsed.fileName || "Shared file"),
+            format: String(parsed.format || "file"),
+            senderId: String(parsed.senderId || participant?.identity || "remote"),
+            senderName: String(parsed.senderName || parsed.uploader || participant?.name || "Study Buddy"),
+          };
+
+          if (!nextFile.url) return;
+
+          let didAddFile = false;
+          setSharedFiles((prev) => {
+            if (prev.some((file) => file.id === nextFile.id || file.url === nextFile.url)) {
+              return prev;
+            }
+
+            didAddFile = true;
+            return [nextFile, ...prev];
+          });
+          if (didAddFile) {
+            toast.success("New material shared in Vault!");
+          }
+        } catch (error) {
+          console.warn("[LiveKit] Invalid vault-file payload:", error);
+        }
+
+        return;
+      }
+
       if (topic && topic !== "chat") return;
 
       try {
@@ -597,6 +648,43 @@ export default function LiveVideoRoom({
       );
     },
     [effectiveCurrentUserId, isConnected]
+  );
+
+  const shareVaultFile = useCallback(
+    (
+      file: Omit<VaultSharedFile, "id" | "senderId" | "senderName"> & {
+        id?: string;
+        senderName?: string;
+      }
+    ) => {
+      const nextFile: VaultSharedFile = {
+        id: file.id || `${Date.now()}-${file.name}`,
+        url: file.url,
+        name: file.name,
+        format: file.format,
+        senderId: effectiveCurrentUserId,
+        senderName: file.senderName || userName || "Study Buddy",
+      };
+
+      if (!nextFile.url) return;
+
+      setSharedFiles((prev) => {
+        if (prev.some((sharedFile) => sharedFile.id === nextFile.id || sharedFile.url === nextFile.url)) {
+          return prev;
+        }
+
+        return [nextFile, ...prev];
+      });
+
+      const room = roomRef.current;
+      if (!room || !isConnected) return;
+
+      void room.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify(nextFile)),
+        { reliable: true, topic: VAULT_FILE_TOPIC }
+      );
+    },
+    [effectiveCurrentUserId, isConnected, userName]
   );
 
   const moderateParticipant = useCallback(
@@ -842,6 +930,7 @@ export default function LiveVideoRoom({
     hostId: normalizedHostId,
     isHost,
     messages,
+    sharedFiles,
     remoteParticipantCards,
     leaveButtonLabel: isHost ? "End Session" : "Leave Room",
     isEndingSession,
@@ -850,6 +939,7 @@ export default function LiveVideoRoom({
     toggleCamera,
     toggleScreenShare,
     sendMessage,
+    shareVaultFile,
     muteParticipant,
     setParticipantMicMuted,
     muteAllParticipants,

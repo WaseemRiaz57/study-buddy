@@ -3,21 +3,25 @@
 import { type ChangeEvent, useRef, useState } from "react";
 import { Download, FileText, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
-
-type SharedFile = {
-  url: string;
-  name: string;
-  format: string;
-  senderName: string;
-};
+import type { VaultSharedFile } from "@/components/LiveVideoRoom";
 
 type VaultViewProps = {
   senderName: string;
+  sharedFiles: VaultSharedFile[];
+  onShareFile: (
+    file: Omit<VaultSharedFile, "id" | "senderId" | "senderName"> & {
+      id?: string;
+      senderName?: string;
+    }
+  ) => void;
 };
 
-export default function VaultView({ senderName }: VaultViewProps) {
+export default function VaultView({
+  senderName,
+  sharedFiles,
+  onShareFile,
+}: VaultViewProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [sharedFiles, setSharedFiles] = useState<SharedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -41,14 +45,12 @@ export default function VaultView({ senderName }: VaultViewProps) {
         throw new Error(result?.message || "Failed to upload file.");
       }
 
-      const uploadedFile: SharedFile = {
+      onShareFile({
         url: String(result.secure_url || ""),
         name: String(result.fileName || file.name),
         format: String(result.format || file.type || "file"),
         senderName,
-      };
-
-      setSharedFiles((previousFiles) => [uploadedFile, ...previousFiles]);
+      });
       toast.success("File uploaded to Vault.");
     } catch (error) {
       toast.error(
