@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import type { LiveVideoRoomRenderState } from "@/components/LiveVideoRoom";
+import VaultView from "@/components/study-room/VaultView";
 import {
   Mic,
   Video,
@@ -552,8 +553,11 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                 bg-white border-slate-200
                 dark:bg-[#0f0a16] dark:border-white/5"
             >
-              {/* Chat Container */}
+              {activeTab === "vault" ? (
+                <VaultView senderName={currentUserName} />
+              ) : (
               <div className="flex-1 flex flex-col min-h-0">
+                {/* Chat Container */}
                 <div className="px-4 py-3 border-b flex justify-between items-center transition-colors
                   bg-white border-slate-100
                   dark:bg-[#130d1a]/50 dark:border-white/5">
@@ -625,6 +629,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                   </div>
                 </div>
               </div>
+              )}
             </motion.aside>
           )}
         </AnimatePresence>
