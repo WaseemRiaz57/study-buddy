@@ -139,22 +139,40 @@ export async function setLiveKitParticipantMicrophoneMuted({
 
   await assertHost(roomName, requesterId);
 
-  const roomService = getLiveKitService();
-  const participant = await roomService.getParticipant(roomName, identity);
-  const microphoneTrackSid =
-    trackSid?.trim() || findMicrophoneTracks(participant).find((track) => track.sid)?.sid;
-
-  if (!microphoneTrackSid) {
-    throw new Error("No microphone track found for participant");
+  if (!muted) {
+    return {
+      participantIdentity: identity,
+      trackSid: trackSid?.trim() || "",
+      muted: false,
+      allowUnmute: true,
+    };
   }
 
-  await roomService.mutePublishedTrack(roomName, identity, microphoneTrackSid, muted);
+  try {
+    const roomService = getLiveKitService();
+    const participant = await roomService.getParticipant(roomName, identity);
+    const microphoneTrackSid =
+      trackSid?.trim() || findMicrophoneTracks(participant).find((track) => track.sid)?.sid;
 
-  return {
-    participantIdentity: identity,
-    trackSid: microphoneTrackSid,
-    muted,
-  };
+    if (!microphoneTrackSid) {
+      throw new Error("No microphone track found for participant");
+    }
+
+    await roomService.mutePublishedTrack(roomName, identity, microphoneTrackSid, true);
+
+    return {
+      participantIdentity: identity,
+      trackSid: microphoneTrackSid,
+      muted: true,
+    };
+  } catch (error) {
+    console.error("LiveKit participant microphone update failed:", error);
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to update participant microphone"
+    );
+  }
 }
 
 export async function setLiveKitRoomMicrophonesMuted({

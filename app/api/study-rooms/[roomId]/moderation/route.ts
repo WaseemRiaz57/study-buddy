@@ -108,7 +108,13 @@ export async function POST(
   } catch (error) {
     console.error("LiveKit moderation error:", error);
     return NextResponse.json(
-      { message: "Failed to moderate participant" },
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to moderate participant",
+      },
       { status: 500 }
     );
   }
