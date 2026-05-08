@@ -214,10 +214,23 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
         if (!isActive) return;
 
-        const { fetchedCurrentUserId, isHost } = applyRoomMetadata(data);
+        const { fetchedCurrentUserId, fetchedHostId } = applyRoomMetadata(data);
+        const isHost =
+          String(fetchedCurrentUserId || "").trim() ===
+          String(fetchedHostId || "").trim();
+
+        if (isHost) {
+          setJoinStatus("admitted");
+          setIsRoomLoading(false);
+          void fetchLiveKitToken();
+          return;
+        }
+
+        setJoinStatus("waiting");
+        setIsRoomLoading(false);
 
         const socket = io("/study-room", {
-          transports: ["websocket", "polling"],
+          transports: ["polling", "websocket"],
         });
         socketRef.current = socket;
 
@@ -226,13 +239,6 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
             roomId: normalizedRoomId,
             userId: fetchedCurrentUserId,
           });
-
-          if (isHost) {
-            setJoinStatus("admitted");
-            void fetchLiveKitToken();
-            return;
-          }
-
           setJoinStatus("waiting");
           socket.emit("knock-room", {
             roomId: normalizedRoomId,
@@ -268,69 +274,6 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
           }
         );
 
-        socket.on(
-          "knock-room",
-          (payload: { roomId?: string; userId?: string; userName?: string }) => {
-            if (!isHost) return;
-
-            const targetUserId = normalizeUserId(payload?.userId);
-            const knockRoomId = normalizeUserId(payload?.roomId).toUpperCase();
-
-            if (!targetUserId || knockRoomId !== normalizedRoomId.toUpperCase()) {
-              return;
-            }
-
-            const toastKey = `${knockRoomId}:${targetUserId}`;
-            if (knockToastIdsRef.current.has(toastKey)) return;
-            knockToastIdsRef.current.add(toastKey);
-
-            toast.custom(
-              (toastId) => (
-                <div className="w-[320px] rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-xl dark:border-white/10 dark:bg-[#161027] dark:text-white">
-                  <p className="text-sm font-bold">Waiting Room</p>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
-                    {payload.userName || "A participant"} wants to join this study room.
-                  </p>
-                  <div className="mt-4 flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        socket.emit("knock-response", {
-                          roomId: normalizedRoomId,
-                          targetUserId,
-                          status: "declined",
-                        });
-                        knockToastIdsRef.current.delete(toastKey);
-                        toast.dismiss(toastId);
-                      }}
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10"
-                    >
-                      Decline
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        socket.emit("knock-response", {
-                          roomId: normalizedRoomId,
-                          targetUserId,
-                          status: "admitted",
-                        });
-                        knockToastIdsRef.current.delete(toastKey);
-                        toast.dismiss(toastId);
-                      }}
-                      className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-purple-700 dark:bg-[#8c30e8]"
-                    >
-                      Admit
-                    </button>
-                  </div>
-                </div>
-              ),
-              {
-                duration: Infinity,
-              }
-            );
-          }
-        );
       } catch (error) {
         if (!isActive) return;
 
@@ -361,6 +304,96 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
     normalizedRoomId,
     router,
   ]);
+
+  useEffect(() => {
+    const isHost =
+      joinStatus === "admitted" &&
+      Boolean(currentUserId) &&
+      String(currentUserId) === String(roomHostId);
+
+    if (!isHost || socketRef.current) return;
+
+    const socket = io("/study-room", {
+      transports: ["polling", "websocket"],
+    });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("study-room:join", {
+        roomId: normalizedRoomId,
+        userId: currentUserId,
+      });
+    });
+
+    socket.on(
+      "knock-room",
+      (payload: { roomId?: string; userId?: string; userName?: string }) => {
+        const targetUserId = normalizeUserId(payload?.userId);
+        const knockRoomId = normalizeUserId(payload?.roomId).toUpperCase();
+
+        if (!targetUserId || knockRoomId !== normalizedRoomId.toUpperCase()) {
+          return;
+        }
+
+        const toastKey = `${knockRoomId}:${targetUserId}`;
+        if (knockToastIdsRef.current.has(toastKey)) return;
+        knockToastIdsRef.current.add(toastKey);
+
+        toast.custom(
+          (toastId) => (
+            <div className="w-[320px] rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-xl dark:border-white/10 dark:bg-[#161027] dark:text-white">
+              <p className="text-sm font-bold">Waiting Room</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
+                {payload.userName || "A participant"} wants to join this study room.
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    socket.emit("knock-response", {
+                      roomId: normalizedRoomId,
+                      targetUserId,
+                      status: "declined",
+                    });
+                    knockToastIdsRef.current.delete(toastKey);
+                    toast.dismiss(toastId);
+                  }}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10"
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    socket.emit("knock-response", {
+                      roomId: normalizedRoomId,
+                      targetUserId,
+                      status: "admitted",
+                    });
+                    knockToastIdsRef.current.delete(toastKey);
+                    toast.dismiss(toastId);
+                  }}
+                  className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-purple-700 dark:bg-[#8c30e8]"
+                >
+                  Admit
+                </button>
+              </div>
+            </div>
+          ),
+          {
+            duration: Infinity,
+          }
+        );
+      }
+    );
+
+    return () => {
+      socket.disconnect();
+      if (socketRef.current === socket) {
+        socketRef.current = null;
+      }
+    };
+  }, [currentUserId, joinStatus, normalizedRoomId, roomHostId]);
 
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');

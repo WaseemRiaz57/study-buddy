@@ -59,11 +59,6 @@ export async function GET(
       return NextResponse.json({ message: "roomId is required" }, { status: 400 });
     }
 
-    if (!liveKitUrl || !liveKitApiKey || !liveKitApiSecret) {
-      console.error("❌ ERROR: LiveKit environment variables are missing.");
-      return NextResponse.json({ message: "LiveKit config missing" }, { status: 500 });
-    }
-
     await connectDB();
 
     let room = await StudyRoom.findOne({
@@ -104,6 +99,11 @@ export async function GET(
         },
         { status: 200 }
       );
+    }
+
+    if (!liveKitUrl || !liveKitApiKey || !liveKitApiSecret) {
+      console.error("LiveKit environment variables are missing.");
+      return NextResponse.json({ message: "LiveKit config missing" }, { status: 500 });
     }
 
     console.log(`[Room API] Generating LiveKit token for user: ${participantName}`);
