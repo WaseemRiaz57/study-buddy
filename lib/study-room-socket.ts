@@ -1,4 +1,5 @@
 import type { Namespace, Server, Socket } from "socket.io";
+import { connectDB } from "@/lib/connectDB";
 import {
   markStudyRoomParticipantConnected,
   markStudyRoomParticipantDisconnected,
@@ -8,6 +9,7 @@ import {
   ROOM_AUTO_CLOSE_GRACE_SECONDS,
   STUDY_ROOM_SOCKET_NAMESPACE,
 } from "@/lib/study-room-constants";
+import StudyRoom from "@/models/StudyRoom";
 
 type StudyRoomJoinPayload = {
   roomId?: string;
@@ -16,6 +18,18 @@ type StudyRoomJoinPayload = {
 
 type StudyBuddyIdentifyPayload = {
   userId?: string;
+};
+
+type KnockRoomPayload = {
+  roomId?: string;
+  userId?: string;
+  userName?: string;
+};
+
+type KnockResponsePayload = {
+  roomId?: string;
+  targetUserId?: string;
+  status?: "admitted" | "declined";
 };
 
 type BuddyRequestAcceptedPayload = {
@@ -43,8 +57,16 @@ function roomChannel(roomId: string): string {
   return `room:${normalizeRoomId(roomId)}`;
 }
 
+function roomHostChannel(roomId: string): string {
+  return `room:${normalizeRoomId(roomId)}:host`;
+}
+
 function userChannel(userId: string): string {
   return `user:${userId.trim()}`;
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function getSocketData(socket: Socket): StudyRoomSocketData {
@@ -97,6 +119,32 @@ function removeSocketMembership(socket: Socket, roomId: string): void {
   data.roomMemberships = memberships.filter((memberRoomId) => memberRoomId !== roomId);
 }
 
+function resolveRoomHostId(room: unknown): string {
+  const createdBy = (room as { createdBy?: { _id?: unknown } | unknown })?.createdBy;
+  const host = (room as { host?: { _id?: unknown } | unknown })?.host;
+  const owner = createdBy || host;
+
+  return String(
+    owner && typeof owner === "object" && "_id" in owner
+      ? (owner as { _id?: unknown })._id
+      : owner || ""
+  ).trim();
+}
+
+async function getStudyRoomHostId(roomId: string): Promise<string> {
+  const normalizedRoomId = normalizeRoomId(roomId);
+
+  await connectDB();
+
+  const room = await StudyRoom.findOne({
+    roomId: { $regex: `^${escapeRegex(normalizedRoomId)}$`, $options: "i" },
+  })
+    .select("createdBy host roomId")
+    .lean();
+
+  return resolveRoomHostId(room);
+}
+
 async function handleJoinEvent(
   socket: Socket,
   payload: StudyRoomJoinPayload
@@ -114,12 +162,21 @@ async function handleJoinEvent(
   getSocketData(socket).roomUserId = normalizedUserId;
   addSocketMembership(socket, normalizedRoomId);
   socket.join(roomChannel(normalizedRoomId));
+  socket.join(userChannel(normalizedUserId));
+
+  const hostId = await getStudyRoomHostId(normalizedRoomId).catch(() => "");
+  const isHost = Boolean(hostId && hostId === normalizedUserId);
+
+  if (isHost) {
+    socket.join(roomHostChannel(normalizedRoomId));
+  }
 
   clearAutoCloseTimer(normalizedRoomId);
   await markStudyRoomParticipantConnected(normalizedRoomId, normalizedUserId);
 
   socket.emit("study-room:joined", {
     roomId: normalizedRoomId,
+    isHost,
     namespace: STUDY_ROOM_SOCKET_NAMESPACE,
   });
 }
@@ -139,6 +196,7 @@ async function handleLeaveEvent(
   const userId = getSocketData(socket).roomUserId;
 
   socket.leave(roomChannel(normalizedRoomId));
+  socket.leave(roomHostChannel(normalizedRoomId));
   removeSocketMembership(socket, normalizedRoomId);
 
   if (isNonEmptyString(userId)) {
@@ -187,6 +245,90 @@ function handleStudyBuddyIdentifyEvent(
   });
 }
 
+async function handleKnockRoomEvent(
+  socket: Socket,
+  payload: KnockRoomPayload
+): Promise<void> {
+  if (!isNonEmptyString(payload.roomId) || !isNonEmptyString(payload.userId)) {
+    socket.emit("study-room:error", {
+      message: "roomId and userId are required for knock-room",
+    });
+    return;
+  }
+
+  const normalizedRoomId = normalizeRoomId(payload.roomId);
+  const normalizedUserId = payload.userId.trim();
+  const userName = isNonEmptyString(payload.userName)
+    ? payload.userName.trim()
+    : "Study Buddy";
+  const hostId = await getStudyRoomHostId(normalizedRoomId).catch(() => "");
+
+  if (!hostId) {
+    socket.emit("knock-response", {
+      roomId: normalizedRoomId,
+      targetUserId: normalizedUserId,
+      status: "declined",
+      message: "Room host is unavailable.",
+    });
+    return;
+  }
+
+  getSocketData(socket).roomUserId = normalizedUserId;
+  addSocketMembership(socket, normalizedRoomId);
+  socket.join(roomChannel(normalizedRoomId));
+  socket.join(userChannel(normalizedUserId));
+
+  const knockPayload = {
+    roomId: normalizedRoomId,
+    userId: normalizedUserId,
+    userName,
+  };
+
+  socket.nsp
+    .to([roomHostChannel(normalizedRoomId), userChannel(hostId)])
+    .emit("knock-room", knockPayload);
+
+  socket.emit("knock-room:sent", {
+    roomId: normalizedRoomId,
+    userId: normalizedUserId,
+  });
+}
+
+async function handleKnockResponseEvent(
+  socket: Socket,
+  payload: KnockResponsePayload
+): Promise<void> {
+  if (
+    !isNonEmptyString(payload.roomId) ||
+    !isNonEmptyString(payload.targetUserId) ||
+    (payload.status !== "admitted" && payload.status !== "declined")
+  ) {
+    socket.emit("study-room:error", {
+      message:
+        "roomId, targetUserId, and status ('admitted' or 'declined') are required for knock-response",
+    });
+    return;
+  }
+
+  const normalizedRoomId = normalizeRoomId(payload.roomId);
+  const targetUserId = payload.targetUserId.trim();
+  const responderUserId = getSocketData(socket).roomUserId;
+  const hostId = await getStudyRoomHostId(normalizedRoomId).catch(() => "");
+
+  if (!hostId || responderUserId !== hostId) {
+    socket.emit("study-room:error", {
+      message: "Only the room host can respond to knocks.",
+    });
+    return;
+  }
+
+  socket.nsp.to(userChannel(targetUserId)).emit("knock-response", {
+    roomId: normalizedRoomId,
+    targetUserId,
+    status: payload.status,
+  });
+}
+
 export function emitBuddyRequestAccepted(
   requesterId: string,
   payload: BuddyRequestAcceptedPayload
@@ -218,6 +360,14 @@ export function registerStudyRoomNamespace(io: Server): Namespace {
 
     socket.on("study-room:leave", async (payload: StudyRoomJoinPayload) => {
       await handleLeaveEvent(socket, payload);
+    });
+
+    socket.on("knock-room", async (payload: KnockRoomPayload) => {
+      await handleKnockRoomEvent(socket, payload);
+    });
+
+    socket.on("knock-response", async (payload: KnockResponsePayload) => {
+      await handleKnockResponseEvent(socket, payload);
     });
 
     socket.on("disconnecting", async () => {
