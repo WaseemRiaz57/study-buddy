@@ -184,7 +184,9 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    const room = await getRoom(roomId).lean();
+    const room = await StudyRoom.findOne({
+      roomId: { $regex: `^${escapeRegex(roomId)}$`, $options: "i" },
+    }).lean();
 
     if (!room) {
       return NextResponse.json({ message: "Study room not found" }, { status: 404 });
