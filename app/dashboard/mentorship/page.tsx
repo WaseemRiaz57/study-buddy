@@ -318,10 +318,12 @@ export default function MentorshipPage() {
     }
 
     fetchMentors();
+    window.addEventListener("mentor-profiles-updated", fetchMentors);
 
     return () => {
       isActive = false;
       controller.abort();
+      window.removeEventListener("mentor-profiles-updated", fetchMentors);
     };
   }, []);
 

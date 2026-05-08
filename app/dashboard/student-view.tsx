@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { Search, TrendingUp, Clock, FileText, Plus, Sparkles, Zap, BarChart3, Target, Award, CheckSquare, Upload, Download, MessageCircle, BookOpen, Brain, Timer, Star, Trophy, BookMarked, Lock, ArrowRight, Users } from "lucide-react";
+import ReviewModal from "@/components/mentorship/ReviewModal";
 
 const fadeIn = {
   initial: { opacity: 0, y: 10 },
@@ -20,8 +22,83 @@ interface RecentAINote {
   createdAt: string;
 }
 
+type SessionStatus = "pending" | "accepted" | "rejected" | "completed";
+
+interface PopulatedMentor {
+  _id?: string;
+  name?: string;
+  image?: string;
+  email?: string;
+}
+
+interface StudentMentorSession {
+  _id: string;
+  mentorId?: PopulatedMentor | string;
+  subject: string;
+  scheduledAt: string;
+  duration: number;
+  status: SessionStatus;
+  roomId?: string;
+  reviewSubmitted?: boolean;
+}
+
+function getMentor(session: StudentMentorSession): PopulatedMentor {
+  return typeof session.mentorId === "object" && session.mentorId !== null
+    ? session.mentorId
+    : {};
+}
+
+function getMentorName(session: StudentMentorSession) {
+  return getMentor(session).name || "Mentor";
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function formatSessionDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Date TBD";
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatSessionTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Time TBD";
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function isPastReviewCandidate(session: StudentMentorSession) {
+  const scheduledAt = new Date(session.scheduledAt).getTime();
+  return (
+    session.status === "completed" ||
+    (session.status === "accepted" &&
+      !Number.isNaN(scheduledAt) &&
+      scheduledAt < Date.now())
+  );
+}
+
 export function StudentDashboard() {
   const [recentNotes, setRecentNotes] = useState<RecentAINote[]>([]);
+  const [mentorSessions, setMentorSessions] = useState<StudentMentorSession[]>([]);
+  const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
+  const [selectedReviewSession, setSelectedReviewSession] =
+    useState<StudentMentorSession | null>(null);
+  const [hasAutoOpenedReview, setHasAutoOpenedReview] = useState(false);
 
   const formatRelativeTime = useCallback((isoDate: string) => {
     const date = new Date(isoDate).getTime();
@@ -46,8 +123,27 @@ export function StudentDashboard() {
     }
   }, []);
 
+  const fetchMentorSessions = useCallback(async () => {
+    try {
+      setSessionLoadError(null);
+
+      const res = await fetch("/api/sessions", { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error("Unable to load mentor sessions.");
+      }
+
+      const data = await res.json();
+      setMentorSessions(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setSessionLoadError(
+        error instanceof Error ? error.message : "Unable to load mentor sessions."
+      );
+    }
+  }, []);
+
   useEffect(() => {
     fetchRecentNotes();
+    fetchMentorSessions();
 
     const onNotesUpdated = () => {
       fetchRecentNotes();
@@ -57,13 +153,67 @@ export function StudentDashboard() {
     return () => {
       window.removeEventListener("ai-notes-updated", onNotesUpdated);
     };
-  }, [fetchRecentNotes]);
+  }, [fetchRecentNotes, fetchMentorSessions]);
+
+  useEffect(() => {
+    if (hasAutoOpenedReview || selectedReviewSession) return;
+
+    const firstUnreviewedCompletedSession = mentorSessions.find(
+      (session) => session.status === "completed" && !session.reviewSubmitted
+    );
+
+    if (!firstUnreviewedCompletedSession) return;
+
+    setSelectedReviewSession(firstUnreviewedCompletedSession);
+    setHasAutoOpenedReview(true);
+  }, [hasAutoOpenedReview, mentorSessions, selectedReviewSession]);
 
   const noteTypeMeta: Record<AINoteType, { gradient: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string }> = {
     notes: { gradient: "from-emerald-500 to-teal-600", icon: Brain, label: "Smart Notes" },
     summarizer: { gradient: "from-indigo-500 to-purple-600", icon: FileText, label: "Summary" },
     quiz: { gradient: "from-orange-500 to-red-600", icon: Zap, label: "Quiz" },
   };
+
+  const completedSessionsCount = mentorSessions.filter(
+    (session) => session.status === "completed"
+  ).length;
+  const reviewableSessions = mentorSessions
+    .filter(isPastReviewCandidate)
+    .sort(
+      (a, b) =>
+        new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+    );
+  const nextMentorSession = mentorSessions
+    .filter((session) => {
+      const scheduledAt = new Date(session.scheduledAt).getTime();
+      return (
+        session.status === "accepted" &&
+        !Number.isNaN(scheduledAt) &&
+        scheduledAt >= Date.now()
+      );
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+    )[0];
+
+  function handleReviewSubmitted() {
+    const reviewedSessionId = selectedReviewSession?._id;
+
+    if (reviewedSessionId) {
+      setMentorSessions((currentSessions) =>
+        currentSessions.map((session) =>
+          session._id === reviewedSessionId
+            ? { ...session, status: "completed", reviewSubmitted: true }
+            : session
+        )
+      );
+    }
+
+    setSelectedReviewSession(null);
+    toast.success("Review submitted! Mentor rating updated.");
+    window.dispatchEvent(new Event("mentor-profiles-updated"));
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -127,9 +277,26 @@ export function StudentDashboard() {
                 <Clock className="text-primary" size={18} />
                 <span className="font-bold text-sm text-primary">Up Next Session</span>
               </div>
-              <h3 className="text-xl font-bold text-foreground leading-tight">Deep Work:<br/>Organic Chemistry</h3>
+              <h3 className="text-xl font-bold text-foreground leading-tight">
+                {nextMentorSession ? (
+                  <>
+                    {nextMentorSession.subject}
+                    <br />
+                    with {getMentorName(nextMentorSession)}
+                  </>
+                ) : (
+                  <>
+                    Find a Mentor
+                    <br />
+                    Book your next session
+                  </>
+                )}
+              </h3>
               <p className="text-sm text-muted-foreground mt-3 flex items-center gap-2">
-                <Users size={14} /> Join 12 others in Study Room A
+                <Users size={14} />
+                {nextMentorSession
+                  ? `${formatSessionDate(nextMentorSession.scheduledAt)} at ${formatSessionTime(nextMentorSession.scheduledAt)}`
+                  : "Your accepted mentor sessions will appear here"}
               </p>
             </div>
 
@@ -137,12 +304,16 @@ export function StudentDashboard() {
               <p className="text-xs font-bold text-muted-foreground uppercase mb-3 tracking-wider">Starts In</p>
               <div className="flex gap-2">
                 <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
-                  <span className="block text-2xl font-black text-foreground">14</span>
-                  <span className="text-[10px] font-bold text-muted-foreground">MIN</span>
+                  <span className="block text-2xl font-black text-foreground">
+                    {completedSessionsCount}
+                  </span>
+                  <span className="text-[10px] font-bold text-muted-foreground">DONE</span>
                 </div>
                 <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
-                  <span className="block text-2xl font-black text-foreground">02</span>
-                  <span className="text-[10px] font-bold text-muted-foreground">SEC</span>
+                  <span className="block text-2xl font-black text-foreground">
+                    {mentorSessions.length}
+                  </span>
+                  <span className="text-[10px] font-bold text-muted-foreground">TOTAL</span>
                 </div>
               </div>
             </div>
@@ -253,7 +424,114 @@ export function StudentDashboard() {
           </motion.div>
 
         </div>
+
+        {/* SECTION 3: MENTORSHIP REVIEWS */}
+        <motion.div {...fadeIn} transition={{ delay: 0.4 }} className="space-y-5">
+          <div className="flex flex-col gap-2 px-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                Past Sessions <Star className="text-yellow-400" size={20} />
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Completed Sessions:{" "}
+                <span className="font-bold text-foreground">
+                  {completedSessionsCount}
+                </span>
+              </p>
+            </div>
+            <button
+              onClick={fetchMentorSessions}
+              className="inline-flex items-center justify-center rounded-xl border border-border/70 px-4 py-2 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {sessionLoadError ? (
+            <div className="glass-panel rounded-2xl p-5 text-sm font-medium text-red-500">
+              {sessionLoadError}
+            </div>
+          ) : reviewableSessions.length === 0 ? (
+            <div className="glass-panel rounded-2xl p-6 text-sm text-muted-foreground">
+              Past mentor sessions will show here once they are completed.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {reviewableSessions.slice(0, 4).map((session) => {
+                const mentor = getMentor(session);
+                const mentorName = getMentorName(session);
+
+                return (
+                  <div
+                    key={session._id}
+                    className="glass-panel rounded-2xl p-5 transition-all hover:border-primary/40"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-start gap-4">
+                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-fuchsia-500 text-white flex items-center justify-center text-sm font-black">
+                          {mentor.image ? (
+                            <img
+                              src={mentor.image}
+                              alt={mentorName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            getInitials(mentorName)
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-base font-bold text-foreground">
+                            {session.subject}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            with {mentorName}
+                          </p>
+                          <p className="mt-1 text-xs font-medium text-muted-foreground">
+                            {formatSessionDate(session.scheduledAt)} ·{" "}
+                            {formatSessionTime(session.scheduledAt)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="rounded-full border border-border/70 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                        {session.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-5 flex justify-end border-t border-border/60 pt-4">
+                      {session.reviewSubmitted ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                          <CheckSquare size={16} />
+                          Reviewed
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedReviewSession(session)}
+                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-fuchsia-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:brightness-110 active:scale-95"
+                        >
+                          <Star size={16} fill="currentColor" />
+                          Review Mentor
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
       </div>
+
+      {selectedReviewSession && (
+        <ReviewModal
+          isOpen={!!selectedReviewSession}
+          sessionId={selectedReviewSession._id}
+          mentorName={getMentorName(selectedReviewSession)}
+          subject={selectedReviewSession.subject}
+          onClose={() => setSelectedReviewSession(null)}
+          onSubmitted={handleReviewSubmitted}
+        />
+      )}
     </div>
   );
 }
