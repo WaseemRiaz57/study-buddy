@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { io, type Socket } from "socket.io-client";
 import type { LiveVideoRoomRenderState } from "@/components/LiveVideoRoom";
 import VaultView from "@/components/study-room/VaultView";
 import {
@@ -115,8 +114,10 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const [liveKitRoomName, setLiveKitRoomName] = useState<string>("");
   const [isRoomLoading, setIsRoomLoading] = useState(true);
   const [joinStatus, setJoinStatus] = useState<JoinStatus>("checking");
-  const socketRef = useRef<Socket | null>(null);
   const knockToastIdsRef = useRef<Set<string>>(new Set());
+  const participantPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hostPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasSentKnockRef = useRef(false);
   const currentUserId = normalizeUserId(apiCurrentUserId || sessionUserId || guestUserId || effectiveCurrentUserId);
 
   useEffect(() => {
@@ -201,6 +202,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
       setIsRoomLoading(true);
       setLiveKitToken("");
       setLiveKitUrl("");
+      hasSentKnockRef.current = false;
 
       try {
         const response = await fetch(
@@ -228,52 +230,6 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
         setJoinStatus("waiting");
         setIsRoomLoading(false);
-
-        const socket = io("/study-room", {
-          transports: ["polling", "websocket"],
-        });
-        socketRef.current = socket;
-
-        socket.on("connect", () => {
-          socket.emit("study-room:join", {
-            roomId: normalizedRoomId,
-            userId: fetchedCurrentUserId,
-          });
-          setJoinStatus("waiting");
-          socket.emit("knock-room", {
-            roomId: normalizedRoomId,
-            userId: fetchedCurrentUserId,
-            userName: currentUserName,
-          });
-        });
-
-        socket.on(
-          "knock-response",
-          (payload: { roomId?: string; targetUserId?: string; status?: "admitted" | "declined" }) => {
-            if (
-              normalizeUserId(payload?.roomId).toUpperCase() !== normalizedRoomId.toUpperCase() ||
-              normalizeUserId(payload?.targetUserId) !== fetchedCurrentUserId
-            ) {
-              return;
-            }
-
-            if (payload.status === "admitted") {
-              toast.success("The host admitted you. Joining room...");
-              setJoinStatus("admitted");
-              void fetchLiveKitToken();
-              return;
-            }
-
-            if (payload.status === "declined") {
-              setJoinStatus("declined");
-              toast.error("The host declined your request to join.");
-              window.setTimeout(() => {
-                router.push("/dashboard/study-rooms");
-              }, 1200);
-            }
-          }
-        );
-
       } catch (error) {
         if (!isActive) return;
 
@@ -293,14 +249,152 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
     return () => {
       isActive = false;
-      socketRef.current?.disconnect();
-      socketRef.current = null;
       knockToastIdsRef.current.clear();
     };
   }, [
     applyRoomMetadata,
+    fetchLiveKitToken,
+    normalizedRoomId,
+    router,
+  ]);
+
+  const respondToWaitingUser = useCallback(
+    async (
+      targetUserId: string,
+      status: "admitted" | "declined",
+      toastKey: string,
+      toastId: string | number
+    ) => {
+      try {
+        const response = await fetch("/api/study-rooms/waiting-room", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "respond",
+            roomId: normalizedRoomId,
+            targetUserId,
+            status,
+          }),
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result?.message || "Failed to update waiting room.");
+        }
+
+        knockToastIdsRef.current.delete(toastKey);
+        toast.dismiss(toastId);
+        toast.success(status === "admitted" ? "Participant admitted." : "Participant declined.");
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to update waiting room."
+        );
+      }
+    },
+    [normalizedRoomId]
+  );
+
+  useEffect(() => {
+    if (joinStatus !== "waiting" || !currentUserId || !normalizedRoomId) return;
+
+    let isActive = true;
+
+    async function sendKnockOnce() {
+      if (hasSentKnockRef.current) return;
+
+      hasSentKnockRef.current = true;
+
+      try {
+        const response = await fetch("/api/study-rooms/waiting-room", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "knock",
+            roomId: normalizedRoomId,
+            userId: currentUserId,
+            userName: currentUserName,
+          }),
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result?.message || "Failed to enter waiting room.");
+        }
+      } catch (error) {
+        hasSentKnockRef.current = false;
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to enter waiting room."
+        );
+      }
+    }
+
+    async function pollWaitingStatus() {
+      try {
+        const response = await fetch(
+          `/api/study-rooms/waiting-room?roomId=${encodeURIComponent(normalizedRoomId)}`,
+          { cache: "no-store" }
+        );
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result?.message || "Failed to check waiting room status.");
+        }
+
+        const status = result?.entry?.status;
+
+        if (status === "admitted") {
+          if (participantPollingRef.current) {
+            clearInterval(participantPollingRef.current);
+            participantPollingRef.current = null;
+          }
+
+          if (!isActive) return;
+
+          toast.success("The host admitted you. Joining room...");
+          setJoinStatus("admitted");
+          void fetchLiveKitToken();
+          return;
+        }
+
+        if (status === "declined") {
+          if (participantPollingRef.current) {
+            clearInterval(participantPollingRef.current);
+            participantPollingRef.current = null;
+          }
+
+          if (!isActive) return;
+
+          setJoinStatus("declined");
+          toast.error("The host declined your request to join.");
+          window.setTimeout(() => {
+            router.push("/dashboard/study-rooms");
+          }, 1200);
+        }
+      } catch {
+        // Keep polling; transient serverless/database hiccups should not strand the user.
+      }
+    }
+
+    void sendKnockOnce();
+    void pollWaitingStatus();
+    participantPollingRef.current = setInterval(pollWaitingStatus, 3000);
+
+    return () => {
+      isActive = false;
+      if (participantPollingRef.current) {
+        clearInterval(participantPollingRef.current);
+        participantPollingRef.current = null;
+      }
+    };
+  }, [
+    currentUserId,
     currentUserName,
     fetchLiveKitToken,
+    joinStatus,
     normalizedRoomId,
     router,
   ]);
@@ -311,89 +405,86 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
       Boolean(currentUserId) &&
       String(currentUserId) === String(roomHostId);
 
-    if (!isHost || socketRef.current) return;
+    if (!isHost || !normalizedRoomId) return;
 
-    const socket = io("/study-room", {
-      transports: ["polling", "websocket"],
-    });
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      socket.emit("study-room:join", {
-        roomId: normalizedRoomId,
-        userId: currentUserId,
-      });
-    });
-
-    socket.on(
-      "knock-room",
-      (payload: { roomId?: string; userId?: string; userName?: string }) => {
-        const targetUserId = normalizeUserId(payload?.userId);
-        const knockRoomId = normalizeUserId(payload?.roomId).toUpperCase();
-
-        if (!targetUserId || knockRoomId !== normalizedRoomId.toUpperCase()) {
-          return;
-        }
-
-        const toastKey = `${knockRoomId}:${targetUserId}`;
-        if (knockToastIdsRef.current.has(toastKey)) return;
-        knockToastIdsRef.current.add(toastKey);
-
-        toast.custom(
-          (toastId) => (
-            <div className="w-[320px] rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-xl dark:border-white/10 dark:bg-[#161027] dark:text-white">
-              <p className="text-sm font-bold">Waiting Room</p>
-              <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
-                {payload.userName || "A participant"} wants to join this study room.
-              </p>
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    socket.emit("knock-response", {
-                      roomId: normalizedRoomId,
-                      targetUserId,
-                      status: "declined",
-                    });
-                    knockToastIdsRef.current.delete(toastKey);
-                    toast.dismiss(toastId);
-                  }}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10"
-                >
-                  Decline
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    socket.emit("knock-response", {
-                      roomId: normalizedRoomId,
-                      targetUserId,
-                      status: "admitted",
-                    });
-                    knockToastIdsRef.current.delete(toastKey);
-                    toast.dismiss(toastId);
-                  }}
-                  className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-purple-700 dark:bg-[#8c30e8]"
-                >
-                  Admit
-                </button>
-              </div>
-            </div>
-          ),
-          {
-            duration: Infinity,
-          }
+    async function pollWaitingList() {
+      try {
+        const response = await fetch(
+          `/api/study-rooms/waiting-room?roomId=${encodeURIComponent(normalizedRoomId)}`,
+          { cache: "no-store" }
         );
+        const result = await response.json();
+
+        if (!response.ok || !Array.isArray(result?.waitingList)) return;
+
+        result.waitingList.forEach((entry: { userId?: string; userName?: string }) => {
+          const targetUserId = normalizeUserId(entry.userId);
+          if (!targetUserId) return;
+
+          const toastKey = `${normalizedRoomId.toUpperCase()}:${targetUserId}`;
+          if (knockToastIdsRef.current.has(toastKey)) return;
+          knockToastIdsRef.current.add(toastKey);
+
+          toast.custom(
+            (toastId) => (
+              <div className="w-[320px] rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-xl dark:border-white/10 dark:bg-[#161027] dark:text-white">
+                <p className="text-sm font-bold">Waiting Room</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
+                  {entry.userName || "A participant"} wants to join this study room.
+                </p>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void respondToWaitingUser(
+                        targetUserId,
+                        "declined",
+                        toastKey,
+                        toastId
+                      )
+                    }
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10"
+                  >
+                    Decline
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void respondToWaitingUser(
+                        targetUserId,
+                        "admitted",
+                        toastKey,
+                        toastId
+                      )
+                    }
+                    className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-purple-700 dark:bg-[#8c30e8]"
+                  >
+                    Admit
+                  </button>
+                </div>
+              </div>
+            ),
+            {
+              duration: Infinity,
+            }
+          );
+        });
+      } catch {
+        // Host polling is best-effort; try again on the next interval.
       }
-    );
+    }
+
+    void pollWaitingList();
+    hostPollingRef.current = setInterval(pollWaitingList, 5000);
 
     return () => {
-      socket.disconnect();
-      if (socketRef.current === socket) {
-        socketRef.current = null;
+      if (hostPollingRef.current) {
+        clearInterval(hostPollingRef.current);
+        hostPollingRef.current = null;
       }
+      knockToastIdsRef.current.clear();
     };
-  }, [currentUserId, joinStatus, normalizedRoomId, roomHostId]);
+  }, [currentUserId, joinStatus, normalizedRoomId, respondToWaitingUser, roomHostId]);
 
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
