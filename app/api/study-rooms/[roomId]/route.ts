@@ -19,10 +19,13 @@ function escapeRegex(text: string): string {
 
 function resolveRoomHostId(room: unknown): string {
   const createdBy = (room as { createdBy?: { _id?: unknown } | unknown })?.createdBy;
+  const host = (room as { host?: { _id?: unknown } | unknown })?.host;
+  const owner = createdBy || host;
+
   return String(
-    createdBy && typeof createdBy === "object" && "_id" in createdBy
-      ? (createdBy as { _id?: unknown })._id
-      : createdBy || ""
+    owner && typeof owner === "object" && "_id" in owner
+      ? (owner as { _id?: unknown })._id
+      : owner || ""
   ).trim();
 }
 
@@ -45,6 +48,8 @@ export async function GET(
     // Fallback if ID is missing
     const currentUserId = String(session.user.id || session.user.email || "guest").trim();
     const participantName = session.user.name || "Student";
+    const metadataOnly =
+      request.nextUrl.searchParams.get("metadataOnly") === "true";
     
     const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
     const liveKitApiKey = process.env.LIVEKIT_API_KEY;
@@ -87,6 +92,19 @@ export async function GET(
 
     const hostId = resolveRoomHostId(room);
     const isHost = Boolean(hostId && currentUserId === hostId);
+
+    if (metadataOnly) {
+      return NextResponse.json(
+        {
+          room,
+          roomName: normalizedRoomId,
+          currentUserId,
+          hostId,
+          isHost,
+        },
+        { status: 200 }
+      );
+    }
 
     console.log(`[Room API] Generating LiveKit token for user: ${participantName}`);
 

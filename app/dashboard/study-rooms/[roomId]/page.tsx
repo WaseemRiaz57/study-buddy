@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, use, useRef } from "react";
+import { useCallback, useState, useEffect, use, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion"; 
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { toast } from "sonner";
+import { io, type Socket } from "socket.io-client";
 import type { LiveVideoRoomRenderState } from "@/components/LiveVideoRoom";
 import VaultView from "@/components/study-room/VaultView";
 import {
@@ -17,8 +20,12 @@ import {
   Clock,
   VideoOff,
   MicOff,
-  Minus
+  Minus,
+  Loader2,
+  DoorOpen,
 } from "lucide-react";
+
+type JoinStatus = "checking" | "waiting" | "admitted" | "declined";
 
 function isPlaybackAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
@@ -84,6 +91,7 @@ function createGuestUserId(): string {
 }
 
 export default function StudyRoomSessionPage({ params }: { params: Promise<{ roomId: string }> }) {
+  const router = useRouter();
   // Unwrap params
   const { roomId } = use(params);
   const normalizedRoomId = String(roomId || "").trim();
@@ -106,6 +114,9 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const [liveKitUrl, setLiveKitUrl] = useState<string>("");
   const [liveKitRoomName, setLiveKitRoomName] = useState<string>("");
   const [isRoomLoading, setIsRoomLoading] = useState(true);
+  const [joinStatus, setJoinStatus] = useState<JoinStatus>("checking");
+  const socketRef = useRef<Socket | null>(null);
+  const knockToastIdsRef = useRef<Set<string>>(new Set());
   const currentUserId = normalizeUserId(apiCurrentUserId || sessionUserId || guestUserId || effectiveCurrentUserId);
 
   useEffect(() => {
@@ -113,59 +124,221 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
     return () => clearInterval(interval);
   }, []);
 
+  const applyRoomMetadata = useCallback(
+    (data: any) => {
+      const room = data?.room ?? {};
+      const fetchedCurrentUserId = normalizeUserId(
+        data?.currentUserId || sessionUserId || guestUserId
+      );
+      const fetchedHostId = normalizeUserId(
+        data?.hostId || room?.createdBy?._id || room?.createdBy || room?.host?._id || room?.host
+      );
+
+      setApiCurrentUserId(fetchedCurrentUserId);
+      setLiveKitRoomName(String(data?.roomName || normalizedRoomId).trim());
+      setRoomTopic(
+        typeof room?.title === "string"
+          ? room.title
+          : typeof data?.topic === "string"
+            ? data.topic
+            : ""
+      );
+      setRoomHostId(fetchedHostId);
+
+      return {
+        fetchedCurrentUserId,
+        fetchedHostId,
+        isHost: Boolean(fetchedCurrentUserId && fetchedHostId && fetchedCurrentUserId === fetchedHostId),
+      };
+    },
+    [guestUserId, normalizedRoomId, sessionUserId]
+  );
+
+  const fetchLiveKitToken = useCallback(async () => {
+    if (!normalizedRoomId) return;
+
+    setIsRoomLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/study-rooms/${encodeURIComponent(normalizedRoomId)}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to load room details.");
+      }
+
+      applyRoomMetadata(data);
+      setLiveKitToken(String(data?.token || ""));
+      setLiveKitUrl(String(data?.liveKitUrl || ""));
+    } catch (error) {
+      setLiveKitToken("");
+      setLiveKitUrl("");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to load the LiveKit room."
+      );
+      setJoinStatus("declined");
+    } finally {
+      setIsRoomLoading(false);
+    }
+  }, [applyRoomMetadata, normalizedRoomId]);
+
   useEffect(() => {
     let isActive = true;
 
-    async function fetchRoomDetails() {
+    async function runGatekeeperCheck() {
       if (!normalizedRoomId) {
-        if (isActive) {
-          setRoomTopic("");
-          setIsRoomLoading(false);
-        }
+        setRoomTopic("");
+        setIsRoomLoading(false);
+        setJoinStatus("declined");
         return;
       }
 
+      setJoinStatus("checking");
       setIsRoomLoading(true);
+      setLiveKitToken("");
+      setLiveKitUrl("");
 
       try {
         const response = await fetch(
-          `/api/study-rooms/${encodeURIComponent(normalizedRoomId)}`
+          `/api/study-rooms/${encodeURIComponent(normalizedRoomId)}?metadataOnly=true`
         );
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.message || "Failed to load room details.");
+          throw new Error(data?.message || "Failed to check room access.");
         }
 
-        if (isActive) {
-          const room = data?.room ?? {};
-          const fetchedCurrentUserId = normalizeUserId(data?.currentUserId || sessionUserId || guestUserId);
-          const fetchedHostId = normalizeUserId(
-            data?.hostId || room?.createdBy?._id || room?.createdBy
-          );
+        if (!isActive) return;
 
-          setApiCurrentUserId(fetchedCurrentUserId);
-          setLiveKitToken(String(data?.token || ""));
-          setLiveKitUrl(String(data?.liveKitUrl || ""));
-          setLiveKitRoomName(String(data?.roomName || normalizedRoomId).trim());
-          setRoomTopic(
-            typeof room?.title === "string"
-              ? room.title
-              : typeof data?.topic === "string"
-                ? data.topic
-                : ""
-          );
-          setRoomHostId(fetchedHostId);
-        }
-      } catch {
-        if (isActive) {
-          setApiCurrentUserId("");
-          setRoomTopic("");
-          setRoomHostId("");
-          setLiveKitToken("");
-          setLiveKitUrl("");
-          setLiveKitRoomName("");
-        }
+        const { fetchedCurrentUserId, isHost } = applyRoomMetadata(data);
+
+        const socket = io("/study-room", {
+          transports: ["websocket", "polling"],
+        });
+        socketRef.current = socket;
+
+        socket.on("connect", () => {
+          socket.emit("study-room:join", {
+            roomId: normalizedRoomId,
+            userId: fetchedCurrentUserId,
+          });
+
+          if (isHost) {
+            setJoinStatus("admitted");
+            void fetchLiveKitToken();
+            return;
+          }
+
+          setJoinStatus("waiting");
+          socket.emit("knock-room", {
+            roomId: normalizedRoomId,
+            userId: fetchedCurrentUserId,
+            userName: currentUserName,
+          });
+        });
+
+        socket.on(
+          "knock-response",
+          (payload: { roomId?: string; targetUserId?: string; status?: "admitted" | "declined" }) => {
+            if (
+              normalizeUserId(payload?.roomId).toUpperCase() !== normalizedRoomId.toUpperCase() ||
+              normalizeUserId(payload?.targetUserId) !== fetchedCurrentUserId
+            ) {
+              return;
+            }
+
+            if (payload.status === "admitted") {
+              toast.success("The host admitted you. Joining room...");
+              setJoinStatus("admitted");
+              void fetchLiveKitToken();
+              return;
+            }
+
+            if (payload.status === "declined") {
+              setJoinStatus("declined");
+              toast.error("The host declined your request to join.");
+              window.setTimeout(() => {
+                router.push("/dashboard/study-rooms");
+              }, 1200);
+            }
+          }
+        );
+
+        socket.on(
+          "knock-room",
+          (payload: { roomId?: string; userId?: string; userName?: string }) => {
+            if (!isHost) return;
+
+            const targetUserId = normalizeUserId(payload?.userId);
+            const knockRoomId = normalizeUserId(payload?.roomId).toUpperCase();
+
+            if (!targetUserId || knockRoomId !== normalizedRoomId.toUpperCase()) {
+              return;
+            }
+
+            const toastKey = `${knockRoomId}:${targetUserId}`;
+            if (knockToastIdsRef.current.has(toastKey)) return;
+            knockToastIdsRef.current.add(toastKey);
+
+            toast.custom(
+              (toastId) => (
+                <div className="w-[320px] rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-xl dark:border-white/10 dark:bg-[#161027] dark:text-white">
+                  <p className="text-sm font-bold">Waiting Room</p>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">
+                    {payload.userName || "A participant"} wants to join this study room.
+                  </p>
+                  <div className="mt-4 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        socket.emit("knock-response", {
+                          roomId: normalizedRoomId,
+                          targetUserId,
+                          status: "declined",
+                        });
+                        knockToastIdsRef.current.delete(toastKey);
+                        toast.dismiss(toastId);
+                      }}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        socket.emit("knock-response", {
+                          roomId: normalizedRoomId,
+                          targetUserId,
+                          status: "admitted",
+                        });
+                        knockToastIdsRef.current.delete(toastKey);
+                        toast.dismiss(toastId);
+                      }}
+                      className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-purple-700 dark:bg-[#8c30e8]"
+                    >
+                      Admit
+                    </button>
+                  </div>
+                </div>
+              ),
+              {
+                duration: Infinity,
+              }
+            );
+          }
+        );
+      } catch (error) {
+        if (!isActive) return;
+
+        setJoinStatus("declined");
+        toast.error(
+          error instanceof Error ? error.message : "Failed to check room access."
+        );
+        router.push("/dashboard/study-rooms");
       } finally {
         if (isActive) {
           setIsRoomLoading(false);
@@ -173,18 +346,91 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
       }
     }
 
-    void fetchRoomDetails();
+    void runGatekeeperCheck();
 
     return () => {
       isActive = false;
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      knockToastIdsRef.current.clear();
     };
-  }, [normalizedRoomId, guestUserId, sessionUserId]);
+  }, [
+    applyRoomMetadata,
+    currentUserName,
+    fetchLiveKitToken,
+    normalizedRoomId,
+    router,
+  ]);
 
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
     const s = (totalSeconds % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   };
+
+  if (joinStatus === "checking") {
+    return (
+      <RoomGateShell>
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-300" />
+        <h1 className="mt-5 text-2xl font-bold text-slate-950 dark:text-white">
+          Checking room access
+        </h1>
+        <p className="mt-2 text-sm text-slate-500 dark:text-gray-400">
+          Preparing the waiting room gate...
+        </p>
+      </RoomGateShell>
+    );
+  }
+
+  if (joinStatus === "waiting") {
+    return (
+      <RoomGateShell>
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
+          <DoorOpen size={26} />
+        </div>
+        <h1 className="mt-5 text-2xl font-bold text-slate-950 dark:text-white">
+          You are in the waiting room
+        </h1>
+        <p className="mt-2 max-w-sm text-center text-sm leading-6 text-slate-500 dark:text-gray-400">
+          Please wait, the host will let you in soon. Keep this tab open while your request is pending.
+        </p>
+        <div className="mt-6 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-500 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+          <Loader2 className="h-4 w-4 animate-spin text-purple-600 dark:text-purple-300" />
+          Waiting for host approval
+        </div>
+      </RoomGateShell>
+    );
+  }
+
+  if (joinStatus === "declined") {
+    return (
+      <RoomGateShell>
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+          <DoorOpen size={26} />
+        </div>
+        <h1 className="mt-5 text-2xl font-bold text-slate-950 dark:text-white">
+          Room request declined
+        </h1>
+        <p className="mt-2 text-center text-sm text-slate-500 dark:text-gray-400">
+          Redirecting you back to study rooms.
+        </p>
+      </RoomGateShell>
+    );
+  }
+
+  if (!liveKitToken || !liveKitUrl) {
+    return (
+      <RoomGateShell>
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-300" />
+        <h1 className="mt-5 text-2xl font-bold text-slate-950 dark:text-white">
+          Joining study room
+        </h1>
+        <p className="mt-2 text-sm text-slate-500 dark:text-gray-400">
+          Fetching your LiveKit access token...
+        </p>
+      </RoomGateShell>
+    );
+  }
 
   return (
     <LiveVideoRoom
@@ -643,6 +889,19 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
         })()
       )}
     />
+  );
+}
+
+function RoomGateShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-[#0f0c1d] dark:text-white">
+      <div className="absolute inset-0 pointer-events-none opacity-0 transition-opacity dark:opacity-100">
+        <div className="absolute left-[-10%] top-[-20%] h-[560px] w-[560px] rounded-full bg-[#8c30e8]/10 blur-[120px]" />
+      </div>
+      <div className="relative flex w-full max-w-md flex-col items-center rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl dark:border-white/10 dark:bg-[#161027]">
+        {children}
+      </div>
+    </div>
   );
 }
 
