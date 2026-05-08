@@ -143,6 +143,18 @@ function MentorCard({
     .map((w) => w[0])
     .join("")
     .slice(0, 2);
+  const hasAvailability = mentor.availability?.some(
+    (day) => day.timeSlots.length > 0
+  );
+
+  function handleBookClick() {
+    if (!hasAvailability) {
+      toast.error("This mentor has not set their schedule yet.");
+      return;
+    }
+
+    onBook(mentor);
+  }
 
   return (
     <motion.div
@@ -228,7 +240,7 @@ function MentorCard({
       </div>
 
       {/* Bottom: Rate + Book */}
-      <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-100 dark:border-white/10">
+      <div className="mt-auto flex items-center justify-between border-t border-gray-200/80 pt-4 dark:border-white/10">
         <div>
           <span className="text-xs text-gray-400 dark:text-slate-500 block">Rate</span>
           <span className="text-lg font-bold text-text-main dark:text-white">
@@ -237,13 +249,11 @@ function MentorCard({
           </span>
         </div>
         <button
-          onClick={() => onBook(mentor)}
-          disabled={!mentor.available}
+          onClick={handleBookClick}
           className="text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md
             bg-gradient-to-r from-primary to-fuchsia-500
             hover:shadow-[0_0_15px_rgba(140,48,232,0.4)] hover:brightness-105
-            active:scale-95 transition-all
-            disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-md disabled:hover:brightness-100"
+            active:scale-95 transition-all"
         >
           Book Session
         </button>
