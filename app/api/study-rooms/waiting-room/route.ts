@@ -96,22 +96,65 @@ export async function POST(request: NextRequest) {
       );
 
       if (existingEntry) {
-        existingEntry.userName = userName;
-        existingEntry.status = "waiting";
+        await StudyRoom.updateOne(
+          {
+            _id: room._id,
+            "waitingList.userId": userId,
+          },
+          {
+            $set: {
+              "waitingList.$.userName": userName,
+              "waitingList.$.status": "waiting",
+            },
+          }
+        );
       } else {
-        room.waitingList.push({
-          userId,
-          userName,
-          status: "waiting",
-        });
+        await StudyRoom.updateOne(
+          { _id: room._id },
+          {
+            $push: {
+              waitingList: {
+                userId,
+                userName,
+                status: "waiting",
+              },
+            },
+          }
+        );
       }
 
-      await room.save();
+      const updatedRoom = await StudyRoom.findById(room._id).lean();
+      const updatedEntry = ((updatedRoom?.waitingList || []) as WaitingListEntry[]).find(
+        (entry) => normalizeUserId(entry.userId) === userId
+      ) || {
+        userId,
+        userName,
+        status: "waiting",
+      };
+
+      if (updatedEntry.status !== "waiting") {
+        await StudyRoom.updateOne(
+          {
+            _id: room._id,
+            "waitingList.userId": userId,
+          },
+          {
+            $set: {
+              "waitingList.$.status": "waiting",
+            },
+          }
+        );
+        updatedEntry.status = "waiting";
+      }
 
       return NextResponse.json({
         success: true,
         roomId,
-        entry: { userId, userName, status: "waiting" },
+        entry: {
+          userId: normalizeUserId(updatedEntry.userId),
+          userName: String(updatedEntry.userName || userName).trim(),
+          status: "waiting",
+        },
       });
     }
 
