@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react"; // <-- IMPORT ADDED
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { 
   BookOpen, TrendingUp, Clock, Users, DollarSign, 
   Award, Calendar, FileText, CheckCircle, XCircle, 
   BarChart3, Wallet, CreditCard, Star, ArrowRight,
-  MessageCircle, Video, Settings, Target, Coins, Plus, Menu
+  MessageCircle, Video, Settings, Target, Coins, Plus, Menu,
+  Loader2
 } from "lucide-react";
-import RequestApprovalModal from "@/components/modals/RequestApprovalModal"; // <-- MODAL IMPORT ADDED
+import RequestApprovalModal, {
+  type StudentRequestData,
+} from "@/components/modals/RequestApprovalModal";
 
 // 👇 DYNAMIC DATA OBJECT (Ready for Backend Integration)
 // 👇 DYNAMIC DATA OBJECT (Updated with Modal Details)
@@ -83,29 +87,253 @@ const MENTOR_DATA = {
   ]
 };
 
+interface MentorDashboardStats {
+  totalEarnings: number;
+  rating: number;
+  uniqueStudentsTaught: number;
+  upcomingSessions: number;
+}
+
+interface PopulatedStudent {
+  _id?: string;
+  name?: string;
+  image?: string;
+  email?: string;
+}
+
+interface MentorRequest {
+  _id: string;
+  studentId?: PopulatedStudent | string;
+  subject: string;
+  scheduledAt: string;
+  duration: number;
+  createdAt?: string;
+}
+
+type RequestAction = "accept" | "reject";
+
 const fadeIn = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.3 }
 };
 
+function getStudentDetails(request: MentorRequest): PopulatedStudent {
+  return typeof request.studentId === "object" && request.studentId !== null
+    ? request.studentId
+    : {};
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function formatRequestedTime(value?: string) {
+  if (!value) return "Requested recently";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Requested recently";
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatSessionTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Time TBD";
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function toModalStudentData(request: MentorRequest): StudentRequestData {
+  const student = getStudentDetails(request);
+  const studentName = student.name || "Student";
+
+  return {
+    name: studentName,
+    initials: getInitials(studentName) || "ST",
+    tagline: `Requested help with ${request.subject}`,
+    focusScore: 88,
+    subjects: [
+      {
+        subject: request.subject,
+        grade: "In Progress",
+        percent: 80,
+      },
+    ],
+    personalMessage: `This student requested a ${request.duration}-minute mentorship session for ${request.subject}.`,
+  };
+}
+
 export function MentorDashboard() {
   const { data: session, status } = useSession();
-  const { profile, earnings, requests } = MENTOR_DATA;
+  const { profile, earnings } = MENTOR_DATA;
   const mentorName = session?.user?.name || "Mentor";
   const mentorRole = session?.user?.role
     ? `${session.user.role.charAt(0).toUpperCase()}${session.user.role.slice(1).toLowerCase()}`
     : profile.role;
   
   // 👇 MODAL STATE ADDED
+  const [stats, setStats] = useState<MentorDashboardStats>({
+    totalEarnings: 0,
+    rating: 0,
+    uniqueStudentsTaught: 0,
+    upcomingSessions: 0,
+  });
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const [requests, setRequests] = useState<MentorRequest[]>([]);
+  const [isRequestsLoading, setIsRequestsLoading] = useState(true);
+  const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [selectedRequest, setSelectedRequest] = useState<StudentRequestData | null>(null);
 
   // 👇 FUNCTION TO HANDLE CLICK
-  const handleOpenRequest = (request: any) => {
-    setSelectedRequest(request);
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchStats() {
+      try {
+        setIsStatsLoading(true);
+        const response = await fetch("/api/mentor/dashboard/stats");
+
+        if (!response.ok) {
+          throw new Error("Failed to load mentor stats.");
+        }
+
+        const data = (await response.json()) as MentorDashboardStats;
+
+        if (isActive) {
+          setStats({
+            totalEarnings: Number(data.totalEarnings ?? 0),
+            rating: Number(data.rating ?? 0),
+            uniqueStudentsTaught: Number(data.uniqueStudentsTaught ?? 0),
+            upcomingSessions: Number(data.upcomingSessions ?? 0),
+          });
+        }
+      } catch (error) {
+        if (isActive) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load mentor stats."
+          );
+        }
+      } finally {
+        if (isActive) {
+          setIsStatsLoading(false);
+        }
+      }
+    }
+
+    fetchStats();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchRequests() {
+      try {
+        setIsRequestsLoading(true);
+        const response = await fetch("/api/mentor/requests");
+
+        if (!response.ok) {
+          throw new Error("Failed to load session requests.");
+        }
+
+        const data = (await response.json()) as MentorRequest[];
+
+        if (isActive) {
+          setRequests(data);
+        }
+      } catch (error) {
+        if (isActive) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load session requests."
+          );
+        }
+      } finally {
+        if (isActive) {
+          setIsRequestsLoading(false);
+        }
+      }
+    }
+
+    fetchRequests();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const handleOpenRequest = (request: MentorRequest) => {
+    setSelectedRequest(toModalStudentData(request));
     setIsRequestModalOpen(true);
   };
+
+  const handleRespond = async (requestId: string, action: RequestAction) => {
+    try {
+      setRespondingRequestId(requestId);
+
+      const response = await fetch(`/api/sessions/${requestId}/respond`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to respond to session.");
+      }
+
+      setRequests((currentRequests) =>
+        currentRequests.filter((request) => request._id !== requestId)
+      );
+
+      if (action === "accept") {
+        setStats((currentStats) => ({
+          ...currentStats,
+          upcomingSessions: currentStats.upcomingSessions + 1,
+        }));
+        toast.success("Session Accepted!");
+      } else {
+        toast.success("Session Declined.");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to respond to session."
+      );
+    } finally {
+      setRespondingRequestId(null);
+    }
+  };
+
+  const statValue = (value: number, suffix = "") =>
+    isStatsLoading ? "..." : `${value.toLocaleString()}${suffix}`;
+  const displayRating = isStatsLoading ? "..." : stats.rating.toFixed(1);
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -133,30 +361,34 @@ export function MentorDashboard() {
             <motion.div {...fadeIn} className="glass-panel p-6 rounded-2xl border-l-4 border-l-blue-500">
               <p className="text-sm text-muted-foreground mb-2">Total Students Taught</p>
               <div className="flex items-center gap-3">
-                <span className="text-4xl font-black text-blue-500">{profile.totalStudents}+</span>
-                <div className="flex items-center gap-1 text-emerald-500 text-sm font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  <TrendingUp size={14} /> {profile.studentGrowth}%
-                </div>
+                <span className="text-4xl font-black text-blue-500">
+                  {statValue(stats.uniqueStudentsTaught)}
+                </span>
               </div>
             </motion.div>
 
             <motion.div {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel p-6 rounded-2xl border-l-4 border-l-purple-500">
-              <p className="text-sm text-muted-foreground mb-2">Session Hours</p>
+              <p className="text-sm text-muted-foreground mb-2">Upcoming Sessions</p>
               <div className="flex items-center gap-3">
-                <span className="text-4xl font-black text-purple-500">{profile.sessionHours}</span>
-                <div className="flex items-center gap-1 text-emerald-500 text-sm font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  <TrendingUp size={14} /> {profile.hoursGrowth}%
-                </div>
+                <span className="text-4xl font-black text-purple-500">
+                  {statValue(stats.upcomingSessions)}
+                </span>
               </div>
             </motion.div>
 
             <motion.div {...fadeIn} transition={{ delay: 0.2 }} className="glass-panel p-6 rounded-2xl border-l-4 border-l-yellow-500">
               <p className="text-sm text-muted-foreground mb-2">Mentor Rating</p>
               <div className="flex items-center gap-3">
-                <span className="text-4xl font-black text-yellow-500">{profile.rating}<span className="text-2xl text-muted-foreground/50 font-light">/5</span></span>
+                <span className="text-4xl font-black text-yellow-500">{displayRating}<span className="text-2xl text-muted-foreground/50 font-light">/5</span></span>
                 <div className="flex text-yellow-500">
-                  {[1,2,3,4].map((i) => <Star key={i} size={16} fill="currentColor" />)}
-                  <Star size={16} fill="currentColor" className="opacity-50" />
+                  {[1,2,3,4,5].map((i) => (
+                    <Star
+                      key={i}
+                      size={16}
+                      fill="currentColor"
+                      className={stats.rating >= i ? "" : "opacity-30"}
+                    />
+                  ))}
                 </div>
               </div>
             </motion.div>
@@ -178,50 +410,90 @@ export function MentorDashboard() {
 
             {/* Request Cards */}
             <div className="space-y-4">
-              {requests.map((request, i) => (
-                <motion.div 
-                  key={request.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + i * 0.1 }}
-                  className="glass-panel p-5 rounded-2xl hover:border-primary/30 transition-all cursor-pointer" // <-- ADDED CURSOR
-                  onClick={() => handleOpenRequest(request)} // <-- ADDED ONCLICK
-                >
-                  <div className="flex items-start gap-4 mb-4 pointer-events-none"> {/* <-- ADDED POINTER EVENTS NONE */}
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                      {request.initials}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-foreground">{request.name}</h4>
-                      <p className="text-xs text-muted-foreground mb-2">{request.subject}</p>
-                      <div className="flex gap-2">
-                        {request.tags.map((tag, j) => (
-                          <span key={j} className="text-[10px] px-2 py-0.5 bg-muted rounded font-bold uppercase text-muted-foreground">
-                            {tag}
-                          </span>
-                        ))}
+              {isRequestsLoading && (
+                <div className="glass-panel p-5 rounded-2xl text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 size={16} className="animate-spin text-primary" />
+                  Loading session requests...
+                </div>
+              )}
+
+              {!isRequestsLoading && requests.length === 0 && (
+                <div className="glass-panel p-5 rounded-2xl text-sm text-muted-foreground">
+                  No pending session requests yet.
+                </div>
+              )}
+
+              {!isRequestsLoading && requests.map((request, i) => {
+                const student = getStudentDetails(request);
+                const studentName = student.name || "Student";
+                const initials = getInitials(studentName) || "ST";
+                const isResponding = respondingRequestId === request._id;
+
+                return (
+                  <motion.div 
+                    key={request._id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.1 }}
+                    className="glass-panel p-5 rounded-2xl hover:border-primary/30 transition-all cursor-pointer"
+                    onClick={() => handleOpenRequest(request)}
+                  >
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold overflow-hidden">
+                        {student.image ? (
+                          <img
+                            src={student.image}
+                            alt={studentName}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          initials
+                        )}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-foreground truncate">{studentName}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">{request.subject}</p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="text-[10px] px-2 py-0.5 bg-muted rounded font-bold uppercase text-muted-foreground">
+                            {formatSessionTime(request.scheduledAt)}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 bg-muted rounded font-bold uppercase text-muted-foreground">
+                            {request.duration} mins
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">
+                        {formatRequestedTime(request.createdAt)}
+                      </span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground font-medium">{request.time}</span>
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    {/* Buttons trigger the same modal for now for smooth UX */}
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleOpenRequest(request); }} 
-                      className="flex-1 py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
-                    >
-                      Accept
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleOpenRequest(request); }}
-                      className="px-4 py-2.5 bg-muted text-muted-foreground text-sm font-bold rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-all"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                    
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRespond(request._id, "accept");
+                        }}
+                        disabled={isResponding}
+                        className="flex-1 py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isResponding ? <Loader2 size={14} className="animate-spin" /> : null}
+                        Accept
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRespond(request._id, "reject");
+                        }}
+                        disabled={isResponding}
+                        className="px-4 py-2.5 bg-muted text-muted-foreground text-sm font-bold rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isResponding ? <Loader2 size={14} className="animate-spin" /> : null}
+                        Decline
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
 
@@ -301,9 +573,11 @@ export function MentorDashboard() {
 
             <motion.div {...fadeIn} transition={{ delay: 0.5 }} className="glass-panel p-6 rounded-2xl">
               <div className="mb-6">
-                <p className="text-sm text-muted-foreground mb-1">Earned this week</p>
+                <p className="text-sm text-muted-foreground mb-1">Total Earnings</p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-foreground">${earnings.week.toFixed(2)}</span>
+                  <span className="text-3xl font-black text-foreground">
+                    {isStatsLoading ? "$..." : `$${stats.totalEarnings.toFixed(2)}`}
+                  </span>
                   <span className="text-sm font-medium text-muted-foreground">USD</span>
                 </div>
               </div>
