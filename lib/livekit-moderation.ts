@@ -118,6 +118,23 @@ export async function removeLiveKitParticipant({
   if (identity === requesterId) throw new Error("Hosts cannot moderate themselves");
 
   await assertHost(roomName, requesterId);
+
+  try {
+    await StudyRoom.updateOne(
+      {
+        roomId: { $regex: `^${escapeRegex(roomName)}$`, $options: "i" },
+        "waitingList.userId": identity,
+      },
+      {
+        $set: {
+          "waitingList.$.status": "declined",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Failed to update waiting list for removed participant:", error);
+  }
+
   await getLiveKitService().removeParticipant(roomName, identity);
 
   return { participantIdentity: identity };
