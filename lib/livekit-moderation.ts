@@ -91,6 +91,20 @@ async function assertHost(roomName: string, requesterId: string) {
   }
 }
 
+export async function assertLiveKitRoomHost({
+  roomId,
+  requesterId,
+}: {
+  roomId: string;
+  requesterId: string;
+}) {
+  const roomName = normalizeRoomId(roomId);
+
+  if (!roomName) throw new Error("roomId is required");
+
+  await assertHost(roomName, requesterId);
+}
+
 export async function removeLiveKitParticipant({
   roomId,
   requesterId,

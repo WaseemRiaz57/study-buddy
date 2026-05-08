@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import {
+  assertLiveKitRoomHost,
   removeLiveKitParticipant,
   setLiveKitParticipantMicrophoneMuted,
 } from "@/lib/livekit-moderation";
@@ -67,12 +68,28 @@ export async function POST(
       });
 
       return NextResponse.json({
+        success: true,
         message: "Participant removed",
         participantIdentity,
       });
     }
 
     const muted = body.muted ?? true;
+
+    if (!muted) {
+      await assertLiveKitRoomHost({
+        roomId: roomName,
+        requesterId,
+      });
+
+      return NextResponse.json({
+        success: true,
+        participantIdentity,
+        muted: false,
+        allowUnmute: true,
+      });
+    }
+
     const result = await setLiveKitParticipantMicrophoneMuted({
       roomId: roomName,
       requesterId,
@@ -82,10 +99,11 @@ export async function POST(
     });
 
     return NextResponse.json({
-      message: muted ? "Participant muted" : "Participant unmuted",
+      success: true,
+      message: "Participant muted",
       participantIdentity,
       trackSid: result.trackSid,
-      muted,
+      muted: true,
     });
   } catch (error) {
     console.error("LiveKit moderation error:", error);

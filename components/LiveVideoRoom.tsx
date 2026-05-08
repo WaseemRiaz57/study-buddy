@@ -41,6 +41,7 @@ type LiveVideoRoomProps = {
 
 type RoomControlAction =
   | "MUTE_NOTIFY"
+  | "ALLOW_UNMUTE"
   | "REQUEST_UNMUTE"
   | "UNMUTE_NOTIFY"
   | "REMOVE_NOTIFY"
@@ -48,6 +49,8 @@ type RoomControlAction =
 
 type RoomControlMessage = {
   action: RoomControlAction;
+  type?: RoomControlAction;
+  targetId?: string;
   message: string;
   redirectTo?: string;
   muteAllMode?: boolean;
@@ -360,6 +363,34 @@ export default function LiveVideoRoom({
             toast.warning(message || "You have been muted by the host.", {
               icon: <MicOff size={16} />,
             });
+            return;
+          }
+
+          const signalType = parsed.type || parsed.action;
+
+          if (signalType === "ALLOW_UNMUTE") {
+            const targetId = String(parsed.targetId || "").trim();
+
+            if (targetId && targetId !== effectiveCurrentUserId) {
+              return;
+            }
+
+            if (typeof parsed.muteAllMode === "boolean") {
+              setIsHostMuteAllMode(parsed.muteAllMode);
+            }
+
+            if (parsed.muteAllMode) {
+              toast.warning("Mute All is still enabled. You cannot unmute yet.", {
+                icon: <MicOff size={16} />,
+              });
+              return;
+            }
+
+            setIsMicLockedByHost(false);
+            toast.success(
+              message || "Host has allowed you to unmute your mic",
+              { icon: <Mic size={16} />, duration: 8000 }
+            );
             return;
           }
 
@@ -728,20 +759,33 @@ export default function LiveVideoRoom({
             roomId,
             participantIdentity,
           });
+        } else if (muted === false) {
+          await publishRoomControlMessage(
+            {
+              action: "ALLOW_UNMUTE",
+              type: "ALLOW_UNMUTE",
+              targetId: participantIdentity,
+              message: "Host has allowed you to unmute your mic",
+              muteAllMode: false,
+            },
+            [participantIdentity]
+          );
         } else {
-          await setParticipantMicrophoneMutedAction({
+          const result = await setParticipantMicrophoneMutedAction({
             roomId,
             participantIdentity,
             trackSid,
-            muted: muted ?? true,
+            muted: true,
           });
+
+          if (!result?.success) {
+            throw new Error(result?.message || "Failed to mute participant.");
+          }
 
           await publishRoomControlMessage(
             {
-              action: muted ? "MUTE_NOTIFY" : "REQUEST_UNMUTE",
-              message: muted
-                ? "You have been muted by the host."
-                : "The host is requesting you to turn your mic back on.",
+              action: "MUTE_NOTIFY",
+              message: "You have been muted by the host.",
               muteAllMode: false,
             },
             [participantIdentity]
