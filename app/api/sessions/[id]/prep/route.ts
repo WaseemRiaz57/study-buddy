@@ -8,6 +8,7 @@ import MentorSession from "@/models/MentorSession";
 const MAX_GOALS = 20;
 const MAX_GOAL_LENGTH = 300;
 const MAX_PRIVATE_NOTES_LENGTH = 5000;
+const MAX_ATTACHMENTS = 20;
 
 function normalizeGoals(goals: unknown): string[] | null {
   if (!Array.isArray(goals) || goals.length > MAX_GOALS) {
@@ -17,6 +18,26 @@ function normalizeGoals(goals: unknown): string[] | null {
   return goals
     .map((goal) => String(goal ?? "").trim().slice(0, MAX_GOAL_LENGTH))
     .filter(Boolean);
+}
+
+function normalizeAttachments(attachments: unknown) {
+  if (!Array.isArray(attachments) || attachments.length > MAX_ATTACHMENTS) {
+    return null;
+  }
+
+  const normalizedAttachments = attachments
+    .map((attachment) => {
+      const item = attachment as { url?: unknown; name?: unknown };
+      return {
+        url: String(item?.url ?? "").trim(),
+        name: String(item?.name ?? "").trim().slice(0, 200),
+      };
+    })
+    .filter((attachment) => attachment.url && attachment.name);
+
+  return normalizedAttachments.length === attachments.length
+    ? normalizedAttachments
+    : null;
 }
 
 export async function PATCH(
@@ -48,12 +69,26 @@ export async function PATCH(
       body,
       "privateNotes"
     );
+    const hasAttachments = Object.prototype.hasOwnProperty.call(
+      body,
+      "attachments"
+    );
 
     const goals = hasGoals ? normalizeGoals(body.goals) : null;
+    const attachments = hasAttachments
+      ? normalizeAttachments(body.attachments)
+      : null;
 
     if (hasGoals && !goals) {
       return NextResponse.json(
         { message: "goals must be an array of strings." },
+        { status: 400 }
+      );
+    }
+
+    if (hasAttachments && !attachments) {
+      return NextResponse.json(
+        { message: "attachments must be an array of { url, name } objects." },
         { status: 400 }
       );
     }
@@ -94,6 +129,10 @@ export async function PATCH(
 
     if (hasPrivateNotes) {
       mentorSession.privateNotes = privateNotes;
+    }
+
+    if (hasAttachments) {
+      mentorSession.attachments = attachments;
     }
 
     await mentorSession.save();

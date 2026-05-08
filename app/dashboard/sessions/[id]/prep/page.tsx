@@ -1,391 +1,550 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link"; // <-- Added this line for navigation
-import { useParams } from "next/navigation";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import {
-  Flag,
-  Paperclip,
-  FileText,
-  Download,
-  History,
-  Save,
-  RefreshCw,
-  Mic,
-  Video,
-  Rocket,
   ChevronLeft,
+  Download,
+  FileText,
+  Flag,
+  Loader2,
+  Mic,
+  Paperclip,
+  Plus,
+  Rocket,
+  Save,
+  Trash2,
+  Upload,
+  Video,
 } from "lucide-react";
 
-/* ═══════════════════════════════════════════════════════════════════ */
-/* TYPES & MOCK DATA                                                  */
-/* ═══════════════════════════════════════════════════════════════════ */
+type PopulatedUser = {
+  _id: string;
+  name?: string;
+  image?: string;
+  email?: string;
+  role?: string;
+};
 
-interface Goal {
-  id: number;
-  text: string;
-}
-
-interface Attachment {
-  id: number;
+type SessionAttachment = {
+  url: string;
   name: string;
-  size: string;
-  type: "pdf" | "doc";
-}
-
-const studentInfo = {
-  name: "Sarah J.",
-  subject: "Calculus III",
-  sessionNum: 4,
-  avatar: "SJ",
 };
 
-const goals: Goal[] = [
-  { id: 1, text: "Review Midterm problems 4-10 (Vector Fields)" },
-  { id: 2, text: "Clarify divergence theorem concepts" },
-];
-
-const attachments: Attachment[] = [
-  { id: 1, name: "Midterm_Review.pdf", size: "2.4 MB", type: "pdf" },
-  { id: 2, name: "Homework_4_Set.docx", size: "1.1 MB", type: "doc" },
-];
-
-const lastSessionNotes = {
-  body: "Sarah struggled slightly with partial derivatives. We spent extra time on the chain rule.",
-  action: "Action item: Start with a quick warm-up problem.",
+type MentorSessionDetail = {
+  _id: string;
+  studentId: PopulatedUser;
+  mentorId: PopulatedUser;
+  subject: string;
+  scheduledAt: string;
+  duration: number;
+  status: "pending" | "accepted" | "rejected" | "completed";
+  roomId?: string;
+  goals?: string[];
+  privateNotes?: string;
+  attachments?: SessionAttachment[];
 };
 
-const quickPrompts = ["Icebreaker", "Review Qs", "Wrap-up"];
-
-/* ═══════════════════════════════════════════════════════════════════ */
-/* COUNTDOWN HOOK                                                     */
-/* ═══════════════════════════════════════════════════════════════════ */
-
-function useCountdown(initialMinutes: number, initialSeconds: number) {
-  const [minutes, setMinutes] = useState(initialMinutes);
-  const [seconds, setSeconds] = useState(initialSeconds);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSeconds((prev) => {
-        if (prev === 0) {
-          if (minutes === 0) {
-            clearInterval(timer);
-            return 0;
-          }
-          setMinutes((m) => m - 1);
-          return 59;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [minutes]);
-
-  return {
-    display: `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`,
-    minutes,
-    seconds,
-  };
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
-/* SUB-COMPONENTS                                                     */
-/* ═══════════════════════════════════════════════════════════════════ */
-
-/** Goal list item */
-function GoalItem({ goal }: { goal: Goal }) {
-  return (
-    <li className="flex items-start gap-3 rounded-lg bg-slate-100 dark:bg-white/5 p-3 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
-      <div className="mt-0.5 h-4 w-4 shrink-0 rounded border border-primary/50 bg-primary/20" />
-      <span className="leading-relaxed">{goal.text}</span>
-    </li>
-  );
+function getDownloadUrl(url: string) {
+  return url.replace("/upload/", "/upload/fl_attachment/");
 }
 
-/** Attachment card */
-function AttachmentCard({ attachment }: { attachment: Attachment }) {
-  const colors =
-    attachment.type === "pdf"
-      ? "bg-red-500/20 text-red-400"
-      : "bg-blue-500/20 text-blue-400";
+function formatSessionDate(value?: string) {
+  if (!value) return "Session time TBD";
 
-  return (
-    <a
-      href="#"
-      className="group flex items-center justify-between rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] p-3 transition-all hover:bg-slate-100 dark:hover:bg-white/5 hover:border-primary/30"
-    >
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-8 w-8 items-center justify-center rounded ${colors}`}
-        >
-          <FileText className="w-4 h-4" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white">
-            {attachment.name}
-          </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">{attachment.size}</span>
-        </div>
-      </div>
-      <Download className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-primary" />
-    </a>
-  );
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Session time TBD";
+
+  return date.toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
-
-/* ═══════════════════════════════════════════════════════════════════ */
-/* MAIN PAGE                                                          */
-/* ═══════════════════════════════════════════════════════════════════ */
 
 export default function PrepRoomPage() {
   const params = useParams();
-  const sessionId = params.id as string;
+  const router = useRouter();
+  const { data: authSession } = useSession();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const sessionId = String(params.id || "");
 
-  const { display, minutes, seconds } = useCountdown(4, 23);
-  const [scratchpad, setScratchpad] = useState("");
+  const [sessionDetail, setSessionDetail] = useState<MentorSessionDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [goals, setGoals] = useState<string[]>([]);
+  const [newGoal, setNewGoal] = useState("");
+  const [privateNotes, setPrivateNotes] = useState("");
+  const [attachments, setAttachments] = useState<SessionAttachment[]>([]);
 
-  const mins = display.split(":")[0];
-  const secs = display.split(":")[1];
+  const currentUserId = authSession?.user?.id || "";
+  const isMentor = Boolean(
+    sessionDetail?.mentorId?._id && sessionDetail.mentorId._id === currentUserId
+  );
+  const canLaunch =
+    sessionDetail?.status === "accepted" && Boolean(sessionDetail?.roomId);
+
+  const studentName = sessionDetail?.studentId?.name || "Student";
+  const mentorName = sessionDetail?.mentorId?.name || "Mentor";
+  const peerName = isMentor ? studentName : mentorName;
+  const peerImage = isMentor
+    ? sessionDetail?.studentId?.image
+    : sessionDetail?.mentorId?.image;
+  const peerInitials = getInitials(peerName) || "SB";
+
+  const statusLabel = useMemo(() => {
+    if (!sessionDetail) return "Loading";
+    return sessionDetail.status.charAt(0).toUpperCase() + sessionDetail.status.slice(1);
+  }, [sessionDetail]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchSession() {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/sessions/${sessionId}`);
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to load session.");
+        }
+
+        if (isActive) {
+          const loadedSession = data as MentorSessionDetail;
+          setSessionDetail(loadedSession);
+          setGoals(loadedSession.goals ?? []);
+          setPrivateNotes(loadedSession.privateNotes ?? "");
+          setAttachments(loadedSession.attachments ?? []);
+        }
+      } catch (error) {
+        if (isActive) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load session."
+          );
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    if (sessionId) {
+      fetchSession();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [sessionId]);
+
+  async function saveChanges(nextAttachments = attachments) {
+    try {
+      setIsSaving(true);
+
+      const payload: {
+        goals: string[];
+        privateNotes?: string;
+        attachments: SessionAttachment[];
+      } = {
+        goals: goals.map((goal) => goal.trim()).filter(Boolean),
+        attachments: nextAttachments,
+      };
+
+      if (isMentor) {
+        payload.privateNotes = privateNotes;
+      }
+
+      const response = await fetch(`/api/sessions/${sessionId}/prep`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to save prep notes.");
+      }
+
+      const updatedSession = data as MentorSessionDetail;
+      setSessionDetail(updatedSession);
+      setGoals(updatedSession.goals ?? payload.goals);
+      setPrivateNotes(updatedSession.privateNotes ?? privateNotes);
+      setAttachments(updatedSession.attachments ?? nextAttachments);
+      toast.success("Notes Saved!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save prep notes."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function addGoal() {
+    const trimmedGoal = newGoal.trim();
+    if (!trimmedGoal) return;
+
+    setGoals((currentGoals) => [...currentGoals, trimmedGoal]);
+    setNewGoal("");
+  }
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/vault/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to upload file.");
+      }
+
+      const nextAttachments = [
+        ...attachments,
+        {
+          url: String(result.secure_url || ""),
+          name: String(result.fileName || file.name),
+        },
+      ];
+
+      setAttachments(nextAttachments);
+      await saveChanges(nextAttachments);
+      toast.success("File uploaded to Vault.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to upload file."
+      );
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
+    }
+  }
+
+  function launchClassroom() {
+    if (!canLaunch || !sessionDetail?.roomId) return;
+    router.push(`/dashboard/study-rooms/${sessionDetail.roomId}`);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white text-slate-600 dark:bg-slate-950 dark:text-slate-300">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />
+        Loading prep room...
+      </div>
+    );
+  }
+
+  if (!sessionDetail) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white text-center dark:bg-slate-950">
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          This session could not be loaded.
+        </p>
+        <Link
+          href="/dashboard/sessions"
+          className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white"
+        >
+          Back to Sessions
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-white selection:bg-primary selection:text-white overflow-x-hidden">
-      {/* ── Ambient background glows ───────────────────────────── */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 h-64 w-64 rounded-full bg-primary/10 blur-[100px] animate-pulse-slow" />
-        <div
-          className="absolute bottom-1/3 right-1/4 h-96 w-96 rounded-full bg-pink-500/10 blur-[120px] animate-pulse-slow"
-          style={{ animationDelay: "2s" }}
-        />
-        {/* Floating particles */}
-        <div
-          className="absolute top-[15%] left-[10%] h-1 w-1 rounded-full bg-white/30 animate-float"
-          style={{ animationDuration: "8s" }}
-        />
-        <div
-          className="absolute top-[45%] right-[20%] h-1.5 w-1.5 rounded-full bg-primary/40 animate-float"
-          style={{ animationDuration: "12s", animationDelay: "1s" }}
-        />
-        <div
-          className="absolute bottom-[20%] left-[30%] h-2 w-2 rounded-full bg-pink-500/30 animate-float"
-          style={{ animationDuration: "10s", animationDelay: "3s" }}
-        />
-      </div>
-
-      {/* ── Top bar ────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-3 lg:px-6">
+    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-white text-slate-900 selection:bg-primary selection:text-white dark:bg-slate-950 dark:text-white">
+      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur-md dark:border-white/[0.08] dark:bg-slate-900/80 lg:px-6">
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/sessions"
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="h-5 w-5" />
           </Link>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-pink-500 text-white shadow-lg shadow-primary/20">
-            <Rocket className="w-4 h-4" />
+            <Rocket className="h-4 w-4" />
           </div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-            Session Prep Room
-          </h1>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+              Session Prep Room
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {sessionDetail.subject} - {formatSessionDate(sessionDetail.scheduledAt)}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden sm:block text-sm text-slate-500 dark:text-slate-400">
-            Session #{sessionId}
-          </span>
-        </div>
+        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
+          {statusLabel}
+        </span>
       </header>
 
-      {/* ── Main 3-column grid ─────────────────────────────────── */}
       <main className="relative flex flex-grow flex-col items-center justify-center p-4 lg:p-6">
-        <div className="relative z-10 grid w-full max-w-7xl grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
-          {/* ── LEFT: Student Context ────────────────────────────── */}
-          <section className="flex flex-col overflow-hidden rounded-2xl lg:col-span-3 lg:min-h-[400px] bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/[0.08] shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
-            {/* Student header */}
-            <div className="border-b border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-white/5 p-4">
+        <div className="grid w-full max-w-7xl grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+          <section className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 shadow-[0_4px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-slate-900/60 lg:col-span-4">
+            <div className="border-b border-slate-200 bg-slate-100 p-4 dark:border-white/[0.08] dark:bg-white/5">
               <div className="flex items-center gap-4">
-                <div className="relative h-16 w-16 shrink-0">
-                  <div className="h-full w-full rounded-full bg-gradient-to-br from-primary to-purple-700 ring-2 ring-primary/50 flex items-center justify-center text-xl font-bold">
-                    {studentInfo.avatar}
-                  </div>
-                  <div className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white dark:border-slate-900 bg-green-500" />
+                <div className="h-16 w-16 overflow-hidden rounded-full bg-gradient-to-br from-primary to-purple-700 ring-2 ring-primary/50">
+                  {peerImage ? (
+                    <img
+                      src={peerImage}
+                      alt={peerName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xl font-bold text-white">
+                      {peerInitials}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                    {studentInfo.name}
+                    {peerName}
                   </h2>
                   <p className="text-sm text-primary/80">
-                    {studentInfo.subject} • Session #{studentInfo.sessionNum}
+                    {isMentor ? "Student" : "Mentor"} - {sessionDetail.subject}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Scrollable content */}
             <div className="flex flex-col gap-6 overflow-y-auto p-4">
-              {/* Goals */}
               <div>
                 <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <Flag className="w-3.5 h-3.5" />
+                  <Flag className="h-3.5 w-3.5" />
                   Today&apos;s Goals
                 </div>
-                <ul className="space-y-3">
-                  {goals.map((g) => (
-                    <GoalItem key={g.id} goal={g} />
+                <div className="space-y-3">
+                  {goals.map((goal, index) => (
+                    <div
+                      key={`${index}-${goal}`}
+                      className="flex items-center gap-2 rounded-lg bg-slate-100 p-3 dark:bg-white/5"
+                    >
+                      <input
+                        value={goal}
+                        onChange={(event) =>
+                          setGoals((currentGoals) =>
+                            currentGoals.map((item, itemIndex) =>
+                              itemIndex === index ? event.target.value : item
+                            )
+                          )
+                        }
+                        className="min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none dark:text-slate-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setGoals((currentGoals) =>
+                            currentGoals.filter((_, itemIndex) => itemIndex !== index)
+                          )
+                        }
+                        className="rounded-lg p-1 text-slate-400 hover:bg-red-500/10 hover:text-red-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   ))}
-                </ul>
+                  <div className="flex gap-2">
+                    <input
+                      value={newGoal}
+                      onChange={(event) => setNewGoal(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addGoal();
+                        }
+                      }}
+                      placeholder="Add a goal..."
+                      className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary dark:border-white/[0.08] dark:bg-black/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={addGoal}
+                      className="rounded-lg bg-primary px-3 text-white"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* Attachments */}
               <div>
-                <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <Paperclip className="w-3.5 h-3.5" />
-                  Attachments
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <Paperclip className="h-3.5 w-3.5" />
+                    Attachments
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+                  >
+                    {isUploading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
+                    Upload
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
+                    onChange={handleFileChange}
+                  />
                 </div>
                 <div className="space-y-2">
-                  {attachments.map((a) => (
-                    <AttachmentCard key={a.id} attachment={a} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Last session notes */}
-              <div>
-                <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  <History className="w-3.5 h-3.5" />
-                  Last Session Notes
-                </div>
-                <div className="rounded-lg bg-slate-100 dark:bg-black/20 p-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  <p className="mb-2">{lastSessionNotes.body}</p>
-                  <p className="italic text-slate-400 dark:text-slate-500">
-                    {lastSessionNotes.action}
-                  </p>
+                  {attachments.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
+                      No files shared for this session yet.
+                    </div>
+                  ) : (
+                    attachments.map((attachment) => (
+                      <a
+                        key={`${attachment.url}-${attachment.name}`}
+                        href={getDownloadUrl(attachment.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        download={attachment.name}
+                        className="group flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3 transition-all hover:border-primary/30 hover:bg-slate-100 dark:border-white/[0.08] dark:bg-white/[0.03] dark:hover:bg-white/5"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded bg-primary/10 text-primary">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <span className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">
+                            {attachment.name}
+                          </span>
+                        </div>
+                        <Download className="h-4 w-4 text-slate-400 group-hover:text-primary" />
+                      </a>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
           </section>
 
-          {/* ── CENTER: Countdown & Launch ────────────────────────── */}
-          <section className="flex flex-col items-center justify-center py-10 lg:col-span-6 lg:py-0">
-            {/* Session ready badge */}
-            <div className="mb-2 flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] px-4 py-1.5 backdrop-blur-sm">
-              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+          <section className="flex flex-col items-center justify-center py-10 lg:col-span-5 lg:py-0">
+            <div className="mb-3 flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 backdrop-blur-sm dark:border-white/[0.08] dark:bg-white/[0.03]">
+              <div
+                className={`h-2 w-2 rounded-full ${
+                  canLaunch ? "bg-green-500" : "bg-amber-500"
+                }`}
+              />
               <span className="text-xs font-medium uppercase tracking-widest text-slate-600 dark:text-slate-300">
-                Session Ready
+                {canLaunch ? "Session Ready" : "Waiting for acceptance"}
               </span>
             </div>
 
-            {/* Massive countdown */}
-            <h1 className="mb-2 text-center text-6xl font-bold leading-none tracking-tight text-slate-900 dark:text-white lg:text-7xl"
-                style={{ textShadow: "0 0 20px rgba(140, 48, 232, 0.5)" }}>
-              {mins}
-              <span className="animate-pulse text-slate-400 dark:text-slate-500">:</span>
-              {secs}
-            </h1>
-
-            <p className="mb-8 text-xl font-light text-slate-500 dark:text-slate-400">
-              until session starts
+            <h2 className="mb-2 text-center text-4xl font-bold tracking-tight text-slate-900 dark:text-white lg:text-5xl">
+              {sessionDetail.subject}
+            </h2>
+            <p className="mb-8 text-center text-slate-500 dark:text-slate-400">
+              {studentName} with {mentorName}
             </p>
 
-            {/* 👇 LINK TO LIVE CLASSROOM ADDED HERE */}
-            <Link href={`/dashboard/sessions/${sessionId}/live`} className="relative group">
-              <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-primary to-pink-500 opacity-70 blur-lg transition duration-200 group-hover:opacity-100 group-hover:blur-xl" />
-              <button className="relative flex h-14 min-w-[280px] cursor-pointer items-center justify-center gap-4 overflow-hidden rounded-full bg-gradient-to-r from-primary to-pink-500 px-8 text-lg font-bold text-white shadow-2xl transition-transform active:scale-95">
-                {/* Shimmer overlay */}
-                <div className="absolute inset-0 -translate-x-full animate-[shimmer-slide_3s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                <span className="relative z-10 tracking-wide">
-                  Launch Virtual Classroom
-                </span>
-                <Rocket className="relative z-10 w-6 h-6" />
-              </button>
-            </Link>
+            <button
+              type="button"
+              onClick={launchClassroom}
+              disabled={!canLaunch}
+              className="relative flex h-14 min-w-[280px] items-center justify-center gap-4 overflow-hidden rounded-full bg-gradient-to-r from-primary to-pink-500 px-8 text-lg font-bold text-white shadow-2xl transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <span className="relative z-10 tracking-wide">
+                Launch Virtual Classroom
+              </span>
+              <Rocket className="relative z-10 h-6 w-6" />
+            </button>
 
-            {/* Audio/Video check buttons */}
+            {!canLaunch && (
+              <p className="mt-3 max-w-sm text-center text-xs text-slate-500 dark:text-slate-400">
+                The classroom unlocks after the mentor accepts this session and a room is assigned.
+              </p>
+            )}
+
             <div className="mt-8 flex gap-4">
-              <button className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white">
-                <Mic className="w-4 h-4" />
+              <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">
+                <Mic className="h-4 w-4" />
                 Check Audio
               </button>
-              <button className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white">
-                <Video className="w-4 h-4" />
+              <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white">
+                <Video className="h-4 w-4" />
                 Test Video
               </button>
             </div>
           </section>
 
-          {/* ── RIGHT: Private Scratchpad ─────────────────────────── */}
-          <section className="flex flex-col overflow-hidden rounded-2xl lg:col-span-3 lg:min-h-[400px] bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/[0.08] shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-white/5 p-4">
+          <section className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 shadow-[0_4px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-slate-900/60 lg:col-span-3">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-100 p-4 dark:border-white/[0.08] dark:bg-white/5">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                 Talking Points
               </h2>
-              <span className="rounded bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
-                Private
-              </span>
+              {isMentor && (
+                <span className="rounded bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
+                  Private
+                </span>
+              )}
             </div>
 
-            {/* Textarea */}
-            <div className="relative flex-grow p-4">
-              <textarea
-                value={scratchpad}
-                onChange={(e) => setScratchpad(e.target.value)}
-                className="h-full w-full resize-none rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-black/20 p-4 text-sm leading-relaxed text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:border-primary focus:bg-slate-100 dark:focus:bg-black/30 focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder={`• Ask about the difficulty of problem #4\n• Remember to praise her progress on partial derivatives\n• Mention the upcoming mock exam next Tuesday...`}
-              />
-              {/* Save FAB */}
-              <button className="absolute bottom-8 right-8 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition-transform hover:scale-110 hover:bg-primary/90">
-                <Save className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Quick prompts */}
-            <div className="bg-slate-100 dark:bg-white/5 p-4">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span className="uppercase tracking-wider">
-                    Quick Prompts
-                  </span>
-                  <RefreshCw className="w-4 h-4 cursor-pointer hover:text-white transition-colors" />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {quickPrompts.map((prompt) => (
-                    <button
-                      key={prompt}
-                      onClick={() =>
-                        setScratchpad((prev) =>
-                          prev ? `${prev}\n• ${prompt}` : `• ${prompt}`
-                        )
-                      }
-                      className="rounded-full border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] px-3 py-1 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors"
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
+            {isMentor ? (
+              <div className="relative flex min-h-[360px] flex-grow p-4">
+                <textarea
+                  value={privateNotes}
+                  onChange={(event) => setPrivateNotes(event.target.value)}
+                  className="h-full min-h-[320px] w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 placeholder-slate-400 outline-none focus:border-primary focus:bg-slate-100 focus:ring-1 focus:ring-primary dark:border-white/[0.08] dark:bg-black/20 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:bg-black/30"
+                  placeholder="Add private talking points for this session..."
+                />
               </div>
+            ) : (
+              <div className="flex min-h-[360px] flex-grow items-center justify-center p-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                Private talking points are only visible to the mentor.
+              </div>
+            )}
+
+            <div className="border-t border-slate-200 bg-slate-100 p-4 dark:border-white/[0.08] dark:bg-white/5">
+              <button
+                type="button"
+                onClick={() => saveChanges()}
+                disabled={isSaving}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save Changes
+              </button>
             </div>
           </section>
         </div>
       </main>
-
-      {/* ── Footer Status Bar ──────────────────────────────────── */}
-      <footer className="fixed bottom-0 left-0 right-0 flex items-center justify-between border-t border-slate-200 dark:border-white/[0.08] bg-white/90 dark:bg-slate-900/90 px-4 py-2 text-xs text-slate-500 dark:text-slate-400 backdrop-blur-md z-40">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-            System Status: Optimal
-          </span>
-          <span className="hidden sm:inline">|</span>
-          <span className="hidden sm:inline">Connection: 45ms Latency</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <a href="#" className="hover:text-slate-700 dark:hover:text-slate-300">
-            Help Center
-          </a>
-          <a href="#" className="hover:text-slate-700 dark:hover:text-slate-300">
-            Report Issue
-          </a>
-        </div>
-      </footer>
     </div>
   );
 }
