@@ -16,7 +16,7 @@ type WaitingListEntry = {
 };
 
 type WaitingRoomBody = {
-  action?: "knock" | "respond";
+  action?: "knock" | "respond" | "leave" | "reset-status";
   roomId?: string;
   userId?: string;
   userName?: string;
@@ -198,8 +198,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (action === "leave" || action === "reset-status") {
+      const userId = normalizeUserId(body.userId || currentUserId);
+
+      await StudyRoom.updateOne(
+        { _id: room._id },
+        {
+          $pull: {
+            waitingList: {
+              userId,
+            },
+          },
+        }
+      );
+
+      return NextResponse.json({
+        success: true,
+        roomId,
+        userId,
+        status: "removed",
+      });
+    }
+
     return NextResponse.json(
-      { message: "Invalid action. Use 'knock' or 'respond'." },
+      { message: "Invalid action. Use 'knock', 'respond', 'leave', or 'reset-status'." },
       { status: 400 }
     );
   } catch (error) {
