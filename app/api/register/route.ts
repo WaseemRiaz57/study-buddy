@@ -2,6 +2,7 @@ import { connectMongoDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { NextResponse } from "next/server";
 import { hashPassword } from "@/lib/password";
+import Otp from "@/models/Otp";
 
 function normalizeEmail(email: unknown): string {
   return String(email || "").trim().toLowerCase();
@@ -13,11 +14,12 @@ function normalizeRole(role: unknown): "student" | "mentor" {
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, role } = await req.json();
+    const { name, email, password, role, otp } = await req.json();
     const normalizedName = String(name || "").trim();
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = String(password || "");
     const normalizedRole = normalizeRole(role);
+    const normalizedOtp = String(otp || "").trim();
 
     if (normalizedName.length < 2 || normalizedName.length > 80) {
       return NextResponse.json(
@@ -37,6 +39,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!/^\d{6}$/.test(normalizedOtp)) {
+      return NextResponse.json(
+        { message: "Invalid or expired OTP" },
+        { status: 400 }
+      );
+    }
+
     // Database connect karein
     await connectMongoDB();
 
@@ -46,6 +55,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "User already exists!" }, { status: 400 });
     }
 
+    const otpRecord = await Otp.findOne({ email: normalizedEmail });
+    if (!otpRecord || otpRecord.otp !== normalizedOtp) {
+      return NextResponse.json(
+        { message: "Invalid or expired OTP" },
+        { status: 400 }
+      );
+    }
+
     // Naya user save karein
     await User.create({
       name: normalizedName,
@@ -53,6 +70,8 @@ export async function POST(req: Request) {
       password: await hashPassword(normalizedPassword),
       role: normalizedRole,
     });
+
+    await Otp.deleteOne({ _id: otpRecord._id });
 
     return NextResponse.json({ message: "User registered successfully!" }, { status: 201 });
   } catch (error) {
