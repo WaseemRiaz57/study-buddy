@@ -245,9 +245,15 @@ export async function PUT(request: Request) {
     }
 
     if (Object.prototype.hasOwnProperty.call(body, "image")) {
-      const image = normalizeString(body.image, 1000);
-      user.image = image;
-      await User.findByIdAndUpdate(user._id, { image });
+      const newImageUrl = normalizeString(body.image, 1000);
+      const cacheBustedUrl = newImageUrl
+        ? newImageUrl.includes("?")
+          ? `${newImageUrl}&v=${Date.now()}`
+          : `${newImageUrl}?v=${Date.now()}`
+        : "";
+
+      user.image = cacheBustedUrl;
+      await User.findByIdAndUpdate(user._id, { image: cacheBustedUrl });
     }
 
     await user.save();

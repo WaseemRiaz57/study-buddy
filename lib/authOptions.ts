@@ -42,6 +42,18 @@ function normalizeEmail(email: unknown): string {
   return String(email || "").trim().toLowerCase();
 }
 
+function cacheBustImageUrl(image: unknown): string | null {
+  const imageUrl = String(image ?? "").trim();
+
+  if (!imageUrl) {
+    return null;
+  }
+
+  return imageUrl.includes("?")
+    ? `${imageUrl}&v=${Date.now()}`
+    : `${imageUrl}?v=${Date.now()}`;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -134,12 +146,25 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (session?.user) {
-            token.name = session.user.name ?? token.name;
-            token.email = session.user.email ?? token.email;
-            token.image = session.user.image ?? token.image ?? null;
-            token.role = session.user.role
-              ? normalizeRole(session.user.role)
-              : normalizeRole(token.role);
+            const sessionUser = session.user as Record<string, unknown>;
+
+            if (Object.prototype.hasOwnProperty.call(sessionUser, "name")) {
+              token.name = session.user.name ?? token.name;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(sessionUser, "email")) {
+              token.email = session.user.email ?? token.email;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(sessionUser, "image")) {
+              token.image = cacheBustImageUrl(session.user.image);
+            }
+
+            if (Object.prototype.hasOwnProperty.call(sessionUser, "role")) {
+              token.role = session.user.role
+                ? normalizeRole(session.user.role)
+                : normalizeRole(token.role);
+            }
           }
         } catch (error) {
           console.error("Error refreshing session token:", error);
