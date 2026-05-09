@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Pencil, Upload, Trash2, Save, RotateCcw } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { Loader2, Pencil, RotateCcw, Save, Trash2, Upload } from "lucide-react";
+import { toast } from "sonner";
 
-/* ------------------------------------------------------------------ */
-/* Shared input class                                                  */
-/* ------------------------------------------------------------------ */
 const inputCls = `
   block w-full rounded-lg border border-slate-300 bg-slate-50
   text-slate-900 placeholder:text-slate-400
@@ -18,244 +16,383 @@ const inputCls = `
   transition-colors
 `;
 
-/* ------------------------------------------------------------------ */
-/* Defaults (used for discard / reset)                                 */
-/* ------------------------------------------------------------------ */
 const DEFAULTS = {
   firstName: "User",
   lastName: "",
   headline: "Senior Product Designer & Mentor",
   about: "",
+  image: "",
 };
 
 const ABOUT_MAX = 500;
 
-/* ------------------------------------------------------------------ */
-/* Public Profile Page                                                 */
-/* ------------------------------------------------------------------ */
+type ProfileResponse = {
+  user?: {
+    firstName?: string;
+    lastName?: string;
+    image?: string;
+  };
+  profile?: {
+    headline?: string;
+    bio?: string;
+  } | null;
+  studentProfile?: {
+    headline?: string;
+    bio?: string;
+  } | null;
+};
+
 export default function PublicProfilePage() {
-  const { data: session, status } = useSession();
-  const [sessionDefaults, setSessionDefaults] = useState(DEFAULTS);
-  const [isHydratedFromSession, setIsHydratedFromSession] = useState(false);
+  const [profileDefaults, setProfileDefaults] = useState(DEFAULTS);
   const [firstName, setFirstName] = useState(DEFAULTS.firstName);
   const [lastName, setLastName] = useState(DEFAULTS.lastName);
   const [headline, setHeadline] = useState(DEFAULTS.headline);
-  const [about, setAbout] = useState(DEFAULTS.about);
+  const [userImage, setUserImage] = useState(DEFAULTS.image);
   const [dirty, setDirty] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const aboutRef = useRef<HTMLTextAreaElement>(null);
+  const aboutCountRef = useRef<HTMLSpanElement>(null);
 
-  const fullName = session?.user?.name || `${firstName} ${lastName}`.trim() || "User";
-  const userImage = session?.user?.image || "";
-  const avatarInitials = `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "U";
+  const fullName = `${firstName} ${lastName}`.trim() || "User";
+  const avatarInitials =
+    `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "U";
 
-  useEffect(() => {
-    if (isHydratedFromSession || status === "loading") return;
+  const markDirty = useCallback(() => {
+    setDirty((current) => current || true);
+  }, []);
 
-    const sessionName = session?.user?.name?.trim() || "User";
-    const [sessionFirstName, ...rest] = sessionName.split(" ");
-    const sessionLastName = rest.join(" ");
-
+  const applyProfile = useCallback((profileData: ProfileResponse) => {
+    const user = profileData?.user ?? {};
+    const profile = profileData?.studentProfile ?? profileData?.profile ?? {};
     const nextDefaults = {
       ...DEFAULTS,
-      firstName: sessionFirstName || "User",
-      lastName: sessionLastName || "",
+      firstName: user.firstName || "User",
+      lastName: user.lastName || "",
+      headline: profile?.headline || DEFAULTS.headline,
+      about: profile?.bio || "",
+      image: user.image || "",
     };
 
-    setSessionDefaults(nextDefaults);
     setFirstName(nextDefaults.firstName);
     setLastName(nextDefaults.lastName);
     setHeadline(nextDefaults.headline);
-    setAbout(nextDefaults.about);
+    setUserImage(nextDefaults.image);
+    setProfileDefaults(nextDefaults);
+    if (aboutRef.current) {
+      aboutRef.current.value = nextDefaults.about;
+    }
+    if (aboutCountRef.current) {
+      aboutCountRef.current.textContent = String(nextDefaults.about.length);
+    }
     setDirty(false);
-    setIsHydratedFromSession(true);
-  }, [session, status, isHydratedFromSession]);
+  }, []);
 
-  const markDirty = () => {
-    if (!dirty) setDirty(true);
-  };
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchProfile() {
+      try {
+        setIsLoadingProfile(true);
+        const response = await fetch("/api/profile", { cache: "no-store" });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to load profile.");
+        }
+
+        if (isActive) {
+          applyProfile(data);
+        }
+      } catch (error) {
+        if (isActive) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load profile."
+          );
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingProfile(false);
+        }
+      }
+    }
+
+    fetchProfile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [applyProfile]);
 
   const handleDiscard = () => {
-    setFirstName(sessionDefaults.firstName);
-    setLastName(sessionDefaults.lastName);
-    setHeadline(sessionDefaults.headline);
-    setAbout(sessionDefaults.about);
+    setFirstName(profileDefaults.firstName);
+    setLastName(profileDefaults.lastName);
+    setHeadline(profileDefaults.headline);
+    setUserImage(profileDefaults.image);
+    if (aboutRef.current) {
+      aboutRef.current.value = profileDefaults.about;
+    }
+    if (aboutCountRef.current) {
+      aboutCountRef.current.textContent = String(profileDefaults.about.length);
+    }
     setDirty(false);
   };
 
+  async function handleSave() {
+    try {
+      setIsSaving(true);
+
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          headline,
+          bio: aboutRef.current?.value ?? "",
+          image: userImage,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update profile.");
+      }
+
+      applyProfile(data?.profile ?? data);
+      toast.success("Profile Updated Successfully!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update profile."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
-    <div className="relative pb-24">
+    <main className="relative pb-24">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
       >
-        {/* ── Page Header ── */}
-        <div className="max-w-4xl mx-auto py-8 px-6 lg:px-12">
-          <div className="mb-10">
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">
+        <section
+          className="mx-auto max-w-4xl px-6 py-8 lg:px-12"
+          aria-labelledby="public-profile-heading"
+        >
+          <header className="mb-10">
+            <h1
+              id="public-profile-heading"
+              className="mb-2 text-3xl font-extrabold text-slate-900 dark:text-white"
+            >
               Public Profile
             </h1>
-            <p className="text-slate-500 dark:text-slate-400">
+            <p className="text-slate-600 dark:text-slate-300">
               Manage your public presence and how others see you on StudyBuddy.
             </p>
-          </div>
+          </header>
 
-          {/* ── Avatar / Photo Section ── */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-8 border border-slate-200 dark:border-white/10 shadow-sm mb-8 flex flex-col sm:flex-row items-center sm:items-start gap-8">
-            {/* Avatar */}
-            <div className="relative group shrink-0">
-              <div className="size-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 ring-4 ring-slate-50 dark:ring-white/5 flex items-center justify-center text-4xl font-bold text-white select-none">
+          <section
+            className="mb-8 flex flex-col items-center gap-8 rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-slate-900 sm:flex-row sm:items-start"
+            aria-labelledby="profile-photo-heading"
+          >
+            <div className="group relative shrink-0">
+              <div className="flex size-32 select-none items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-4xl font-bold text-white ring-4 ring-slate-50 dark:ring-white/5">
                 {userImage ? (
-                  <img src={userImage} alt={fullName} className="h-full w-full rounded-full object-cover" />
+                  <Image
+                    src={userImage}
+                    alt="User profile picture"
+                    width={128}
+                    height={128}
+                    priority
+                    unoptimized
+                    className="h-full w-full rounded-full object-cover"
+                  />
                 ) : (
                   avatarInitials
                 )}
               </div>
               <button
-                className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:bg-primary/90 transition-transform hover:scale-105"
-                aria-label="Edit avatar"
+                className="absolute bottom-0 right-0 rounded-full bg-primary p-2 text-white shadow-lg transition-transform hover:scale-105 hover:bg-primary/90"
+                aria-label="Edit profile picture"
               >
                 <Pencil size={16} />
               </button>
             </div>
 
-            {/* Photo info & actions */}
-            <div className="flex-1 text-center sm:text-left">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+            <article className="flex-1 text-center sm:text-left">
+              <h2
+                id="profile-photo-heading"
+                className="mb-1 text-lg font-bold text-slate-900 dark:text-white"
+              >
                 Profile Photo
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-md">
-                Update your photo. Recommended size is 400×400px.
+              </h2>
+              <p className="mb-6 max-w-md text-sm text-slate-600 dark:text-slate-300">
+                Update your photo. Recommended size is 400x400px.
               </p>
-              <div className="flex flex-wrap justify-center sm:justify-start gap-3">
-                <button className="px-4 py-2 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-lg text-sm font-semibold text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 transition-colors inline-flex items-center gap-2">
+              <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
+                <button className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
                   <Upload size={15} />
                   Upload New
                 </button>
-                <button className="px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors inline-flex items-center gap-2">
+                <button className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10">
                   <Trash2 size={15} />
                   Remove
                 </button>
               </div>
-            </div>
-          </div>
+            </article>
+          </section>
 
-          {/* ── Form Fields ── */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-8 border border-slate-200 dark:border-white/10 shadow-sm space-y-6">
-            {/* First / Last Name */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section
+            className="space-y-6 rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-slate-900"
+            aria-labelledby="profile-details-heading"
+          >
+            <h2 id="profile-details-heading" className="sr-only">
+              Profile details
+            </h2>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                <label
+                  htmlFor="first-name"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
                   First Name
                 </label>
                 <input
+                  id="first-name"
                   type="text"
                   value={firstName}
-                  onChange={(e) => {
-                    setFirstName(e.target.value);
+                  onChange={(event) => {
+                    setFirstName(event.target.value);
                     markDirty();
                   }}
                   className={inputCls}
                   placeholder="First name"
+                  aria-label="First name"
                 />
               </div>
+
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                <label
+                  htmlFor="last-name"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
                   Last Name
                 </label>
                 <input
+                  id="last-name"
                   type="text"
                   value={lastName}
-                  onChange={(e) => {
-                    setLastName(e.target.value);
+                  onChange={(event) => {
+                    setLastName(event.target.value);
                     markDirty();
                   }}
                   className={inputCls}
                   placeholder="Last name"
+                  aria-label="Last name"
                 />
               </div>
             </div>
 
-            {/* Professional Headline */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              <label
+                htmlFor="professional-headline"
+                className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+              >
                 Professional Headline
               </label>
               <input
+                id="professional-headline"
                 type="text"
                 value={headline}
-                onChange={(e) => {
-                  setHeadline(e.target.value);
+                onChange={(event) => {
+                  setHeadline(event.target.value);
                   markDirty();
                 }}
                 className={inputCls}
                 placeholder="e.g. Senior Product Designer & Mentor"
+                aria-label="Professional headline"
               />
             </div>
 
-            {/* About Me */}
             <div className="space-y-2">
               <div className="flex justify-between">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                <label
+                  htmlFor="about-me"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
                   About Me
                 </label>
-                <span className="text-xs text-slate-400">
-                  {about.length}/{ABOUT_MAX}
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  <span ref={aboutCountRef}>0</span>/{ABOUT_MAX}
                 </span>
               </div>
               <textarea
+                id="about-me"
+                ref={aboutRef}
                 rows={5}
-                value={about}
+                defaultValue={profileDefaults.about}
                 maxLength={ABOUT_MAX}
-                onChange={(e) => {
-                  setAbout(e.target.value);
+                onChange={(event) => {
+                  if (aboutCountRef.current) {
+                    aboutCountRef.current.textContent = String(
+                      event.currentTarget.value.length
+                    );
+                  }
                   markDirty();
                 }}
-                className={`block w-full rounded-lg border border-slate-300 bg-slate-50
-                  text-slate-900 placeholder:text-slate-400
-                  focus:border-primary focus:ring-primary
-                  dark:border-white/10 dark:bg-white/5 dark:text-white
-                  dark:placeholder:text-slate-500
-                  sm:text-sm p-4 resize-none transition-colors`}
+                className="block w-full resize-none rounded-lg border border-slate-300 bg-slate-50 p-4 text-slate-900 placeholder:text-slate-400 transition-colors focus:border-primary focus:ring-primary dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 sm:text-sm"
                 placeholder="Tell others about yourself..."
+                aria-label="About me"
               />
             </div>
-          </div>
-        </div>
+          </section>
+        </section>
       </motion.div>
 
-      {/* ── Sticky Bottom Action Bar ── */}
       <motion.div
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.3, type: "spring", stiffness: 260, damping: 24 }}
-        className="fixed bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-3 md:sticky md:bottom-0 md:px-0 md:pb-0 md:pt-0 md:mt-8"
+        className="fixed bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-3 md:sticky md:bottom-0 md:mt-8 md:px-0 md:pb-0 md:pt-0"
       >
-        <div className="max-w-4xl mx-auto px-6 lg:px-12">
-          <div className="flex items-center justify-between gap-4 px-6 py-4 rounded-2xl bg-white/80 border border-slate-200 backdrop-blur-xl shadow-lg shadow-slate-200/40 dark:bg-slate-900/80 dark:border-white/10 dark:shadow-black/30">
-            <p className="text-sm text-slate-500 dark:text-slate-400 hidden sm:block">
+        <div className="mx-auto max-w-4xl px-6 lg:px-12">
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/80 px-6 py-4 shadow-lg shadow-slate-200/40 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/80 dark:shadow-black/30">
+            <p className="hidden text-sm text-slate-600 dark:text-slate-300 sm:block">
               {dirty ? "You have unsaved changes" : "No unsaved changes"}
             </p>
 
-            <div className="flex items-center gap-3 ml-auto">
-              {/* Discard */}
+            <div className="ml-auto flex items-center gap-3">
               <button
                 onClick={handleDiscard}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/[0.06] transition-colors"
+                disabled={isSaving || isLoadingProfile}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/[0.06]"
               >
                 <RotateCcw size={15} />
                 Discard Changes
               </button>
 
-              {/* Save */}
-              <button className="relative flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 shadow-lg shadow-primary/25 transition-colors overflow-hidden">
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer-slide_3s_ease-in-out_infinite]" />
-                <Save size={15} className="relative z-10" />
-                <span className="relative z-10">Save Changes</span>
+              <button
+                onClick={handleSave}
+                disabled={isSaving || isLoadingProfile}
+                className="relative flex items-center gap-2 overflow-hidden rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer-slide_3s_ease-in-out_infinite]" />
+                {isSaving ? (
+                  <Loader2 size={15} className="relative z-10 animate-spin" />
+                ) : (
+                  <Save size={15} className="relative z-10" />
+                )}
+                <span className="relative z-10">
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </span>
               </button>
             </div>
           </div>
         </div>
       </motion.div>
-    </div>
+    </main>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useState, useRef, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   GraduationCap,
   Rocket,
@@ -13,6 +14,7 @@ import {
   RotateCcw,
   Brain,
   ClipboardList,
+  Loader2,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -75,18 +77,70 @@ const defaultTags = [
 
 const studyTimes = ["Mornings", "Afternoons", "Evenings", "Late Night"];
 
+const DEFAULT_STUDY_PLAN = {
+  level: "University Undergraduate",
+  goal: "build-project",
+  tags: defaultTags,
+  hours: 10,
+  times: ["Evenings", "Late Night"],
+  socratic: true,
+  strict: false,
+};
+
+type ProfileResponse = {
+  profile?: {
+    academicLevel?: string;
+    primaryGoal?: string;
+    interestedSubjects?: string[];
+    weeklyCommitment?: number;
+    preferredStudyTimes?: string[];
+    socraticAiMode?: boolean;
+    strictMentorship?: boolean;
+  } | null;
+  studentProfile?: {
+    academicLevel?: string;
+    primaryGoal?: string;
+    interestedSubjects?: string[];
+    weeklyCommitment?: number;
+    preferredStudyTimes?: string[];
+    socraticAiMode?: boolean;
+    strictMentorship?: boolean;
+  } | null;
+};
+
+function primaryGoalToId(value?: string) {
+  const normalized = String(value ?? "").toLowerCase();
+  return (
+    goals.find(
+      (goal) =>
+        goal.id === normalized ||
+        goal.label.toLowerCase() === normalized ||
+        goal.label.toLowerCase().replace(/\s+/g, "-") === normalized
+    )?.id ?? DEFAULT_STUDY_PLAN.goal
+  );
+}
+
+function primaryGoalToLabel(id: string) {
+  return goals.find((goal) => goal.id === id)?.label ?? "Build a Project";
+}
+
 /* ------------------------------------------------------------------ */
 /* Section Card wrapper                                                */
 /* ------------------------------------------------------------------ */
 function SectionCard({
+  labelledBy,
   children,
 }: {
+  labelledBy?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900">
+    <section
+      aria-labelledby={labelledBy}
+      className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900"
+    >
       {children}
-    </div>
+    </section>
   );
 }
 
@@ -96,14 +150,18 @@ function SectionCard({
 function Toggle({
   checked,
   onChange,
+  label,
 }: {
   checked: boolean;
   onChange: () => void;
+  label: string;
 }) {
   return (
     <button
+      type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       onClick={onChange}
       className={`
         relative inline-flex h-6 w-11 shrink-0 items-center rounded-full
@@ -126,21 +184,102 @@ function Toggle({
 /* ------------------------------------------------------------------ */
 export default function StudyPlanPage() {
   /* — state — */
-  const [level, setLevel] = useState("University Undergraduate");
+  const [profileDefaults, setProfileDefaults] = useState(DEFAULT_STUDY_PLAN);
+  const [level, setLevel] = useState(DEFAULT_STUDY_PLAN.level);
   const [levelOpen, setLevelOpen] = useState(false);
-  const [goal, setGoal] = useState("build-project");
-  const [tags, setTags] = useState<string[]>(defaultTags);
+  const [goal, setGoal] = useState(DEFAULT_STUDY_PLAN.goal);
+  const [tags, setTags] = useState<string[]>(DEFAULT_STUDY_PLAN.tags);
   const [tagInput, setTagInput] = useState("");
-  const [hours, setHours] = useState(10);
-  const [times, setTimes] = useState<string[]>(["Evenings", "Late Night"]);
-  const [socratic, setSocratic] = useState(true);
-  const [strict, setStrict] = useState(false);
+  const [hours, setHours] = useState(DEFAULT_STUDY_PLAN.hours);
+  const [times, setTimes] = useState<string[]>(DEFAULT_STUDY_PLAN.times);
+  const [socratic, setSocratic] = useState(DEFAULT_STUDY_PLAN.socratic);
+  const [strict, setStrict] = useState(DEFAULT_STUDY_PLAN.strict);
   const [dirty, setDirty] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const tagRef = useRef<HTMLInputElement>(null);
 
-  const markDirty = () => {
-    if (!dirty) setDirty(true);
-  };
+  const markDirty = useCallback(() => {
+    setDirty((current) => current || true);
+  }, []);
+
+  const applyProfile = useCallback((profileData: ProfileResponse) => {
+    const profile = profileData?.studentProfile ?? profileData?.profile ?? {};
+    const nextDefaults = {
+      level: profile?.academicLevel || DEFAULT_STUDY_PLAN.level,
+      goal: primaryGoalToId(profile?.primaryGoal),
+      tags:
+        Array.isArray(profile?.interestedSubjects) &&
+        profile.interestedSubjects.length > 0
+          ? profile.interestedSubjects
+          : [...DEFAULT_STUDY_PLAN.tags],
+      hours:
+        typeof profile?.weeklyCommitment === "number" &&
+        Number.isFinite(profile.weeklyCommitment)
+          ? profile.weeklyCommitment
+          : DEFAULT_STUDY_PLAN.hours,
+      times:
+        Array.isArray(profile?.preferredStudyTimes) &&
+        profile.preferredStudyTimes.length > 0
+          ? profile.preferredStudyTimes
+          : [...DEFAULT_STUDY_PLAN.times],
+      socratic:
+        typeof profile?.socraticAiMode === "boolean"
+          ? profile.socraticAiMode
+          : DEFAULT_STUDY_PLAN.socratic,
+      strict:
+        typeof profile?.strictMentorship === "boolean"
+          ? profile.strictMentorship
+          : DEFAULT_STUDY_PLAN.strict,
+    };
+
+    setProfileDefaults(nextDefaults);
+    setLevel(nextDefaults.level);
+    setGoal(nextDefaults.goal);
+    setTags(nextDefaults.tags);
+    setHours(nextDefaults.hours);
+    setTimes(nextDefaults.times);
+    setSocratic(nextDefaults.socratic);
+    setStrict(nextDefaults.strict);
+    setTagInput("");
+    setDirty(false);
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchProfile() {
+      try {
+        setIsLoadingProfile(true);
+        const response = await fetch("/api/profile", { cache: "no-store" });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to load study plan.");
+        }
+
+        if (isActive) {
+          applyProfile(data);
+        }
+      } catch (error) {
+        if (isActive) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load study plan."
+          );
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingProfile(false);
+        }
+      }
+    }
+
+    fetchProfile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [applyProfile]);
 
   /* tag helpers */
   const addTag = (value: string) => {
@@ -176,19 +315,53 @@ export default function StudyPlanPage() {
 
   /* reset */
   const discard = () => {
-    setLevel("University Undergraduate");
-    setGoal("build-project");
-    setTags([...defaultTags]);
+    setLevel(profileDefaults.level);
+    setGoal(profileDefaults.goal);
+    setTags([...profileDefaults.tags]);
     setTagInput("");
-    setHours(10);
-    setTimes(["Evenings", "Late Night"]);
-    setSocratic(true);
-    setStrict(false);
+    setHours(profileDefaults.hours);
+    setTimes([...profileDefaults.times]);
+    setSocratic(profileDefaults.socratic);
+    setStrict(profileDefaults.strict);
     setDirty(false);
   };
 
+  async function handleSave() {
+    try {
+      setIsSaving(true);
+
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          academicLevel: level,
+          primaryGoal: primaryGoalToLabel(goal),
+          interestedSubjects: tags,
+          weeklyCommitment: hours,
+          preferredStudyTimes: times,
+          socraticAiMode: socratic,
+          strictMentorship: strict,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update study plan.");
+      }
+
+      applyProfile(data?.profile ?? data);
+      toast.success("Profile Updated Successfully!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update study plan."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
-    <div className="relative pb-24 max-w-4xl mx-auto">
+    <main className="relative pb-24 max-w-4xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -196,32 +369,35 @@ export default function StudyPlanPage() {
         className="space-y-8"
       >
         {/* ── Header ── */}
-        <div>
+        <header>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             Study Plan & Goals
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
             Configure your learning objectives to get better mentor matches and
             AI recommendations.
           </p>
-        </div>
+        </header>
 
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* Section A: Learning Objectives                             */}
         {/* ═══════════════════════════════════════════════════════════ */}
-        <SectionCard>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+        <SectionCard labelledBy="learning-objectives-heading">
+          <h3 id="learning-objectives-heading" className="text-base font-semibold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-primary" />
             Learning Objectives
           </h3>
 
           {/* Academic level dropdown */}
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+          <label id="academic-level-label" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
             Current Academic Level
           </label>
           <div className="relative mb-6">
             <button
+              type="button"
               onClick={() => setLevelOpen(!levelOpen)}
+              aria-labelledby="academic-level-label"
+              aria-expanded={levelOpen}
               className={`${inputCls} flex items-center justify-between text-left cursor-pointer`}
             >
               <span>{level}</span>
@@ -265,19 +441,23 @@ export default function StudyPlanPage() {
           </div>
 
           {/* Primary goal cards */}
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+          <label id="primary-goal-label" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
             Primary Goal
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-labelledby="primary-goal-label">
             {goals.map((g) => {
               const active = goal === g.id;
               return (
                 <button
                   key={g.id}
+                  type="button"
                   onClick={() => {
                     setGoal(g.id);
                     markDirty();
                   }}
+                  role="radio"
+                  aria-checked={active}
+                  aria-label={`Primary goal: ${g.label}`}
                   className={`
                     group relative flex flex-col items-center gap-2 p-5 rounded-xl border-2
                     text-center transition-all duration-200
@@ -341,13 +521,13 @@ export default function StudyPlanPage() {
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* Section B: Subject Interests                               */}
         {/* ═══════════════════════════════════════════════════════════ */}
-        <SectionCard>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+        <SectionCard labelledBy="subject-interests-heading">
+          <h3 id="subject-interests-heading" className="text-base font-semibold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
             <Search className="w-4 h-4 text-primary" />
             Subject Interests
           </h3>
 
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+          <label htmlFor="subject-interest-input" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
             What do you want to learn?
           </label>
 
@@ -391,10 +571,12 @@ export default function StudyPlanPage() {
             </AnimatePresence>
 
             <input
+              id="subject-interest-input"
               ref={tagRef}
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={handleTagKey}
+              aria-label="Subject interests"
               placeholder={
                 tags.length === 0
                   ? "Type a subject and press enter..."
@@ -415,14 +597,14 @@ export default function StudyPlanPage() {
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* Section C: Weekly Routine & Availability                    */}
         {/* ═══════════════════════════════════════════════════════════ */}
-        <SectionCard>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+        <SectionCard labelledBy="weekly-routine-heading">
+          <h3 id="weekly-routine-heading" className="text-base font-semibold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
             <ClipboardList className="w-4 h-4 text-primary" />
             Weekly Routine & Availability
           </h3>
 
           {/* Time commitment slider */}
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+          <label htmlFor="weekly-commitment" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
             Weekly Time Commitment
           </label>
 
@@ -445,10 +627,16 @@ export default function StudyPlanPage() {
             </div>
 
             <input
+              id="weekly-commitment"
               type="range"
               min={1}
               max={40}
               value={hours}
+              aria-label="Weekly Time Commitment"
+              aria-valuemin={1}
+              aria-valuemax={40}
+              aria-valuenow={hours}
+              aria-valuetext={`${hours} hours per week`}
               onChange={(e) => {
                 setHours(Number(e.target.value));
                 markDirty();
@@ -477,8 +665,11 @@ export default function StudyPlanPage() {
               const active = times.includes(t);
               return (
                 <button
+                  type="button"
                   key={t}
                   onClick={() => toggleTime(t)}
+                  aria-pressed={active}
+                  aria-label={`Preferred study time: ${t}`}
                   className={`
                     px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200
                     ${
@@ -498,8 +689,8 @@ export default function StudyPlanPage() {
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* Section D: Mentorship & AI Preferences                     */}
         {/* ═══════════════════════════════════════════════════════════ */}
-        <SectionCard>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+        <SectionCard labelledBy="ai-preferences-heading">
+          <h3 id="ai-preferences-heading" className="text-base font-semibold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
             <Brain className="w-4 h-4 text-primary" />
             Mentorship & AI Preferences
           </h3>
@@ -519,6 +710,7 @@ export default function StudyPlanPage() {
               <div className="pt-0.5">
                 <Toggle
                   checked={socratic}
+                  label="Toggle Socratic AI Mode"
                   onChange={() => {
                     setSocratic(!socratic);
                     markDirty();
@@ -529,7 +721,7 @@ export default function StudyPlanPage() {
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   Socratic AI Mode
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
                   AI will ask guiding questions instead of giving direct answers.
                 </p>
               </div>
@@ -549,6 +741,7 @@ export default function StudyPlanPage() {
               <div className="pt-0.5">
                 <Toggle
                   checked={strict}
+                  label="Toggle Strict Mentorship"
                   onChange={() => {
                     setStrict(!strict);
                     markDirty();
@@ -559,7 +752,7 @@ export default function StudyPlanPage() {
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   Strict Mentorship
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
                   Prefer mentors who assign heavy homework and strict deadlines.
                 </p>
               </div>
@@ -595,12 +788,13 @@ export default function StudyPlanPage() {
             {/* Discard */}
             <button
               onClick={discard}
+              disabled={isSaving || isLoadingProfile}
               className="
                 flex items-center gap-2 px-5 py-2.5 rounded-xl
                 border border-slate-200 text-sm font-medium
                 text-slate-600 hover:bg-slate-50
                 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/[0.06]
-                transition-colors
+                transition-colors disabled:cursor-not-allowed disabled:opacity-60
               "
             >
               <RotateCcw size={15} />
@@ -609,12 +803,15 @@ export default function StudyPlanPage() {
 
             {/* Save */}
             <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving || isLoadingProfile}
               className="
                 relative flex items-center gap-2 px-6 py-2.5 rounded-xl
                 bg-primary text-white text-sm font-semibold
                 hover:bg-primary/90
                 shadow-lg shadow-primary/25
-                transition-colors overflow-hidden
+                transition-colors overflow-hidden disabled:cursor-not-allowed disabled:opacity-70
               "
             >
               {/* Glow sweep */}
@@ -625,12 +822,18 @@ export default function StudyPlanPage() {
                   -translate-x-full animate-[shimmer-slide_3s_ease-in-out_infinite]
                 "
               />
-              <Save size={15} className="relative z-10" />
-              <span className="relative z-10">Save Preferences</span>
+              {isSaving ? (
+                <Loader2 size={15} className="relative z-10 animate-spin" />
+              ) : (
+                <Save size={15} className="relative z-10" />
+              )}
+              <span className="relative z-10">
+                {isSaving ? "Saving..." : "Save Preferences"}
+              </span>
             </button>
           </div>
         </div>
       </motion.div>
-    </div>
+    </main>
   );
 }

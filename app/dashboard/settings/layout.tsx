@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
@@ -81,7 +82,15 @@ function MiniProfile({ role }: { role: "student" | "mentor" }) {
       <div className="flex items-center gap-4">
         <div className="size-14 shrink-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg border-2 border-white dark:border-slate-800 shadow-md">
           {userImage ? (
-            <img src={userImage} alt={fullName} className="h-full w-full rounded-full object-cover" />
+            <Image
+              src={userImage}
+              alt="User profile picture"
+              width={56}
+              height={56}
+              priority
+              unoptimized
+              className="h-full w-full rounded-full object-cover"
+            />
           ) : (
             initials
           )}
