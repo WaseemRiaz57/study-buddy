@@ -114,6 +114,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const [liveKitRoomName, setLiveKitRoomName] = useState<string>("");
   const [isRoomLoading, setIsRoomLoading] = useState(true);
   const [joinStatus, setJoinStatus] = useState<JoinStatus>("checking");
+  const [isStudyBuddyRoom, setIsStudyBuddyRoom] = useState(false);
   const knockToastIdsRef = useRef<Set<string>>(new Set());
   const participantPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hostPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -137,6 +138,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
       setApiCurrentUserId(fetchedCurrentUserId);
       setLiveKitRoomName(String(data?.roomName || normalizedRoomId).trim());
+      setIsStudyBuddyRoom(Boolean(data?.isStudyBuddyRoom));
       setRoomTopic(
         typeof room?.title === "string"
           ? room.title
@@ -221,7 +223,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
           String(fetchedCurrentUserId || "").trim() ===
           String(fetchedHostId || "").trim();
 
-        if (isHost) {
+        if (isHost || Boolean(data?.isStudyBuddyRoom)) {
           setJoinStatus("admitted");
           setIsRoomLoading(false);
           void fetchLiveKitToken();

@@ -64,6 +64,7 @@ interface IncomingRequest {
 interface AcceptedRequestConnection {
   _id: string;
   subject?: string;
+  roomId?: string;
   recipient?: {
     name?: string;
   };
@@ -97,6 +98,8 @@ export default function StudyBuddyPage() {
   const [acceptedConnection, setAcceptedConnection] =
     useState<AcceptedRequestConnection | null>(null);
   const [acceptedRoomId, setAcceptedRoomId] = useState<string | null>(null);
+  const [isCancellingActiveSession, setIsCancellingActiveSession] =
+    useState(false);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -539,6 +542,43 @@ export default function StudyBuddyPage() {
     setActiveSessionId(null);
   };
 
+  const handleCancelActiveSession = async ({
+    connectionId,
+    roomId,
+  }: {
+    connectionId?: string;
+    roomId?: string;
+  }) => {
+    try {
+      setIsCancellingActiveSession(true);
+
+      const response = await fetch("/api/study-buddy/active", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId, roomId }),
+      });
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to cancel session.");
+      }
+
+      setAcceptedConnection(null);
+      setAcceptedRoomId(null);
+      setActiveSessionId(null);
+      setMatchedPeerData({ name: "", image: "", tags: [] });
+      stopStatusPolling();
+      toast.success("Session cancelled");
+      void fetchActiveListings();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to cancel session."
+      );
+    } finally {
+      setIsCancellingActiveSession(false);
+    }
+  };
+
   // ─── Cleanup on unmount ───
   useEffect(() => {
     return () => {
@@ -567,15 +607,36 @@ export default function StudyBuddyPage() {
                     Your request was accepted!
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.push(`/dashboard/study-rooms/${acceptedConnection._id}`)
-                  }
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
-                >
-                  Join Video Room
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        `/dashboard/study-rooms/${
+                          acceptedConnection.roomId || acceptedConnection._id
+                        }`
+                      )
+                    }
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                    aria-label="Join active video room"
+                  >
+                    Join Video Room
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handleCancelActiveSession({
+                        connectionId: acceptedConnection._id,
+                        roomId: acceptedConnection.roomId,
+                      })
+                    }
+                    disabled={isCancellingActiveSession}
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-300 dark:hover:bg-red-500/10"
+                    aria-label="Cancel active session"
+                  >
+                    {isCancellingActiveSession ? "Cancelling..." : "Cancel"}
+                  </button>
+                </div>
               </div>
             </div>
           </section>
@@ -593,15 +654,31 @@ export default function StudyBuddyPage() {
                     Your study buddy accepted the request.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.push(`/dashboard/study-rooms/${acceptedRoomId}`)
-                  }
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-colors"
-                >
-                  Join Study Room
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(`/dashboard/study-rooms/${acceptedRoomId}`)
+                    }
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+                    aria-label="Join accepted study room"
+                  >
+                    Join Study Room
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handleCancelActiveSession({
+                        roomId: acceptedRoomId,
+                      })
+                    }
+                    disabled={isCancellingActiveSession}
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-300 dark:hover:bg-red-500/10"
+                    aria-label="Cancel active session"
+                  >
+                    {isCancellingActiveSession ? "Cancelling..." : "Cancel"}
+                  </button>
+                </div>
               </div>
             </div>
           </section>

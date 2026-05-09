@@ -87,6 +87,7 @@ export async function GET(
 
     const hostId = resolveRoomHostId(room);
     const isHost = Boolean(hostId && currentUserId === hostId);
+    const isStudyBuddyRoom = normalizedRoomId.startsWith("SB-");
 
     if (metadataOnly) {
       return NextResponse.json(
@@ -96,6 +97,7 @@ export async function GET(
           currentUserId,
           hostId,
           isHost,
+          isStudyBuddyRoom,
         },
         { status: 200 }
       );
@@ -136,6 +138,7 @@ export async function GET(
         currentUserId,
         hostId,
         isHost,
+        isStudyBuddyRoom,
         token,
         liveKitUrl,
       },

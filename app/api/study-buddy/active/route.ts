@@ -80,22 +80,24 @@ export async function DELETE(request: Request) {
       await room.save();
     }
 
-    const matchQuery: Record<string, unknown> = {
-      status: { $in: ["Searching", "Pending", "Connected"] },
-    };
+    if (room?._id || userObjectId) {
+      const matchQuery: Record<string, unknown> = {
+        status: { $in: ["Searching", "Pending", "Connected"] },
+      };
 
-    if (room?._id) {
-      matchQuery.roomId = room._id;
-    } else if (userObjectId) {
-      matchQuery.$or = [
-        { studentId: userObjectId },
-        { matchedPeerId: userObjectId },
-      ];
+      if (room?._id) {
+        matchQuery.roomId = room._id;
+      } else if (userObjectId) {
+        matchQuery.$or = [
+          { studentId: userObjectId },
+          { matchedPeerId: userObjectId },
+        ];
+      }
+
+      await BuddyMatch.updateMany(matchQuery, {
+        $set: { status: "Rejected" },
+      });
     }
-
-    await BuddyMatch.updateMany(matchQuery, {
-      $set: { status: "Rejected" },
-    });
 
     return NextResponse.json({
       ok: true,
