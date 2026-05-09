@@ -23,6 +23,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: Role;
+    image?: string | null;
   }
 }
 
@@ -114,7 +115,33 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      if (trigger === "update") {
+        try {
+          await connectMongoDB();
+          const dbUser = token.id
+            ? await User.findById(token.id).lean()
+            : token.email
+              ? await User.findOne({ email: token.email }).lean()
+              : null;
+
+          if (dbUser) {
+            token.id = String(dbUser._id);
+            token.email = dbUser.email;
+            token.name = dbUser.name;
+            token.image = dbUser.image ?? null;
+            token.role = normalizeRole(dbUser.role);
+          } else if (session?.user) {
+            token.name = session.user.name ?? token.name;
+            token.email = session.user.email ?? token.email;
+            token.image = session.user.image ?? token.image ?? null;
+            token.role = normalizeRole(session.user.role ?? token.role);
+          }
+        } catch (error) {
+          console.error("Error refreshing session token:", error);
+        }
+      }
+
       if (user) {
         await connectMongoDB();
         const dbUser = await User.findOne({ email: user.email }).lean();
@@ -123,11 +150,13 @@ export const authOptions: NextAuthOptions = {
           token.id = String(dbUser._id);
           token.email = dbUser.email;
           token.name = dbUser.name;
+          token.image = dbUser.image ?? null;
           token.role = normalizeRole(dbUser.role);
         } else {
           token.id = user.id;
           token.email = user.email;
           token.name = user.name;
+          token.image = user.image ?? null;
           token.role = normalizeRole((user as { role?: unknown }).role);
         }
       }
@@ -140,6 +169,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id;
         session.user.email = token.email ?? null;
         session.user.name = token.name ?? null;
+        session.user.image = token.image ?? null;
         session.user.role = normalizeRole(token.role);
       }
       return session;

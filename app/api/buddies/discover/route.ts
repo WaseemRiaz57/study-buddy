@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-guard";
 import { connectMongoDB } from "@/lib/mongodb";
 import BuddyConnection from "@/models/BuddyConnection";
+import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
 
 export const dynamic = 'force-dynamic';
@@ -45,14 +46,6 @@ export async function GET(req: NextRequest) {
       currentStudyTopic: subject,
     });
 
-    const subjectMatcher = new RegExp(escapeRegex(subject), "i");
-    const interestQuery = {
-      $or: [
-        { subjects: subjectMatcher },
-        { currentStudyTopic: subjectMatcher },
-      ],
-    };
-
     // User ke saray connections dhoondo
     const existingConnections = await BuddyConnection.find({
       $or: [{ requester: currentUserId }, { recipient: currentUserId }],
@@ -80,29 +73,42 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const buddies = await User.find(
-      {
-        _id: { $nin: Array.from(excludedUserIds) },
-        role: "student",
-        isOnline: true,
-        ...interestQuery,
-      },
-      {
-        name: 1,
-        image: 1,
-        subjects: 1,
-        currentStudyTopic: 1,
-        isOnline: 1,
-      }
-    )
+    const subjectMatcher = new RegExp(escapeRegex(subject), "i");
+    const matchedProfiles = await StudentProfile.find({
+      userId: { $nin: Array.from(excludedUserIds) },
+      interestedSubjects: subjectMatcher,
+    })
+      .populate("userId", "name image email role isOnline currentStudyTopic subjects")
       .sort({ updatedAt: -1 })
       .lean();
 
     // Frontend ke liye har user ke sath uska "requestStatus" attach karein
-    const formattedBuddies = buddies.map(buddy => {
+    const formattedBuddies = matchedProfiles.flatMap((profile) => {
+      const buddy =
+        profile.userId && typeof profile.userId === "object"
+          ? profile.userId
+          : null;
+
+      if (
+        !buddy ||
+        String(buddy.role).toLowerCase() !== "student" ||
+        buddy.isOnline !== true
+      ) {
+        return [];
+      }
+
       return {
-        ...buddy,
-        requestStatus: pendingSentUserIds.has(String(buddy._id)) ? "pending" : "none"
+        _id: String(buddy._id),
+        name: buddy.name || "Study Buddy",
+        email: buddy.email || "",
+        image: buddy.image || "",
+        subjects: profile.interestedSubjects || [],
+        interestedSubjects: profile.interestedSubjects || [],
+        currentStudyTopic: buddy.currentStudyTopic || "",
+        isOnline: buddy.isOnline,
+        requestStatus: pendingSentUserIds.has(String(buddy._id))
+          ? "pending"
+          : "none",
       };
     });
 

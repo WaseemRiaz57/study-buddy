@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useSession } from "next-auth/react";
 import {
   type ChangeEvent,
   useCallback,
@@ -49,6 +50,7 @@ type ProfileResponse = {
 };
 
 export default function PublicProfilePage() {
+  const { update } = useSession();
   const [profileDefaults, setProfileDefaults] = useState(DEFAULTS);
   const [firstName, setFirstName] = useState(DEFAULTS.firstName);
   const [lastName, setLastName] = useState(DEFAULTS.lastName);
@@ -168,6 +170,7 @@ export default function PublicProfilePage() {
       }
 
       applyProfile(data?.profile ?? data);
+      await update();
       toast.success("Profile Updated Successfully!");
     } catch (error) {
       toast.error(
@@ -205,6 +208,12 @@ export default function PublicProfilePage() {
 
       setUserImage(nextImage);
       markDirty();
+      await update({
+        user: {
+          name: fullName,
+          image: nextImage,
+        },
+      });
       toast.success("Photo uploaded! Don't forget to save changes");
     } catch (error) {
       toast.error(

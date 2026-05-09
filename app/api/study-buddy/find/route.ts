@@ -5,8 +5,13 @@ import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
 import { createStudyBuddyMatchRoom } from "@/lib/study-buddy-match-room";
 import BuddyMatch from "@/models/BuddyMatch";
+import StudentProfile from "@/models/StudentProfile";
 import StudyProfile from "@/models/StudyProfile";
 import User from "@/models/User";
+
+function escapeRegex(input: string) {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export async function POST(request: Request) {
   try {
@@ -113,6 +118,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const currentStudentProfile = await StudentProfile.findOne({
+      userId: currentUserObjectId,
+    })
+      .select("interestedSubjects")
+      .lean();
+    const currentInterestedSubjects =
+      currentStudentProfile?.interestedSubjects || [];
+
     await StudyProfile.findOneAndUpdate(
       { userId: currentUserId },
       {
@@ -123,19 +136,32 @@ export async function POST(request: Request) {
           isLookingForMatch: true,
           currentSubject: subject,
           currentTopic: topic,
-        },
-        $setOnInsert: {
-          tags: [],
+          tags: currentInterestedSubjects,
         },
       },
       { upsert: true, new: true }
     );
 
+    const subjectMatcher = new RegExp(escapeRegex(subject), "i");
+    const interestedProfiles = await StudentProfile.find({
+      userId: { $ne: currentUserObjectId },
+      interestedSubjects: subjectMatcher,
+    })
+      .select("userId")
+      .lean();
+    const interestedUserIds = interestedProfiles
+      .map((profile) => String(profile.userId))
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
     const matchedBuddy = await BuddyMatch.findOneAndUpdate(
       {
         status: "Searching",
         subject,
-        studentId: { $ne: currentUserObjectId },
+        studentId:
+          interestedUserIds.length > 0
+            ? { $in: interestedUserIds }
+            : { $ne: currentUserObjectId },
       },
       {
         $set: {

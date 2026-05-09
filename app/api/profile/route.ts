@@ -263,6 +263,16 @@ export async function PUT(request: Request) {
           setDefaultsOnInsert: true,
         }
       );
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          studentProfileUpdate,
+          "interestedSubjects"
+        )
+      ) {
+        user.subjects = studentProfileUpdate.interestedSubjects;
+        await user.save();
+      }
     }
 
     const updatedProfile = await buildProfileResponse(session.user.id);
