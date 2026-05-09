@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
 import BuddyMatch from "@/models/BuddyMatch";
 
+export const dynamic = "force-dynamic";
+
 function serializeListing(listing: any) {
   const student =
     listing.studentId && typeof listing.studentId === "object"

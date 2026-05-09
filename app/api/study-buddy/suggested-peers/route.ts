@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
 import StudyProfile from "@/models/StudyProfile";
 
+export const dynamic = "force-dynamic";
+
 function normalizeTag(tag: unknown): string {
   return String(tag || "").trim().toLowerCase();
 }

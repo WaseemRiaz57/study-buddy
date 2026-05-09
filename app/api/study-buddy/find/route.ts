@@ -9,6 +9,8 @@ import StudentProfile from "@/models/StudentProfile";
 import StudyProfile from "@/models/StudyProfile";
 import User from "@/models/User";
 
+export const dynamic = "force-dynamic";
+
 function escapeRegex(input: string) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

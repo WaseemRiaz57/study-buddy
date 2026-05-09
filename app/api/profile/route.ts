@@ -245,7 +245,9 @@ export async function PUT(request: Request) {
     }
 
     if (Object.prototype.hasOwnProperty.call(body, "image")) {
-      user.image = normalizeString(body.image, 1000);
+      const image = normalizeString(body.image, 1000);
+      user.image = image;
+      await User.findByIdAndUpdate(user._id, { image });
     }
 
     await user.save();
