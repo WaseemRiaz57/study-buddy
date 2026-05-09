@@ -131,11 +131,15 @@ export const authOptions: NextAuthOptions = {
             token.name = dbUser.name;
             token.image = dbUser.image ?? null;
             token.role = normalizeRole(dbUser.role);
-          } else if (session?.user) {
+          }
+
+          if (session?.user) {
             token.name = session.user.name ?? token.name;
             token.email = session.user.email ?? token.email;
             token.image = session.user.image ?? token.image ?? null;
-            token.role = normalizeRole(session.user.role ?? token.role);
+            token.role = session.user.role
+              ? normalizeRole(session.user.role)
+              : normalizeRole(token.role);
           }
         } catch (error) {
           console.error("Error refreshing session token:", error);
