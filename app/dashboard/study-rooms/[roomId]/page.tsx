@@ -566,6 +566,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
       currentUserId={currentUserId}
       userName={currentUserName}
       hostId={roomHostId}
+      autoJoin={isStudyBuddyRoom}
       isHost={Boolean((apiCurrentUserId || sessionUserId || guestUserId) && roomHostId && (apiCurrentUserId || sessionUserId || guestUserId) === roomHostId)}
       renderAction={(liveRoom: LiveVideoRoomRenderState) => (
         (() => {

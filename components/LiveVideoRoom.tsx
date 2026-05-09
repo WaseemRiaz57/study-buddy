@@ -36,6 +36,7 @@ type LiveVideoRoomProps = {
   userName?: string;
   hostId?: string;
   userId?: string;
+  autoJoin?: boolean;
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
 };
 
@@ -152,6 +153,7 @@ export default function LiveVideoRoom({
   userName,
   hostId,
   userId,
+  autoJoin = false,
   renderAction,
 }: LiveVideoRoomProps) {
   const router = useRouter();
@@ -276,6 +278,11 @@ export default function LiveVideoRoom({
     if (!previewVideoRef.current || !localStream || hasJoined) return;
     previewVideoRef.current.srcObject = localStream;
   }, [hasJoined, localStream]);
+
+  useEffect(() => {
+    if (!autoJoin || hasJoined || !token || !liveKitUrl) return;
+    setHasJoined(true);
+  }, [autoJoin, hasJoined, liveKitUrl, token]);
 
   useEffect(() => {
     if (!hasJoined || !roomId || !token || !liveKitUrl) return;
