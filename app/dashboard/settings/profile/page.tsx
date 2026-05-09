@@ -1,7 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { motion } from "framer-motion";
 import { Loader2, Pencil, RotateCcw, Save, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -51,8 +57,10 @@ export default function PublicProfilePage() {
   const [dirty, setDirty] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const aboutRef = useRef<HTMLTextAreaElement>(null);
   const aboutCountRef = useRef<HTMLSpanElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fullName = `${firstName} ${lastName}`.trim() || "User";
   const avatarInitials =
@@ -170,6 +178,44 @@ export default function PublicProfilePage() {
     }
   }
 
+  async function handleImageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingImage(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/vault/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to upload profile photo.");
+      }
+
+      const nextImage = String(data?.secure_url || "");
+      if (!nextImage) {
+        throw new Error("Upload succeeded, but no image URL was returned.");
+      }
+
+      setUserImage(nextImage);
+      markDirty();
+      toast.success("Photo uploaded! Don't forget to save changes");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to upload profile photo."
+      );
+    } finally {
+      setIsUploadingImage(false);
+      event.target.value = "";
+    }
+  }
+
   return (
     <main className="relative pb-24">
       <motion.div
@@ -214,10 +260,17 @@ export default function PublicProfilePage() {
                 )}
               </div>
               <button
-                className="absolute bottom-0 right-0 rounded-full bg-primary p-2 text-white shadow-lg transition-transform hover:scale-105 hover:bg-primary/90"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingImage}
+                className="absolute bottom-0 right-0 rounded-full bg-primary p-2 text-white shadow-lg transition-transform hover:scale-105 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
                 aria-label="Edit profile picture"
               >
-                <Pencil size={16} />
+                {isUploadingImage ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Pencil size={16} />
+                )}
               </button>
             </div>
 
@@ -232,11 +285,36 @@ export default function PublicProfilePage() {
                 Update your photo. Recommended size is 400x400px.
               </p>
               <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
-                <button className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
-                  <Upload size={15} />
-                  Upload New
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  aria-label="Upload profile photo"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                >
+                  {isUploadingImage ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Upload size={15} />
+                  )}
+                  {isUploadingImage ? "Uploading..." : "Upload New"}
                 </button>
-                <button className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserImage("");
+                    markDirty();
+                  }}
+                  disabled={isUploadingImage}
+                  className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70 dark:text-red-400 dark:hover:bg-red-500/10"
+                >
                   <Trash2 size={15} />
                   Remove
                 </button>
@@ -367,7 +445,7 @@ export default function PublicProfilePage() {
             <div className="ml-auto flex items-center gap-3">
               <button
                 onClick={handleDiscard}
-                disabled={isSaving || isLoadingProfile}
+                disabled={isSaving || isLoadingProfile || isUploadingImage}
                 className="flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/[0.06]"
               >
                 <RotateCcw size={15} />
@@ -376,7 +454,7 @@ export default function PublicProfilePage() {
 
               <button
                 onClick={handleSave}
-                disabled={isSaving || isLoadingProfile}
+                disabled={isSaving || isLoadingProfile || isUploadingImage}
                 className="relative flex items-center gap-2 overflow-hidden rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer-slide_3s_ease-in-out_infinite]" />
