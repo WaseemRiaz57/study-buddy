@@ -147,6 +147,7 @@ export default function MentorshipSetupPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isReviewAnimationPaused, setIsReviewAnimationPaused] = useState(false);
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [hasExistingProfile, setHasExistingProfile] = useState(false);
@@ -223,6 +224,19 @@ export default function MentorshipSetupPage() {
 
     return () => {
       active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsReviewAnimationPaused(document.visibilityState === "hidden");
+    };
+
+    handleVisibilityChange();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -431,44 +445,97 @@ export default function MentorshipSetupPage() {
       <main className="py-8 md:py-12">
         <section
           aria-labelledby="under-review-heading"
-          className="flex min-h-[620px] items-center justify-center rounded-3xl border border-purple-200 bg-white p-8 text-center shadow-sm dark:border-purple-500/30 dark:bg-slate-900"
+          className="flex min-h-[680px] items-center justify-center rounded-3xl border border-purple-200 bg-white px-6 py-10 text-center shadow-sm dark:border-purple-500/30 dark:bg-slate-900"
         >
-          <div className="max-w-xl">
-            <div className="mx-auto flex h-28 w-28 animate-pulse items-center justify-center rounded-full border-4 border-[#7C3AED] bg-[#7C3AED]/10 shadow-[0_0_50px_rgba(124,58,237,0.25)]">
-              <ShieldCheck className="h-12 w-12 text-[#7C3AED]" aria-hidden="true" />
+          <article className="flex min-h-[560px] w-full max-w-2xl flex-col items-center justify-center">
+            <div
+              className={`review-pulse-wrap relative flex h-40 w-40 shrink-0 items-center justify-center ${
+                isReviewAnimationPaused ? "review-animation-paused" : ""
+              }`}
+              aria-hidden="true"
+            >
+              <div className="pulse-circle h-24 w-24 rounded-full border-2 border-[#7C3AED]" />
+              <div className="pulse-circle pulse-circle-delayed h-24 w-24 rounded-full border-2 border-[#7C3AED]" />
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#7C3AED] bg-[#7C3AED]/10 shadow-[0_0_36px_rgba(124,58,237,0.20)]">
+                <ShieldCheck className="h-9 w-9 text-[#7C3AED]" aria-hidden="true" />
+              </div>
             </div>
-            <h1
-              id="under-review-heading"
-              className="mt-8 text-4xl font-black tracking-tight text-slate-900 dark:text-white"
-            >
-              Your wisdom is under review.
-            </h1>
-            <p className="mt-4 text-lg leading-8 text-slate-600 dark:text-slate-300">
-              Our admin team is verifying your certificates and mentorship
-              details. Once approved, your profile will appear in the Mentor
-              Marketplace for students to book.
-            </p>
-            <button
-              type="button"
-              aria-label="Edit mentor application"
-              onClick={() => {
-                setSubmitted(false);
-                setIsEditing(true);
-              }}
-              className="mt-8 inline-flex items-center gap-2 rounded-xl border border-[#7C3AED] px-5 py-3 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-[#7C3AED] hover:text-white"
-            >
-              <FileText size={16} aria-hidden="true" />
-              Edit Application
-            </button>
-            <Link
-              href="/dashboard/settings"
-              aria-label="Back to settings"
-              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-600 transition-colors hover:border-[#7C3AED] hover:text-[#7C3AED] dark:border-white/10 dark:text-slate-300"
-            >
-              <ArrowLeft size={16} aria-hidden="true" />
-              Back to Settings
-            </Link>
-          </div>
+
+            <header className="mt-8 min-h-[148px] max-w-xl">
+              <h1
+                id="under-review-heading"
+                className="text-4xl font-black tracking-tight text-slate-900 dark:text-white"
+              >
+                Your wisdom is under review.
+              </h1>
+              <p className="mt-4 text-lg leading-8 text-slate-600 dark:text-slate-300">
+                Our admin team is verifying your application. We will notify you
+                once you are live.
+              </p>
+            </header>
+
+            <div className="mt-8 flex min-h-[112px] w-full max-w-sm flex-col items-center gap-3">
+              <button
+                type="button"
+                aria-label="Edit mentor application"
+                onClick={() => {
+                  setSubmitted(false);
+                  setIsEditing(true);
+                }}
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#7C3AED] px-5 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-[#7C3AED] hover:text-white"
+              >
+                <FileText size={16} aria-hidden="true" />
+                Edit Application
+              </button>
+              <Link
+                href="/dashboard/settings"
+                aria-label="Back to settings"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#7C3AED] px-5 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-[#7C3AED] hover:text-white"
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+                Back to Settings
+              </Link>
+            </div>
+          </article>
+          <style>{`
+            .pulse-circle {
+              animation: mentorship-review-pulse 2.8s ease-out infinite;
+              opacity: 0;
+              position: absolute;
+              transform: scale(0.72);
+            }
+
+            .pulse-circle-delayed {
+              animation-delay: 1.4s;
+            }
+
+            .review-animation-paused .pulse-circle {
+              animation-play-state: paused;
+            }
+
+            @keyframes mentorship-review-pulse {
+              0% {
+                opacity: 0.42;
+                transform: scale(0.72);
+              }
+              70% {
+                opacity: 0.14;
+                transform: scale(1.45);
+              }
+              100% {
+                opacity: 0;
+                transform: scale(1.72);
+              }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+              .pulse-circle {
+                animation: none;
+                opacity: 0.2;
+                transform: scale(1.25);
+              }
+            }
+          `}</style>
         </section>
       </main>
     );
