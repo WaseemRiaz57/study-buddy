@@ -25,6 +25,56 @@ function buildTransporter() {
   });
 }
 
+function buildOtpEmailHtml(otp: string) {
+  return `
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Your StudyBuddy Verification Code</title>
+      </head>
+      <body style="margin:0; padding:0; background:#f8fafc; font-family:Arial, Helvetica, sans-serif; color:#111827;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafc; margin:0; padding:32px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px; background:#ffffff; border:1px solid #e5e7eb; border-radius:18px; overflow:hidden;">
+                <tr>
+                  <td style="padding:32px 32px 16px 32px; text-align:center;">
+                    <div style="font-size:28px; font-weight:800; color:#7C3AED; letter-spacing:-0.02em;">StudyBuddy</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 32px 0 32px;">
+                    <h1 style="margin:0; font-size:24px; line-height:1.3; color:#111827; text-align:center;">Verify your email</h1>
+                    <p style="margin:16px 0 0 0; font-size:16px; line-height:1.6; color:#374151; text-align:center;">
+                      Hi there, welcome to StudyBuddy. Use the verification code below to finish creating your account.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:28px 32px;">
+                    <div style="background:#f5f3ff; border:2px solid #7C3AED; border-radius:16px; padding:22px 16px; text-align:center;">
+                      <div style="font-size:34px; line-height:1; font-weight:800; letter-spacing:10px; color:#4c1d95;">${otp}</div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 32px 32px 32px;">
+                    <p style="margin:0; font-size:14px; line-height:1.6; color:#6b7280; text-align:center;">
+                      This code expires in 10 minutes. If you didn't request this, please ignore this email.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+}
+
 export async function POST(request: Request) {
   try {
     const { email } = await request.json();
@@ -56,19 +106,20 @@ export async function POST(request: Request) {
     );
 
     const transporter = buildTransporter();
+    const text = [
+      "Your StudyBuddy Verification Code",
+      "",
+      `Your verification code is ${otp}.`,
+      "This code expires in 10 minutes.",
+      "If you didn't request this, please ignore this email.",
+    ].join("\n");
+
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: `"StudyBuddy" <${process.env.SMTP_USER}>`,
       to: normalizedEmail,
       subject: "Your StudyBuddy Verification Code",
-      text: `Your StudyBuddy verification code is ${otp}. This code expires in 10 minutes.`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-          <h2>Your StudyBuddy Verification Code</h2>
-          <p>Use this code to finish creating your account:</p>
-          <p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">${otp}</p>
-          <p>This code expires in 10 minutes.</p>
-        </div>
-      `,
+      text,
+      html: buildOtpEmailHtml(otp),
     });
 
     return NextResponse.json({ message: "Verification code sent." });

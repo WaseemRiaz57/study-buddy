@@ -14,7 +14,7 @@ import {
   User,
 } from "lucide-react";
 import { signIn } from "next-auth/react";
-import { type ElementType, type FormEvent, useState } from "react";
+import { type ElementType, type FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface RoleCardProps {
@@ -34,8 +34,10 @@ interface RoleCardProps {
 export default function RegisterPage() {
   const [role, setRole] = useState<"student" | "mentor">("student");
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
   const [otp, setOtp] = useState("");
+  const [resendTimer, setResendTimer] = useState(60);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -69,6 +71,18 @@ export default function RegisterPage() {
     },
   };
 
+  useEffect(() => {
+    if (step !== 2 || resendTimer <= 0) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      setResendTimer((currentTimer) => Math.max(0, currentTimer - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timerId);
+  }, [step, resendTimer]);
+
   const handleSendOtp = async () => {
     const response = await fetch("/api/auth/send-otp", {
       method: "POST",
@@ -87,7 +101,42 @@ export default function RegisterPage() {
     }
 
     setStep(2);
+    setResendTimer(60);
     toast.success("Verification code sent!");
+  };
+
+  const handleResend = async () => {
+    setIsResending(true);
+
+    try {
+      const response = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to resend verification code.");
+      }
+
+      setResendTimer(60);
+      toast.success("Verification code resent!");
+    } catch (error) {
+      console.error("Resend OTP Error:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not resend the verification code."
+      );
+    } finally {
+      setIsResending(false);
+    }
   };
 
   const handleCreateAccount = async () => {
@@ -324,6 +373,33 @@ export default function RegisterPage() {
                   className="w-full px-4 py-4 rounded-xl border border-border bg-background/50 text-center text-2xl font-bold tracking-[0.45em] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/30"
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 />
+              </div>
+
+              <div className="flex h-10 items-center justify-center">
+                <button
+                  type="button"
+                  aria-label={
+                    resendTimer > 0
+                      ? `Resend code available in ${resendTimer} seconds`
+                      : "Resend verification code"
+                  }
+                  disabled={resendTimer > 0 || isResending || isLoading}
+                  onClick={handleResend}
+                  className="inline-flex min-w-[190px] items-center justify-center rounded-lg px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:text-muted-foreground disabled:hover:bg-transparent"
+                >
+                  {isResending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Resending...
+                    </>
+                  ) : resendTimer > 0 ? (
+                    <span className="inline-block min-w-[150px] text-center tabular-nums">
+                      Resend code in {resendTimer}s
+                    </span>
+                  ) : (
+                    "Resend Code"
+                  )}
+                </button>
               </div>
 
               <button
