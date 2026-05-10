@@ -12,6 +12,7 @@ export interface IMentorProfile extends Document {
   bio: string;
   subjects: string[];
   hourlyRate: number;
+  certificates: string[];
   totalEarnings: number;
   rating: number;
   availability: IMentorAvailability[];
@@ -60,7 +61,10 @@ function isOneHourSlot(slot: string) {
   const start = parseMeridiemTimeToMinutes(match[1], match[2], match[3]);
   const end = parseMeridiemTimeToMinutes(match[4], match[5], match[6]);
 
-  return start !== null && end !== null && end - start === 60;
+  if (start === null || end === null) return false;
+
+  const duration = end > start ? end - start : end + 24 * 60 - start;
+  return duration === 60;
 }
 
 const MentorAvailabilitySchema = new Schema<IMentorAvailability>(
@@ -99,6 +103,7 @@ const MentorProfileSchema = new Schema<IMentorProfile>(
     bio: { type: String, default: "", trim: true, maxlength: 500 },
     subjects: { type: [String], default: [] },
     hourlyRate: { type: Number, default: 0 },
+    certificates: { type: [String], default: [] },
     totalEarnings: { type: Number, default: 0 },
     rating: { type: Number, default: 0 },
     availability: { type: [MentorAvailabilitySchema], default: [] },

@@ -14,7 +14,7 @@ type AvailabilityInput = {
 };
 
 const MAX_AVAILABILITY_DAYS = 14;
-const MAX_TIME_SLOTS_PER_DAY = 48;
+const MAX_TIME_SLOTS_PER_DAY = 24;
 
 function cleanText(value: unknown, maxLength: number) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -61,7 +61,10 @@ function isOneHourSlot(slot: string) {
   const start = parseMeridiemTimeToMinutes(match[1], match[2], match[3]);
   const end = parseMeridiemTimeToMinutes(match[4], match[5], match[6]);
 
-  return start !== null && end !== null && end - start === 60;
+  if (start === null || end === null) return false;
+
+  const duration = end > start ? end - start : end + 24 * 60 - start;
+  return duration === 60;
 }
 
 function normalizeAvailability(input: unknown): IMentorAvailability[] | null {

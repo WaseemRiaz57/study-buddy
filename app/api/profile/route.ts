@@ -23,6 +23,8 @@ const MENTOR_ONLY_FIELDS = [
   "subjects",
   "hourlyRate",
   "availability",
+  "certificates",
+  "submitForReview",
   "status",
   "isPublic",
 ] as const;
@@ -45,6 +47,7 @@ const emptyMentorProfile = {
   bio: "",
   subjects: [],
   hourlyRate: 0,
+  certificates: [],
   totalEarnings: 0,
   rating: 0,
   availability: [],
@@ -69,6 +72,15 @@ function normalizeStringArray(value: unknown) {
   return value
     .map((item) => normalizeString(item, 100))
     .filter(Boolean);
+}
+
+function normalizeCertificateArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => normalizeString(item, 1000))
+    .filter(Boolean)
+    .slice(0, 25);
 }
 
 function hasAnyField(body: Record<string, unknown>, fields: readonly string[]) {
@@ -194,7 +206,8 @@ function isOneHourSlot(value: string) {
 
   if (start === null || end === null) return false;
 
-  return end - start === 60;
+  const duration = end > start ? end - start : end + 24 * 60 - start;
+  return duration === 60;
 }
 
 function normalizeMentorAvailability(value: unknown) {
@@ -257,6 +270,10 @@ function buildMentorProfileUpdate(body: Record<string, unknown>) {
       : 0;
   }
 
+  if (Object.prototype.hasOwnProperty.call(body, "certificates")) {
+    update.certificates = normalizeCertificateArray(body.certificates);
+  }
+
   if (Object.prototype.hasOwnProperty.call(body, "availability")) {
     const availability = normalizeMentorAvailability(body.availability);
 
@@ -268,6 +285,11 @@ function buildMentorProfileUpdate(body: Record<string, unknown>) {
     }
 
     update.availability = availability;
+  }
+
+  if (body.submitForReview === true) {
+    update.status = "pending";
+    update.isPublic = false;
   }
 
   return { update };
@@ -302,6 +324,9 @@ function serializeMentorProfile(profile: Record<string, any> | null) {
             timeSlots: slots,
           };
         })
+      : [],
+    certificates: Array.isArray(profile.certificates)
+      ? profile.certificates
       : [],
     status: profile.status ?? "pending",
     isPublic: Boolean(profile.isPublic && profile.status === "approved"),
