@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -15,9 +15,11 @@ import {
   Clock,
   DollarSign,
   FileText,
+  Link2,
   Loader2,
   Plus,
   ShieldCheck,
+  Upload,
   X,
 } from "lucide-react";
 
@@ -129,8 +131,16 @@ function compactAvailability(availability: AvailabilityDay[]) {
     }));
 }
 
+function isUploadedCertificate(certificate: string) {
+  return (
+    certificate.startsWith("data:image/") ||
+    certificate.startsWith("data:application/pdf")
+  );
+}
+
 export default function MentorshipSetupPage() {
   const { data: session } = useSession();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -241,6 +251,36 @@ export default function MentorshipSetupPage() {
 
   const removeCertificate = (certificate: string) => {
     setCertificates((current) => current.filter((item) => item !== certificate));
+  };
+
+  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File size must be under 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        toast.error("Unable to read this file.");
+        return;
+      }
+
+      setCertificates((current) => [...current, reader.result as string]);
+      toast.success("Certificate file uploaded.");
+    };
+
+    reader.onerror = () => {
+      toast.error("Unable to upload this file.");
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const addSlot = () => {
@@ -583,7 +623,15 @@ export default function MentorshipSetupPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    aria-label="Upload certificate file"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto]">
                     <input
                       value={certificateDraft}
                       onChange={(event) => setCertificateDraft(event.target.value)}
@@ -600,32 +648,51 @@ export default function MentorshipSetupPage() {
                     <button
                       type="button"
                       onClick={addCertificate}
-                      aria-label="Add certificate"
+                      aria-label="Add certificate URL"
                       className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
                     >
                       <Plus size={16} aria-hidden="true" />
-                      Add
+                      Add URL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label="Upload certificate file"
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-[#7C3AED] px-5 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-[#7C3AED] hover:text-white"
+                    >
+                      <Upload size={16} aria-hidden="true" />
+                      Upload File
                     </button>
                   </div>
 
                   <div className="mt-4 flex min-h-[44px] flex-wrap gap-2">
                     {certificates.length > 0 ? (
-                      certificates.map((certificate) => (
-                        <span
-                          key={certificate}
-                          className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#7C3AED] px-3 py-2 text-xs font-bold text-white"
-                        >
-                          <span className="truncate">{certificate}</span>
-                          <button
-                            type="button"
-                            aria-label={`Remove certificate ${certificate}`}
-                            onClick={() => removeCertificate(certificate)}
-                            className="rounded-full p-0.5 text-white transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/60"
+                      certificates.map((certificate, index) => {
+                        const isFile = isUploadedCertificate(certificate);
+                        const label = isFile ? "Uploaded File" : certificate;
+
+                        return (
+                          <span
+                            key={`${certificate.slice(0, 40)}-${index}`}
+                            className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#7C3AED] px-3 py-2 text-xs font-bold text-white"
                           >
-                            <X size={13} aria-hidden="true" />
-                          </button>
-                        </span>
-                      ))
+                            {isFile ? (
+                              <FileText size={14} aria-hidden="true" />
+                            ) : (
+                              <Link2 size={14} aria-hidden="true" />
+                            )}
+                            <span className="truncate">{label}</span>
+                            <button
+                              type="button"
+                              aria-label={`Remove certificate ${label}`}
+                              onClick={() => removeCertificate(certificate)}
+                              className="rounded-full p-0.5 text-white transition-colors hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/60"
+                            >
+                              <X size={13} aria-hidden="true" />
+                            </button>
+                          </span>
+                        );
+                      })
                     ) : (
                       <span className="inline-flex h-9 items-center text-sm text-slate-400">
                         No certificates added yet

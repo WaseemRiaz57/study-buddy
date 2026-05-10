@@ -8,6 +8,7 @@ import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
 
 const MAX_BIO_LENGTH = 500;
+const MAX_CERTIFICATE_LENGTH = 3 * 1024 * 1024;
 const STUDENT_PROFILE_FIELDS = [
   "headline",
   "bio",
@@ -78,9 +79,9 @@ function normalizeCertificateArray(value: unknown) {
   if (!Array.isArray(value)) return [];
 
   return value
-    .map((item) => normalizeString(item, 1000))
+    .map((item) => normalizeString(item, MAX_CERTIFICATE_LENGTH))
     .filter(Boolean)
-    .slice(0, 25);
+    .slice(0, 10);
 }
 
 function hasAnyField(body: Record<string, unknown>, fields: readonly string[]) {
