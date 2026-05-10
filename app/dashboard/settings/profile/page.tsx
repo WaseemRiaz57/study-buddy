@@ -16,7 +16,7 @@ import { toast } from "sonner";
 const inputCls = `
   block w-full rounded-lg border border-slate-300 bg-slate-50
   text-slate-900 placeholder:text-slate-400
-  focus:border-primary focus:ring-primary
+  focus:border-[#7C3AED] focus:ring-[#7C3AED]
   dark:border-white/10 dark:bg-white/5 dark:text-white
   dark:placeholder:text-slate-500
   sm:text-sm h-12 px-4
@@ -253,7 +253,7 @@ export default function PublicProfilePage() {
             aria-labelledby="profile-photo-heading"
           >
             <div className="group relative shrink-0">
-              <div className="flex size-32 select-none items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-4xl font-bold text-white ring-4 ring-slate-50 dark:ring-white/5">
+              <div className="flex size-32 select-none items-center justify-center rounded-full bg-[#7C3AED] text-4xl font-bold text-white ring-4 ring-slate-50 dark:ring-white/5">
                 {userImage ? (
                   <Image
                     src={userImage}
@@ -272,7 +272,7 @@ export default function PublicProfilePage() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingImage}
-                className="absolute bottom-0 right-0 rounded-full bg-primary p-2 text-white shadow-lg transition-transform hover:scale-105 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+                className="absolute bottom-0 right-0 rounded-full bg-[#7C3AED] p-2 text-white shadow-lg transition-transform hover:scale-105 hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-70"
                 aria-label="Edit profile picture"
               >
                 {isUploadingImage ? (
@@ -430,7 +430,7 @@ export default function PublicProfilePage() {
                   }
                   markDirty();
                 }}
-                className="block w-full resize-none rounded-lg border border-slate-300 bg-slate-50 p-4 text-slate-900 placeholder:text-slate-400 transition-colors focus:border-primary focus:ring-primary dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 sm:text-sm"
+                className="block w-full resize-none rounded-lg border border-slate-300 bg-slate-50 p-4 text-slate-900 placeholder:text-slate-400 transition-colors focus:border-[#7C3AED] focus:ring-[#7C3AED] dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 sm:text-sm"
                 placeholder="Tell others about yourself..."
                 aria-label="About me"
               />
@@ -464,17 +464,14 @@ export default function PublicProfilePage() {
               <button
                 onClick={handleSave}
                 disabled={isSaving || isLoadingProfile || isUploadingImage}
-                className="relative flex items-center gap-2 overflow-hidden rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+                className="flex items-center gap-2 rounded-xl bg-[#7C3AED] px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-600/25 transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer-slide_3s_ease-in-out_infinite]" />
                 {isSaving ? (
-                  <Loader2 size={15} className="relative z-10 animate-spin" />
+                  <Loader2 size={15} className="animate-spin" />
                 ) : (
-                  <Save size={15} className="relative z-10" />
+                  <Save size={15} />
                 )}
-                <span className="relative z-10">
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </span>
+                <span>{isSaving ? "Saving..." : "Save Changes"}</span>
               </button>
             </div>
           </div>
