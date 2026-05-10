@@ -8,16 +8,16 @@ import {
   Fingerprint,
   Eye,
   EyeOff,
+  Loader2,
   Laptop,
   Smartphone,
   Tablet,
   LogOut,
-  Lock,
   AlertCircle,
   Save,
-  Monitor,
   type LucideIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
 /* ------------------------------------------------------------------ */
 /* Shared input class                                                  */
@@ -26,9 +26,9 @@ const inputCls = `
   w-full px-4 py-2.5 rounded-lg text-sm
   bg-slate-50 border border-slate-200
   text-slate-900 placeholder:text-slate-400
-  focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
+  focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600
   dark:bg-white/5 dark:border-white/10 dark:text-white
-  dark:placeholder:text-slate-500 dark:focus:border-purple-400 dark:focus:ring-purple-400/20
+  dark:placeholder:text-slate-500 dark:focus:border-purple-600 dark:focus:ring-purple-600/20
   transition-colors
 `;
 
@@ -45,10 +45,12 @@ function Toggle({
   id,
   enabled,
   onToggle,
+  ariaLabel,
 }: {
   id: string;
   enabled: boolean;
   onToggle: () => void;
+  ariaLabel: string;
 }) {
   return (
     <button
@@ -56,14 +58,15 @@ function Toggle({
       role="switch"
       type="button"
       aria-checked={enabled}
+      aria-label={ariaLabel}
       onClick={onToggle}
       className={`
         relative inline-flex h-6 w-11 shrink-0 cursor-pointer
         rounded-full border-2 border-transparent
         transition-colors duration-200 ease-in-out
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600/50 focus-visible:ring-offset-2
         dark:focus-visible:ring-offset-slate-900
-        ${enabled ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"}
+        ${enabled ? "bg-purple-600" : "bg-slate-200 dark:bg-slate-700"}
       `}
     >
       <span
@@ -126,8 +129,11 @@ export default function SecurityPage() {
   const [biometric, setBiometric] = useState(false);
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
-  const [currentPw, setCurrentPw] = useState("password123");
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [activeSessions, setActiveSessions] = useState(sessions);
 
   const securityScore = 92;
@@ -136,8 +142,47 @@ export default function SecurityPage() {
     setActiveSessions((prev) => prev.filter((s) => s.id !== id));
   };
 
+  const handlePasswordSubmit = async () => {
+    if (newPw !== confirmPw) {
+      toast.error("New passwords do not match.");
+      return;
+    }
+
+    setIsSavingPassword(true);
+
+    try {
+      const response = await fetch("/api/settings/security/password", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          currentPassword: currentPw,
+          newPassword: newPw,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update password.");
+      }
+
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+      toast.success("Password updated successfully.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update password."
+      );
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
   return (
-    <div className="relative pb-24">
+    <main className="relative pb-24">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -145,7 +190,7 @@ export default function SecurityPage() {
         className="space-y-8"
       >
         {/* ── Header ── */}
-        <div className="flex flex-col gap-2 mb-8">
+        <header className="flex flex-col gap-2 mb-8">
           <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white pb-1 w-fit">
             Account &amp; Security
           </h1>
@@ -153,7 +198,7 @@ export default function SecurityPage() {
             Manage your password, multi-factor authentication, and monitor
             active sessions.
           </p>
-        </div>
+        </header>
 
         {/* ── Hero Card — Security Overview ── */}
         <section
@@ -175,7 +220,7 @@ export default function SecurityPage() {
               {/* Progress bar */}
               <div className="w-full bg-slate-100 dark:bg-white/10 rounded-full h-2.5 mt-2 overflow-hidden">
                 <motion.div
-                  className="h-2.5 rounded-full bg-gradient-to-r from-primary to-green-400"
+                  className="h-2.5 rounded-full bg-purple-600"
                   initial={{ width: 0 }}
                   animate={{ width: `${securityScore}%` }}
                   transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
@@ -190,7 +235,7 @@ export default function SecurityPage() {
             <div className="shrink-0 hidden md:block">
               <ShieldCheck
                 size={72}
-                className="text-primary dark:text-purple-400"
+                className="text-purple-600"
                 strokeWidth={1.2}
               />
             </div>
@@ -213,6 +258,7 @@ export default function SecurityPage() {
                   <div className="flex gap-4">
                     <Mail
                       size={20}
+                      aria-label="Email MFA icon"
                       className="text-slate-400 dark:text-slate-500 mt-0.5 shrink-0"
                     />
                     <div>
@@ -228,6 +274,7 @@ export default function SecurityPage() {
                     id="email-mfa"
                     enabled={emailMfa}
                     onToggle={() => setEmailMfa(!emailMfa)}
+                    ariaLabel="Toggle email MFA"
                   />
                 </div>
 
@@ -236,6 +283,7 @@ export default function SecurityPage() {
                   <div className="flex gap-4">
                     <Fingerprint
                       size={20}
+                      aria-label="Biometric login icon"
                       className="text-slate-400 dark:text-slate-500 mt-0.5 shrink-0"
                     />
                     <div>
@@ -251,6 +299,7 @@ export default function SecurityPage() {
                     id="bio-mfa"
                     enabled={biometric}
                     onToggle={() => setBiometric(!biometric)}
+                    ariaLabel="Toggle biometric login"
                   />
                 </div>
               </div>
@@ -262,55 +311,116 @@ export default function SecurityPage() {
                 Password Management
               </h3>
 
-              <div className="grid gap-6 md:grid-cols-2 mt-4">
+              <form
+                className="grid gap-6 md:grid-cols-2 mt-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handlePasswordSubmit();
+                }}
+              >
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <label
+                    htmlFor="current-password"
+                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
                     Current Password
                   </label>
                   <div className="relative">
                     <input
+                      id="current-password"
                       type={showCurrentPw ? "text" : "password"}
                       value={currentPw}
                       onChange={(e) => setCurrentPw(e.target.value)}
                       placeholder="Enter current password"
+                      aria-label="Current password"
+                      autoComplete="current-password"
                       className={`${inputCls} pr-11`}
                     />
                     <button
                       type="button"
+                      aria-label="Toggle password visibility"
                       onClick={() => setShowCurrentPw(!showCurrentPw)}
-                      className="absolute right-3 top-2.5 text-slate-400 hover:text-primary dark:text-slate-500 dark:hover:text-purple-400 transition-colors"
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-purple-600 dark:text-slate-500 dark:hover:text-purple-600 transition-colors"
                     >
                       {showCurrentPw ? (
-                        <EyeOff size={18} />
+                        <EyeOff size={18} aria-hidden="true" />
                       ) : (
-                        <Eye size={18} />
+                        <Eye size={18} aria-hidden="true" />
                       )}
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <label
+                    htmlFor="new-password"
+                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
                     New Password
                   </label>
                   <div className="relative">
                     <input
+                      id="new-password"
                       type={showNewPw ? "text" : "password"}
                       value={newPw}
                       onChange={(e) => setNewPw(e.target.value)}
                       placeholder="Min. 8 characters"
+                      aria-label="New password"
+                      autoComplete="new-password"
                       className={`${inputCls} pr-11`}
                     />
                     <button
                       type="button"
+                      aria-label="Toggle password visibility"
                       onClick={() => setShowNewPw(!showNewPw)}
-                      className="absolute right-3 top-2.5 text-slate-400 hover:text-primary dark:text-slate-500 dark:hover:text-purple-400 transition-colors"
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-purple-600 dark:text-slate-500 dark:hover:text-purple-600 transition-colors"
                     >
-                      {showNewPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showNewPw ? (
+                        <EyeOff size={18} aria-hidden="true" />
+                      ) : (
+                        <Eye size={18} aria-hidden="true" />
+                      )}
                     </button>
                   </div>
                 </div>
-              </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label
+                    htmlFor="confirm-password"
+                    className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    Confirm New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="confirm-password"
+                      type={showConfirmPw ? "text" : "password"}
+                      value={confirmPw}
+                      onChange={(e) => setConfirmPw(e.target.value)}
+                      placeholder="Re-enter new password"
+                      aria-label="Confirm new password"
+                      autoComplete="new-password"
+                      className={`${inputCls} pr-11`}
+                    />
+                    <button
+                      type="button"
+                      aria-label="Toggle password visibility"
+                      onClick={() => setShowConfirmPw(!showConfirmPw)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-purple-600 dark:text-slate-500 dark:hover:text-purple-600 transition-colors"
+                    >
+                      {showConfirmPw ? (
+                        <EyeOff size={18} aria-hidden="true" />
+                      ) : (
+                        <Eye size={18} aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" className="hidden">
+                  Save password
+                </button>
+              </form>
             </section>
           </div>
 
@@ -329,12 +439,13 @@ export default function SecurityPage() {
                   .map((session) => (
                     <div
                       key={session.id}
-                      className="relative p-4 bg-primary/5 dark:bg-primary/10 rounded-lg border border-primary/20"
+                      className="relative p-4 bg-purple-600/5 dark:bg-purple-600/10 rounded-lg border border-purple-600/20"
                     >
                       <div className="flex items-start gap-3">
                         <session.icon
                           size={24}
-                          className="text-primary dark:text-purple-400 shrink-0"
+                          aria-label="Current device icon"
+                          className="text-purple-600 shrink-0"
                         />
                         <div>
                           <p className="font-bold text-sm text-slate-900 dark:text-white">
@@ -360,6 +471,7 @@ export default function SecurityPage() {
                         <div className="flex items-start gap-3">
                           <session.icon
                             size={24}
+                            aria-label={`${session.device} icon`}
                             className="text-slate-400 dark:text-slate-500 shrink-0"
                           />
                           <div>
@@ -374,9 +486,10 @@ export default function SecurityPage() {
                         <button
                           onClick={() => handleSignOut(session.id)}
                           title="Sign Out"
+                          aria-label={`Sign out ${session.device}`}
                           className="text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full p-1 transition-colors opacity-0 group-hover:opacity-100"
                         >
-                          <LogOut size={18} />
+                          <LogOut size={18} aria-hidden="true" />
                         </button>
                       </div>
                     </div>
@@ -398,6 +511,7 @@ export default function SecurityPage() {
                 onClick={() =>
                   setActiveSessions((prev) => prev.filter((s) => s.current))
                 }
+                aria-label="Sign out all other devices"
                 className="mt-6 w-full py-2.5 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
               >
                 Sign out all devices
@@ -424,20 +538,38 @@ export default function SecurityPage() {
 
             <div className="flex items-center gap-4 ml-auto">
               {/* Discard */}
-              <button className="px-6 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
+              <button
+                type="button"
+                aria-label="Discard password changes"
+                onClick={() => {
+                  setCurrentPw("");
+                  setNewPw("");
+                  setConfirmPw("");
+                }}
+                className="px-6 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+              >
                 Discard
               </button>
 
               {/* Save */}
-              <button className="relative flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all overflow-hidden">
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full animate-[shimmer-slide_3s_ease-in-out_infinite]" />
-                <Save size={16} className="relative z-10" />
-                <span className="relative z-10">Save Changes</span>
+              <button
+                type="button"
+                aria-label="Save password changes"
+                disabled={isSavingPassword}
+                onClick={handlePasswordSubmit}
+                className="flex min-w-[152px] items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-700 shadow-lg shadow-purple-600/25 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSavingPassword ? (
+                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save size={16} aria-hidden="true" />
+                )}
+                <span>{isSavingPassword ? "Saving..." : "Save Changes"}</span>
               </button>
             </div>
           </div>
         </div>
       </motion.div>
-    </div>
+    </main>
   );
 }
