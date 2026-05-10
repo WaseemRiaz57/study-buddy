@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
 import StudyProfile from "@/models/StudyProfile";
+import User from "@/models/User";
+import mongoose from "mongoose";
 
 export const dynamic = "force-dynamic";
 
@@ -36,17 +38,40 @@ export async function GET() {
       isOnline: true,
     }).lean();
 
+    const profileUserIds = onlineProfiles
+      .map((profile) => String(profile.userId || "").trim())
+      .filter(Boolean);
+    const objectIds = profileUserIds.filter((userId) =>
+      mongoose.Types.ObjectId.isValid(userId)
+    );
+    const emails = profileUserIds.filter((userId) => userId.includes("@"));
+    const userQueryParts = [
+      ...(objectIds.length ? [{ _id: { $in: objectIds } }] : []),
+      ...(emails.length ? [{ email: { $in: emails } }] : []),
+    ];
+    const users = userQueryParts.length
+      ? await User.find({ $or: userQueryParts }).select("_id email name image").lean()
+      : [];
+    const usersByKey = new Map(
+      users.flatMap((user) => [
+        [String(user._id), user],
+        [String(user.email || "").toLowerCase(), user],
+      ])
+    );
+
     const suggestedPeers = onlineProfiles
       .map((profile) => {
+        const profileUserId = String(profile.userId || "").trim();
+        const user = usersByKey.get(profileUserId) || usersByKey.get(profileUserId.toLowerCase());
         const tags = ((profile.tags || []) as string[]).filter((tag) =>
           String(tag || "").trim()
         );
         const sharedTags = tags.filter((tag) => currentTags.has(normalizeTag(tag)));
 
         return {
-          userId: profile.userId,
-          name: profile.name,
-          image: profile.image || "",
+          userId: user ? String(user._id) : profileUserId,
+          name: user?.name || profile.name,
+          image: user?.image || profile.image || "",
           tags,
           sharedTags,
           sharedTagCount: sharedTags.length,

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -121,7 +121,6 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { role } = useUserStore();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -145,10 +144,10 @@ export default function SettingsLayout({
         throw new Error(data.message || "Failed to delete account.");
       }
 
-      await signOut({ redirect: false });
-      toast.success("Account deleted. You can create a new account anytime.");
-      router.push("/register");
-      router.refresh();
+      toast.success(
+        "Your account has been deleted successfully. We are sorry to see you go!"
+      );
+      await signOut({ callbackUrl: "/" });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to delete account."
