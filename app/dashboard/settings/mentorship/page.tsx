@@ -133,6 +133,7 @@ export default function MentorshipSetupPage() {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [hasExistingProfile, setHasExistingProfile] = useState(false);
@@ -155,7 +156,8 @@ export default function MentorshipSetupPage() {
   const selectedDayAvailability =
     availability.find((item) => item.day === selectedDay) ??
     ({ day: selectedDay, slots: [] } satisfies AvailabilityDay);
-  const showUnderReview = submitted || (hasExistingProfile && status === "pending");
+  const showUnderReview =
+    (submitted || (hasExistingProfile && status === "pending")) && !isEditing;
   const fullName = session?.user?.name || "Mentor";
   const userImage = session?.user?.image || "";
   const initials =
@@ -312,6 +314,7 @@ export default function MentorshipSetupPage() {
 
       setStatus("pending");
       setHasExistingProfile(true);
+      setIsEditing(false);
       setSubmitted(true);
       toast.success("Mentor application submitted for review!");
     } catch (error) {
@@ -386,10 +389,22 @@ export default function MentorshipSetupPage() {
               details. Once approved, your profile will appear in the Mentor
               Marketplace for students to book.
             </p>
+            <button
+              type="button"
+              aria-label="Edit mentor application"
+              onClick={() => {
+                setSubmitted(false);
+                setIsEditing(true);
+              }}
+              className="mt-8 inline-flex items-center gap-2 rounded-xl border border-[#7C3AED] px-5 py-3 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-[#7C3AED] hover:text-white"
+            >
+              <FileText size={16} aria-hidden="true" />
+              Edit Application
+            </button>
             <Link
               href="/dashboard/settings"
               aria-label="Back to settings"
-              className="mt-8 inline-flex items-center gap-2 rounded-xl border border-[#7C3AED] px-5 py-3 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-[#7C3AED] hover:text-white"
+              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-600 transition-colors hover:border-[#7C3AED] hover:text-[#7C3AED] dark:border-white/10 dark:text-slate-300"
             >
               <ArrowLeft size={16} aria-hidden="true" />
               Back to Settings
