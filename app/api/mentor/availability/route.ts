@@ -9,6 +9,7 @@ import MentorProfile, {
 
 type AvailabilityInput = {
   day?: unknown;
+  slots?: unknown;
   timeSlots?: unknown;
 };
 
@@ -17,6 +18,50 @@ const MAX_TIME_SLOTS_PER_DAY = 48;
 
 function cleanText(value: unknown, maxLength: number) {
   return String(value ?? "").trim().slice(0, maxLength);
+}
+
+function parseMeridiemTimeToMinutes(
+  hour: string,
+  minute: string,
+  meridiem: string
+) {
+  const parsedHour = Number(hour);
+  const parsedMinute = Number(minute);
+
+  if (
+    !Number.isInteger(parsedHour) ||
+    !Number.isInteger(parsedMinute) ||
+    parsedHour < 1 ||
+    parsedHour > 12 ||
+    parsedMinute < 0 ||
+    parsedMinute > 59
+  ) {
+    return null;
+  }
+
+  const hour24 =
+    meridiem.toUpperCase() === "AM"
+      ? parsedHour === 12
+        ? 0
+        : parsedHour
+      : parsedHour === 12
+        ? 12
+        : parsedHour + 12;
+
+  return hour24 * 60 + parsedMinute;
+}
+
+function isOneHourSlot(slot: string) {
+  const match = slot.match(
+    /^(\d{1,2}):([0-5]\d)\s*(AM|PM)\s*-\s*(\d{1,2}):([0-5]\d)\s*(AM|PM)$/i
+  );
+
+  if (!match) return false;
+
+  const start = parseMeridiemTimeToMinutes(match[1], match[2], match[3]);
+  const end = parseMeridiemTimeToMinutes(match[4], match[5], match[6]);
+
+  return start !== null && end !== null && end - start === 60;
 }
 
 function normalizeAvailability(input: unknown): IMentorAvailability[] | null {
@@ -29,19 +74,31 @@ function normalizeAvailability(input: unknown): IMentorAvailability[] | null {
   for (const item of input as AvailabilityInput[]) {
     const day = cleanText(item?.day, 30);
 
-    if (!day || !Array.isArray(item?.timeSlots)) {
+    const incomingSlots = Array.isArray(item?.slots)
+      ? item.slots
+      : Array.isArray(item?.timeSlots)
+        ? item.timeSlots
+        : null;
+
+    if (!day || !incomingSlots) {
       return null;
     }
 
-    if (item.timeSlots.length > MAX_TIME_SLOTS_PER_DAY) {
+    if (incomingSlots.length > MAX_TIME_SLOTS_PER_DAY) {
       return null;
     }
 
-    const timeSlots = item.timeSlots
+    const slots = incomingSlots
       .map((slot) => cleanText(slot, 20))
       .filter(Boolean);
 
-    availability.push({ day, timeSlots: [...new Set(timeSlots)] });
+    const uniqueSlots = [...new Set(slots)];
+
+    if (!uniqueSlots.every(isOneHourSlot)) {
+      return null;
+    }
+
+    availability.push({ day, slots: uniqueSlots, timeSlots: uniqueSlots });
   }
 
   return availability;
@@ -78,7 +135,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           message:
-            "availability must be an array of { day, timeSlots } objects.",
+            "availability must be an array of { day, slots } with 1-hour slots like '09:00 AM - 10:00 AM'.",
         },
         { status: 400 }
       );
@@ -88,7 +145,14 @@ export async function POST(request: Request) {
 
     const mentorProfile = await MentorProfile.findOneAndUpdate(
       { userId: session.user.id },
-      { $set: { availability } },
+      {
+        $set: { availability },
+        $setOnInsert: {
+          userId: session.user.id,
+          status: "pending",
+          isPublic: false,
+        },
+      },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
 

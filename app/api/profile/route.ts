@@ -19,6 +19,13 @@ const STUDENT_PROFILE_FIELDS = [
   "socraticAiMode",
   "strictMentorship",
 ] as const;
+const MENTOR_ONLY_FIELDS = [
+  "subjects",
+  "hourlyRate",
+  "availability",
+  "status",
+  "isPublic",
+] as const;
 
 const emptyStudentProfile = {
   headline: "",
@@ -31,6 +38,18 @@ const emptyStudentProfile = {
   socraticAiMode: false,
   strictMentorship: false,
   subscriptionTier: "Standard",
+};
+
+const emptyMentorProfile = {
+  headline: "",
+  bio: "",
+  subjects: [],
+  hourlyRate: 0,
+  totalEarnings: 0,
+  rating: 0,
+  availability: [],
+  status: "pending",
+  isPublic: false,
 };
 
 function normalizeRole(role: unknown) {
@@ -50,6 +69,12 @@ function normalizeStringArray(value: unknown) {
   return value
     .map((item) => normalizeString(item, 100))
     .filter(Boolean);
+}
+
+function hasAnyField(body: Record<string, unknown>, fields: readonly string[]) {
+  return fields.some((field) =>
+    Object.prototype.hasOwnProperty.call(body, field)
+  );
 }
 
 function getIncomingValue(body: Record<string, unknown>, field: string) {
@@ -125,11 +150,161 @@ function buildStudentProfileUpdate(body: Record<string, unknown>) {
   return update;
 }
 
+function parseMeridiemTimeToMinutes(
+  hour: string,
+  minute: string,
+  meridiem: string
+) {
+  const parsedHour = Number(hour);
+  const parsedMinute = Number(minute);
+
+  if (
+    !Number.isInteger(parsedHour) ||
+    !Number.isInteger(parsedMinute) ||
+    parsedHour < 1 ||
+    parsedHour > 12 ||
+    parsedMinute < 0 ||
+    parsedMinute > 59
+  ) {
+    return null;
+  }
+
+  const normalizedMeridiem = meridiem.toUpperCase();
+  const hour24 =
+    normalizedMeridiem === "AM"
+      ? parsedHour === 12
+        ? 0
+        : parsedHour
+      : parsedHour === 12
+        ? 12
+        : parsedHour + 12;
+
+  return hour24 * 60 + parsedMinute;
+}
+
+function isOneHourSlot(value: string) {
+  const match = value.match(
+    /^(\d{1,2}):([0-5]\d)\s*(AM|PM)\s*-\s*(\d{1,2}):([0-5]\d)\s*(AM|PM)$/i
+  );
+
+  if (!match) return false;
+
+  const start = parseMeridiemTimeToMinutes(match[1], match[2], match[3]);
+  const end = parseMeridiemTimeToMinutes(match[4], match[5], match[6]);
+
+  if (start === null || end === null) return false;
+
+  return end - start === 60;
+}
+
+function normalizeMentorAvailability(value: unknown) {
+  if (!Array.isArray(value)) return null;
+
+  const availability = value.map((item) => {
+    const record = item as {
+      day?: unknown;
+      slots?: unknown;
+      timeSlots?: unknown;
+    };
+    const day = normalizeString(record?.day, 30);
+    const incomingSlots = Array.isArray(record?.slots)
+      ? record.slots
+      : Array.isArray(record?.timeSlots)
+        ? record.timeSlots
+        : null;
+
+    if (!day || !incomingSlots) {
+      return null;
+    }
+
+    const slots = [
+      ...new Set(
+        incomingSlots
+          .map((slot) => normalizeString(slot, 30).replace(/\s+/g, " "))
+          .filter(Boolean)
+      ),
+    ];
+
+    if (!slots.every(isOneHourSlot)) {
+      return null;
+    }
+
+    return { day, slots, timeSlots: slots };
+  });
+
+  return availability.some((item) => item === null) ? null : availability;
+}
+
+function buildMentorProfileUpdate(body: Record<string, unknown>) {
+  const update: Record<string, unknown> = {};
+
+  if (Object.prototype.hasOwnProperty.call(body, "headline")) {
+    update.headline = normalizeString(body.headline, 200);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "bio")) {
+    update.bio = normalizeString(body.bio, MAX_BIO_LENGTH);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "subjects")) {
+    update.subjects = normalizeStringArray(body.subjects);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "hourlyRate")) {
+    const hourlyRate = Number(body.hourlyRate);
+    update.hourlyRate = Number.isFinite(hourlyRate)
+      ? Math.max(0, hourlyRate)
+      : 0;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "availability")) {
+    const availability = normalizeMentorAvailability(body.availability);
+
+    if (!availability) {
+      return {
+        error:
+          "availability must be an array of { day, slots } with 1-hour slots like '09:00 AM - 10:00 AM'.",
+      };
+    }
+
+    update.availability = availability;
+  }
+
+  return { update };
+}
+
 function splitName(name?: string) {
   const [firstName = "", ...rest] = String(name ?? "").trim().split(/\s+/);
   return {
     firstName,
     lastName: rest.join(" "),
+  };
+}
+
+function serializeMentorProfile(profile: Record<string, any> | null) {
+  if (!profile) {
+    return emptyMentorProfile;
+  }
+
+  return {
+    ...profile,
+    availability: Array.isArray(profile.availability)
+      ? profile.availability.map((item: Record<string, any>) => {
+          const slots = Array.isArray(item.slots)
+            ? item.slots
+            : Array.isArray(item.timeSlots)
+              ? item.timeSlots
+              : [];
+
+          return {
+            day: item.day ?? "",
+            slots,
+            timeSlots: slots,
+          };
+        })
+      : [],
+    status: profile.status ?? "pending",
+    isPublic: Boolean(profile.isPublic && profile.status === "approved"),
   };
 }
 
@@ -154,12 +329,13 @@ async function buildProfileResponse(userId: string) {
 
   if (role === "mentor") {
     const mentorProfile = await MentorProfile.findOne({ userId: user._id }).lean();
+    const serializedMentorProfile = serializeMentorProfile(mentorProfile);
 
     return {
       user: baseUser,
       role,
-      mentorProfile: mentorProfile ?? null,
-      profile: mentorProfile ?? null,
+      mentorProfile: serializedMentorProfile,
+      profile: serializedMentorProfile,
     };
   }
 
@@ -239,6 +415,15 @@ export async function PUT(request: Request) {
       return NextResponse.json({ message: "User not found." }, { status: 404 });
     }
 
+    const role = normalizeRole(user.role);
+
+    if (role !== "mentor" && hasAnyField(body, MENTOR_ONLY_FIELDS)) {
+      return NextResponse.json(
+        { message: "Forbidden. Mentor profile fields are only available to mentors." },
+        { status: 403 }
+      );
+    }
+
     const nameUpdate = buildNameUpdate(body);
     if (nameUpdate) {
       user.name = nameUpdate;
@@ -258,7 +443,38 @@ export async function PUT(request: Request) {
 
     await user.save();
 
-    if (normalizeRole(user.role) === "student") {
+    if (role === "mentor") {
+      const mentorProfileResult = buildMentorProfileUpdate(body);
+
+      if ("error" in mentorProfileResult) {
+        return NextResponse.json(
+          { message: mentorProfileResult.error },
+          { status: 400 }
+        );
+      }
+
+      if (Object.keys(mentorProfileResult.update).length > 0) {
+        await MentorProfile.findOneAndUpdate(
+          { userId: user._id },
+          {
+            $set: mentorProfileResult.update,
+            $setOnInsert: {
+              userId: user._id,
+              status: "pending",
+              isPublic: false,
+            },
+          },
+          {
+            new: true,
+            upsert: true,
+            runValidators: true,
+            setDefaultsOnInsert: true,
+          }
+        );
+      }
+    }
+
+    if (role === "student") {
       const studentProfileUpdate = buildStudentProfileUpdate(body);
 
       await StudentProfile.findOneAndUpdate(

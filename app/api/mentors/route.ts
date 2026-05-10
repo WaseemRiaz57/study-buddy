@@ -15,11 +15,14 @@ type MentorUser = {
 
 type MentorProfileData = {
   userId: mongoose.Types.ObjectId;
+  headline?: string;
   subjects?: string[];
   hourlyRate?: number;
   rating?: number;
   bio?: string;
   availability?: IMentorAvailability[];
+  status?: string;
+  isPublic?: boolean;
 };
 
 export async function GET() {
@@ -34,6 +37,8 @@ export async function GET() {
     const mentorIds = mentorUsers.map((mentor) => mentor._id);
     const mentorProfiles = (await MentorProfile.find({
       userId: { $in: mentorIds },
+      status: "approved",
+      isPublic: true,
     }).lean()) as MentorProfileData[];
 
     const profilesByUserId = new Map(
@@ -43,18 +48,30 @@ export async function GET() {
     const mentors = mentorUsers.map((mentor) => {
       const profile = profilesByUserId.get(String(mentor._id));
 
+      if (!profile) {
+        return null;
+      }
+
       return {
         id: String(mentor._id),
         name: mentor.name ?? "",
         email: mentor.email ?? "",
         image: mentor.image ?? "",
+        headline: profile.headline ?? "",
         subjects: profile?.subjects ?? [],
         hourlyRate: profile?.hourlyRate ?? 0,
         rating: profile?.rating ?? 0,
         bio: profile?.bio ?? "",
-        availability: profile?.availability ?? [],
+        availability: (profile?.availability ?? []).map((day) => {
+          const slots = day.slots?.length ? day.slots : day.timeSlots ?? [];
+          return {
+            day: day.day,
+            slots,
+            timeSlots: slots,
+          };
+        }),
       };
-    });
+    }).filter(Boolean);
 
     return NextResponse.json(mentors);
   } catch (error) {
