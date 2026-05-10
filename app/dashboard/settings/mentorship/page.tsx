@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Upload,
   X,
+  Zap,
 } from "lucide-react";
 
 const SUBJECT_OPTIONS = [
@@ -96,6 +97,8 @@ function buildHourlySlots() {
   });
 }
 
+const ALL_24_HOUR_SLOTS = buildHourlySlots();
+
 function normalizeAvailability(availability?: AvailabilityDay[]) {
   return DAYS.map((day) => {
     const match = availability?.find((item) => item.day === day);
@@ -161,7 +164,6 @@ export default function MentorshipSetupPage() {
   const [selectedDay, setSelectedDay] = useState(DAYS[0]);
   const [selectedSlot, setSelectedSlot] = useState("09:00 AM - 10:00 AM");
 
-  const hourlySlots = useMemo(() => buildHourlySlots(), []);
   const totalSlots = availability.reduce((total, day) => total + day.slots.length, 0);
   const selectedDayAvailability =
     availability.find((item) => item.day === selectedDay) ??
@@ -312,6 +314,23 @@ export default function MentorshipSetupPage() {
           ? { ...item, slots: item.slots.filter((existing) => existing !== slot) }
           : item
       )
+    );
+  };
+
+  const handleAddFullDay = (day: string) => {
+    setAvailability((current) =>
+      current.map((item) =>
+        item.day === day ? { ...item, slots: [...ALL_24_HOUR_SLOTS] } : item
+      )
+    );
+    toast.success(
+      `All 24 slots added for ${day}. You can remove the ones you don't need.`
+    );
+  };
+
+  const handleClearDay = (day: string) => {
+    setAvailability((current) =>
+      current.map((item) => (item.day === day ? { ...item, slots: [] } : item))
     );
   };
 
@@ -768,33 +787,55 @@ export default function MentorshipSetupPage() {
                   ))}
                 </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-                  <label className="space-y-2">
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                      Add 1-hour slot for {selectedDay}
-                    </span>
-                    <select
-                      value={selectedSlot}
-                      aria-label={`Select 1-hour availability slot for ${selectedDay}`}
-                      onChange={(event) => setSelectedSlot(event.target.value)}
-                      className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-slate-950 dark:text-white"
+                <div className="mt-5 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                    <label className="space-y-2">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                        Add 1-hour slot for {selectedDay}
+                      </span>
+                      <select
+                        value={selectedSlot}
+                        aria-label={`Select 1-hour availability slot for ${selectedDay}`}
+                        onChange={(event) => setSelectedSlot(event.target.value)}
+                        className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-slate-950 dark:text-white"
+                      >
+                        {ALL_24_HOUR_SLOTS.map((slot) => (
+                          <option key={slot} value={slot}>
+                            {slot}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      aria-label={`Add ${selectedSlot} to ${selectedDay}`}
+                      onClick={addSlot}
+                      className="inline-flex h-12 items-center justify-center gap-2 self-end rounded-xl bg-[#7C3AED] px-6 text-sm font-bold text-white transition-colors hover:bg-purple-700"
                     >
-                      {hourlySlots.map((slot) => (
-                        <option key={slot} value={slot}>
-                          {slot}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    aria-label={`Add ${selectedSlot} to ${selectedDay}`}
-                    onClick={addSlot}
-                    className="inline-flex h-12 items-center justify-center gap-2 self-end rounded-xl bg-[#7C3AED] px-6 text-sm font-bold text-white transition-colors hover:bg-purple-700"
-                  >
-                    <Plus size={16} aria-hidden="true" />
-                    Add Slot
-                  </button>
+                      <Plus size={16} aria-hidden="true" />
+                      Add Slot
+                    </button>
+                  </div>
+
+                  <div className="flex min-h-[48px] flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      aria-label={`Add all 24 hourly slots for ${selectedDay}`}
+                      onClick={() => handleAddFullDay(selectedDay)}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border-2 border-[#7C3AED] px-4 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-[#7C3AED] hover:text-white"
+                    >
+                      <Zap size={16} aria-hidden="true" />
+                      Add All 24 Hours
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Clear all hourly slots for ${selectedDay}`}
+                      onClick={() => handleClearDay(selectedDay)}
+                      className="inline-flex h-11 items-center justify-center rounded-xl px-3 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-red-600 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-red-300"
+                    >
+                      Clear All
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
