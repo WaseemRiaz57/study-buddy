@@ -1,10 +1,10 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   User,
   ShieldCheck,
@@ -14,8 +14,12 @@ import {
   Briefcase,
   Trash2,
   ArrowLeft,
+  Loader2,
+  X,
   type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { useUserStore } from "@/store/useUserStore";
 
@@ -80,7 +84,7 @@ function MiniProfile({ role }: { role: "student" | "mentor" }) {
   return (
     <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-[#1f1627] rounded-t-2xl">
       <div className="flex items-center gap-4">
-        <div className="size-14 shrink-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg border-2 border-white dark:border-slate-800 shadow-md">
+        <div className="size-14 shrink-0 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-lg border-2 border-white dark:border-slate-800 shadow-md">
           {userImage ? (
             <Image
               src={userImage}
@@ -99,7 +103,7 @@ function MiniProfile({ role }: { role: "student" | "mentor" }) {
           <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight truncate">
             {status === "loading" ? "Loading..." : fullName}
           </h3>
-          <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary ring-1 ring-inset ring-primary/20 mt-1 capitalize">
+          <span className="inline-flex items-center rounded-full bg-purple-600/10 px-2.5 py-0.5 text-xs font-bold text-purple-600 ring-1 ring-inset ring-purple-600/20 mt-1 capitalize">
             {role} Account
           </span>
         </div>
@@ -117,12 +121,41 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { role } = useUserStore();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const normalizedRole = (role?.toLowerCase() || "student") as "student" | "mentor";
   const navGroups = getNavGroups(normalizedRole);
 
   // 👇 Ye logic check karegi ke user Menu par hai ya kisi feature k andar
   const isRootMenu = pathname === "/dashboard/settings" || pathname === "/dashboard/settings/";
+
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true);
+
+    try {
+      const response = await fetch("/api/settings/account", {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to delete account.");
+      }
+
+      await signOut({ redirect: false });
+      toast.success("Account deleted. You can create a new account anytime.");
+      router.push("/register");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete account."
+      );
+      setIsDeletingAccount(false);
+    }
+  };
 
   return (
     // 👇 FIX: min-h-screen ki jagah h-full aur overflow-y-auto laga diya hai
@@ -163,7 +196,7 @@ export default function SettingsLayout({
               <nav className="flex-1 px-4 py-6 space-y-6">
                 {navGroups.map((group) => (
                   <div key={group.title}>
-                    <h4 className="px-3 text-xs font-bold uppercase tracking-wider text-primary mb-3">
+                    <h4 className="px-3 text-xs font-bold uppercase tracking-wider text-purple-600 mb-3">
                       {group.title}
                     </h4>
                     <ul className="space-y-1">
@@ -171,10 +204,10 @@ export default function SettingsLayout({
                         <li key={item.href}>
                           <Link
                             href={item.href}
-                            className="flex items-center justify-between px-3 py-3 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary dark:text-slate-300 dark:hover:bg-white/[0.04] transition-all group"
+                            className="flex items-center justify-between px-3 py-3 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-50 hover:text-purple-600 dark:text-slate-300 dark:hover:bg-white/[0.04] transition-all group"
                           >
                             <div className="flex items-center gap-3">
-                              <item.icon size={20} className="text-slate-400 group-hover:text-primary transition-colors" />
+                              <item.icon size={20} className="text-slate-400 group-hover:text-purple-600 transition-colors" aria-hidden="true" />
                               <span>{item.label}</span>
                             </div>
                             {/* Chota sa right arrow icon hint ke liye */}
@@ -190,8 +223,13 @@ export default function SettingsLayout({
               </nav>
 
               <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-[#1f1627] rounded-b-2xl">
-                <button className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition-colors">
-                  <Trash2 size={18} />
+                <button
+                  type="button"
+                  aria-label="Delete account"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10 transition-colors"
+                >
+                  <Trash2 size={18} aria-hidden="true" />
                   Delete Account
                 </button>
               </div>
@@ -211,6 +249,65 @@ export default function SettingsLayout({
 
         </div>
       </div>
+
+      {showDeleteDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-2xl dark:border-red-500/30 dark:bg-slate-950">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="delete-account-title"
+                  className="text-xl font-bold text-slate-900 dark:text-white"
+                >
+                  Delete account?
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  WARNING: This action is irreversible. Your account, student
+                  profile, OTP records, and saved AI notes will be removed.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close delete account dialog"
+                disabled={isDeletingAccount}
+                onClick={() => setShowDeleteDialog(false)}
+                className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 dark:hover:bg-white/10 dark:hover:text-white"
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                aria-label="Cancel account deletion"
+                disabled={isDeletingAccount}
+                onClick={() => setShowDeleteDialog(false)}
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                aria-label="Permanently delete account"
+                disabled={isDeletingAccount}
+                onClick={handleDeleteAccount}
+                className="inline-flex min-w-[172px] items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeletingAccount && (
+                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                )}
+                {isDeletingAccount ? "Deleting..." : "Delete permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
