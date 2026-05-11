@@ -382,7 +382,9 @@ export default function MentorshipSetupPage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(data?.message || "Failed to submit mentor application.");
+        throw new Error(
+          data?.error || data?.message || "Failed to submit mentor application."
+        );
       }
 
       setStatus("pending");

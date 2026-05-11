@@ -7,6 +7,8 @@ import MentorProfile from "@/models/MentorProfile";
 import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
 
+export const maxDuration = 60;
+
 const MAX_BIO_LENGTH = 500;
 const MAX_CERTIFICATE_LENGTH = 3 * 1024 * 1024;
 const STUDENT_PROFILE_FIELDS = [
@@ -532,9 +534,12 @@ export async function PUT(request: Request) {
       profile: updatedProfile,
     });
   } catch (error) {
-    console.error("Update profile error:", error);
+    console.error("PROFILE_UPDATE_ERROR:", error);
+    const message =
+      error instanceof Error ? error.message : "Internal Server Error";
+
     return NextResponse.json(
-      { message: "Failed to update profile" },
+      { error: message, details: error },
       { status: 500 }
     );
   }
