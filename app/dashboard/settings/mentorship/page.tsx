@@ -13,7 +13,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  DollarSign,
   FileText,
   Link2,
   Loader2,
@@ -166,6 +165,7 @@ export default function MentorshipSetupPage() {
   const [selectedSlot, setSelectedSlot] = useState("09:00 AM - 10:00 AM");
 
   const totalSlots = availability.reduce((total, day) => total + day.slots.length, 0);
+  const selectedAvailability = availability.filter((item) => item.slots.length > 0);
   const selectedDayAvailability =
     availability.find((item) => item.day === selectedDay) ??
     ({ day: selectedDay, slots: [] } satisfies AvailabilityDay);
@@ -968,7 +968,7 @@ export default function MentorshipSetupPage() {
           )}
 
           {step === 3 && (
-            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900">
+            <section className="max-w-full overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900">
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#7C3AED] text-white">
                   <ShieldCheck size={21} aria-hidden="true" />
@@ -983,7 +983,7 @@ export default function MentorshipSetupPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4">
+              <div className="grid max-w-full gap-4 overflow-hidden">
                 <article className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/5">
                   <h3 className="font-black text-slate-900 dark:text-white">
                     Profile
@@ -1012,20 +1012,34 @@ export default function MentorshipSetupPage() {
                   </div>
                 </article>
 
-                <article className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/5">
+                <article className="max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/5">
                   <h3 className="font-black text-slate-900 dark:text-white">
                     Credentials
                   </h3>
-                  <div className="mt-3 flex min-h-[36px] flex-wrap gap-2">
+                  <div className="mt-3 flex min-h-[36px] max-w-full flex-wrap gap-2 overflow-hidden">
                     {certificates.length > 0 ? (
-                      certificates.map((certificate) => (
-                        <span
-                          key={certificate}
-                          className="max-w-full truncate rounded-full bg-[#7C3AED] px-3 py-1 text-xs font-bold text-white"
-                        >
-                          {certificate}
-                        </span>
-                      ))
+                      certificates.map((certificate, index) =>
+                        isUploadedCertificate(certificate) ? (
+                          <span
+                            key={`${index}-uploaded-certificate`}
+                            className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#7C3AED] px-3 py-1.5 text-xs font-bold text-white"
+                          >
+                            <FileText size={14} aria-hidden="true" />
+                            <span className="truncate">
+                              Uploaded Document / Image
+                            </span>
+                          </span>
+                        ) : (
+                          <span
+                            key={`${index}-${certificate}`}
+                            className="min-w-0 max-w-full rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm dark:border-white/10 dark:bg-slate-950 dark:text-slate-200"
+                          >
+                            <span className="block max-w-full truncate">
+                              {certificate}
+                            </span>
+                          </span>
+                        )
+                      )
                     ) : (
                       <span className="text-sm text-slate-400">
                         No certificates added
@@ -1034,53 +1048,53 @@ export default function MentorshipSetupPage() {
                   </div>
                 </article>
 
-                <article className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/5">
-                  <h3 className="font-black text-slate-900 dark:text-white">
-                    Pricing & Schedule
-                  </h3>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl bg-white p-4 dark:bg-slate-950">
+                <article className="max-w-full overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-black text-slate-900 dark:text-white">
+                        Pricing & Schedule
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        {totalSlots} weekly slots selected
+                      </p>
+                    </div>
+                    <div className="text-left sm:text-right">
                       <p className="text-xs font-black uppercase text-slate-400">
                         Hourly Rate
                       </p>
-                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+                      <p className="mt-1 text-3xl font-black text-slate-900 dark:text-white">
                         {hourlyRate} Coins/hr
                       </p>
                     </div>
-                    <div className="rounded-xl bg-white p-4 dark:bg-slate-950">
-                      <p className="text-xs font-black uppercase text-slate-400">
-                        Weekly Slots
-                      </p>
-                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
-                        {totalSlots}
-                      </p>
-                    </div>
                   </div>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    {availability.map((item) => (
-                      <div
-                        key={item.day}
-                        className="min-h-[92px] rounded-xl bg-white p-4 dark:bg-slate-950"
-                      >
-                        <p className="mb-2 text-sm font-black text-slate-900 dark:text-white">
-                          {item.day}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {item.slots.length > 0 ? (
-                            item.slots.map((slot) => (
-                              <span
-                                key={`${item.day}-${slot}`}
-                                className="rounded-full bg-[#7C3AED] px-2.5 py-1 text-[11px] font-bold text-white"
-                              >
-                                {slot}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-slate-400">No slots</span>
-                          )}
-                        </div>
+
+                  <div className="mt-6 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 dark:divide-white/10 dark:border-white/10">
+                    {selectedAvailability.length > 0 ? (
+                      selectedAvailability.map((item) => (
+                          <div
+                            key={item.day}
+                            className="grid gap-3 p-4 md:grid-cols-[120px_1fr]"
+                          >
+                            <p className="text-sm font-black text-slate-900 dark:text-white">
+                              {item.day}
+                            </p>
+                            <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-4">
+                              {item.slots.map((slot) => (
+                                <span
+                                  key={`${item.day}-${slot}`}
+                                  className="truncate rounded-md border border-purple-200 bg-purple-100 px-2 py-1 text-center text-xs font-bold text-purple-700"
+                                >
+                                  {slot}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      <div className="p-4 text-sm text-slate-400">
+                        No availability selected
                       </div>
-                    ))}
+                    )}
                   </div>
                 </article>
               </div>
