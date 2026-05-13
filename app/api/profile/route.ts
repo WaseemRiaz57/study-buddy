@@ -482,23 +482,21 @@ export async function PUT(request: Request) {
       }
 
       if (Object.keys(mentorProfileResult.update).length > 0) {
-        await MentorProfile.findOneAndUpdate(
-          { userId: user._id },
-          {
-            $set: mentorProfileResult.update,
-            $setOnInsert: {
-              userId: user._id,
-              status: "pending",
-              isPublic: false,
-            },
-          },
-          {
-            new: true,
-            upsert: true,
-            runValidators: true,
-            setDefaultsOnInsert: true,
-          }
-        );
+        const existingMentorProfile = await MentorProfile.findOne({
+          userId: user._id,
+        });
+
+        if (existingMentorProfile) {
+          existingMentorProfile.set(mentorProfileResult.update);
+          await existingMentorProfile.save();
+        } else {
+          await MentorProfile.create({
+            ...mentorProfileResult.update,
+            userId: user._id,
+            status: "pending",
+            isPublic: false,
+          });
+        }
       }
     }
 
@@ -530,6 +528,7 @@ export async function PUT(request: Request) {
     const updatedProfile = await buildProfileResponse(session.user.id);
 
     return NextResponse.json({
+      success: true,
       message: "Profile updated successfully.",
       profile: updatedProfile,
     });
