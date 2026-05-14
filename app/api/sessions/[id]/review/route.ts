@@ -88,13 +88,6 @@ export async function POST(
       );
     }
 
-    const mentorProfile = await MentorProfile.findOne({
-      userId: mentorSession.mentorId,
-    });
-
-    const hourlyRate = mentorProfile?.hourlyRate ?? 0;
-    const sessionFee = (hourlyRate * mentorSession.duration) / 60;
-
     const mentorReview = await MentorReview.create({
       sessionId: mentorSession._id,
       studentId: mentorSession.studentId,
@@ -102,9 +95,6 @@ export async function POST(
       rating: normalizedRating,
       comment: normalizedComment,
     });
-
-    mentorSession.status = "completed";
-    await mentorSession.save();
 
     const mentorReviews = await MentorReview.find({
       mentorId: mentorSession.mentorId,
@@ -124,7 +114,6 @@ export async function POST(
     const updatedMentorProfile = await MentorProfile.findOneAndUpdate(
       { userId: mentorSession.mentorId },
       {
-        $inc: { totalEarnings: sessionFee },
         $set: { rating: averageRating },
       },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }

@@ -17,6 +17,7 @@ export interface IStudentProfile extends Document {
   socraticAiMode: boolean;
   strictMentorship: boolean;
   subscriptionTier: StudentSubscriptionTier;
+  xp: number;
 }
 
 const StudentProfileSchema = new Schema<IStudentProfile>(
@@ -35,6 +36,7 @@ const StudentProfileSchema = new Schema<IStudentProfile>(
     preferredStudyTimes: { type: [String], default: [] },
     socraticAiMode: { type: Boolean, default: false },
     strictMentorship: { type: Boolean, default: false },
+    xp: { type: Number, default: 0, min: 0 },
     subscriptionTier: {
       type: String,
       enum: ["Standard", "Pro Scholar", "Elite Master"],

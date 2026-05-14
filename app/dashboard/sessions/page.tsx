@@ -272,7 +272,15 @@ function TimelineCell({
   );
 }
 
-function AgendaCard({ session }: { session: MentorSession }) {
+function AgendaCard({
+  session,
+  isCompleting,
+  onComplete,
+}: {
+  session: MentorSession;
+  isCompleting: boolean;
+  onComplete: (id: string) => void;
+}) {
   const studentName = getStudentName(session);
   const student = getStudent(session);
   const initials = getInitials(studentName) || "ST";
@@ -333,7 +341,7 @@ function AgendaCard({ session }: { session: MentorSession }) {
         <span>{formatTimeRange(session)}</span>
       </div>
 
-      <div className="flex gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <Link href={`/dashboard/sessions/${session._id}/prep`} className="flex-1">
           <button className="w-full rounded py-2 text-xs font-bold text-primary border border-primary/20 bg-primary/5 transition-colors hover:bg-primary/10">
             View Prep
@@ -341,7 +349,7 @@ function AgendaCard({ session }: { session: MentorSession }) {
         </Link>
         {session.status === "accepted" ? (
           <Link href={`/dashboard/study-rooms/${session._id}`} className="flex-1">
-            <button className="w-full rounded bg-primary py-2 text-xs font-bold text-white transition-colors hover:bg-primary/90">
+            <button className="w-full rounded bg-[#7C3AED] py-2 text-xs font-bold text-white transition-colors hover:bg-purple-700">
               Join Room
             </button>
           </Link>
@@ -353,8 +361,35 @@ function AgendaCard({ session }: { session: MentorSession }) {
             Join Room
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => onComplete(session._id)}
+          disabled={isCompleting || session.status !== "accepted"}
+          className="inline-flex w-full items-center justify-center gap-2 rounded bg-purple-100 py-2 text-xs font-bold text-purple-700 transition-colors hover:bg-purple-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-purple-500/15 dark:text-purple-300 dark:hover:bg-purple-500/25"
+        >
+          {isCompleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          Mark Completed
+        </button>
       </div>
     </motion.div>
+  );
+}
+
+function HistoryCard({ session }: { session: MentorSession }) {
+  const studentName = getStudentName(session);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+      <p className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">
+        {session.subject}
+      </p>
+      <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+        {studentName} · {formatTimeRange(session)}
+      </p>
+      <span className="mt-2 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+        Completed
+      </span>
+    </div>
   );
 }
 
@@ -427,6 +462,7 @@ export default function SessionsPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [respondingActionKey, setRespondingActionKey] = useState("");
+  const [completingSessionId, setCompletingSessionId] = useState("");
 
   const weekDays = useMemo(() => getWeekDays(), []);
   const hourLabels = useMemo(
@@ -517,17 +553,19 @@ export default function SessionsPage() {
     [sessions, weekDays]
   );
 
-  const todaysAgenda = useMemo(
+  const upcomingSessions = useMemo(
     () =>
-      sessions.filter(
-        (session) =>
-          session.status === "accepted" && isSameDay(new Date(session.scheduledAt), new Date())
-      ),
+      sessions.filter((session) => session.status === "accepted"),
     [sessions]
   );
 
   const pendingRequests = useMemo(
     () => sessions.filter((session) => session.status === "pending"),
+    [sessions]
+  );
+
+  const completedSessions = useMemo(
+    () => sessions.filter((session) => session.status === "completed"),
     [sessions]
   );
 
@@ -561,6 +599,46 @@ export default function SessionsPage() {
       );
     } finally {
       setRespondingActionKey("");
+    }
+  }
+
+  async function handleCompleteSession(sessionId: string) {
+    const confirmed = window.confirm("Are you sure this session has concluded?");
+
+    if (!confirmed) return;
+
+    try {
+      setCompletingSessionId(sessionId);
+
+      const response = await fetch(`/api/sessions/${sessionId}/complete`, {
+        method: "PATCH",
+      });
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to complete session.");
+      }
+
+      setSessions((currentSessions) =>
+        currentSessions.map((session) =>
+          session._id === sessionId ? (result?.session as MentorSession) : session
+        )
+      );
+      setDashboardStats((currentStats) => ({
+        ...currentStats,
+        totalEarnings: Number(
+          result?.rewards?.mentorTotalEarnings ?? currentStats.totalEarnings
+        ),
+        uniqueStudentsTaught: currentStats.uniqueStudentsTaught,
+        upcomingSessions: Math.max(0, currentStats.upcomingSessions - 1),
+      }));
+      toast.success("Session completed. Earnings and XP have been awarded.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to complete session."
+      );
+    } finally {
+      setCompletingSessionId("");
     }
   }
 
@@ -693,7 +771,7 @@ export default function SessionsPage() {
             >
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  Today&apos;s Agenda
+                  Upcoming Sessions
                 </h3>
                 <button className="text-sm font-medium text-primary transition-colors hover:text-primary/80">
                   View All
@@ -706,13 +784,18 @@ export default function SessionsPage() {
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     Loading agenda...
                   </div>
-                ) : todaysAgenda.length === 0 ? (
+                ) : upcomingSessions.length === 0 ? (
                   <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700">
-                    No accepted sessions scheduled for today.
+                    No accepted sessions scheduled.
                   </div>
                 ) : (
-                  todaysAgenda.map((session) => (
-                    <AgendaCard key={session._id} session={session} />
+                  upcomingSessions.map((session) => (
+                    <AgendaCard
+                      key={session._id}
+                      session={session}
+                      isCompleting={completingSessionId === session._id}
+                      onComplete={handleCompleteSession}
+                    />
                   ))
                 )}
               </div>
@@ -754,6 +837,39 @@ export default function SessionsPage() {
                       />
                     ))}
                   </AnimatePresence>
+                )}
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.35 }}
+              className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-md backdrop-blur-sm dark:border-slate-800 dark:bg-surface-dark/80"
+            >
+              <div className="mb-4 flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                  {completedSessions.length}
+                </span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  History
+                </h3>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {isLoading ? (
+                  <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-500 dark:bg-slate-800/50">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Loading history...
+                  </div>
+                ) : completedSessions.length === 0 ? (
+                  <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500 dark:bg-slate-800/50">
+                    Completed sessions will appear here.
+                  </div>
+                ) : (
+                  completedSessions.slice(0, 5).map((session) => (
+                    <HistoryCard key={session._id} session={session} />
+                  ))
                 )}
               </div>
             </motion.div>
