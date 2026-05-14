@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import MentorProfile from "@/models/MentorProfile";
+import Notification from "@/models/Notification";
 
 type MentorReviewStatus = "approved" | "rejected";
 
@@ -74,6 +75,29 @@ export async function PATCH(
         { status: 404 }
       );
     }
+
+    const notificationMessage =
+      status === "approved"
+        ? "Congratulations! Your mentor application has been approved. You are now live in the marketplace."
+        : "Your mentor application was not approved at this time. Please update your certificates and try again.";
+
+    await Notification.create({
+      recipientId: mentorProfile.userId,
+      senderId: mongoose.Types.ObjectId.isValid(session.user.id)
+        ? new mongoose.Types.ObjectId(session.user.id)
+        : null,
+      type: "system",
+      title:
+        status === "approved"
+          ? "Mentor Application Approved"
+          : "Mentor Application Rejected",
+      message: notificationMessage,
+      read: false,
+      metadata: {
+        mentorProfileId: String(mentorProfile._id),
+        status,
+      },
+    });
 
     return NextResponse.json({
       success: true,

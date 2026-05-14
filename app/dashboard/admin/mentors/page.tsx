@@ -71,15 +71,14 @@ function formatSubmittedDate(value: string | null) {
   }).format(submittedDate);
 }
 
-function openUploadedCertificate(certificate: string) {
-  const certificateWindow = window.open("", "_blank", "noopener,noreferrer");
+function downloadUploadedCertificate(certificate: string) {
+  const link = document.createElement("a");
 
-  if (!certificateWindow) {
-    toast.error("Allow pop-ups to view this document.");
-    return;
-  }
-
-  certificateWindow.location.href = certificate;
+  link.href = certificate;
+  link.download = "Mentor_Document";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 function MentorCardSkeleton() {
@@ -344,7 +343,9 @@ export default function PendingMentorsPage() {
                             <button
                               key={`${application.id}-document-${index}`}
                               type="button"
-                              onClick={() => openUploadedCertificate(certificate)}
+                              onClick={() =>
+                                downloadUploadedCertificate(certificate)
+                              }
                               className="inline-flex max-w-full items-center justify-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-bold text-[#7C3AED] transition-colors hover:bg-purple-100 dark:border-purple-500/30 dark:bg-purple-500/10 dark:hover:bg-purple-500/20"
                             >
                               <FileText size={14} aria-hidden="true" />
