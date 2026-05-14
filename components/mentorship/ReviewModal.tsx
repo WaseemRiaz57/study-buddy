@@ -9,10 +9,11 @@ type ReviewSubmitResult = {
   message?: string;
   session?: {
     _id: string;
-    status: "pending" | "accepted" | "rejected" | "completed";
+    status: "pending" | "accepted" | "declined" | "rejected" | "completed";
   };
   mentorProfile?: {
     rating?: number;
+    totalReviews?: number;
     totalEarnings?: number;
   };
 };
@@ -147,7 +148,7 @@ export default function ReviewModal({
                         size={34}
                         className={
                           isActive
-                            ? "text-yellow-400"
+                            ? "fill-purple-600 text-purple-600"
                             : "text-gray-300 dark:text-slate-700"
                         }
                         fill={isActive ? "currentColor" : "none"}
@@ -162,6 +163,7 @@ export default function ReviewModal({
               Comment
             </label>
             <textarea
+              aria-label="Review comment"
               value={comment}
               onChange={(event) => setComment(event.target.value)}
               disabled={isSubmitting}
@@ -184,7 +186,7 @@ export default function ReviewModal({
                 type="button"
                 onClick={handleSubmit}
                 disabled={!rating || isSubmitting}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-fuchsia-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/25 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-purple-600/20 transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                 Submit Review

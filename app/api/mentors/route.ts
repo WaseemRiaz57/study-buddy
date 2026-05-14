@@ -19,6 +19,7 @@ type MentorProfileData = {
   subjects?: string[];
   hourlyRate?: number;
   rating?: number;
+  totalReviews?: number;
   bio?: string;
   availability?: IMentorAvailability[];
   status?: string;
@@ -61,6 +62,7 @@ export async function GET() {
         subjects: profile?.subjects ?? [],
         hourlyRate: profile?.hourlyRate ?? 0,
         rating: profile?.rating ?? 0,
+        reviews: profile?.totalReviews ?? 0,
         bio: profile?.bio ?? "",
         availability: (profile?.availability ?? []).map((day) => {
           const slots = day.slots?.length ? day.slots : day.timeSlots ?? [];

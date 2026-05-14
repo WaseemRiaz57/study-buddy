@@ -35,6 +35,7 @@ interface MentorApiResponse {
   subjects?: string[];
   hourlyRate?: number;
   rating?: number;
+  reviews?: number;
   bio?: string;
   availability?: Array<{
     day: string;
@@ -87,7 +88,7 @@ function mapMentorFromApi(mentor: MentorApiResponse): Mentor {
     company: "Mentor Marketplace",
     hourlyRate: mentor.hourlyRate ?? 0,
     rating: mentor.rating ?? 0,
-    reviews: 0,
+    reviews: mentor.reviews ?? 0,
     avatar: mentor.image ?? "",
     tags: subjects,
     category: getMentorCategory(subjects),

@@ -9,6 +9,12 @@ import MentorSession from "@/models/MentorSession";
 
 const MAX_COMMENT_LENGTH = 1000;
 
+type RatingAggregate = {
+  _id: mongoose.Types.ObjectId;
+  averageRating: number;
+  totalReviews: number;
+};
+
 function normalizeRating(rating: unknown): number | null {
   const normalizedRating = Number(rating);
 
@@ -32,6 +38,14 @@ export async function POST(
 
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const userRole = String(session.user.role ?? "").toLowerCase();
+    if (userRole !== "student") {
+      return NextResponse.json(
+        { message: "Forbidden. Only students can submit reviews." },
+        { status: 403 }
+      );
     }
 
     const { id } = await params;
@@ -77,6 +91,13 @@ export async function POST(
       );
     }
 
+    if (mentorSession.status !== "completed") {
+      return NextResponse.json(
+        { message: "Reviews can only be submitted for completed sessions." },
+        { status: 400 }
+      );
+    }
+
     const existingReview = await MentorReview.findOne({ sessionId: id }).select(
       "_id"
     );
@@ -84,7 +105,7 @@ export async function POST(
     if (existingReview) {
       return NextResponse.json(
         { message: "A review has already been submitted for this session." },
-        { status: 409 }
+        { status: 400 }
       );
     }
 
@@ -96,31 +117,33 @@ export async function POST(
       comment: normalizedComment,
     });
 
-    const mentorReviews = await MentorReview.find({
-      mentorId: mentorSession.mentorId,
-    })
-      .select("rating")
-      .lean();
-
-    const totalRating = mentorReviews.reduce(
-      (sum, review) => sum + Number(review.rating ?? 0),
-      0
-    );
-    const averageRating =
-      mentorReviews.length > 0
-        ? Math.round((totalRating / mentorReviews.length) * 10) / 10
-        : 0;
+    const [ratingAggregate] = await MentorReview.aggregate<RatingAggregate>([
+      { $match: { mentorId: mentorSession.mentorId } },
+      {
+        $group: {
+          _id: "$mentorId",
+          averageRating: { $avg: "$rating" },
+          totalReviews: { $sum: 1 },
+        },
+      },
+    ]);
+    const averageRating = ratingAggregate
+      ? Math.round(Number(ratingAggregate.averageRating ?? 0) * 10) / 10
+      : 0;
+    const totalReviews = ratingAggregate?.totalReviews ?? 0;
 
     const updatedMentorProfile = await MentorProfile.findOneAndUpdate(
       { userId: mentorSession.mentorId },
       {
-        $set: { rating: averageRating },
+        $set: { rating: averageRating, totalReviews },
+        $setOnInsert: { userId: mentorSession.mentorId },
       },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
 
     return NextResponse.json(
       {
+        success: true,
         message: "Review submitted successfully!",
         review: mentorReview,
         session: mentorSession,
@@ -129,6 +152,18 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === 11000
+    ) {
+      return NextResponse.json(
+        { message: "A review has already been submitted for this session." },
+        { status: 400 }
+      );
+    }
+
     console.error("Submit mentor review error:", error);
     return NextResponse.json(
       { message: "Failed to submit review" },

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Search, TrendingUp, Clock, FileText, Plus, Sparkles, Zap, BarChart3, Target, Award, CheckSquare, Upload, Download, MessageCircle, BookOpen, Brain, Timer, Star, Trophy, BookMarked, Lock, ArrowRight, Users } from "lucide-react";
+import { Clock, FileText, Sparkles, Zap, Target, CheckSquare, Brain, Timer, Star, BookMarked, Lock, ArrowRight, Users } from "lucide-react";
 import ReviewModal from "@/components/mentorship/ReviewModal";
 
 const fadeIn = {
@@ -22,7 +22,7 @@ interface RecentAINote {
   createdAt: string;
 }
 
-type SessionStatus = "pending" | "accepted" | "rejected" | "completed";
+type SessionStatus = "pending" | "accepted" | "declined" | "rejected" | "completed";
 
 interface PopulatedMentor {
   _id?: string;
@@ -83,13 +83,7 @@ function formatSessionTime(value: string) {
 }
 
 function isPastReviewCandidate(session: StudentMentorSession) {
-  const scheduledAt = new Date(session.scheduledAt).getTime();
-  return (
-    session.status === "completed" ||
-    (session.status === "accepted" &&
-      !Number.isNaN(scheduledAt) &&
-      scheduledAt < Date.now())
-  );
+  return session.status === "completed";
 }
 
 export function StudentDashboard() {
@@ -98,7 +92,6 @@ export function StudentDashboard() {
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
   const [selectedReviewSession, setSelectedReviewSession] =
     useState<StudentMentorSession | null>(null);
-  const [hasAutoOpenedReview, setHasAutoOpenedReview] = useState(false);
 
   const formatRelativeTime = useCallback((isoDate: string) => {
     const date = new Date(isoDate).getTime();
@@ -155,19 +148,6 @@ export function StudentDashboard() {
     };
   }, [fetchRecentNotes, fetchMentorSessions]);
 
-  useEffect(() => {
-    if (hasAutoOpenedReview || selectedReviewSession) return;
-
-    const firstUnreviewedCompletedSession = mentorSessions.find(
-      (session) => session.status === "completed" && !session.reviewSubmitted
-    );
-
-    if (!firstUnreviewedCompletedSession) return;
-
-    setSelectedReviewSession(firstUnreviewedCompletedSession);
-    setHasAutoOpenedReview(true);
-  }, [hasAutoOpenedReview, mentorSessions, selectedReviewSession]);
-
   const noteTypeMeta: Record<AINoteType, { gradient: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string }> = {
     notes: { gradient: "from-emerald-500 to-teal-600", icon: Brain, label: "Smart Notes" },
     summarizer: { gradient: "from-indigo-500 to-purple-600", icon: FileText, label: "Summary" },
@@ -211,7 +191,7 @@ export function StudentDashboard() {
     }
 
     setSelectedReviewSession(null);
-    toast.success("Review submitted! Mentor rating updated.");
+    toast.success("Review submitted successfully!");
     window.dispatchEvent(new Event("mentor-profiles-updated"));
   }
 
@@ -468,7 +448,7 @@ export function StudentDashboard() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 items-start gap-4">
-                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-fuchsia-500 text-white flex items-center justify-center text-sm font-black">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#7C3AED] text-sm font-black text-white">
                           {mentor.image ? (
                             <img
                               src={mentor.image}
@@ -507,10 +487,10 @@ export function StudentDashboard() {
                       ) : (
                         <button
                           onClick={() => setSelectedReviewSession(session)}
-                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-fuchsia-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:brightness-110 active:scale-95"
+                          className="inline-flex items-center gap-2 rounded-xl border border-[#7C3AED] bg-white px-4 py-2 text-sm font-bold text-[#7C3AED] shadow-sm transition-colors hover:bg-purple-50 active:scale-95 dark:bg-transparent dark:hover:bg-purple-500/10"
                         >
-                          <Star size={16} fill="currentColor" />
-                          Review Mentor
+                          <Star size={16} className="fill-purple-600 text-purple-600" />
+                          Leave Review
                         </button>
                       )}
                     </div>
