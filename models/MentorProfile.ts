@@ -16,7 +16,7 @@ export interface IMentorProfile extends Document {
   totalEarnings: number;
   rating: number;
   availability: IMentorAvailability[];
-  status: "pending" | "approved" | "suspended";
+  status: "pending" | "approved" | "rejected" | "suspended";
   isPublic: boolean;
 }
 
@@ -109,7 +109,7 @@ const MentorProfileSchema = new Schema<IMentorProfile>(
     availability: { type: [MentorAvailabilitySchema], default: [] },
     status: {
       type: String,
-      enum: ["pending", "approved", "suspended"],
+      enum: ["pending", "approved", "rejected", "suspended"],
       default: "pending",
     },
     isPublic: {

@@ -52,7 +52,7 @@ const STEPS = [
   "Final Review",
 ];
 
-type MentorStatus = "pending" | "approved" | "suspended";
+type MentorStatus = "pending" | "approved" | "rejected" | "suspended";
 
 type AvailabilityDay = {
   day: string;
