@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { 
-  BookOpen, TrendingUp, Clock, Users, DollarSign, 
-  Award, Calendar, FileText, CheckCircle, XCircle, 
-  BarChart3, Wallet, CreditCard, Star, ArrowRight,
-  MessageCircle, Video, Settings, Target, Coins, Plus, Menu,
+  BookOpen, Clock,
+  Calendar, FileText,
+  BarChart3, Wallet, CreditCard, Star,
+  Coins,
   Loader2
 } from "lucide-react";
 import RequestApprovalModal, {
@@ -108,9 +110,11 @@ interface MentorRequest {
   scheduledAt: string;
   duration: number;
   createdAt?: string;
+  status?: "pending" | "accepted" | "declined" | "rejected" | "completed";
+  roomId?: string;
 }
 
-type RequestAction = "accept" | "reject";
+type RequestAction = "accepted" | "declined";
 
 const fadeIn = {
   initial: { opacity: 0, y: 10 },
@@ -203,8 +207,9 @@ export function MentorDashboard() {
   });
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [requests, setRequests] = useState<MentorRequest[]>([]);
+  const [upcomingSessions, setUpcomingSessions] = useState<MentorRequest[]>([]);
   const [isRequestsLoading, setIsRequestsLoading] = useState(true);
-  const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
+  const [respondingActionKey, setRespondingActionKey] = useState("");
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<StudentRequestData | null>(null);
 
@@ -288,19 +293,51 @@ export function MentorDashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchUpcomingSessions() {
+      try {
+        const response = await fetch("/api/mentor/sessions", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) return;
+
+        const data = (await response.json()) as MentorRequest[];
+
+        if (isActive) {
+          setUpcomingSessions(
+            data.filter((mentorSession) => mentorSession.status === "accepted")
+          );
+        }
+      } catch {
+        // Keep the dashboard usable if this compact list cannot load.
+      }
+    }
+
+    void fetchUpcomingSessions();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const handleOpenRequest = (request: MentorRequest) => {
     setSelectedRequest(toModalStudentData(request));
     setIsRequestModalOpen(true);
   };
 
-  const handleRespond = async (requestId: string, action: RequestAction) => {
-    try {
-      setRespondingRequestId(requestId);
+  const handleRespond = async (requestId: string, nextStatus: RequestAction) => {
+    const nextActionKey = `${requestId}-${nextStatus}`;
 
-      const response = await fetch(`/api/sessions/${requestId}/respond`, {
+    try {
+      setRespondingActionKey(nextActionKey);
+
+      const response = await fetch(`/api/sessions/${requestId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ status: nextStatus }),
       });
 
       const result = await response.json().catch(() => null);
@@ -309,11 +346,24 @@ export function MentorDashboard() {
         throw new Error(result?.message || "Failed to respond to session.");
       }
 
+      const acceptedRequest = requests.find((request) => request._id === requestId);
+
       setRequests((currentRequests) =>
         currentRequests.filter((request) => request._id !== requestId)
       );
 
-      if (action === "accept") {
+      if (nextStatus === "accepted") {
+        if (acceptedRequest) {
+          setUpcomingSessions((currentSessions) => [
+            {
+              ...acceptedRequest,
+              status: "accepted",
+              roomId: requestId,
+            },
+            ...currentSessions.filter((mentorSession) => mentorSession._id !== requestId),
+          ]);
+        }
+
         setStats((currentStats) => ({
           ...currentStats,
           upcomingSessions: currentStats.upcomingSessions + 1,
@@ -327,7 +377,7 @@ export function MentorDashboard() {
         error instanceof Error ? error.message : "Failed to respond to session."
       );
     } finally {
-      setRespondingRequestId(null);
+      setRespondingActionKey("");
     }
   };
 
@@ -427,7 +477,9 @@ export function MentorDashboard() {
                 const student = getStudentDetails(request);
                 const studentName = student.name || "Student";
                 const initials = getInitials(studentName) || "ST";
-                const isResponding = respondingRequestId === request._id;
+                const acceptingKey = `${request._id}-accepted`;
+                const decliningKey = `${request._id}-declined`;
+                const isResponding = respondingActionKey.startsWith(`${request._id}-`);
 
                 return (
                   <motion.div 
@@ -441,9 +493,12 @@ export function MentorDashboard() {
                     <div className="flex items-start gap-4 mb-4">
                       <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold overflow-hidden">
                         {student.image ? (
-                          <img
+                          <Image
                             src={student.image}
                             alt={studentName}
+                            width={48}
+                            height={48}
+                            unoptimized
                             className="h-full w-full object-cover"
                           />
                         ) : (
@@ -471,29 +526,67 @@ export function MentorDashboard() {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRespond(request._id, "accept");
+                          handleRespond(request._id, "accepted");
                         }}
                         disabled={isResponding}
-                        className="flex-1 py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="flex-1 py-2.5 bg-[#7C3AED] text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-all shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
-                        {isResponding ? <Loader2 size={14} className="animate-spin" /> : null}
+                        {respondingActionKey === acceptingKey ? <Loader2 size={14} className="animate-spin" /> : null}
                         Accept
                       </button>
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRespond(request._id, "reject");
+                          handleRespond(request._id, "declined");
                         }}
                         disabled={isResponding}
-                        className="px-4 py-2.5 bg-muted text-muted-foreground text-sm font-bold rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="px-4 py-2.5 border border-slate-300 bg-transparent text-muted-foreground text-sm font-bold rounded-lg hover:bg-slate-100 hover:text-slate-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 dark:border-slate-700 dark:hover:bg-white/5"
                       >
-                        {isResponding ? <Loader2 size={14} className="animate-spin" /> : null}
+                        {respondingActionKey === decliningKey ? <Loader2 size={14} className="animate-spin" /> : null}
                         Decline
                       </button>
                     </div>
                   </motion.div>
                 );
               })}
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Upcoming Rooms
+              </h4>
+              {upcomingSessions.length === 0 ? (
+                <div className="glass-panel p-4 rounded-2xl text-sm text-muted-foreground">
+                  Accepted sessions will appear here.
+                </div>
+              ) : (
+                upcomingSessions.slice(0, 3).map((mentorSession) => {
+                  const student = getStudentDetails(mentorSession);
+                  const studentName = student.name || "Student";
+
+                  return (
+                    <div
+                      key={mentorSession._id}
+                      className="glass-panel rounded-2xl p-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-foreground">
+                          {mentorSession.subject}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {studentName} · {formatSessionTime(mentorSession.scheduledAt)}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/dashboard/study-rooms/${mentorSession._id}`}
+                        className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#7C3AED] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-purple-700"
+                      >
+                        Join Room
+                      </Link>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 

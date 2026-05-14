@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export type MentorSessionStatus =
   | "pending"
   | "accepted"
+  | "declined"
   | "rejected"
   | "completed";
 
@@ -44,7 +45,7 @@ const MentorSessionSchema = new Schema<IMentorSession>(
     duration: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["pending", "accepted", "rejected", "completed"],
+      enum: ["pending", "accepted", "declined", "rejected", "completed"],
       default: "pending",
     },
     paymentStatus: {

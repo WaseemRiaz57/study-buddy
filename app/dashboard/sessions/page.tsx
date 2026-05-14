@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -16,12 +17,11 @@ import {
   Star,
   TrendingUp,
   User,
-  Video,
 } from "lucide-react";
 
 type EventColor = "emerald" | "purple" | "blue";
-type SessionStatus = "pending" | "accepted" | "rejected" | "completed";
-type RequestAction = "accept" | "reject";
+type SessionStatus = "pending" | "accepted" | "declined" | "rejected" | "completed";
+type RequestAction = "accepted" | "declined";
 
 type PopulatedStudent = {
   _id?: string;
@@ -300,7 +300,14 @@ function AgendaCard({ session }: { session: MentorSession }) {
         <div className="relative">
           <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-primary/10 p-0.5 dark:bg-primary/20">
             {student.image ? (
-              <img src={student.image} alt={studentName} className="h-full w-full rounded-full object-cover" />
+              <Image
+                src={student.image}
+                alt={studentName}
+                width={48}
+                height={48}
+                unoptimized
+                className="h-full w-full rounded-full object-cover"
+              />
             ) : (
               <span className="text-sm font-bold text-primary">{initials}</span>
             )}
@@ -332,10 +339,10 @@ function AgendaCard({ session }: { session: MentorSession }) {
             View Prep
           </button>
         </Link>
-        {session.roomId ? (
-          <Link href={`/dashboard/study-rooms/${session.roomId}`} className="flex-1">
+        {session.status === "accepted" ? (
+          <Link href={`/dashboard/study-rooms/${session._id}`} className="flex-1">
             <button className="w-full rounded bg-primary py-2 text-xs font-bold text-white transition-colors hover:bg-primary/90">
-              Join Session
+              Join Room
             </button>
           </Link>
         ) : (
@@ -343,7 +350,7 @@ function AgendaCard({ session }: { session: MentorSession }) {
             disabled
             className="flex-1 rounded bg-slate-200 py-2 text-xs font-bold text-slate-400 dark:bg-slate-800"
           >
-            Join Session
+            Join Room
           </button>
         )}
       </div>
@@ -353,14 +360,17 @@ function AgendaCard({ session }: { session: MentorSession }) {
 
 function RequestCard({
   session,
-  isResponding,
+  respondingActionKey,
   onRespond,
 }: {
   session: MentorSession;
-  isResponding: boolean;
-  onRespond: (id: string, action: RequestAction) => void;
+  respondingActionKey: string;
+  onRespond: (id: string, status: RequestAction) => void;
 }) {
   const studentName = getStudentName(session);
+  const acceptingKey = `${session._id}-accepted`;
+  const decliningKey = `${session._id}-declined`;
+  const isResponding = respondingActionKey.startsWith(`${session._id}-`);
 
   return (
     <motion.div
@@ -386,20 +396,20 @@ function RequestCard({
       <div className="flex gap-2">
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => onRespond(session._id, "accept")}
+          onClick={() => onRespond(session._id, "accepted")}
           disabled={isResponding}
-          className="flex flex-1 items-center justify-center gap-2 rounded bg-primary py-1.5 text-xs font-bold text-white transition-all hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex flex-1 items-center justify-center gap-2 rounded bg-[#7C3AED] py-1.5 text-xs font-bold text-white transition-all hover:bg-purple-700 hover:shadow-md hover:shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isResponding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {respondingActionKey === acceptingKey && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Accept
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => onRespond(session._id, "reject")}
+          onClick={() => onRespond(session._id, "declined")}
           disabled={isResponding}
           className="flex flex-1 items-center justify-center gap-2 rounded border border-slate-300 bg-transparent py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:text-slate-300"
         >
-          {isResponding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {respondingActionKey === decliningKey && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Decline
         </motion.button>
       </div>
@@ -416,7 +426,7 @@ export default function SessionsPage() {
     upcomingSessions: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [respondingSessionId, setRespondingSessionId] = useState<string | null>(null);
+  const [respondingActionKey, setRespondingActionKey] = useState("");
 
   const weekDays = useMemo(() => getWeekDays(), []);
   const hourLabels = useMemo(
@@ -521,14 +531,16 @@ export default function SessionsPage() {
     [sessions]
   );
 
-  async function handleRespond(sessionId: string, action: RequestAction) {
-    try {
-      setRespondingSessionId(sessionId);
+  async function handleRespond(sessionId: string, nextStatus: RequestAction) {
+    const nextActionKey = `${sessionId}-${nextStatus}`;
 
-      const response = await fetch(`/api/sessions/${sessionId}/respond`, {
+    try {
+      setRespondingActionKey(nextActionKey);
+
+      const response = await fetch(`/api/sessions/${sessionId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ status: nextStatus }),
       });
       const result = await response.json().catch(() => null);
 
@@ -538,17 +550,17 @@ export default function SessionsPage() {
 
       setSessions((currentSessions) =>
         currentSessions.map((session) =>
-          session._id === sessionId ? (result as MentorSession) : session
+          session._id === sessionId ? (result?.session as MentorSession) : session
         )
       );
 
-      toast.success(action === "accept" ? "Session Accepted!" : "Session Declined.");
+      toast.success(nextStatus === "accepted" ? "Session Accepted!" : "Session Declined.");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to respond to session."
       );
     } finally {
-      setRespondingSessionId(null);
+      setRespondingActionKey("");
     }
   }
 
@@ -737,7 +749,7 @@ export default function SessionsPage() {
                       <RequestCard
                         key={session._id}
                         session={session}
-                        isResponding={respondingSessionId === session._id}
+                        respondingActionKey={respondingActionKey}
                         onRespond={handleRespond}
                       />
                     ))}
