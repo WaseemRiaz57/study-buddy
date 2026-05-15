@@ -27,6 +27,9 @@ const MENTOR_ONLY_FIELDS = [
   "hourlyRate",
   "availability",
   "certificates",
+  "bankName",
+  "accountTitle",
+  "accountNumber",
   "submitForReview",
   "status",
   "isPublic",
@@ -51,6 +54,9 @@ const emptyMentorProfile = {
   subjects: [],
   hourlyRate: 0,
   certificates: [],
+  bankName: "",
+  accountTitle: "",
+  accountNumber: "",
   totalEarnings: 0,
   rating: 0,
   availability: [],
@@ -275,6 +281,18 @@ function buildMentorProfileUpdate(body: Record<string, unknown>) {
 
   if (Object.prototype.hasOwnProperty.call(body, "certificates")) {
     update.certificates = normalizeCertificateArray(body.certificates);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "bankName")) {
+    update.bankName = normalizeString(body.bankName, 120);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "accountTitle")) {
+    update.accountTitle = normalizeString(body.accountTitle, 160);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "accountNumber")) {
+    update.accountNumber = normalizeString(body.accountNumber, 80);
   }
 
   if (Object.prototype.hasOwnProperty.call(body, "availability")) {

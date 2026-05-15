@@ -3,8 +3,17 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import MentorProfile from "@/models/MentorProfile";
 import MentorReview from "@/models/MentorReview";
 import MentorSession from "@/models/MentorSession";
+
+function getPopulatedId(value: unknown) {
+  if (value && typeof value === "object" && "_id" in value) {
+    return String(value._id);
+  }
+
+  return String(value ?? "");
+}
 
 export async function GET() {
   try {
@@ -47,10 +56,23 @@ export async function GET() {
     const reviewedBySessionId = new Set(
       reviewedSessionIds.map((review) => String(review.sessionId))
     );
+    const mentorIds = [
+      ...new Set(mentorSessions.map((mentorSession) => getPopulatedId(mentorSession.mentorId))),
+    ];
+    const mentorProfiles = await MentorProfile.find({
+      userId: { $in: mentorIds },
+    })
+      .select("userId bankName accountTitle accountNumber hourlyRate")
+      .lean();
+    const mentorProfileByUserId = new Map(
+      mentorProfiles.map((profile) => [String(profile.userId), profile])
+    );
 
     return NextResponse.json(
       mentorSessions.map((mentorSession) => ({
         ...mentorSession,
+        mentorProfile:
+          mentorProfileByUserId.get(getPopulatedId(mentorSession.mentorId)) ?? null,
         reviewSubmitted: reviewedBySessionId.has(String(mentorSession._id)),
       }))
     );

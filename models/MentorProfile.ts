@@ -13,6 +13,9 @@ export interface IMentorProfile extends Document {
   subjects: string[];
   hourlyRate: number;
   certificates: string[];
+  bankName: string;
+  accountTitle: string;
+  accountNumber: string;
   totalEarnings: number;
   rating: number;
   totalReviews: number;
@@ -105,6 +108,9 @@ const MentorProfileSchema = new Schema<IMentorProfile>(
     subjects: { type: [String], default: [] },
     hourlyRate: { type: Number, default: 0 },
     certificates: { type: [String], default: [] },
+    bankName: { type: String, default: "", trim: true },
+    accountTitle: { type: String, default: "", trim: true },
+    accountNumber: { type: String, default: "", trim: true },
     totalEarnings: { type: Number, default: 0 },
     rating: { type: Number, default: 0 },
     totalReviews: { type: Number, default: 0, min: 0 },

@@ -3,6 +3,8 @@ import mongoose, { Schema, Document } from "mongoose";
 export type MentorSessionStatus =
   | "pending"
   | "accepted"
+  | "payment_pending"
+  | "payment_verified"
   | "declined"
   | "rejected"
   | "completed";
@@ -24,6 +26,7 @@ export interface IMentorSession extends Document {
   type: MentorSessionType;
   status: MentorSessionStatus;
   paymentStatus: MentorSessionPaymentStatus;
+  paymentReceipt: string;
   roomId: string;
   goals: string[];
   attachments: IMentorSessionAttachment[];
@@ -52,7 +55,15 @@ const MentorSessionSchema = new Schema<IMentorSession>(
     },
     status: {
       type: String,
-      enum: ["pending", "accepted", "declined", "rejected", "completed"],
+      enum: [
+        "pending",
+        "accepted",
+        "payment_pending",
+        "payment_verified",
+        "declined",
+        "rejected",
+        "completed",
+      ],
       default: "pending",
     },
     paymentStatus: {
@@ -60,6 +71,7 @@ const MentorSessionSchema = new Schema<IMentorSession>(
       enum: ["unpaid", "paid"],
       default: "unpaid",
     },
+    paymentReceipt: { type: String, default: "" },
     roomId: { type: String, default: "", trim: true },
     goals: { type: [String], default: [] },
     attachments: { type: [MentorSessionAttachmentSchema], default: [] },
