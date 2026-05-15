@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
+import { toast } from "sonner";
 import {
     CreditCard,
     TrendingUp,
@@ -40,6 +40,37 @@ interface Transaction {
     amount: string;
     date: string;
     status: TxStatus;
+}
+
+interface MonetizationStats {
+    freeCount: number;
+    proCount: number;
+    eliteCount: number;
+    activePaidSubscriptions: number;
+    monthlyRecurringRevenue: number;
+    prices: {
+        pro: number;
+        elite: number;
+    };
+}
+
+const EMPTY_STATS: MonetizationStats = {
+    freeCount: 0,
+    proCount: 0,
+    eliteCount: 0,
+    activePaidSubscriptions: 0,
+    monthlyRecurringRevenue: 0,
+    prices: {
+        pro: 9.99,
+        elite: 24.99,
+    },
+};
+
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat("en", {
+        style: "currency",
+        currency: "USD",
+    }).format(value);
 }
 
 // ─── Status Config ──────────────────────────────────────────────────────────────
@@ -185,17 +216,82 @@ const TIER_STYLES: Record<
 
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 export default function MonetizationPage() {
-    const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const [editModal, setEditModal] = useState<PricingPlan | null>(null);
+    const [stats, setStats] = useState<MonetizationStats>(EMPTY_STATS);
+    const [isLoadingStats, setIsLoadingStats] = useState(true);
 
     useEffect(() => {
         setMounted(true);
+        let active = true;
+
+        async function fetchStats() {
+            try {
+                setIsLoadingStats(true);
+                const response = await fetch("/api/admin/monetization/stats", {
+                    cache: "no-store",
+                });
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(data?.message || "Failed to load monetization stats.");
+                }
+
+                if (active) {
+                    setStats({
+                        ...EMPTY_STATS,
+                        ...data,
+                        prices: {
+                            ...EMPTY_STATS.prices,
+                            ...(data?.prices || {}),
+                        },
+                    });
+                }
+            } catch (error) {
+                if (active) {
+                    toast.error(
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to load monetization stats."
+                    );
+                }
+            } finally {
+                if (active) {
+                    setIsLoadingStats(false);
+                }
+            }
+        }
+
+        void fetchStats();
+
+        return () => {
+            active = false;
+        };
     }, []);
 
     if (!mounted) {
         return <div className="min-h-[60vh]" />;
     }
+
+    const plans = PLANS.map((plan) => {
+        if (plan.tier === "free") {
+            return { ...plan, activeUsers: stats.freeCount };
+        }
+
+        if (plan.tier === "pro") {
+            return {
+                ...plan,
+                price: formatCurrency(stats.prices.pro),
+                activeUsers: stats.proCount,
+            };
+        }
+
+        return {
+            ...plan,
+            price: formatCurrency(stats.prices.elite),
+            activeUsers: stats.eliteCount,
+        };
+    });
 
     return (
         <div className="space-y-6">
@@ -228,7 +324,9 @@ export default function MonetizationPage() {
                             Monthly Recurring Revenue
                         </div>
                         <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-                            $12,450
+                            {isLoadingStats
+                                ? "..."
+                                : formatCurrency(stats.monthlyRecurringRevenue)}
                         </div>
                     </div>
                 </div>
@@ -243,7 +341,9 @@ export default function MonetizationPage() {
                             Active Pro / Elite Subs
                         </div>
                         <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-                            1,627
+                            {isLoadingStats
+                                ? "..."
+                                : stats.activePaidSubscriptions.toLocaleString()}
                         </div>
                     </div>
                 </div>
@@ -271,7 +371,7 @@ export default function MonetizationPage() {
                     Subscription Tiers
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {PLANS.map((plan) => {
+                    {plans.map((plan) => {
                         const style = TIER_STYLES[plan.tier];
                         const TierIcon = style.icon;
 
@@ -479,7 +579,7 @@ export default function MonetizationPage() {
             {/* ════════ FOOTER ════════ */}
             <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
                 <span>
-                    {PLANS.length} plans · {TRANSACTIONS.length} recent transactions
+                    {plans.length} plans · {TRANSACTIONS.length} recent transactions
                 </span>
                 <span>StudyBuddy Admin · Monetization Panel</span>
             </div>
@@ -590,7 +690,7 @@ export default function MonetizationPage() {
                             </button>
                             <button
                                 onClick={() => setEditModal(null)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-purple-600 text-white shadow-md shadow-purple-500/30 hover:bg-purple-700 transition-all"
+                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-[#7C3AED] text-white shadow-md shadow-purple-500/30 hover:opacity-90 transition-all"
                             >
                                 <Check size={14} /> Save Changes
                             </button>

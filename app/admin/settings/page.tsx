@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
+import { toast } from "sonner";
 import {
     Settings,
     Shield,
@@ -17,6 +17,7 @@ import {
     Mail,
     UserPlus,
     Lock,
+    Loader2,
 } from "lucide-react";
 
 // ─── Toggle Component ───────────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ function Toggle({
             role="switch"
             aria-checked={checked}
             onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 ${checked ? "bg-purple-600" : "bg-slate-300 dark:bg-white/10"
+            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 ${checked ? "bg-[#7C3AED]" : "bg-slate-300 dark:bg-white/10"
                 }`}
         >
             <span
@@ -102,8 +103,10 @@ function SectionCard({
 
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 export default function PlatformSettingsPage() {
-    const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
     // General
     const [platformName, setPlatformName] = useState("StudyBuddy");
@@ -125,7 +128,79 @@ export default function PlatformSettingsPage() {
 
     useEffect(() => {
         setMounted(true);
+        let active = true;
+
+        async function fetchSettings() {
+            try {
+                setIsLoading(true);
+                const response = await fetch("/api/admin/settings", {
+                    cache: "no-store",
+                });
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(data?.message || "Failed to load settings.");
+                }
+
+                if (!active) return;
+
+                const settings = data?.settings || {};
+                setPlatformName(settings.platformName || "StudyBuddy");
+                setSupportEmail(settings.supportEmail || "support@studybuddy.io");
+                setAllowSignups(Boolean(settings.allowNewSignups));
+                setMaintenanceMode(Boolean(settings.maintenanceMode));
+                setLastUpdated(settings.updatedAt || null);
+            } catch (error) {
+                if (active) {
+                    toast.error(
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to load settings."
+                    );
+                }
+            } finally {
+                if (active) {
+                    setIsLoading(false);
+                }
+            }
+        }
+
+        void fetchSettings();
+
+        return () => {
+            active = false;
+        };
     }, []);
+
+    const saveSettings = async () => {
+        try {
+            setIsSaving(true);
+            const response = await fetch("/api/admin/settings", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    platformName,
+                    supportEmail,
+                    allowNewSignups: allowSignups,
+                    maintenanceMode,
+                }),
+            });
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(data?.message || "Failed to save settings.");
+            }
+
+            setLastUpdated(data?.settings?.updatedAt || new Date().toISOString());
+            toast.success(data?.message || "Platform settings updated.");
+        } catch (error) {
+            toast.error(
+                error instanceof Error ? error.message : "Failed to save settings."
+            );
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     if (!mounted) {
         return <div className="min-h-[60vh]" />;
@@ -149,8 +224,13 @@ export default function PlatformSettingsPage() {
                     </div>
                 </div>
 
-                <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-purple-600 text-white shadow-md shadow-purple-500/30 hover:bg-purple-700 transition-all shrink-0">
-                    <Save size={15} /> Save All Changes
+                <button
+                    onClick={() => void saveSettings()}
+                    disabled={isSaving || isLoading}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#7C3AED] text-white shadow-md shadow-purple-500/30 hover:opacity-90 transition-all shrink-0 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                    {isSaving ? "Saving..." : "Save All Changes"}
                 </button>
             </div>
 
@@ -400,7 +480,9 @@ export default function PlatformSettingsPage() {
 
             {/* ════════ FOOTER ════════ */}
             <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
-                <span>Last updated: Feb 24, 2026 · 5:58 AM</span>
+                <span>
+                    Last updated: {lastUpdated ? new Date(lastUpdated).toLocaleString() : "Not saved yet"}
+                </span>
                 <span>StudyBuddy Admin · Platform Settings</span>
             </div>
         </div>

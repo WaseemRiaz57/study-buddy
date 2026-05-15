@@ -28,6 +28,12 @@ const userSchema = new Schema(
       enum: ["student", "mentor", "admin"],
       default: "student", // Jo naya sign up karega wo default student banega
     },
+    plan: {
+      type: String,
+      enum: ["Free", "Pro", "Elite"],
+      default: "Free",
+      index: true,
+    },
     status: {
       type: String,
       enum: ["active", "suspended"],

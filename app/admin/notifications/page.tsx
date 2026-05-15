@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
+import { toast } from "sonner";
 import {
   Megaphone,
   Send,
@@ -15,11 +15,12 @@ import {
   ChevronDown,
   BarChart3,
   Clock,
+  Loader2,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type DeliveryMethod = "in-app" | "email";
-type Audience = "all" | "free" | "pro-elite" | "mentors";
+type Audience = "all" | "free" | "pro";
 
 interface SentNotification {
   id: string;
@@ -47,8 +48,7 @@ const METHOD_CONFIG: Record<DeliveryMethod, { label: string; badge: string; Icon
 const AUDIENCE_OPTIONS: { value: Audience; label: string }[] = [
   { value: "all", label: "All Users" },
   { value: "free", label: "Free Users Only" },
-  { value: "pro-elite", label: "Pro / Elite Users Only" },
-  { value: "mentors", label: "Mentors Only" },
+  { value: "pro", label: "Pro / Elite Users Only" },
 ];
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────────
@@ -121,9 +121,11 @@ function Checkbox({
 
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 export default function NotificationsManagerPage() {
-  const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [sentNotifications, setSentNotifications] =
+    useState<SentNotification[]>(SENT_NOTIFICATIONS);
+  const [isSending, setIsSending] = useState(false);
 
   // Compose form state
   const [title, setTitle] = useState("");
@@ -149,10 +151,70 @@ export default function NotificationsManagerPage() {
     setComposeOpen(true);
   };
 
-  const totalSent = SENT_NOTIFICATIONS.length;
-  const avgOpenRate = Math.round(
-    SENT_NOTIFICATIONS.reduce((sum, n) => sum + n.openRate, 0) / totalSent
-  );
+  const handleSendBroadcast = async () => {
+    if (!title.trim() || !body.trim()) {
+      toast.error("Title and message are required.");
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      const response = await fetch("/api/admin/notifications/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          message: body.trim(),
+          audience,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to send notification.");
+      }
+
+      const audienceLabel =
+        AUDIENCE_OPTIONS.find((option) => option.value === audience)?.label ||
+        "All Users";
+      const methods = [
+        inApp ? "in-app" : null,
+        emailBlast ? "email" : null,
+      ].filter(Boolean) as DeliveryMethod[];
+
+      setSentNotifications((current) => [
+        {
+          id: `broadcast-${Date.now()}`,
+          title: title.trim(),
+          methods: methods.length > 0 ? methods : ["in-app"],
+          audience: audienceLabel,
+          sentDate: new Date().toLocaleDateString("en", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }),
+          openRate: 0,
+        },
+        ...current,
+      ]);
+      toast.success(`${data?.sentCount ?? 0} users notified.`);
+      setComposeOpen(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send notification."
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const totalSent = sentNotifications.length;
+  const avgOpenRate =
+    totalSent > 0
+      ? Math.round(
+        sentNotifications.reduce((sum, n) => sum + n.openRate, 0) / totalSent
+      )
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -174,7 +236,7 @@ export default function NotificationsManagerPage() {
 
         <button
           onClick={openCompose}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-purple-600 text-white shadow-md shadow-purple-500/30 hover:bg-purple-700 transition-all shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#7C3AED] text-white shadow-md shadow-purple-500/30 hover:opacity-90 transition-all shrink-0"
         >
           <Send size={15} /> Compose New Message
         </button>
@@ -260,7 +322,7 @@ export default function NotificationsManagerPage() {
                 </tr>
               </thead>
               <tbody>
-                {SENT_NOTIFICATIONS.length === 0 ? (
+                {sentNotifications.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-16">
                       <Megaphone
@@ -273,7 +335,7 @@ export default function NotificationsManagerPage() {
                     </td>
                   </tr>
                 ) : (
-                  SENT_NOTIFICATIONS.map((notif) => (
+                  sentNotifications.map((notif) => (
                     <tr
                       key={notif.id}
                       className="border-b last:border-b-0 border-b-slate-100 dark:border-b-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
@@ -368,7 +430,7 @@ export default function NotificationsManagerPage() {
       {/* ════════ FOOTER ════════ */}
       <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
         <span>
-          {SENT_NOTIFICATIONS.length} campaigns sent · {avgOpenRate}% avg engagement
+          {sentNotifications.length} campaigns sent · {avgOpenRate}% avg engagement
         </span>
         <span>StudyBuddy Admin · Notifications Panel</span>
       </div>
@@ -528,10 +590,12 @@ export default function NotificationsManagerPage() {
                 Cancel
               </button>
               <button
-                onClick={() => setComposeOpen(false)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-500/30 hover:bg-emerald-700 transition-all"
+                onClick={() => void handleSendBroadcast()}
+                disabled={isSending || !title.trim() || !body.trim()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-[#7C3AED] text-white shadow-md shadow-purple-500/30 hover:opacity-90 transition-all disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Send size={13} /> Send Now
+                {isSending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                {isSending ? "Sending..." : "Send Now"}
               </button>
             </div>
           </div>

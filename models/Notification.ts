@@ -12,6 +12,7 @@ export interface INotification extends Document {
   title: string;
   message: string;
   read: boolean;
+  isGlobal: boolean;
   metadata: Record<string, unknown>;
 }
 
@@ -49,6 +50,11 @@ const NotificationSchema = new Schema<INotification>(
     read: {
       type: Boolean,
       default: false,
+    },
+    isGlobal: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     metadata: {
       type: Schema.Types.Mixed,
