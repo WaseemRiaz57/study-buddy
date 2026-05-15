@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import {
   Users,
   UserCheck,
@@ -10,6 +11,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
+import { toast } from "sonner";
 
 /* ------------------------------------------------------------------ */
 /* Metric card data                                                   */
@@ -24,43 +26,165 @@ interface MetricCard {
   highlightColor?: string;
 }
 
-const metrics: MetricCard[] = [
-  {
-    label: "Total Active Users",
-    value: "1,245",
-    change: "+12.5%",
-    trend: "up",
-    icon: Users,
-  },
-  {
-    label: "Pending Mentors",
-    value: "12",
-    change: "+3 this week",
-    trend: "up",
-    icon: UserCheck,
-    highlight: true,
-    highlightColor: "orange",
-  },
-  {
-    label: "Total Revenue",
-    value: "$4,500",
-    change: "+8.2%",
-    trend: "up",
-    icon: DollarSign,
-  },
-  {
-    label: "Active Sessions",
-    value: "84",
-    change: "-2.1%",
-    trend: "down",
-    icon: Radio,
-  },
-];
+interface OverviewStats {
+  totalUsers: number;
+  pendingMentors: number;
+  totalRevenue: number;
+  activeSessions: number;
+}
+
+interface ActivityItem {
+  id: string;
+  actionType: string;
+  message: string;
+  targetId?: string;
+  createdAt: string | null;
+}
+
+const emptyStats: OverviewStats = {
+  totalUsers: 0,
+  pendingMentors: 0,
+  totalRevenue: 0,
+  activeSessions: 0,
+};
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en").format(value);
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatRelativeTime(value: string | null) {
+  if (!value) return "Just now";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Just now";
+
+  const diffMs = Date.now() - date.getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) return "Just now";
+  if (diffMs < hour) return `${Math.floor(diffMs / minute)} min ago`;
+  if (diffMs < day) return `${Math.floor(diffMs / hour)} hr ago`;
+
+  return `${Math.floor(diffMs / day)} day${Math.floor(diffMs / day) === 1 ? "" : "s"} ago`;
+}
+
+function activityDot(actionType: string) {
+  if (actionType.includes("MENTOR")) return "bg-purple-500";
+  if (actionType.includes("REPORT")) return "bg-red-500";
+  if (actionType.includes("USER")) return "bg-orange-500";
+  if (actionType.includes("REVENUE") || actionType.includes("SUBSCRIPTION")) {
+    return "bg-emerald-500";
+  }
+  return "bg-blue-500";
+}
 
 /* ------------------------------------------------------------------ */
 /* Admin Overview Page                                                */
 /* ------------------------------------------------------------------ */
 export default function AdminOverviewPage() {
+  const [stats, setStats] = useState<OverviewStats>(emptyStats);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchOverview() {
+      try {
+        setIsLoading(true);
+        const [statsResponse, activityResponse] = await Promise.all([
+          fetch("/api/admin/overview/stats", { cache: "no-store" }),
+          fetch("/api/admin/overview/activity", { cache: "no-store" }),
+        ]);
+
+        const statsData = await statsResponse.json().catch(() => null);
+        const activityData = await activityResponse.json().catch(() => null);
+
+        if (!statsResponse.ok) {
+          throw new Error(statsData?.message || "Failed to load overview stats.");
+        }
+
+        if (!activityResponse.ok) {
+          throw new Error(activityData?.message || "Failed to load activity.");
+        }
+
+        if (!active) return;
+
+        setStats({
+          totalUsers: Number(statsData?.totalUsers || 0),
+          pendingMentors: Number(statsData?.pendingMentors || 0),
+          totalRevenue: Number(statsData?.totalRevenue || 0),
+          activeSessions: Number(statsData?.activeSessions || 0),
+        });
+        setActivity(Array.isArray(activityData) ? activityData : []);
+      } catch (error) {
+        if (active) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to load admin overview."
+          );
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void fetchOverview();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const metrics: MetricCard[] = useMemo(
+    () => [
+      {
+        label: "Total Active Users",
+        value: isLoading ? "..." : formatNumber(stats.totalUsers),
+        change: "Live count",
+        trend: "up",
+        icon: Users,
+      },
+      {
+        label: "Pending Mentors",
+        value: isLoading ? "..." : formatNumber(stats.pendingMentors),
+        change: "Awaiting review",
+        trend: "up",
+        icon: UserCheck,
+        highlight: true,
+        highlightColor: "orange",
+      },
+      {
+        label: "Total Revenue",
+        value: isLoading ? "..." : formatCurrency(stats.totalRevenue),
+        change: "Mentor earnings",
+        trend: "up",
+        icon: DollarSign,
+      },
+      {
+        label: "Active Sessions",
+        value: isLoading ? "..." : formatNumber(stats.activeSessions),
+        change: "Accepted sessions",
+        trend: "up",
+        icon: Radio,
+      },
+    ],
+    [isLoading, stats]
+  );
+
   return (
     <div className="space-y-8">
       {/* ── Header ── */}
@@ -193,52 +317,35 @@ export default function AdminOverviewPage() {
             </h2>
           </div>
 
-          {/* Placeholder activity feed */}
           <div className="space-y-4">
-            {[
-              {
-                text: "New mentor application received",
-                time: "2 min ago",
-                dot: "bg-orange-500",
-              },
-              {
-                text: "User report flagged for review",
-                time: "15 min ago",
-                dot: "bg-red-500",
-              },
-              {
-                text: "Pro subscription purchased",
-                time: "1 hr ago",
-                dot: "bg-emerald-500",
-              },
-              {
-                text: "New study room created",
-                time: "2 hrs ago",
-                dot: "bg-blue-500",
-              },
-              {
-                text: "Mentor approved: Jane D.",
-                time: "3 hrs ago",
-                dot: "bg-purple-500",
-              },
-            ].map((activity, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 group"
-              >
-                <span
-                  className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${activity.dot}`}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground dark:text-slate-200 truncate">
-                    {activity.text}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {activity.time}
-                  </p>
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">
+                Loading recent activity...
+              </p>
+            ) : activity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No recent activity yet.
+              </p>
+            ) : (
+              activity.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-start gap-3 group"
+                >
+                  <span
+                    className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${activityDot(item.actionType)}`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground dark:text-slate-200 truncate">
+                      {item.message}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {formatRelativeTime(item.createdAt)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* View all link */}

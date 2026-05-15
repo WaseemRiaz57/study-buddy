@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { logActivity } from "@/lib/logActivity";
 import MentorProfile from "@/models/MentorProfile";
 import Notification from "@/models/Notification";
 
@@ -105,6 +106,22 @@ export async function PATCH(
         mentorProfileId: String(mentorProfile._id),
         status,
       },
+    });
+
+    await logActivity({
+      actionType:
+        status === "approved"
+          ? "MENTOR_APPROVED"
+          : status === "suspended"
+            ? "MENTOR_SUSPENDED"
+            : "MENTOR_REJECTED",
+      message:
+        status === "approved"
+          ? "Mentor application approved."
+          : status === "suspended"
+            ? "Mentor status revoked."
+            : "Mentor application rejected.",
+      targetId: String(mentorProfile._id),
     });
 
     return NextResponse.json({
