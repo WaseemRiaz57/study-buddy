@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
 import StudyRoom from "@/models/StudyRoom";
+import MentorSession from "@/models/MentorSession";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,6 +38,7 @@ export async function GET(
     // Handling Next.js 14/15 params correctly
     const resolvedParams = await params;
     const { roomId } = resolvedParams;
+    const rawRoomId = String(roomId || "").trim();
     const normalizedRoomId = normalizeRoomId(roomId);
     
     const session = await getServerSession(authOptions);
@@ -60,6 +62,38 @@ export async function GET(
     }
 
     await connectDB();
+
+    if (mongoose.Types.ObjectId.isValid(rawRoomId)) {
+      const mentorSession = await MentorSession.findById(rawRoomId)
+        .select("mentorId studentId scheduledAt status")
+        .lean();
+
+      if (mentorSession) {
+        const mentorId = String(mentorSession.mentorId);
+        const studentId = String(mentorSession.studentId);
+
+        if (currentUserId !== mentorId && currentUserId !== studentId) {
+          return NextResponse.json(
+            { message: "You are not authorized to join this session." },
+            { status: 403 }
+          );
+        }
+
+        const expirationTime =
+          new Date(mentorSession.scheduledAt).getTime() + 60 * 60 * 1000;
+
+        if (
+          Number.isFinite(expirationTime) &&
+          Date.now() > expirationTime &&
+          mentorSession.status !== "completed"
+        ) {
+          return NextResponse.json(
+            { message: "This session has expired." },
+            { status: 403 }
+          );
+        }
+      }
+    }
 
     let room = await StudyRoom.findOne({
       roomId: { $regex: `^${escapeRegex(normalizedRoomId)}$`, $options: "i" },

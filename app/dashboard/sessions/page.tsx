@@ -16,6 +16,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import ReviewModal from "@/components/mentorship/ReviewModal";
 
 type SessionStatus =
   | "pending"
@@ -48,6 +49,7 @@ type DashboardSession = {
   mentorProfile?: MentorProfileSummary | null;
   subject: string;
   scheduledAt: string;
+  startTime?: string;
   duration: number;
   type?: "scheduled" | "instant";
   status: SessionStatus;
@@ -79,6 +81,21 @@ function formatSessionTime(value: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+const SESSION_WINDOW_MS = 60 * 60 * 1000;
+
+function getSessionStartTime(session: DashboardSession) {
+  return session.startTime || session.scheduledAt;
+}
+
+function isSessionExpired(startTime: string | undefined, currentTime: number) {
+  const start = new Date(startTime || "").getTime();
+
+  if (!Number.isFinite(start)) return false;
+
+  const expiration = start + SESSION_WINDOW_MS;
+  return currentTime > expiration;
 }
 
 function readFileAsDataUrl(file: File) {
@@ -139,14 +156,20 @@ function StudentSessionCard({
   session,
   isUploading,
   onUploadReceipt,
+  onReview,
+  currentTime,
 }: {
   session: DashboardSession;
   isUploading: boolean;
   onUploadReceipt: (sessionId: string, file: File) => void;
+  onReview: (session: DashboardSession) => void;
+  currentTime: number;
 }) {
   const mentor = getPopulatedUser(session.mentorId);
   const mentorName = mentor.name || "Mentor";
   const bankDetails = session.mentorProfile;
+  const expired = isSessionExpired(getSessionStartTime(session), currentTime);
+  const showEndedBadge = expired && session.status !== "completed";
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-surface-dark">
@@ -162,11 +185,17 @@ function StudentSessionCard({
                 with {mentorName}
               </p>
             </div>
-            <StatusPill status={session.status} />
+            {showEndedBadge ? (
+              <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                Session Ended
+              </span>
+            ) : (
+              <StatusPill status={session.status} />
+            )}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <Clock className="h-4 w-4 text-[#7C3AED]" />
-            {formatSessionTime(session.scheduledAt)}
+            {formatSessionTime(getSessionStartTime(session))}
             <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               {session.duration} mins
             </span>
@@ -180,7 +209,13 @@ function StudentSessionCard({
         </div>
       </div>
 
-      {session.status === "accepted" && (
+      {showEndedBadge && (
+        <div className="mt-5 inline-flex rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-500">
+          Session Ended
+        </div>
+      )}
+
+      {!expired && session.status === "accepted" && (
         <div className="mt-5 rounded-xl border border-purple-100 bg-purple-50/70 p-4">
           <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[#7C3AED]">
             <CreditCard className="h-4 w-4" />
@@ -230,19 +265,35 @@ function StudentSessionCard({
         </div>
       )}
 
-      {session.status === "payment_pending" && (
+      {!expired && session.status === "payment_pending" && (
         <div className="mt-5 rounded-xl border border-purple-100 bg-purple-50 p-4 text-sm font-bold text-[#7C3AED]">
           Verifying Payment...
         </div>
       )}
 
-      {session.status === "payment_verified" && (
+      {!expired && session.status === "payment_verified" && (
         <Link
           href={`/dashboard/study-rooms/${session._id}`}
           className="mt-5 inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
         >
           Join Room
         </Link>
+      )}
+
+      {session.status === "completed" && !session.reviewSubmitted && (
+        <button
+          type="button"
+          onClick={() => onReview(session)}
+          className="mt-5 inline-flex items-center justify-center rounded-xl border border-[#7C3AED] px-4 py-2.5 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-purple-50"
+        >
+          Leave Review
+        </button>
+      )}
+
+      {session.status === "completed" && session.reviewSubmitted && (
+        <div className="mt-5 inline-flex rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-500">
+          Review submitted
+        </div>
       )}
     </article>
   );
@@ -253,6 +304,7 @@ function MentorSessionCard({
   respondingActionKey,
   isCompleting,
   isVerifying,
+  currentTime,
   onRespond,
   onOpenReceipt,
   onComplete,
@@ -261,6 +313,7 @@ function MentorSessionCard({
   respondingActionKey: string;
   isCompleting: boolean;
   isVerifying: boolean;
+  currentTime: number;
   onRespond: (id: string, status: RequestAction) => void;
   onOpenReceipt: (session: DashboardSession) => void;
   onComplete: (id: string) => void;
@@ -270,6 +323,12 @@ function MentorSessionCard({
   const acceptingKey = `${session._id}-accepted`;
   const decliningKey = `${session._id}-declined`;
   const isResponding = respondingActionKey.startsWith(`${session._id}-`);
+  const expired = isSessionExpired(getSessionStartTime(session), currentTime);
+  const showEndedBadge =
+    expired &&
+    !["accepted", "payment_pending", "payment_verified", "completed"].includes(
+      session.status
+    );
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-surface-dark">
@@ -291,11 +350,17 @@ function MentorSessionCard({
                 Requested by {studentName}
               </p>
             </div>
-            <StatusPill status={session.status} />
+            {showEndedBadge ? (
+              <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                Session Ended
+              </span>
+            ) : (
+              <StatusPill status={session.status} />
+            )}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <Clock className="h-4 w-4 text-[#7C3AED]" />
-            {formatSessionTime(session.scheduledAt)}
+            {formatSessionTime(getSessionStartTime(session))}
             <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               {session.duration} mins
             </span>
@@ -304,7 +369,13 @@ function MentorSessionCard({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {session.status === "pending" && (
+        {showEndedBadge && (
+          <span className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-500">
+            Session Ended
+          </span>
+        )}
+
+        {!expired && session.status === "pending" && (
           <>
             <button
               type="button"
@@ -331,7 +402,7 @@ function MentorSessionCard({
           </>
         )}
 
-        {session.status === "accepted" && (
+        {!expired && session.status === "accepted" && (
           <span className="rounded-xl border border-purple-100 bg-purple-50 px-4 py-2.5 text-sm font-bold text-[#7C3AED]">
             Awaiting Student Payment
           </span>
@@ -355,22 +426,40 @@ function MentorSessionCard({
 
         {session.status === "payment_verified" && (
           <>
-            <Link
-              href={`/dashboard/study-rooms/${session._id}`}
-              className="inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
-            >
-              Join Room
-            </Link>
+            {!expired && (
+              <Link
+                href={`/dashboard/study-rooms/${session._id}`}
+                className="inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+              >
+                Join Room
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => onComplete(session._id)}
               disabled={isCompleting}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-100 px-4 py-2.5 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-purple-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className={
+                expired
+                  ? "inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  : "inline-flex items-center justify-center gap-2 rounded-xl bg-purple-100 px-4 py-2.5 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-purple-200 disabled:cursor-not-allowed disabled:opacity-60"
+              }
             >
               {isCompleting && <Loader2 className="h-4 w-4 animate-spin" />}
               Mark Completed
             </button>
           </>
+        )}
+
+        {expired && session.status === "accepted" && (
+          <button
+            type="button"
+            onClick={() => onComplete(session._id)}
+            disabled={isCompleting}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isCompleting && <Loader2 className="h-4 w-4 animate-spin" />}
+            Mark Completed
+          </button>
         )}
       </div>
     </article>
@@ -456,11 +545,21 @@ export default function SessionsPage() {
   const userRole = String(authSession?.user?.role ?? "").toLowerCase();
   const [sessions, setSessions] = useState<DashboardSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [respondingActionKey, setRespondingActionKey] = useState("");
   const [uploadingSessionId, setUploadingSessionId] = useState("");
   const [verifyingSessionId, setVerifyingSessionId] = useState("");
   const [completingSessionId, setCompletingSessionId] = useState("");
   const [receiptSession, setReceiptSession] = useState<DashboardSession | null>(null);
+  const [reviewSession, setReviewSession] = useState<DashboardSession | null>(
+    null
+  );
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 60000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (authStatus === "loading") return;
@@ -518,14 +617,22 @@ export default function SessionsPage() {
     };
   }, [authStatus, userRole]);
 
-  const visibleSessions = useMemo(
-    () =>
-      [...sessions].sort(
-        (a, b) =>
-          new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
-      ),
-    [sessions]
-  );
+  const groupedSessions = useMemo(() => {
+    const sorted = [...sessions].sort(
+      (a, b) =>
+        new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+    );
+
+    const isPastSession = (session: DashboardSession) =>
+      ["completed", "declined", "rejected"].includes(session.status) ||
+      isSessionExpired(getSessionStartTime(session), currentTime);
+
+    return {
+      all: sorted,
+      upcoming: sorted.filter((session) => !isPastSession(session)),
+      past: sorted.filter(isPastSession),
+    };
+  }, [currentTime, sessions]);
 
   function updateSession(nextSession: DashboardSession) {
     setSessions((currentSessions) =>
@@ -649,6 +756,20 @@ export default function SessionsPage() {
     }
   }
 
+  function handleReviewSubmitted() {
+    if (!reviewSession) return;
+
+    setSessions((currentSessions) =>
+      currentSessions.map((session) =>
+        session._id === reviewSession._id
+          ? { ...session, reviewSubmitted: true }
+          : session
+      )
+    );
+    setReviewSession(null);
+    toast.success("Review submitted successfully!");
+  }
+
   const pageTitle = userRole === "student" ? "My Sessions" : "Session Requests";
   const pageSubtitle =
     userRole === "student"
@@ -677,7 +798,7 @@ export default function SessionsPage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500 dark:border-slate-800 dark:bg-surface-dark">
             Sessions are available for student and mentor accounts.
           </div>
-        ) : visibleSessions.length === 0 ? (
+        ) : groupedSessions.all.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-surface-dark">
             <User className="mx-auto mb-3 h-8 w-8 text-[#7C3AED]" />
             <h2 className="text-lg font-bold text-slate-950 dark:text-white">
@@ -690,28 +811,92 @@ export default function SessionsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {visibleSessions.map((session) =>
-              userRole === "student" ? (
-                <StudentSessionCard
-                  key={session._id}
-                  session={session}
-                  isUploading={uploadingSessionId === session._id}
-                  onUploadReceipt={handleUploadReceipt}
-                />
+          <div className="space-y-8">
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-black text-slate-950 dark:text-white">
+                  Upcoming Sessions
+                </h2>
+                <span className="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-black text-[#7C3AED]">
+                  {groupedSessions.upcoming.length}
+                </span>
+              </div>
+              {groupedSessions.upcoming.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500 dark:border-slate-800 dark:bg-surface-dark">
+                  No upcoming sessions.
+                </div>
               ) : (
-                <MentorSessionCard
-                  key={session._id}
-                  session={session}
-                  respondingActionKey={respondingActionKey}
-                  isCompleting={completingSessionId === session._id}
-                  isVerifying={verifyingSessionId === session._id}
-                  onRespond={handleRespond}
-                  onOpenReceipt={setReceiptSession}
-                  onComplete={handleCompleteSession}
-                />
-              )
-            )}
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {groupedSessions.upcoming.map((session) =>
+                    userRole === "student" ? (
+                      <StudentSessionCard
+                        key={session._id}
+                        session={session}
+                        isUploading={uploadingSessionId === session._id}
+                        currentTime={currentTime}
+                        onUploadReceipt={handleUploadReceipt}
+                        onReview={setReviewSession}
+                      />
+                    ) : (
+                      <MentorSessionCard
+                        key={session._id}
+                        session={session}
+                        respondingActionKey={respondingActionKey}
+                        isCompleting={completingSessionId === session._id}
+                        isVerifying={verifyingSessionId === session._id}
+                        currentTime={currentTime}
+                        onRespond={handleRespond}
+                        onOpenReceipt={setReceiptSession}
+                        onComplete={handleCompleteSession}
+                      />
+                    )
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-black text-slate-950 dark:text-white">
+                  Past Sessions
+                </h2>
+                <span className="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-black text-[#7C3AED]">
+                  {groupedSessions.past.length}
+                </span>
+              </div>
+              {groupedSessions.past.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500 dark:border-slate-800 dark:bg-surface-dark">
+                  Completed and expired sessions will appear here.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {groupedSessions.past.map((session) =>
+                    userRole === "student" ? (
+                      <StudentSessionCard
+                        key={session._id}
+                        session={session}
+                        isUploading={uploadingSessionId === session._id}
+                        currentTime={currentTime}
+                        onUploadReceipt={handleUploadReceipt}
+                        onReview={setReviewSession}
+                      />
+                    ) : (
+                      <MentorSessionCard
+                        key={session._id}
+                        session={session}
+                        respondingActionKey={respondingActionKey}
+                        isCompleting={completingSessionId === session._id}
+                        isVerifying={verifyingSessionId === session._id}
+                        currentTime={currentTime}
+                        onRespond={handleRespond}
+                        onOpenReceipt={setReceiptSession}
+                        onComplete={handleCompleteSession}
+                      />
+                    )
+                  )}
+                </div>
+              )}
+            </section>
           </div>
         )}
       </main>
@@ -724,6 +909,19 @@ export default function SessionsPage() {
           onVerify={handleVerifyPayment}
         />
       )}
+
+      <ReviewModal
+        isOpen={Boolean(reviewSession)}
+        sessionId={reviewSession?._id || ""}
+        mentorName={
+          reviewSession
+            ? getPopulatedUser(reviewSession.mentorId).name || "Mentor"
+            : "Mentor"
+        }
+        subject={reviewSession?.subject || "Mentorship session"}
+        onClose={() => setReviewSession(null)}
+        onSubmitted={handleReviewSubmitted}
+      />
     </div>
   );
 }

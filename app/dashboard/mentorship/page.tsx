@@ -16,6 +16,7 @@ import {
 import PaymentModal, {
   type PaymentSession,
 } from "@/components/mentorship/PaymentModal";
+import ReviewModal from "@/components/mentorship/ReviewModal";
 
 type SessionStatus =
   | "pending"
@@ -46,6 +47,7 @@ type StudentSession = {
   mentorProfile?: MentorProfileSummary | null;
   subject: string;
   scheduledAt: string;
+  startTime?: string;
   duration: number;
   type?: "scheduled" | "instant";
   status: SessionStatus;
@@ -83,6 +85,21 @@ function formatSessionTime(value: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+const SESSION_WINDOW_MS = 60 * 60 * 1000;
+
+function getSessionStartTime(session: StudentSession) {
+  return session.startTime || session.scheduledAt;
+}
+
+function isSessionExpired(startTime: string | undefined, currentTime: number) {
+  const start = new Date(startTime || "").getTime();
+
+  if (!Number.isFinite(start)) return false;
+
+  const expiration = start + SESSION_WINDOW_MS;
+  return currentTime > expiration;
 }
 
 function statusLabel(status: SessionStatus) {
@@ -126,13 +143,19 @@ function Section({
 function SessionCard({
   session,
   onPay,
+  onReview,
+  currentTime,
 }: {
   session: StudentSession;
   onPay: (session: StudentSession) => void;
+  onReview: (session: StudentSession) => void;
+  currentTime: number;
 }) {
   const mentor = getMentor(session);
   const mentorName = getMentorName(session);
   const initials = getInitials(mentorName) || "MT";
+  const expired = isSessionExpired(getSessionStartTime(session), currentTime);
+  const showEndedBadge = expired && session.status !== "completed";
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-surface-dark">
@@ -163,13 +186,13 @@ function SessionCard({
               </p>
             </div>
             <span className="inline-flex rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-black text-[#7C3AED]">
-              {statusLabel(session.status)}
+              {showEndedBadge ? "Session Ended" : statusLabel(session.status)}
             </span>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <Clock className="h-4 w-4 text-[#7C3AED]" />
-            {formatSessionTime(session.scheduledAt)}
+            {formatSessionTime(getSessionStartTime(session))}
             <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
               {session.duration} mins
             </span>
@@ -184,13 +207,19 @@ function SessionCard({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {session.status === "pending" && (
+        {showEndedBadge && (
+          <span className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-500">
+            Session Ended
+          </span>
+        )}
+
+        {!expired && session.status === "pending" && (
           <span className="rounded-xl border border-purple-100 bg-purple-50 px-4 py-2.5 text-sm font-bold text-[#7C3AED]">
             Awaiting Mentor Acceptance
           </span>
         )}
 
-        {session.status === "accepted" && (
+        {!expired && session.status === "accepted" && (
           <button
             type="button"
             onClick={() => onPay(session)}
@@ -200,19 +229,35 @@ function SessionCard({
           </button>
         )}
 
-        {session.status === "payment_pending" && (
+        {!expired && session.status === "payment_pending" && (
           <span className="rounded-xl border border-purple-100 bg-purple-50 px-4 py-2.5 text-sm font-bold text-[#7C3AED]">
             Verifying Payment...
           </span>
         )}
 
-        {session.status === "payment_verified" && (
+        {!expired && session.status === "payment_verified" && (
           <Link
             href={`/dashboard/study-rooms/${session._id}`}
             className="inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-purple-700"
           >
             Join Room
           </Link>
+        )}
+
+        {session.status === "completed" && !session.reviewSubmitted && (
+          <button
+            type="button"
+            onClick={() => onReview(session)}
+            className="inline-flex items-center justify-center rounded-xl border border-[#7C3AED] px-4 py-2.5 text-sm font-black text-[#7C3AED] transition-colors hover:bg-purple-50"
+          >
+            Leave Review
+          </button>
+        )}
+
+        {session.status === "completed" && session.reviewSubmitted && (
+          <span className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-500">
+            Review submitted
+          </span>
         )}
       </div>
     </article>
@@ -230,9 +275,19 @@ function EmptyState({ label }: { label: string }) {
 export default function MentorshipActivitiesHub() {
   const [sessions, setSessions] = useState<StudentSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [paymentSession, setPaymentSession] = useState<StudentSession | null>(
     null
   );
+  const [reviewSession, setReviewSession] = useState<StudentSession | null>(
+    null
+  );
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 60000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -282,17 +337,27 @@ export default function MentorshipActivitiesHub() {
     );
 
     return {
-      activeRequests: sorted.filter((session) => session.status === "pending"),
-      awaitingPayment: sorted.filter((session) =>
-        ["accepted", "payment_pending"].includes(session.status)
+      activeRequests: sorted.filter(
+        (session) =>
+          session.status === "pending" &&
+          !isSessionExpired(getSessionStartTime(session), currentTime)
       ),
-      upcomingPast: sorted.filter((session) =>
-        ["payment_verified", "completed", "declined", "rejected"].includes(
-          session.status
-        )
+      awaitingPayment: sorted.filter((session) =>
+        ["accepted", "payment_pending"].includes(session.status) &&
+        !isSessionExpired(getSessionStartTime(session), currentTime)
+      ),
+      upcomingSessions: sorted.filter(
+        (session) =>
+          session.status === "payment_verified" &&
+          !isSessionExpired(getSessionStartTime(session), currentTime)
+      ),
+      pastSessions: sorted.filter(
+        (session) =>
+          ["completed", "declined", "rejected"].includes(session.status) ||
+          isSessionExpired(getSessionStartTime(session), currentTime)
       ),
     };
-  }, [sessions]);
+  }, [currentTime, sessions]);
 
   function handlePaymentUploaded(updatedSession: unknown) {
     if (!updatedSession || typeof updatedSession !== "object" || !("_id" in updatedSession)) {
@@ -310,6 +375,20 @@ export default function MentorshipActivitiesHub() {
           : session
       )
     );
+  }
+
+  function handleReviewSubmitted() {
+    if (!reviewSession) return;
+
+    setSessions((currentSessions) =>
+      currentSessions.map((session) =>
+        session._id === reviewSession._id
+          ? { ...session, reviewSubmitted: true }
+          : session
+      )
+    );
+    setReviewSession(null);
+    toast.success("Review submitted successfully!");
   }
 
   return (
@@ -362,7 +441,8 @@ export default function MentorshipActivitiesHub() {
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-surface-dark">
                 <CalendarCheck className="mb-3 h-5 w-5 text-[#7C3AED]" />
                 <p className="text-2xl font-black text-slate-950 dark:text-white">
-                  {groupedSessions.upcomingPast.length}
+                  {groupedSessions.upcomingSessions.length +
+                    groupedSessions.pastSessions.length}
                 </p>
                 <p className="text-sm text-slate-500">Upcoming/Past Sessions</p>
               </div>
@@ -381,6 +461,8 @@ export default function MentorshipActivitiesHub() {
                       key={session._id}
                       session={session}
                       onPay={setPaymentSession}
+                      onReview={setReviewSession}
+                      currentTime={currentTime}
                     />
                   ))}
                 </div>
@@ -400,6 +482,8 @@ export default function MentorshipActivitiesHub() {
                       key={session._id}
                       session={session}
                       onPay={setPaymentSession}
+                      onReview={setReviewSession}
+                      currentTime={currentTime}
                     />
                   ))}
                 </div>
@@ -407,18 +491,41 @@ export default function MentorshipActivitiesHub() {
             </Section>
 
             <Section
-              title="Upcoming/Past Sessions"
-              count={groupedSessions.upcomingPast.length}
+              title="Upcoming Sessions"
+              count={groupedSessions.upcomingSessions.length}
             >
-              {groupedSessions.upcomingPast.length === 0 ? (
-                <EmptyState label="Verified, completed, and closed sessions will appear here." />
+              {groupedSessions.upcomingSessions.length === 0 ? (
+                <EmptyState label="No verified sessions are ready to join." />
               ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
-                  {groupedSessions.upcomingPast.map((session) => (
+                  {groupedSessions.upcomingSessions.map((session) => (
                     <SessionCard
                       key={session._id}
                       session={session}
                       onPay={setPaymentSession}
+                      onReview={setReviewSession}
+                      currentTime={currentTime}
+                    />
+                  ))}
+                </div>
+              )}
+            </Section>
+
+            <Section
+              title="Past Sessions"
+              count={groupedSessions.pastSessions.length}
+            >
+              {groupedSessions.pastSessions.length === 0 ? (
+                <EmptyState label="Completed, declined, and expired sessions will appear here." />
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {groupedSessions.pastSessions.map((session) => (
+                    <SessionCard
+                      key={session._id}
+                      session={session}
+                      onPay={setPaymentSession}
+                      onReview={setReviewSession}
+                      currentTime={currentTime}
                     />
                   ))}
                 </div>
@@ -433,6 +540,15 @@ export default function MentorshipActivitiesHub() {
         session={paymentSession as PaymentSession | null}
         onClose={() => setPaymentSession(null)}
         onUploaded={handlePaymentUploaded}
+      />
+
+      <ReviewModal
+        isOpen={Boolean(reviewSession)}
+        sessionId={reviewSession?._id || ""}
+        mentorName={reviewSession ? getMentorName(reviewSession) : "Mentor"}
+        subject={reviewSession?.subject || "Mentorship session"}
+        onClose={() => setReviewSession(null)}
+        onSubmitted={handleReviewSubmitted}
       />
     </div>
   );
