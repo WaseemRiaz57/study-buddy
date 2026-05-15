@@ -10,9 +10,10 @@ import { io, type Socket } from "socket.io-client";
 import ActivePeersView from "@/components/study-buddy/ActivePeersView";
 import TopicSelectionView from "@/components/study-buddy/TopicSelectionView";
 import MatchingLoader from "@/components/study-buddy/MatchingLoader";
-import MatchSuccess from "@/components/study-buddy/MatchSuccess";
+import PublicProfileModal from "@/components/study-buddy/PublicProfileModal";
 
-type ViewState = "dashboard" | "topic" | "loading" | "success";
+type ViewState = "dashboard" | "topic" | "loading";
+type MatchmakingStatus = "searching" | "match_found" | "no_match";
 
 interface Peer {
   _id?: string;
@@ -84,11 +85,18 @@ export default function StudyBuddyPage() {
   const [suggestedPeersLoading, setSuggestedPeersLoading] = useState(false);
 
   const [loadingMode, setLoadingMode] = useState<"search" | "direct">("search");
+  const [matchmakingStatus, setMatchmakingStatus] =
+    useState<MatchmakingStatus>("searching");
+  const [matchedListing, setMatchedListing] =
+    useState<StudyBuddyListing | null>(null);
+  const [isSendingMatchRequest, setIsSendingMatchRequest] = useState(false);
+  const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
 
   // Session tracking for the handshake
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   const [matchedPeerData, setMatchedPeerData] = useState({
+    userId: "",
     name: "",
     image: "",
     tags: [] as string[],
@@ -271,6 +279,7 @@ export default function StudyBuddyPage() {
             stopStatusPolling();
             setActiveSessionId(String(data.roomId));
             setMatchedPeerData({
+              userId: data.peer?.id || data.peer?._id || "",
               name: data.peer?.name || "Study Buddy",
               image: data.peer?.image || "",
               tags: [],
@@ -302,53 +311,45 @@ export default function StudyBuddyPage() {
     setSelectedTopic(data.subject);
     setPeersLoading(true);
     setLoadingMode("search");
+    setMatchmakingStatus("searching");
+    setMatchedListing(null);
     setView("loading");
 
     try {
-      const res = await fetch("/api/study-buddy/find", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject: data.subject,
-          topic: data.topic,
-        }),
+      const params = new URLSearchParams({
+        subject: data.subject,
+        topic: data.topic,
       });
+      const res = await fetch(`/api/study-buddy/match?${params.toString()}`);
       const result = await res.json();
-      console.log("[StudyBuddy] Find API response:", result);
 
       if (!res.ok) {
-        throw new Error(result.message || "Matchmaking failed");
+        throw new Error(result.message || "Matchmaking failed.");
       }
 
       if (result.matchFound) {
-        const roomId = String(result.roomId || result.match?.roomId || "").trim();
-        const peer = result.peer || result.matchedPeer || {};
+        const listing = result.listing as StudyBuddyListing;
+        const peer = listing?.student || null;
 
-        if (!roomId) {
-          throw new Error("Match found, but no roomId was returned.");
+        if (!listing?._id || !peer?._id) {
+          throw new Error("Match found, but the listing owner was not available.");
         }
 
-        setActiveSessionId(roomId);
+        setMatchedListing(listing);
         setMatchedPeerData({
+          userId: peer._id,
           name: peer.name || "Study Buddy",
           image: peer.image || "",
           tags: [],
         });
-
-        router.push(`/dashboard/study-rooms/${encodeURIComponent(roomId)}`);
+        setMatchmakingStatus("match_found");
         return;
       }
 
-      const matchId = String(result.matchId || result.match?._id || "").trim();
-
-      if (!matchId) {
-        throw new Error("Waiting match was created, but no matchId was returned.");
-      }
-
+      setMatchedListing(result.listing || null);
       setPeers([]);
-      startStatusPolling(matchId, "match");
+      setMatchmakingStatus("no_match");
       void fetchActiveListings();
-      setView("loading");
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -386,20 +387,15 @@ export default function StudyBuddyPage() {
 
   const handleConnectListing = async (listing: StudyBuddyListing) => {
     setLoadingMode("direct");
+    setMatchmakingStatus("searching");
 
     try {
-      const recipientId = String(listing.student?._id || "").trim();
-
-      if (!recipientId) {
-        throw new Error("Unable to identify the listing owner.");
-      }
-
       const res = await fetch("/api/buddies/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           listingId: listing._id,
-          recipientId,
+          subject: listing.subject,
         }),
       });
       const result = await res.json();
@@ -415,6 +411,7 @@ export default function StudyBuddyPage() {
       }
 
       setMatchedPeerData({
+        userId: listing.student?._id || "",
         name: listing.student?.name || "Study Buddy",
         image: listing.student?.image || "",
         tags: [],
@@ -432,8 +429,20 @@ export default function StudyBuddyPage() {
     }
   };
 
+  const handleSendMatchedListingRequest = async () => {
+    if (!matchedListing) return;
+
+    setIsSendingMatchRequest(true);
+    try {
+      await handleConnectListing(matchedListing);
+    } finally {
+      setIsSendingMatchRequest(false);
+    }
+  };
+
   const handlePingSuggestedPeer = async (peer: SuggestedPeer) => {
     setLoadingMode("direct");
+    setMatchmakingStatus("searching");
 
     try {
       const recipientId = String(peer.userId || "").trim();
@@ -468,6 +477,7 @@ export default function StudyBuddyPage() {
       }
 
       setMatchedPeerData({
+        userId: peer.userId,
         name: peer.name || "Study Buddy",
         image: peer.image || "",
         tags: peer.tags || [],
@@ -485,10 +495,61 @@ export default function StudyBuddyPage() {
     }
   };
 
-  // ─── Animation finished callback from MatchingLoader ───
-  const handleMatchFound = () => {
-    if (matchedPeerData.name && activeSessionId) {
-      setView("success");
+  const handleOpenPublicProfile = (userId: string) => {
+    const normalizedUserId = String(userId || "").trim();
+    if (normalizedUserId) {
+      setPublicProfileUserId(normalizedUserId);
+    }
+  };
+
+  const handleConnectFromPublicProfile = async (profile: {
+    _id: string;
+    name: string;
+    image: string;
+    preferredSubjects: string[];
+  }) => {
+    const recipientId = String(profile._id || "").trim();
+    const subject =
+      profile.preferredSubjects?.[0] || searchData.subject || "General Study";
+
+    if (!recipientId) {
+      toast.error("Unable to identify this student.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/buddies/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientId, subject }),
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result?.message || "Failed to send request.");
+      }
+
+      const requestId = String(result.connection?._id || result.requestId || "").trim();
+      if (!requestId) {
+        throw new Error("Request sent, but no requestId was returned.");
+      }
+
+      setPublicProfileUserId(null);
+      setLoadingMode("direct");
+      setMatchmakingStatus("searching");
+      setMatchedPeerData({
+        userId: recipientId,
+        name: profile.name || "Study Buddy",
+        image: profile.image || "",
+        tags: profile.preferredSubjects || [],
+      });
+      toast.success("Request sent! Waiting for approval...");
+      setView("loading");
+      startStatusPolling(requestId);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send request."
+      );
     }
   };
 
@@ -532,13 +593,17 @@ export default function StudyBuddyPage() {
     stopStatusPolling();
     setView("dashboard");
     setSearchData({ subject: "", topic: "" });
-    setMatchedPeerData({ name: "", image: "", tags: [] });
+    setMatchedPeerData({ userId: "", name: "", image: "", tags: [] });
+    setMatchedListing(null);
+    setMatchmakingStatus("searching");
     setActiveSessionId(null);
   };
 
   const handleCancelLoading = () => {
     stopStatusPolling();
     setView("dashboard");
+    setMatchedListing(null);
+    setMatchmakingStatus("searching");
     setActiveSessionId(null);
   };
 
@@ -566,7 +631,7 @@ export default function StudyBuddyPage() {
       setAcceptedConnection(null);
       setAcceptedRoomId(null);
       setActiveSessionId(null);
-      setMatchedPeerData({ name: "", image: "", tags: [] });
+      setMatchedPeerData({ userId: "", name: "", image: "", tags: [] });
       stopStatusPolling();
       toast.success("Session cancelled");
       void fetchActiveListings();
@@ -588,12 +653,6 @@ export default function StudyBuddyPage() {
 
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-[#0f0a16] text-slate-900 dark:text-white overflow-hidden font-sans transition-colors duration-300">
-      
-      <div className="fixed inset-0 pointer-events-none opacity-30 dark:opacity-100 transition-opacity">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-pink-500/10 rounded-full blur-[120px]" />
-      </div>
-
       <main className="relative z-10 w-full h-full pt-6">
         {acceptedConnection && view === "dashboard" && (
           <section className="w-full max-w-6xl mx-auto px-4 mb-6">
@@ -644,13 +703,13 @@ export default function StudyBuddyPage() {
 
         {acceptedRoomId && view === "dashboard" && (
           <section className="w-full max-w-6xl mx-auto px-4 mb-6">
-            <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-400/25 rounded-2xl p-5 shadow-sm">
+            <div className="bg-white dark:bg-[#1a1524] border border-[#7C3AED]/25 rounded-2xl p-5 shadow-sm">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-purple-700 dark:text-purple-300">
+                  <h2 className="text-xl font-bold text-[#7C3AED]">
                     Match Found!
                   </h2>
-                  <p className="text-sm text-purple-700/90 dark:text-purple-200/90 mt-1">
+                  <p className="text-sm text-slate-600 dark:text-gray-300 mt-1">
                     Your study buddy accepted the request.
                   </p>
                 </div>
@@ -660,7 +719,7 @@ export default function StudyBuddyPage() {
                     onClick={() =>
                       router.push(`/dashboard/study-rooms/${acceptedRoomId}`)
                     }
-                    className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#7C3AED] text-white transition-opacity hover:opacity-90"
                     aria-label="Join accepted study room"
                   >
                     Join Study Room
@@ -697,9 +756,19 @@ export default function StudyBuddyPage() {
                     className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-slate-200 dark:border-white/10 rounded-xl p-4 bg-slate-50/70 dark:bg-white/[0.03]"
                   >
                     <div>
-                      <p className="font-semibold text-slate-900 dark:text-white">
-                        {request.requester?.name || "Unknown requester"}
-                      </p>
+                      {request.requester?._id ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPublicProfile(request.requester._id)}
+                          className="font-semibold text-slate-900 transition-colors hover:text-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:text-white"
+                        >
+                          {request.requester?.name || "Unknown requester"}
+                        </button>
+                      ) : (
+                        <p className="font-semibold text-slate-900 dark:text-white">
+                          {request.requester?.name || "Unknown requester"}
+                        </p>
+                      )}
                       <div className="mt-2 flex flex-wrap gap-2">
                         {(request.requester?.subjects || []).map((subj) => (
                           <span
@@ -754,6 +823,7 @@ export default function StudyBuddyPage() {
                 onCancelListing={handleCancelListing}
                 onConnectListing={handleConnectListing}
                 onPingSuggestedPeer={handlePingSuggestedPeer}
+                onViewProfile={handleOpenPublicProfile}
               />
             </motion.div>
           )}
@@ -780,31 +850,36 @@ export default function StudyBuddyPage() {
             >
               <MatchingLoader 
                 onCancel={handleCancelLoading} 
-                onMatchFound={handleMatchFound} 
+                status={matchmakingStatus}
                 mode={loadingMode}
                 peerName={matchedPeerData.name}
-              />
-            </motion.div>
-          )}
-
-          {view === "success" && activeSessionId && (
-            <motion.div 
-              key="success"
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0, scale: 1.05 }}
-              className="fixed inset-0 z-50 bg-white/90 dark:bg-[#0f0a16]/95 backdrop-blur-md"
-            >
-              <MatchSuccess 
-                onCloseAction={handleClose} 
-                matchData={matchedPeerData}
-                sessionId={activeSessionId}
+                subject={searchData.subject}
+                matchedUser={
+                  matchmakingStatus === "match_found" && matchedListing?.student
+                    ? {
+                        userId: matchedListing.student._id,
+                        name: matchedListing.student.name || "Study Buddy",
+                        image: matchedListing.student.image || "",
+                        subject: matchedListing.subject,
+                        topic: matchedListing.topic,
+                      }
+                    : null
+                }
+                isSendingRequest={isSendingMatchRequest}
+                onSendJoinRequest={() => void handleSendMatchedListingRequest()}
+                onGoBack={handleCancelLoading}
+                onOpenProfile={handleOpenPublicProfile}
               />
             </motion.div>
           )}
 
         </AnimatePresence>
       </main>
+      <PublicProfileModal
+        userId={publicProfileUserId}
+        onClose={() => setPublicProfileUserId(null)}
+        onConnect={handleConnectFromPublicProfile}
+      />
     </div>
   );
 }

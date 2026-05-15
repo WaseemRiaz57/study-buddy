@@ -43,6 +43,11 @@ const userSchema = new Schema(
       type: String,
       default: "", // Default khali hoga. Jab user search karega toh yeh update hoga.
     },
+    lastActive: {
+      type: Date,
+      default: Date.now,
+      index: true,
+    },
   },
   { timestamps: true } // Yeh automatically createdAt aur updatedAt fields bana dega
 );

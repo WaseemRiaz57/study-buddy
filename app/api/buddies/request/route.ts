@@ -34,19 +34,39 @@ export async function POST(req: Request) {
         );
       }
 
-      const listing = await BuddyMatch.findOne({
-        _id: listingId,
-        status: "Searching",
-      }).lean();
+      const listing = await BuddyMatch.findById(listingId).populate(
+        "studentId",
+        "_id role"
+      );
 
-      if (!listing) {
+      if (!listing || listing.status !== "Searching") {
         return NextResponse.json(
           { message: "Listing is no longer available" },
           { status: 404 }
         );
       }
 
-      recipientId = String(listing.studentId);
+      const owner =
+        listing.studentId && typeof listing.studentId === "object"
+          ? (listing.studentId as { _id?: mongoose.Types.ObjectId; role?: string })
+          : null;
+      const ownerId = String(owner?._id || "").trim();
+
+      if (!ownerId) {
+        return NextResponse.json(
+          { message: "Listing owner could not be found" },
+          { status: 404 }
+        );
+      }
+
+      if (owner?.role && String(owner.role).toLowerCase() !== "student") {
+        return NextResponse.json(
+          { message: "Listing owner is unavailable" },
+          { status: 404 }
+        );
+      }
+
+      recipientId = ownerId;
       subject = String(listing.subject || subject).trim().slice(0, 100);
     }
 
