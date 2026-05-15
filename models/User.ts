@@ -28,6 +28,12 @@ const userSchema = new Schema(
       enum: ["student", "mentor", "admin"],
       default: "student", // Jo naya sign up karega wo default student banega
     },
+    status: {
+      type: String,
+      enum: ["active", "suspended"],
+      default: "active",
+      index: true,
+    },
     // Naya feature: Study with Buddy ke liye topics (Static Profile)
     subjects: {
       type: [String],
