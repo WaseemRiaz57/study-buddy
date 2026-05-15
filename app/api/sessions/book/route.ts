@@ -8,6 +8,7 @@ import User from "@/models/User";
 
 const MIN_DURATION_MINUTES = 15;
 const MAX_DURATION_MINUTES = 240;
+const SESSION_TYPES = new Set(["scheduled", "instant"]);
 
 function parseScheduledAt(value: unknown) {
   const date = new Date(String(value ?? ""));
@@ -31,10 +32,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const { mentorId, subject, scheduledAt, duration } = await request.json();
+    const { mentorId, subject, scheduledAt, duration, type } = await request.json();
     const normalizedSubject = String(subject ?? "").trim();
     const normalizedDuration = Number(duration);
-    const normalizedScheduledAt = parseScheduledAt(scheduledAt);
+    const normalizedType = SESSION_TYPES.has(String(type ?? "scheduled"))
+      ? String(type ?? "scheduled")
+      : null;
+    const instantStartTime = new Date();
+    instantStartTime.setMinutes(0, 0, 0);
+    const requestedScheduledAt = parseScheduledAt(scheduledAt);
+    const normalizedScheduledAt =
+      normalizedType === "instant"
+        ? requestedScheduledAt ?? instantStartTime
+        : requestedScheduledAt;
 
     if (
       !mongoose.Types.ObjectId.isValid(session.user.id) ||
@@ -49,6 +59,13 @@ export async function POST(request: Request) {
     if (!normalizedSubject || normalizedSubject.length > 120) {
       return NextResponse.json(
         { message: "Subject must be between 1 and 120 characters." },
+        { status: 400 }
+      );
+    }
+
+    if (!normalizedType) {
+      return NextResponse.json(
+        { message: "type must be either 'scheduled' or 'instant'." },
         { status: 400 }
       );
     }
@@ -93,6 +110,7 @@ export async function POST(request: Request) {
       subject: normalizedSubject,
       scheduledAt: normalizedScheduledAt,
       duration: normalizedDuration,
+      type: normalizedType,
       status: "pending",
       paymentStatus: "unpaid",
     });

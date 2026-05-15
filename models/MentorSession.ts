@@ -8,6 +8,7 @@ export type MentorSessionStatus =
   | "completed";
 
 export type MentorSessionPaymentStatus = "unpaid" | "paid";
+export type MentorSessionType = "scheduled" | "instant";
 
 export interface IMentorSessionAttachment {
   url: string;
@@ -20,6 +21,7 @@ export interface IMentorSession extends Document {
   subject: string;
   scheduledAt: Date;
   duration: number;
+  type: MentorSessionType;
   status: MentorSessionStatus;
   paymentStatus: MentorSessionPaymentStatus;
   roomId: string;
@@ -43,6 +45,11 @@ const MentorSessionSchema = new Schema<IMentorSession>(
     subject: { type: String, required: true, trim: true },
     scheduledAt: { type: Date, required: true },
     duration: { type: Number, required: true },
+    type: {
+      type: String,
+      enum: ["scheduled", "instant"],
+      default: "scheduled",
+    },
     status: {
       type: String,
       enum: ["pending", "accepted", "declined", "rejected", "completed"],
@@ -64,6 +71,7 @@ const MentorSessionSchema = new Schema<IMentorSession>(
 MentorSessionSchema.index({ studentId: 1, scheduledAt: -1 });
 MentorSessionSchema.index({ mentorId: 1, scheduledAt: -1 });
 MentorSessionSchema.index({ status: 1, paymentStatus: 1 });
+MentorSessionSchema.index({ type: 1, status: 1 });
 
 export default mongoose.models.MentorSession ||
   mongoose.model<IMentorSession>("MentorSession", MentorSessionSchema);

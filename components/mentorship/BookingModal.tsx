@@ -87,7 +87,7 @@ function normalizeDay(day: string) {
 }
 
 function parseTimeSlot(slot: string) {
-  const normalized = slot.trim();
+  const normalized = slot.trim().split(/\s*-\s*/)[0] ?? slot.trim();
   const twelveHourMatch = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
 
   if (twelveHourMatch) {
@@ -110,6 +110,16 @@ function parseTimeSlot(slot: string) {
     hour: Number(twentyFourHourMatch[1]),
     minute: Number(twentyFourHourMatch[2]),
   };
+}
+
+function getSlotStartDate(slot: string, selectedDate: Date) {
+  const parsed = parseTimeSlot(slot);
+
+  if (!parsed) return null;
+
+  const slotDate = new Date(selectedDate);
+  slotDate.setHours(parsed.hour, parsed.minute, 0, 0);
+  return slotDate;
 }
 
 function formatTimeSlot(slot: string) {
@@ -171,6 +181,7 @@ export default function BookingModal({
   isConfirming = false,
 }: BookingModalProps) {
   const today = useMemo(() => new Date(), []);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -180,6 +191,7 @@ export default function BookingModal({
   useEffect(() => {
     setSelectedDate(null);
     setSelectedTime(null);
+    setCurrentTime(new Date());
     setViewYear(today.getFullYear());
     setViewMonth(today.getMonth());
   }, [mentor, today]);
@@ -187,6 +199,7 @@ export default function BookingModal({
   /* Lock body scroll when open */
   useEffect(() => {
     if (isOpen) {
+      setCurrentTime(new Date());
       document.body.style.overflow = "hidden";
     }
     return () => {
@@ -249,9 +262,18 @@ export default function BookingModal({
   const getSlotsForDate = useCallback(
     (date: Date) => {
       const day = date.toLocaleDateString("en-US", { weekday: "short" });
-      return availabilityByDay.get(normalizeDay(day)) ?? [];
+      const slots = availabilityByDay.get(normalizeDay(day)) ?? [];
+
+      if (!isSameDay(date, currentTime)) {
+        return slots;
+      }
+
+      return slots.filter((slot) => {
+        const slotStart = getSlotStartDate(slot, date);
+        return slotStart ? slotStart > currentTime : false;
+      });
     },
-    [availabilityByDay]
+    [availabilityByDay, currentTime]
   );
 
   const selectedDateSlots = selectedDate ? getSlotsForDate(selectedDate) : [];
@@ -300,8 +322,7 @@ export default function BookingModal({
             onClick={(e) => e.stopPropagation()}
             className="relative flex h-full w-full max-w-3xl flex-col border-l border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f0a16] shadow-2xl overflow-hidden"
           >
-            {/* Gradient accent top */}
-            <div className="h-1 w-full shrink-0 bg-gradient-to-r from-primary via-purple-400 to-primary/60" />
+            <div className="h-1 w-full shrink-0 bg-[#7C3AED]" />
 
             {/* ── Header ── */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/70 dark:border-white/10 shrink-0">
@@ -326,7 +347,7 @@ export default function BookingModal({
                 <div className="sticky top-0 p-5 space-y-5 overflow-y-auto h-full scrollbar-thin">
                   {/* Avatar + Name */}
                   <div className="flex flex-col items-center text-center gap-3">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-400 text-white font-bold text-2xl ring-4 ring-primary/20 shadow-lg shadow-primary/20">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#7C3AED] text-white font-bold text-2xl ring-4 ring-purple-100 shadow-lg shadow-purple-600/15 dark:ring-purple-500/20">
                       {initials}
                     </div>
                     <div>
@@ -401,8 +422,8 @@ export default function BookingModal({
                     <p className="text-xs font-semibold uppercase tracking-wider text-text-muted dark:text-slate-500">
                       Video Intro
                     </p>
-                    <div className="relative flex items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-white/5 dark:to-white/[0.02] border border-slate-200/70 dark:border-white/10 aspect-video overflow-hidden group cursor-pointer">
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-purple-400/5 dark:from-primary/10 dark:to-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 aspect-video overflow-hidden group cursor-pointer">
+                      <div className="absolute inset-0 bg-purple-50 opacity-0 group-hover:opacity-100 transition-opacity dark:bg-purple-500/10" />
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20 text-primary group-hover:scale-110 transition-transform">
                         <Play size={20} fill="currentColor" />
                       </div>
@@ -418,7 +439,7 @@ export default function BookingModal({
               <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6">
                 {/* ─ Mobile mentor summary (visible below md) ─ */}
                 <div className="flex md:hidden items-center gap-3 rounded-xl border border-slate-200/70 dark:border-white/10 bg-white/60 dark:bg-white/5 p-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-400 text-white font-bold text-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#7C3AED] text-white font-bold text-sm">
                     {initials}
                   </div>
                   <div className="min-w-0">
@@ -489,7 +510,7 @@ export default function BookingModal({
                             ${disabled
                               ? "text-slate-300 dark:text-white/15 cursor-not-allowed"
                               : isSelected
-                                ? "bg-gradient-to-br from-primary to-purple-400 text-white shadow-md shadow-primary/30 scale-105"
+                                ? "bg-[#7C3AED] text-white shadow-md shadow-purple-600/20 scale-105"
                                 : isToday
                                   ? "ring-2 ring-primary/50 text-primary font-bold hover:bg-primary/10 dark:hover:bg-primary/15"
                                   : "text-text-main dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
@@ -517,7 +538,11 @@ export default function BookingModal({
                       transition={{ duration: 0.2 }}
                       className="space-y-5"
                     >
-                      {Object.entries(groupedSlots).map(([period, slots]) => (
+                      {Object.keys(groupedSlots).length === 0 ? (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center text-sm font-medium text-text-muted shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400">
+                          No future time slots are available for this date.
+                        </div>
+                      ) : Object.entries(groupedSlots).map(([period, slots]) => (
                         <div key={period} className="space-y-3">
                           <div className="flex items-center gap-2">
                             <div className="h-px flex-1 bg-slate-200/70 dark:bg-white/10" />
@@ -526,7 +551,7 @@ export default function BookingModal({
                             </span>
                             <div className="h-px flex-1 bg-slate-200/70 dark:bg-white/10" />
                           </div>
-                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          <div className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:grid-cols-3 lg:grid-cols-4 dark:border-white/10 dark:bg-white/[0.03]">
                             {slots.map((slot) => (
                               <TimeSlotButton
                                 key={slot}
@@ -597,7 +622,7 @@ export default function BookingModal({
                   className={`
                     flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-bold transition-all
                     ${canSubmit
-                      ? "bg-gradient-to-r from-primary to-purple-400 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0"
+                      ? "bg-[#7C3AED] text-white shadow-lg shadow-purple-600/20 hover:bg-purple-700 hover:-translate-y-0.5 active:translate-y-0"
                       : "bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-slate-600 cursor-not-allowed"
                     }
                   `}
@@ -634,10 +659,10 @@ function TimeSlotButton({
     <button
       onClick={onClick}
       className={`
-        rounded-xl px-3 py-2.5 text-sm font-medium transition-all border
+        rounded-xl px-3 py-2.5 text-sm font-semibold transition-all border shadow-sm
         ${isSelected
-          ? "bg-gradient-to-r from-primary to-purple-400 text-white border-transparent shadow-md shadow-primary/25 scale-[1.03]"
-          : "border-slate-200/70 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] text-text-main dark:text-slate-300 hover:bg-primary/5 dark:hover:bg-primary/10 hover:border-primary/30 dark:hover:border-primary/30"
+          ? "bg-[#7C3AED] text-white border-[#7C3AED] shadow-purple-600/20 scale-[1.03]"
+          : "border-slate-200 bg-white text-text-main hover:bg-purple-50 hover:border-[#7C3AED] hover:text-[#7C3AED] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-purple-500/10"
         }
       `}
     >

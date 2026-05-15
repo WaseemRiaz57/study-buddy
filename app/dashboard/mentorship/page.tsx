@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Search,
@@ -12,9 +13,9 @@ import {
   ChevronRight,
   ArrowRight,
   Loader2,
+  Zap,
 } from "lucide-react";
 import BookingModal, { type Mentor } from "@/components/mentorship/BookingModal";
-import SuccessView from "@/components/mentorship/SuccessView";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -133,10 +134,14 @@ function combineDateAndTime(date: Date, time: string) {
 function MentorCard({
   mentor,
   onBook,
+  onInstantConnect,
+  isInstantConnecting,
   index,
 }: {
   mentor: Mentor;
   onBook: (m: Mentor) => void;
+  onInstantConnect: (m: Mentor) => void;
+  isInstantConnecting: boolean;
   index: number;
 }) {
   const initials = mentor.name
@@ -173,15 +178,12 @@ function MentorCard({
         hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)]
         hover:border-primary/20 dark:hover:border-primary/30"
     >
-      {/* Hover glow */}
-      <div className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-primary/10 via-transparent to-pink-400/10" />
-
       {/* Top row: Avatar + Rating */}
       <div className="relative flex justify-between items-start mb-4">
         {/* Avatar */}
         <div className="relative">
-          <div className="w-20 h-20 rounded-full p-[3px] bg-gradient-to-br from-gray-100 to-white dark:from-white/10 dark:to-white/5 shadow-sm">
-            <div className="flex w-full h-full items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-400 text-white font-bold text-xl">
+          <div className="w-20 h-20 rounded-full p-[3px] bg-white dark:bg-white/10 shadow-sm">
+            <div className="flex w-full h-full items-center justify-center rounded-full bg-[#7C3AED] text-white font-bold text-xl">
               {mentor.avatar ? (
                 <img
                   src={mentor.avatar}
@@ -240,8 +242,8 @@ function MentorCard({
         ))}
       </div>
 
-      {/* Bottom: Rate + Book */}
-      <div className="mt-auto flex items-center justify-between border-t border-gray-200/80 pt-4 dark:border-white/10">
+      {/* Bottom: Rate + Actions */}
+      <div className="mt-auto space-y-4 border-t border-gray-200/80 pt-4 dark:border-white/10">
         <div>
           <span className="text-xs text-gray-400 dark:text-slate-500 block">Rate</span>
           <span className="text-lg font-bold text-text-main dark:text-white">
@@ -249,15 +251,26 @@ function MentorCard({
             <span className="text-sm text-gray-400 dark:text-slate-500 font-normal">/hr</span>
           </span>
         </div>
-        <button
-          onClick={handleBookClick}
-          className="text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md
-            bg-gradient-to-r from-primary to-fuchsia-500
-            hover:shadow-[0_0_15px_rgba(140,48,232,0.4)] hover:brightness-105
-            active:scale-95 transition-all"
-        >
-          Book Session
-        </button>
+        <div className="grid grid-cols-1 gap-2">
+          <button
+            onClick={() => onInstantConnect(mentor)}
+            disabled={isInstantConnecting}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-purple-600/20 transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isInstantConnecting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Zap size={16} fill="currentColor" />
+            )}
+            Instant Connect
+          </button>
+          <button
+            onClick={handleBookClick}
+            className="rounded-xl border border-[#7C3AED] bg-white px-5 py-2.5 text-sm font-bold text-[#7C3AED] shadow-sm transition-colors hover:bg-purple-50 active:scale-95 dark:bg-transparent dark:hover:bg-purple-500/10"
+          >
+            Book Session
+          </button>
+        </div>
       </div>
     </motion.div>
   );
@@ -267,6 +280,7 @@ function MentorCard({
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 export default function MentorshipPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<Category>("all");
   const [mentors, setMentors] = useState<Mentor[]>([]);
@@ -274,11 +288,7 @@ export default function MentorshipPage() {
   const [mentorLoadError, setMentorLoadError] = useState<string | null>(null);
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
   const [isBooking, setIsBooking] = useState(false);
-  const [booking, setBooking] = useState<{
-    mentor: Mentor;
-    date: Date;
-    time: string;
-  } | null>(null);
+  const [instantBookingMentorId, setInstantBookingMentorId] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -342,6 +352,7 @@ export default function MentorshipPage() {
           subject: "Selected Subject",
           scheduledAt: scheduledAt.toISOString(),
           duration: 60,
+          type: "scheduled",
         }),
       });
 
@@ -364,20 +375,51 @@ export default function MentorshipPage() {
       }
 
       setSelectedMentor(null);
-      setBooking({
-        mentor,
-        date: scheduledAt,
-        time: scheduledAt.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-        }),
-      });
+      router.push("/dashboard/sessions");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not book this session."
       );
     } finally {
       setIsBooking(false);
+    }
+  }
+
+  async function handleInstantConnect(mentor: Mentor) {
+    const scheduledAt = new Date();
+    scheduledAt.setMinutes(0, 0, 0);
+
+    try {
+      setInstantBookingMentorId(mentor.id);
+
+      const response = await fetch("/api/sessions/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mentorId: mentor.id,
+          subject: "Instant Mentorship Session",
+          scheduledAt: scheduledAt.toISOString(),
+          duration: 60,
+          type: "instant",
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Could not start an instant session.");
+      }
+
+      toast.success("Instant session requested. Redirecting to your sessions.");
+      router.push("/dashboard/sessions");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not start an instant session."
+      );
+    } finally {
+      setInstantBookingMentorId("");
     }
   }
 
@@ -408,16 +450,7 @@ export default function MentorshipPage() {
       <div
         className="pointer-events-none fixed inset-0 -z-10"
         aria-hidden
-        style={{
-          backgroundColor: "var(--background)",
-          backgroundImage: [
-            "radial-gradient(at 10% 10%, rgba(140,48,232,0.04) 0px, transparent 50%)",
-            "radial-gradient(at 90% 0%, rgba(37,211,102,0.03) 0px, transparent 50%)",
-            "radial-gradient(at 50% 50%, rgba(255,255,255,0.7) 0px, transparent 50%)",
-            "radial-gradient(at 80% 80%, rgba(140,48,232,0.05) 0px, transparent 50%)",
-          ].join(","),
-          backgroundAttachment: "fixed",
-        }}
+        style={{ backgroundColor: "var(--background)" }}
       />
 
       {/* Dark-mode blobs (overlay on top of atmospheric bg) */}
@@ -434,7 +467,7 @@ export default function MentorshipPage() {
           <div className="absolute top-0 left-1/4 w-64 h-64 bg-purple-200 dark:bg-purple-600/20 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-3xl opacity-20 pointer-events-none" />
           <div className="absolute top-0 right-1/4 w-64 h-64 bg-pink-200 dark:bg-pink-600/20 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-3xl opacity-20 pointer-events-none" />
 
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight relative z-10 bg-gradient-to-r from-text-main dark:from-white to-primary bg-clip-text text-transparent">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight relative z-10 text-text-main dark:text-white">
             Find Your Mentor
           </h1>
           <p className="text-gray-500 dark:text-slate-400 text-lg mb-8 max-w-2xl mx-auto relative z-10">
@@ -444,8 +477,6 @@ export default function MentorshipPage() {
           {/* Search bar */}
           <div className="max-w-2xl mx-auto relative z-20">
             <div className="relative group">
-              {/* Glow ring */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary to-pink-400 rounded-2xl blur opacity-15 group-hover:opacity-30 transition duration-1000 group-hover:duration-200" />
               <div className="relative flex items-center bg-white/70 dark:bg-white/[0.06] backdrop-blur-xl rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] dark:shadow-none border border-white/50 dark:border-white/10 p-2">
                 <Search size={22} className="text-gray-400 dark:text-slate-500 ml-3" />
                 <input
@@ -504,6 +535,8 @@ export default function MentorshipPage() {
                   key={mentor.id}
                   mentor={mentor}
                   onBook={setSelectedMentor}
+                  onInstantConnect={handleInstantConnect}
+                  isInstantConnecting={instantBookingMentorId === mentor.id}
                   index={i}
                 />
               ))}
@@ -535,7 +568,7 @@ export default function MentorshipPage() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-12 mb-8 relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-8 text-center"
+          className="mt-12 mb-8 relative overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 p-8 text-center"
         >
           <div className="pointer-events-none absolute -top-16 -left-16 h-32 w-32 rounded-full bg-primary/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-16 -right-16 h-32 w-32 rounded-full bg-pink-500/10 blur-3xl" />
@@ -605,18 +638,6 @@ export default function MentorshipPage() {
           isConfirming={isBooking}
         />
       )}
-
-      {/* Success celebration */}
-      <AnimatePresence>
-        {booking && (
-          <SuccessView
-            mentor={booking.mentor}
-            date={booking.date}
-            time={booking.time}
-            onClose={() => setBooking(null)}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }

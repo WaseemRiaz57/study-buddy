@@ -87,8 +87,8 @@ export async function PATCH(
     const mentorName = session.user.name || "your mentor";
     const notificationMessage =
       nextStatus === "accepted"
-        ? `Your session request with ${mentorName} has been accepted! Go to your sessions to join the room.`
-        : `Your session request with ${mentorName} could not be accepted at this time.`;
+        ? `Your session with ${mentorName} has been accepted! Join the room now.`
+        : `Sorry, your session request with ${mentorName} was declined.`;
 
     await Notification.create({
       recipientId: mentorSession.studentId,

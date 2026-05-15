@@ -11,7 +11,8 @@ import {
   Calendar, FileText,
   BarChart3, Wallet, CreditCard, Star,
   Coins,
-  Loader2
+  Loader2,
+  Zap
 } from "lucide-react";
 import RequestApprovalModal, {
   type StudentRequestData,
@@ -109,6 +110,7 @@ interface MentorRequest {
   subject: string;
   scheduledAt: string;
   duration: number;
+  type?: "scheduled" | "instant";
   createdAt?: string;
   status?: "pending" | "accepted" | "declined" | "rejected" | "completed";
   roomId?: string;
@@ -452,10 +454,10 @@ export function MentorDashboard() {
           <div className="col-span-12 lg:col-span-4 space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Clock className="text-blue-500" size={20} />
+                <Clock className="text-[#7C3AED]" size={20} />
                 Session Requests
               </h3>
-              <span className="px-2.5 py-1 bg-blue-500/10 text-blue-500 text-xs font-bold rounded-full">{requests.length} NEW</span>
+              <span className="px-2.5 py-1 bg-purple-100 text-[#7C3AED] text-xs font-bold rounded-full dark:bg-purple-500/15">{requests.length} NEW</span>
             </div>
 
             {/* Request Cards */}
@@ -480,6 +482,7 @@ export function MentorDashboard() {
                 const acceptingKey = `${request._id}-accepted`;
                 const decliningKey = `${request._id}-declined`;
                 const isResponding = respondingActionKey.startsWith(`${request._id}-`);
+                const isInstantRequest = request.type === "instant";
 
                 return (
                   <motion.div 
@@ -487,11 +490,19 @@ export function MentorDashboard() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + i * 0.1 }}
-                    className="glass-panel p-5 rounded-2xl hover:border-primary/30 transition-all cursor-pointer"
+                    className={`glass-panel p-5 rounded-2xl hover:border-primary/30 transition-all cursor-pointer ${
+                      isInstantRequest ? "border-[#7C3AED]/50 ring-1 ring-[#7C3AED]/20" : ""
+                    }`}
                     onClick={() => handleOpenRequest(request)}
                   >
+                    {isInstantRequest && (
+                      <div className="mb-3 inline-flex animate-pulse items-center gap-1.5 rounded-full bg-[#7C3AED] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-white">
+                        <Zap size={12} fill="currentColor" />
+                        URGENT: INSTANT SESSION
+                      </div>
+                    )}
                     <div className="flex items-start gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold overflow-hidden">
+                      <div className="w-12 h-12 rounded-lg bg-[#7C3AED] flex items-center justify-center text-white font-bold overflow-hidden">
                         {student.image ? (
                           <Image
                             src={student.image}
