@@ -13,7 +13,6 @@ import {
   ChevronRight,
   ArrowRight,
   Loader2,
-  Zap,
 } from "lucide-react";
 import BookingModal, { type Mentor } from "@/components/mentorship/BookingModal";
 
@@ -25,7 +24,7 @@ type Category = "all" | "math" | "cs" | "literature" | "business" | "science" | 
 interface FilterOption {
   id: Category;
   label: string;
-  dot?: boolean;          // green "available now" dot
+  dot?: boolean;
 }
 
 interface MentorApiResponse {
@@ -101,8 +100,9 @@ function mapMentorFromApi(mentor: MentorApiResponse): Mentor {
 
 function combineDateAndTime(date: Date, time: string) {
   const scheduledAt = new Date(date);
-  const twentyFourHourMatch = time.trim().match(/^(\d{1,2}):(\d{2})$/);
-  const twelveHourMatch = time.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  const startTime = time.trim().split(/\s*-\s*/)[0] ?? time.trim();
+  const twentyFourHourMatch = startTime.match(/^(\d{1,2}):(\d{2})$/);
+  const twelveHourMatch = startTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
 
   if (twentyFourHourMatch) {
     scheduledAt.setHours(
@@ -199,7 +199,7 @@ function MentorCard({
           <div
             className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-white dark:border-[#0f0a16] z-10 ${
               mentor.available
-                ? "bg-green-400 shadow-[0_0_0_0_rgba(74,222,128,0.4)] animate-pulse"
+                ? "bg-[#7C3AED] shadow-[0_0_0_0_rgba(124,58,237,0.35)] animate-pulse"
                 : "bg-gray-300 dark:bg-gray-600"
             }`}
           />
@@ -207,8 +207,8 @@ function MentorCard({
 
         {/* Rating + Sessions */}
         <div className="flex flex-col items-end">
-          <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-400/10 px-2 py-1 rounded-lg border border-yellow-100 dark:border-yellow-400/20 mb-2">
-            <Star size={14} className="text-yellow-400" fill="currentColor" />
+          <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-500/10 px-2 py-1 rounded-lg border border-purple-100 dark:border-purple-400/20 mb-2">
+            <Star size={14} className="text-[#7C3AED]" fill="currentColor" />
             <span className="text-sm font-bold text-text-main dark:text-white">
               {mentor.rating.toFixed(1)}
             </span>
@@ -257,12 +257,8 @@ function MentorCard({
             disabled={isInstantConnecting}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-purple-600/20 transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isInstantConnecting ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Zap size={16} fill="currentColor" />
-            )}
-            Instant Connect
+            {isInstantConnecting && <Loader2 size={16} className="animate-spin" />}
+            ⚡ Instant Connect
           </button>
           <button
             onClick={handleBookClick}
@@ -453,20 +449,9 @@ export default function MentorshipPage() {
         style={{ backgroundColor: "var(--background)" }}
       />
 
-      {/* Dark-mode blobs (overlay on top of atmospheric bg) */}
-      <div className="pointer-events-none fixed inset-0 -z-10 hidden dark:block" aria-hidden>
-        <div className="absolute -top-40 left-1/4 w-[500px] h-[500px] rounded-full bg-primary/15 blur-[160px]" />
-        <div className="absolute top-1/2 right-0 w-[400px] h-[400px] rounded-full bg-purple-500/10 blur-[140px]" />
-        <div className="absolute bottom-0 left-0 w-[350px] h-[350px] rounded-full bg-pink-500/10 blur-[120px]" />
-      </div>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
         {/* ── Header & Search ── */}
         <div className="text-center mb-12 relative">
-          {/* Decorative blurred blobs */}
-          <div className="absolute top-0 left-1/4 w-64 h-64 bg-purple-200 dark:bg-purple-600/20 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-3xl opacity-20 pointer-events-none" />
-          <div className="absolute top-0 right-1/4 w-64 h-64 bg-pink-200 dark:bg-pink-600/20 rounded-full mix-blend-multiply dark:mix-blend-normal filter blur-3xl opacity-20 pointer-events-none" />
-
           <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight relative z-10 text-text-main dark:text-white">
             Find Your Mentor
           </h1>
@@ -570,8 +555,6 @@ export default function MentorshipPage() {
           viewport={{ once: true }}
           className="mt-12 mb-8 relative overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 p-8 text-center"
         >
-          <div className="pointer-events-none absolute -top-16 -left-16 h-32 w-32 rounded-full bg-primary/15 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-16 -right-16 h-32 w-32 rounded-full bg-pink-500/10 blur-3xl" />
           <h3 className="relative text-xl font-bold text-[var(--foreground)] mb-2">
             Share Your Knowledge — Become a Mentor
           </h3>

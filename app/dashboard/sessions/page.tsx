@@ -17,6 +17,7 @@ import {
   Star,
   TrendingUp,
   User,
+  Zap,
 } from "lucide-react";
 
 type EventColor = "emerald" | "purple" | "blue";
@@ -36,6 +37,7 @@ type MentorSession = {
   subject: string;
   scheduledAt: string;
   duration: number;
+  type?: "scheduled" | "instant";
   status: SessionStatus;
   roomId?: string;
 };
@@ -406,6 +408,7 @@ function RequestCard({
   const acceptingKey = `${session._id}-accepted`;
   const decliningKey = `${session._id}-declined`;
   const isResponding = respondingActionKey.startsWith(`${session._id}-`);
+  const isInstantRequest = session.type === "instant";
 
   return (
     <motion.div
@@ -413,8 +416,18 @@ function RequestCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-700/50 dark:bg-slate-800/50"
+      className={`rounded-xl border bg-slate-50 p-3 dark:bg-slate-800/50 ${
+        isInstantRequest
+          ? "border-[#7C3AED]/50 ring-1 ring-[#7C3AED]/20"
+          : "border-slate-100 dark:border-slate-700/50"
+      }`}
     >
+      {isInstantRequest && (
+        <div className="mb-2 inline-flex animate-pulse items-center gap-1.5 rounded-full bg-[#7C3AED] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white">
+          <Zap className="h-3 w-3" fill="currentColor" />
+          URGENT: INSTANT SESSION
+        </div>
+      )}
       <div className="mb-2 flex items-start justify-between">
         <div>
           <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
@@ -442,7 +455,7 @@ function RequestCard({
           whileTap={{ scale: 0.95 }}
           onClick={() => onRespond(session._id, "declined")}
           disabled={isResponding}
-          className="flex flex-1 items-center justify-center gap-2 rounded border border-slate-300 bg-transparent py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:text-slate-300"
+          className="flex flex-1 items-center justify-center gap-2 rounded border border-slate-300 bg-transparent py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-purple-50 hover:text-[#7C3AED] disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-purple-500/10"
         >
           {respondingActionKey === decliningKey && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Decline

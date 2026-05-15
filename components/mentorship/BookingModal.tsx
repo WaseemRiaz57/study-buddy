@@ -276,7 +276,10 @@ export default function BookingModal({
     [availabilityByDay, currentTime]
   );
 
-  const selectedDateSlots = selectedDate ? getSlotsForDate(selectedDate) : [];
+  const selectedDateSlots = useMemo(
+    () => (selectedDate ? getSlotsForDate(selectedDate) : []),
+    [getSlotsForDate, selectedDate]
+  );
   const groupedSlots = useMemo(
     () => groupTimeSlots(selectedDateSlots),
     [selectedDateSlots]
@@ -334,7 +337,7 @@ export default function BookingModal({
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                className="p-2 rounded-lg text-slate-400 hover:text-[#7C3AED] hover:bg-purple-50 transition-colors dark:hover:bg-purple-500/10"
               >
                 <X size={20} />
               </button>
@@ -363,8 +366,8 @@ export default function BookingModal({
                     </div>
                     {/* Availability badge */}
                     {mentor.available && (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-400/10 rounded-full px-3 py-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7C3AED] bg-purple-100 dark:bg-purple-500/10 rounded-full px-3 py-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#7C3AED] animate-pulse" />
                         Available Now
                       </span>
                     )}
@@ -393,7 +396,7 @@ export default function BookingModal({
                   {/* Stats */}
                   <div className="grid grid-cols-2 gap-2">
                     <StatCard
-                      icon={<Star size={16} fill="currentColor" className="text-amber-500" />}
+                      icon={<Star size={16} fill="currentColor" className="text-[#7C3AED]" />}
                       label="Rating"
                       value={`${mentor.rating.toFixed(1)} (${mentor.reviews})`}
                     />
@@ -575,7 +578,7 @@ export default function BookingModal({
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 8 }}
-                      className="flex items-center gap-2 p-3 rounded-xl bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-400/20 text-green-700 dark:text-green-400 text-sm"
+                      className="flex items-center gap-2 p-3 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-400/20 text-[#7C3AED] text-sm"
                     >
                       <CheckCircle2 size={18} className="shrink-0" />
                       <span>
