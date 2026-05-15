@@ -35,6 +35,7 @@ interface Transaction {
     id: string;
     user: string;
     email: string;
+    image: string;
     avatar: string;
     plan: string;
     amount: string;
@@ -71,6 +72,33 @@ function formatCurrency(value: number) {
         style: "currency",
         currency: "USD",
     }).format(value);
+}
+
+function formatTransactionDate(value?: string) {
+    if (!value) return "Unknown";
+
+    return new Date(value).toLocaleDateString("en", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+}
+
+function getInitials(name: string) {
+    return name
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() || "U";
+}
+
+function normalizeStatus(status: string): TxStatus {
+    const normalized = status.toLowerCase();
+
+    if (normalized === "failed") return "failed";
+    if (normalized === "refunded") return "refunded";
+    return "success";
 }
 
 // ─── Status Config ──────────────────────────────────────────────────────────────
@@ -136,81 +164,29 @@ const PLANS: PricingPlan[] = [
     },
 ];
 
-const TRANSACTIONS: Transaction[] = [
-    {
-        id: "TXN-4829",
-        user: "Sophia Zhang",
-        email: "sophia.z@uni.edu",
-        avatar: "SZ",
-        plan: "Elite",
-        amount: "$24.99",
-        date: "Feb 23, 2026",
-        status: "success",
-    },
-    {
-        id: "TXN-4828",
-        user: "Alex Nguyen",
-        email: "alex.n@gmail.com",
-        avatar: "AN",
-        plan: "Pro",
-        amount: "$9.99",
-        date: "Feb 23, 2026",
-        status: "success",
-    },
-    {
-        id: "TXN-4827",
-        user: "Jordan Williams",
-        email: "j.williams@mail.com",
-        avatar: "JW",
-        plan: "Pro",
-        amount: "$9.99",
-        date: "Feb 22, 2026",
-        status: "refunded",
-    },
-    {
-        id: "TXN-4826",
-        user: "Priya Sharma",
-        email: "priya.s@outlook.com",
-        avatar: "PS",
-        plan: "Elite",
-        amount: "$24.99",
-        date: "Feb 22, 2026",
-        status: "success",
-    },
-    {
-        id: "TXN-4825",
-        user: "Liam O'Brien",
-        email: "liam.ob@techmail.io",
-        avatar: "LO",
-        plan: "Pro",
-        amount: "$9.99",
-        date: "Feb 21, 2026",
-        status: "failed",
-    },
-];
 
 // ─── Plan Card Styles ───────────────────────────────────────────────────────────
 const TIER_STYLES: Record<
     PlanTier,
-    { border: string; icon: React.ElementType; iconColor: string; gradient: string }
+    { border: string; icon: React.ElementType; iconColor: string; bg: string }
 > = {
     free: {
         border: "border-slate-200 dark:border-white/[0.06]",
         icon: Users,
         iconColor: "text-slate-500 dark:text-slate-400",
-        gradient: "from-slate-400 to-slate-500",
+        bg: "bg-slate-500",
     },
     pro: {
         border: "border-purple-300/60 dark:border-purple-500/30",
         icon: Sparkles,
         iconColor: "text-purple-500 dark:text-purple-400",
-        gradient: "from-purple-500 to-indigo-500",
+        bg: "bg-[#7C3AED]",
     },
     elite: {
         border: "border-amber-400/50 dark:border-amber-500/30",
         icon: Crown,
         iconColor: "text-amber-500 dark:text-amber-400",
-        gradient: "from-amber-400 to-yellow-600",
+        bg: "bg-amber-500",
     },
 };
 
@@ -220,6 +196,8 @@ export default function MonetizationPage() {
     const [editModal, setEditModal] = useState<PricingPlan | null>(null);
     const [stats, setStats] = useState<MonetizationStats>(EMPTY_STATS);
     const [isLoadingStats, setIsLoadingStats] = useState(true);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
 
     useEffect(() => {
         setMounted(true);
@@ -262,7 +240,54 @@ export default function MonetizationPage() {
             }
         }
 
+        async function fetchTransactions() {
+            try {
+                setIsLoadingTransactions(true);
+                const response = await fetch("/api/admin/monetization/transactions", {
+                    cache: "no-store",
+                });
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(data?.message || "Failed to load transactions.");
+                }
+
+                if (active) {
+                    setTransactions(
+                        (data?.transactions || []).map((transaction: any) => {
+                            const name = transaction?.user?.name || "Unknown User";
+
+                            return {
+                                id: `TXN-${String(transaction.id || "").slice(-6).toUpperCase()}`,
+                                user: name,
+                                email: transaction?.user?.email || "No email",
+                                image: transaction?.user?.image || "",
+                                avatar: getInitials(name),
+                                plan: transaction.plan || "Free",
+                                amount: formatCurrency(Number(transaction.amount || 0)),
+                                date: formatTransactionDate(transaction.createdAt),
+                                status: normalizeStatus(transaction.status || "Success"),
+                            };
+                        })
+                    );
+                }
+            } catch (error) {
+                if (active) {
+                    toast.error(
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to load transactions."
+                    );
+                }
+            } finally {
+                if (active) {
+                    setIsLoadingTransactions(false);
+                }
+            }
+        }
+
         void fetchStats();
+        void fetchTransactions();
 
         return () => {
             active = false;
@@ -358,7 +383,9 @@ export default function MonetizationPage() {
                             Total Transactions
                         </div>
                         <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-                            4,829
+                            {isLoadingTransactions
+                                ? "..."
+                                : transactions.length.toLocaleString()}
                         </div>
                     </div>
                 </div>
@@ -385,7 +412,7 @@ export default function MonetizationPage() {
                             >
                                 {/* Highlight banner */}
                                 {plan.highlight && (
-                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md shadow-amber-500/30">
+                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#7C3AED] text-white shadow-md shadow-purple-500/30">
                                         Most Popular
                                     </div>
                                 )}
@@ -394,7 +421,7 @@ export default function MonetizationPage() {
                                     {/* Tier Icon & Title */}
                                     <div className="flex items-center gap-2.5 mb-3">
                                         <div
-                                            className={`w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br ${style.gradient} text-white shrink-0`}
+                                            className={`w-9 h-9 rounded-xl flex items-center justify-center ${style.bg} text-white shrink-0`}
                                         >
                                             <TierIcon size={16} />
                                         </div>
@@ -499,8 +526,27 @@ export default function MonetizationPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {TRANSACTIONS.map((tx) => {
-                                    const status = STATUS_CONFIG[tx.status];
+                                {isLoadingTransactions ? (
+                                    <tr>
+                                        <td
+                                            colSpan={6}
+                                            className="px-5 py-12 text-center text-sm text-slate-400 dark:text-slate-500"
+                                        >
+                                            Loading transactions...
+                                        </td>
+                                    </tr>
+                                ) : transactions.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={6}
+                                            className="px-5 py-12 text-center text-sm text-slate-400 dark:text-slate-500"
+                                        >
+                                            No transactions recorded yet.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    transactions.map((tx) => {
+                                        const status = STATUS_CONFIG[tx.status];
 
                                     return (
                                         <tr
@@ -517,8 +563,17 @@ export default function MonetizationPage() {
                                             {/* User */}
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                                                        {tx.avatar}
+                                                    <div className="w-8 h-8 rounded-full bg-[#7C3AED] flex items-center justify-center text-white text-[10px] font-bold shrink-0 overflow-hidden">
+                                                        {tx.image ? (
+                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            <img
+                                                                src={tx.image}
+                                                                alt=""
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            tx.avatar
+                                                        )}
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
@@ -569,7 +624,8 @@ export default function MonetizationPage() {
                                             </td>
                                         </tr>
                                     );
-                                })}
+                                    })
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -579,7 +635,7 @@ export default function MonetizationPage() {
             {/* ════════ FOOTER ════════ */}
             <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
                 <span>
-                    {plans.length} plans · {TRANSACTIONS.length} recent transactions
+                    {plans.length} plans · {transactions.length} recent transactions
                 </span>
                 <span>StudyBuddy Admin · Monetization Panel</span>
             </div>
@@ -598,7 +654,7 @@ export default function MonetizationPage() {
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/10">
                             <div className="flex items-center gap-3">
                                 <div
-                                    className={`w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br ${TIER_STYLES[editModal.tier].gradient
+                                    className={`w-9 h-9 rounded-xl flex items-center justify-center ${TIER_STYLES[editModal.tier].bg
                                         } text-white shrink-0`}
                                 >
                                     <Edit size={15} />

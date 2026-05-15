@@ -2,6 +2,7 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 
 export interface IPlatformSettings extends Document {
   platformName: string;
+  platformLogo?: string;
   supportEmail: string;
   allowNewSignups: boolean;
   maintenanceMode: boolean;
@@ -16,6 +17,10 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       default: "StudyBuddy",
       trim: true,
       maxlength: 100,
+    },
+    platformLogo: {
+      type: String,
+      default: "",
     },
     supportEmail: {
       type: String,

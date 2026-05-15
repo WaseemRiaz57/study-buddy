@@ -57,6 +57,12 @@ export async function POST(request: Request) {
         : audience === "free"
           ? { $or: [{ plan: "Free" }, { plan: { $exists: false } }] }
           : { plan: { $in: ["Pro", "Elite"] } };
+    const audienceLabel =
+      audience === "all"
+        ? "All Users"
+        : audience === "free"
+          ? "Free"
+          : "Pro";
 
     const users = await User.find(userQuery).select("_id").lean();
     const senderId = mongoose.Types.ObjectId.isValid(session.user.id)
@@ -71,6 +77,7 @@ export async function POST(request: Request) {
           type: "system",
           title,
           message,
+          audience: audienceLabel,
           read: false,
           isGlobal: true,
           metadata: {

@@ -11,6 +11,7 @@ export interface INotification extends Document {
     | "system";
   title: string;
   message: string;
+  audience?: string;
   read: boolean;
   isGlobal: boolean;
   metadata: Record<string, unknown>;
@@ -46,6 +47,11 @@ const NotificationSchema = new Schema<INotification>(
     message: {
       type: String,
       required: true,
+    },
+    audience: {
+      type: String,
+      default: "",
+      index: true,
     },
     read: {
       type: Boolean,
