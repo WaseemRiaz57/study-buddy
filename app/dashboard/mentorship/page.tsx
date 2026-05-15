@@ -3,9 +3,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  CheckCircle2,
   Search,
   Star,
   SlidersHorizontal,
@@ -13,6 +13,7 @@ import {
   ChevronRight,
   ArrowRight,
   Loader2,
+  X,
 } from "lucide-react";
 import BookingModal, { type Mentor } from "@/components/mentorship/BookingModal";
 
@@ -276,7 +277,6 @@ function MentorCard({
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 export default function MentorshipPage() {
-  const router = useRouter();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<Category>("all");
   const [mentors, setMentors] = useState<Mentor[]>([]);
@@ -285,6 +285,7 @@ export default function MentorshipPage() {
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
   const [isBooking, setIsBooking] = useState(false);
   const [instantBookingMentorId, setInstantBookingMentorId] = useState("");
+  const [bookingSuccessMessage, setBookingSuccessMessage] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -371,7 +372,7 @@ export default function MentorshipPage() {
       }
 
       setSelectedMentor(null);
-      router.push("/dashboard/sessions");
+      setBookingSuccessMessage("Your request has been sent to the mentor!");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not book this session."
@@ -406,8 +407,8 @@ export default function MentorshipPage() {
         throw new Error(data?.message || "Could not start an instant session.");
       }
 
-      toast.success("Instant session requested. Redirecting to your sessions.");
-      router.push("/dashboard/sessions");
+      toast.success("Instant session request sent.");
+      setBookingSuccessMessage("Your request has been sent to the mentor!");
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -621,6 +622,49 @@ export default function MentorshipPage() {
           isConfirming={isBooking}
         />
       )}
+
+      <AnimatePresence>
+        {bookingSuccessMessage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl dark:border-white/10 dark:bg-surface-dark"
+            >
+              <button
+                type="button"
+                onClick={() => setBookingSuccessMessage("")}
+                className="ml-auto flex rounded-lg p-2 text-slate-400 transition-colors hover:bg-purple-50 hover:text-[#7C3AED]"
+                aria-label="Close success message"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 text-[#7C3AED]">
+                <CheckCircle2 className="h-7 w-7" />
+              </div>
+              <h2 className="text-xl font-black text-text-main dark:text-white">
+                Request Sent
+              </h2>
+              <p className="mt-2 text-sm text-text-muted dark:text-slate-400">
+                {bookingSuccessMessage}
+              </p>
+              <button
+                type="button"
+                onClick={() => setBookingSuccessMessage("")}
+                className="mt-6 w-full rounded-xl bg-[#7C3AED] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+              >
+                Got it
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

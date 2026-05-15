@@ -67,6 +67,9 @@ type MentorProfilePayload = {
   subjects?: string[];
   hourlyRate?: number;
   certificates?: string[];
+  bankName?: string;
+  accountTitle?: string;
+  accountNumber?: string;
   availability?: AvailabilityDay[];
   status?: MentorStatus;
   isPublic?: boolean;
@@ -158,6 +161,9 @@ export default function MentorshipSetupPage() {
   const [certificates, setCertificates] = useState<string[]>([]);
   const [certificateDraft, setCertificateDraft] = useState("");
   const [hourlyRate, setHourlyRate] = useState(50);
+  const [bankName, setBankName] = useState("");
+  const [accountTitle, setAccountTitle] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
   const [availability, setAvailability] = useState<AvailabilityDay[]>(
     normalizeAvailability()
   );
@@ -204,6 +210,9 @@ export default function MentorshipSetupPage() {
         setHeadline(profile?.headline ?? "");
         setBio(profile?.bio ?? "");
         setHourlyRate(Number(profile?.hourlyRate ?? 50));
+        setBankName(profile?.bankName ?? "");
+        setAccountTitle(profile?.accountTitle ?? "");
+        setAccountNumber(profile?.accountNumber ?? "");
         setSelectedSubjects(profile?.subjects ?? []);
         setCertificates(profile?.certificates ?? []);
         setAvailability(normalizeAvailability(profile?.availability));
@@ -375,6 +384,9 @@ export default function MentorshipSetupPage() {
           subjects: selectedSubjects,
           certificates,
           hourlyRate,
+          bankName,
+          accountTitle,
+          accountNumber,
           availability: compactAvailability(availability),
           submitForReview: true,
         }),
@@ -833,6 +845,53 @@ export default function MentorshipSetupPage() {
                   className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
               </label>
+
+              <div className="mt-6 rounded-2xl border border-purple-100 bg-purple-50/70 p-4 dark:border-purple-500/20 dark:bg-purple-500/10">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  Manual Payment Details
+                </h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Students will see these details after you accept a session.
+                </p>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      Bank Name
+                    </span>
+                    <input
+                      type="text"
+                      value={bankName}
+                      onChange={(event) => setBankName(event.target.value)}
+                      aria-label="Bank name"
+                      className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-slate-950 dark:text-white"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      Account Title
+                    </span>
+                    <input
+                      type="text"
+                      value={accountTitle}
+                      onChange={(event) => setAccountTitle(event.target.value)}
+                      aria-label="Account title"
+                      className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-slate-950 dark:text-white"
+                    />
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                      Account Number
+                    </span>
+                    <input
+                      type="text"
+                      value={accountNumber}
+                      onChange={(event) => setAccountNumber(event.target.value)}
+                      aria-label="Account number"
+                      className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-slate-950 dark:text-white"
+                    />
+                  </label>
+                </div>
+              </div>
 
               <div className="mt-7">
                 <p className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-300">

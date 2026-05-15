@@ -22,7 +22,14 @@ interface RecentAINote {
   createdAt: string;
 }
 
-type SessionStatus = "pending" | "accepted" | "declined" | "rejected" | "completed";
+type SessionStatus =
+  | "pending"
+  | "accepted"
+  | "payment_pending"
+  | "payment_verified"
+  | "declined"
+  | "rejected"
+  | "completed";
 
 interface PopulatedMentor {
   _id?: string;
@@ -167,7 +174,7 @@ export function StudentDashboard() {
     .filter((session) => {
       const scheduledAt = new Date(session.scheduledAt).getTime();
       return (
-        session.status === "accepted" &&
+        session.status === "payment_verified" &&
         !Number.isNaN(scheduledAt) &&
         scheduledAt >= Date.now()
       );

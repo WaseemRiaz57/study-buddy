@@ -43,7 +43,7 @@ export async function GET() {
         }),
         MentorSession.countDocuments({
           mentorId: session.user.id,
-          status: "accepted",
+          status: "payment_verified",
         }),
       ]);
 

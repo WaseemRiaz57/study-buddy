@@ -56,7 +56,7 @@ export async function PATCH(
 
     const sessionQuery: Record<string, unknown> = {
       _id: id,
-      status: "accepted",
+      status: { $in: ["payment_verified", "accepted"] },
     };
     const userRole = String(session.user.role ?? "").toLowerCase();
 
@@ -72,7 +72,7 @@ export async function PATCH(
 
     if (!mentorSession) {
       return NextResponse.json(
-        { message: "Accepted session not found." },
+        { message: "Verified session not found." },
         { status: 404 }
       );
     }

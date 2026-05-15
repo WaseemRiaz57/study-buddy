@@ -112,7 +112,14 @@ interface MentorRequest {
   duration: number;
   type?: "scheduled" | "instant";
   createdAt?: string;
-  status?: "pending" | "accepted" | "declined" | "rejected" | "completed";
+  status?:
+    | "pending"
+    | "accepted"
+    | "payment_pending"
+    | "payment_verified"
+    | "declined"
+    | "rejected"
+    | "completed";
   roomId?: string;
 }
 
@@ -310,7 +317,7 @@ export function MentorDashboard() {
 
         if (isActive) {
           setUpcomingSessions(
-            data.filter((mentorSession) => mentorSession.status === "accepted")
+            data.filter((mentorSession) => mentorSession.status === "payment_verified")
           );
         }
       } catch {
@@ -348,29 +355,12 @@ export function MentorDashboard() {
         throw new Error(result?.message || "Failed to respond to session.");
       }
 
-      const acceptedRequest = requests.find((request) => request._id === requestId);
-
       setRequests((currentRequests) =>
         currentRequests.filter((request) => request._id !== requestId)
       );
 
       if (nextStatus === "accepted") {
-        if (acceptedRequest) {
-          setUpcomingSessions((currentSessions) => [
-            {
-              ...acceptedRequest,
-              status: "accepted",
-              roomId: requestId,
-            },
-            ...currentSessions.filter((mentorSession) => mentorSession._id !== requestId),
-          ]);
-        }
-
-        setStats((currentStats) => ({
-          ...currentStats,
-          upcomingSessions: currentStats.upcomingSessions + 1,
-        }));
-        toast.success("Session Accepted!");
+        toast.success("Session accepted. Awaiting student payment.");
       } else {
         toast.success("Session Declined.");
       }
@@ -568,7 +558,7 @@ export function MentorDashboard() {
               </h4>
               {upcomingSessions.length === 0 ? (
                 <div className="glass-panel p-4 rounded-2xl text-sm text-muted-foreground">
-                  Accepted sessions will appear here.
+                  Payment-verified sessions will appear here.
                 </div>
               ) : (
                 upcomingSessions.slice(0, 3).map((mentorSession) => {
