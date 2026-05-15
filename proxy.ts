@@ -11,7 +11,11 @@ export const proxy = withAuth(
     }
 
     if (pathname.startsWith("/admin") && String(token?.role || "").toUpperCase() !== "ADMIN") {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    if (pathname.startsWith("/dashboard") && String(token?.role || "").toUpperCase() === "ADMIN") {
+      return NextResponse.redirect(new URL("/admin", req.url));
     }
   },
   {

@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -248,6 +249,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -259,6 +262,42 @@ export default function AdminLayout({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login");
+    }
+  }, [router, status]);
+
+  if (!mounted || status === "loading") {
+    return <div className="min-h-screen bg-slate-50 dark:bg-[#0f0a16]" />;
+  }
+
+  if (status === "unauthenticated") {
+    return <div className="min-h-screen bg-slate-50 dark:bg-[#0f0a16]" />;
+  }
+
+  if (String(session?.user?.role || "").toUpperCase() !== "ADMIN") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-center dark:bg-[#0f0a16]">
+        <section className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-[#1a0f26]">
+          <ShieldCheck size={36} className="mx-auto text-[#7C3AED]" />
+          <h1 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">
+            Admin access required
+          </h1>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            This area is restricted to platform administrators.
+          </p>
+          <Link
+            href="/login"
+            className="mt-6 inline-flex rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Go to Login
+          </Link>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <div className="h-screen w-full bg-slate-50 dark:bg-[#0f0a16] overflow-hidden flex">

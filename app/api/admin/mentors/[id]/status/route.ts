@@ -6,7 +6,7 @@ import { connectMongoDB } from "@/lib/mongodb";
 import MentorProfile from "@/models/MentorProfile";
 import Notification from "@/models/Notification";
 
-type MentorReviewStatus = "approved" | "rejected";
+type MentorReviewStatus = "approved" | "rejected" | "suspended";
 
 function isAdminRole(role: unknown) {
   return String(role ?? "").toLowerCase() === "admin";
@@ -15,7 +15,11 @@ function isAdminRole(role: unknown) {
 function normalizeStatus(status: unknown): MentorReviewStatus | null {
   const normalizedStatus = String(status ?? "").trim().toLowerCase();
 
-  if (normalizedStatus === "approved" || normalizedStatus === "rejected") {
+  if (
+    normalizedStatus === "approved" ||
+    normalizedStatus === "rejected" ||
+    normalizedStatus === "suspended"
+  ) {
     return normalizedStatus;
   }
 
@@ -51,7 +55,7 @@ export async function PATCH(
 
     if (!status) {
       return NextResponse.json(
-        { message: "status must be either 'approved' or 'rejected'." },
+        { message: "status must be 'approved', 'rejected', or 'suspended'." },
         { status: 400 }
       );
     }
@@ -61,7 +65,7 @@ export async function PATCH(
     const update =
       status === "approved"
         ? { status: "approved", isPublic: true }
-        : { status: "rejected", isPublic: false };
+        : { status, isPublic: false };
 
     const mentorProfile = await MentorProfile.findByIdAndUpdate(
       id,
@@ -79,7 +83,9 @@ export async function PATCH(
     const notificationMessage =
       status === "approved"
         ? "Congratulations! Your mentor application has been approved. You are now live in the marketplace."
-        : "Your mentor application was not approved at this time. Please update your certificates and try again.";
+        : status === "suspended"
+          ? "Your public mentor status has been revoked. Please contact support if you believe this was a mistake."
+          : "Your mentor application was not approved at this time. Please update your certificates and try again.";
 
     await Notification.create({
       recipientId: mentorProfile.userId,
@@ -90,7 +96,9 @@ export async function PATCH(
       title:
         status === "approved"
           ? "Mentor Application Approved"
-          : "Mentor Application Rejected",
+          : status === "suspended"
+            ? "Mentor Status Revoked"
+            : "Mentor Application Rejected",
       message: notificationMessage,
       read: false,
       metadata: {
@@ -104,7 +112,9 @@ export async function PATCH(
       message:
         status === "approved"
           ? "Mentor application approved."
-          : "Mentor application rejected.",
+          : status === "suspended"
+            ? "Mentor status revoked."
+            : "Mentor application rejected.",
       mentorProfile: {
         id: String(mentorProfile._id),
         status: mentorProfile.status,

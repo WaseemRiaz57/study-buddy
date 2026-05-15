@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { ArrowLeft, Mail, Lock, Sparkles, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState } from "react";
 
@@ -57,7 +57,10 @@ export default function LoginPage() {
         // Ab backend se aane wala asli error show hoga
         setError(result.error);
       } else if (result?.ok) {
-        router.push("/dashboard");
+        const session = await getSession();
+        const role = String(session?.user?.role || "").toUpperCase();
+
+        router.push(role === "ADMIN" ? "/admin" : "/dashboard");
         router.refresh();
       }
     } catch {
