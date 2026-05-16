@@ -29,6 +29,7 @@ interface SentNotification {
   audience: string;
   sentDate: string;
   openRate: number;
+  targetCount: number;
 }
 
 // ─── Delivery Badge Config ──────────────────────────────────────────────────────
@@ -51,41 +52,35 @@ const AUDIENCE_OPTIONS: { value: Audience; label: string }[] = [
   { value: "pro", label: "Pro / Elite Users Only" },
 ];
 
-// ─── Mock Data ──────────────────────────────────────────────────────────────────
-const SENT_NOTIFICATIONS: SentNotification[] = [
-  {
-    id: "n1",
-    title: "Welcome to StudyBuddy 2.0!",
-    methods: ["in-app", "email"],
-    audience: "All Users",
-    sentDate: "Feb 20, 2026",
-    openRate: 72,
-  },
-  {
-    id: "n2",
-    title: "Scheduled Maintenance Alert",
-    methods: ["in-app"],
-    audience: "All Users",
-    sentDate: "Feb 18, 2026",
-    openRate: 45,
-  },
-  {
-    id: "n3",
-    title: "New Mentor Matching Available",
-    methods: ["email"],
-    audience: "Pro / Elite Users",
-    sentDate: "Feb 15, 2026",
-    openRate: 61,
-  },
-  {
-    id: "n4",
-    title: "Weekly Challenge Reminder",
-    methods: ["in-app", "email"],
-    audience: "Free Users",
-    sentDate: "Feb 12, 2026",
-    openRate: 38,
-  },
-];
+// ─── History Helpers ────────────────────────────────────────────────────────────
+function formatSentDate(value?: string) {
+  if (!value) return "Unknown";
+
+  return new Date(value).toLocaleDateString("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function normalizeMethods(value: unknown): DeliveryMethod[] {
+  const rawMethods = Array.isArray(value) ? value : [];
+  const methods = new Set<DeliveryMethod>();
+
+  for (const method of rawMethods) {
+    const normalized = String(method || "").trim().toLowerCase();
+
+    if (normalized === "email") {
+      methods.add("email");
+    }
+
+    if (normalized === "in-app" || normalized === "inapp") {
+      methods.add("in-app");
+    }
+  }
+
+  return methods.size > 0 ? Array.from(methods) : ["in-app"];
+}
 
 // ─── Checkbox Component ─────────────────────────────────────────────────────────
 function Checkbox({
@@ -123,8 +118,8 @@ function Checkbox({
 export default function NotificationsManagerPage() {
   const [mounted, setMounted] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [sentNotifications, setSentNotifications] =
-    useState<SentNotification[]>(SENT_NOTIFICATIONS);
+  const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
   // Compose form state
@@ -136,6 +131,54 @@ export default function NotificationsManagerPage() {
 
   useEffect(() => {
     setMounted(true);
+    let active = true;
+
+    async function fetchHistory() {
+      try {
+        setIsLoadingHistory(true);
+        const response = await fetch("/api/admin/notifications/history", {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Failed to load notification history.");
+        }
+
+        if (!active) return;
+
+        const history = Array.isArray(data?.history) ? data.history : [];
+        setSentNotifications(
+          history.map((item: any) => ({
+            id: String(item.id),
+            title: item.title || "Untitled broadcast",
+            methods: normalizeMethods(item.deliveryMethods),
+            audience: item.audience || "All Users",
+            sentDate: formatSentDate(item.createdAt),
+            openRate: 0,
+            targetCount: Number(item.targetCount || 0),
+          }))
+        );
+      } catch (error) {
+        if (active) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to load notification history."
+          );
+        }
+      } finally {
+        if (active) {
+          setIsLoadingHistory(false);
+        }
+      }
+    }
+
+    void fetchHistory();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (!mounted) {
@@ -159,6 +202,12 @@ export default function NotificationsManagerPage() {
 
     try {
       setIsSending(true);
+      const methods = [
+        inApp ? "in-app" : null,
+        emailBlast ? "email" : null,
+      ].filter(Boolean) as DeliveryMethod[];
+      const deliveryMethods: DeliveryMethod[] =
+        methods.length > 0 ? methods : ["in-app"];
       const response = await fetch("/api/admin/notifications/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -166,6 +215,7 @@ export default function NotificationsManagerPage() {
           title: title.trim(),
           message: body.trim(),
           audience,
+          deliveryMethods,
         }),
       });
       const data = await response.json().catch(() => null);
@@ -177,16 +227,12 @@ export default function NotificationsManagerPage() {
       const audienceLabel =
         AUDIENCE_OPTIONS.find((option) => option.value === audience)?.label ||
         "All Users";
-      const methods = [
-        inApp ? "in-app" : null,
-        emailBlast ? "email" : null,
-      ].filter(Boolean) as DeliveryMethod[];
 
       setSentNotifications((current) => [
         {
           id: `broadcast-${Date.now()}`,
           title: title.trim(),
-          methods: methods.length > 0 ? methods : ["in-app"],
+          methods: deliveryMethods,
           audience: audienceLabel,
           sentDate: new Date().toLocaleDateString("en", {
             month: "short",
@@ -194,10 +240,16 @@ export default function NotificationsManagerPage() {
             year: "numeric",
           }),
           openRate: 0,
+          targetCount: Number(data?.sentCount || 0),
         },
         ...current,
       ]);
-      toast.success(`${data?.sentCount ?? 0} users notified.`);
+      const emailFailures = Number(data?.emailFailureCount || 0);
+      toast.success(
+        emailFailures > 0
+          ? `${data?.sentCount ?? 0} users notified. ${emailFailures} email sends failed.`
+          : `${data?.sentCount ?? 0} users notified.`
+      );
       setComposeOpen(false);
     } catch (error) {
       toast.error(
@@ -208,11 +260,15 @@ export default function NotificationsManagerPage() {
     }
   };
 
-  const totalSent = sentNotifications.length;
+  const totalCampaigns = sentNotifications.length;
+  const audienceReach = sentNotifications.reduce(
+    (sum, notification) => sum + notification.targetCount,
+    0
+  );
   const avgOpenRate =
-    totalSent > 0
+    totalCampaigns > 0
       ? Math.round(
-        sentNotifications.reduce((sum, n) => sum + n.openRate, 0) / totalSent
+        sentNotifications.reduce((sum, n) => sum + n.openRate, 0) / totalCampaigns
       )
       : 0;
 
@@ -254,7 +310,7 @@ export default function NotificationsManagerPage() {
               Total Sent
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-              {totalSent}
+              {isLoadingHistory ? "..." : totalCampaigns.toLocaleString()}
             </div>
           </div>
         </div>
@@ -284,7 +340,7 @@ export default function NotificationsManagerPage() {
               Audience Reach
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-              10,047
+              {isLoadingHistory ? "..." : audienceReach.toLocaleString()}
             </div>
           </div>
         </div>
@@ -322,7 +378,16 @@ export default function NotificationsManagerPage() {
                 </tr>
               </thead>
               <tbody>
-                {sentNotifications.length === 0 ? (
+                {isLoadingHistory ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="text-center py-16 text-sm text-slate-400 dark:text-slate-500"
+                    >
+                      Loading notification history...
+                    </td>
+                  </tr>
+                ) : sentNotifications.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-16">
                       <Megaphone
@@ -374,6 +439,9 @@ export default function NotificationsManagerPage() {
                         <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
                           {notif.audience}
                         </span>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                          {notif.targetCount.toLocaleString()} targeted
+                        </div>
                       </td>
 
                       {/* Sent Date */}
@@ -430,7 +498,7 @@ export default function NotificationsManagerPage() {
       {/* ════════ FOOTER ════════ */}
       <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
         <span>
-          {sentNotifications.length} campaigns sent · {avgOpenRate}% avg engagement
+          {totalCampaigns} campaigns sent · {avgOpenRate}% avg engagement
         </span>
         <span>StudyBuddy Admin · Notifications Panel</span>
       </div>

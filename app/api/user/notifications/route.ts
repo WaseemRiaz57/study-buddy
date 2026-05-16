@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 
 function getAudienceCandidates(user: any) {
   const role = String(user?.role || "").trim();
-  const plan = String(user?.plan || "Free").trim();
-  const candidates = new Set<string>(["All Users", "all"]);
+  const plan = String(user?.plan || "").trim();
+  const candidates = new Set<string>();
 
   if (role) {
     candidates.add(role);
@@ -22,13 +22,12 @@ function getAudienceCandidates(user: any) {
     candidates.add(plan);
     candidates.add(plan.toLowerCase());
     candidates.add(`${plan} Users`);
-  }
-
-  if (plan === "Pro" || plan === "Elite") {
-    candidates.add("Pro");
-    candidates.add("pro");
-    candidates.add("Pro / Elite Users");
-    candidates.add("Pro / Elite Users Only");
+    if (plan === "Pro" || plan === "Elite") {
+      candidates.add("Pro");
+      candidates.add("pro");
+      candidates.add("Pro / Elite Users");
+      candidates.add("Pro / Elite Users Only");
+    }
   }
 
   return Array.from(candidates);
@@ -52,17 +51,20 @@ export async function GET() {
       return NextResponse.json({ message: "User not found." }, { status: 404 });
     }
 
+    const conditions: Record<string, unknown>[] = [
+      { userId: session.user.id },
+      { recipientId: session.user.id },
+      { isGlobal: true },
+      { audience: "All Users" },
+    ];
     const audienceCandidates = getAudienceCandidates(user);
-    const currentUserPlan = String((user as any).plan || "Free").trim();
+
+    if (audienceCandidates.length > 0) {
+      conditions.push({ audience: { $in: audienceCandidates } });
+    }
+
     const notifications = await Notification.find({
-      $or: [
-        { userId: session.user.id },
-        { recipientId: session.user.id },
-        { isGlobal: true },
-        { audience: "All Users" },
-        { audience: currentUserPlan },
-        { audience: { $in: audienceCandidates } },
-      ],
+      $or: conditions,
     })
       .populate("senderId", "name image")
       .sort({ createdAt: -1 })
