@@ -1,180 +1,302 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Search, MessageSquare, Filter, Plus, BookOpen,
-} from "lucide-react";
+import { toast } from "sonner";
+import { BookOpen, Filter, Loader2, MessageSquare, Plus, Search } from "lucide-react";
 import CreatePostModal from "@/components/community/CreatePostModal";
-import PostCard from "@/components/community/PostCard";
-import type { Post } from "@/components/community/PostCard";
+import PostCard, { type Post } from "@/components/community/PostCard";
 import CommunitySidebar from "@/components/community/CommunitySidebar";
 
-/* ------------------------------------------------------------------ */
-/*  Mock data                                                          */
-/* ------------------------------------------------------------------ */
 const TOPIC_FILTERS = [
-  "All", "Math", "Physics", "Computer Science", "Biology", "Chemistry",
-  "Literature", "History", "Philosophy",
+  "All",
+  "Math",
+  "Physics",
+  "Computer Science",
+  "Biology",
+  "Chemistry",
+  "Literature",
+  "History",
+  "Philosophy",
 ];
 
-const POSTS: Post[] = [
-  {
-    id: "p1",
-    title: "Intuitive way to understand eigenvectors?",
-    excerpt:
-      "I keep getting lost in the formulas. Does anyone have a geometric/visual way to think about eigenvectors and eigenvalues?",
-    author: "Alex Rivera",
-    avatar: "AR",
-    role: "Scholar",
-    topic: "Math",
-    likes: 42,
-    comments: 18,
-    views: 310,
-    timeAgo: "2h ago",
-    hot: true,
-  },
-  {
-    id: "p2",
-    title: "Best resources for learning Rust in 2025",
-    excerpt:
-      "I want to go beyond the Rust book. Any project-based or video resources that helped you?",
-    author: "Priya Sharma",
-    avatar: "PS",
-    role: "Tutor",
-    topic: "Computer Science",
-    likes: 35,
-    comments: 24,
-    views: 520,
-    timeAgo: "5h ago",
-    hot: true,
-  },
-  {
-    id: "p3",
-    title: "How does CRISPR gene editing actually work?",
-    excerpt:
-      "Looking for a clear, jargon-free explanation of the Cas9 mechanism and guide RNA targeting.",
-    author: "Jordan Lee",
-    avatar: "JL",
-    role: "Scholar",
-    topic: "Biology",
-    likes: 28,
-    comments: 12,
-    views: 190,
-    timeAgo: "8h ago",
-    hot: false,
-  },
-  {
-    id: "p4",
-    title: "Thermodynamics: entropy explained simply",
-    excerpt:
-      "I wrote a short guide comparing entropy to shuffling a deck of cards. Feedback welcome!",
-    author: "Sam Chen",
-    avatar: "SC",
-    role: "Instructor",
-    topic: "Physics",
-    likes: 56,
-    comments: 31,
-    views: 740,
-    timeAgo: "1d ago",
-    hot: true,
-  },
-  {
-    id: "p5",
-    title: "Favorite philosophy thought experiments?",
-    excerpt:
-      "The trolley problem gets all the attention. What are some lesser-known ones that made you think?",
-    author: "Mia Torres",
-    avatar: "MT",
-    role: "Scholar",
-    topic: "Philosophy",
-    likes: 19,
-    comments: 27,
-    views: 205,
-    timeAgo: "1d ago",
-    hot: false,
-  },
-  {
-    id: "p6",
-    title: "Organic chemistry: memorization vs understanding",
-    excerpt:
-      "How do you balance rote memorization of reactions with actually understanding mechanisms?",
-    author: "Devon Park",
-    avatar: "DP",
-    role: "Scholar",
-    topic: "Chemistry",
-    likes: 22,
-    comments: 15,
-    views: 180,
-    timeAgo: "2d ago",
-    hot: false,
-  },
-];
+const EMPTY_STATS = {
+  totalMembers: 0,
+  activePosts: 0,
+  activeNow: 0,
+  postsThisWeek: 0,
+};
 
-/* ------------------------------------------------------------------ */
-/*  Page                                                               */
-/* ------------------------------------------------------------------ */
+interface CreatePostPayload {
+  title: string;
+  body: string;
+  category: string;
+  tags: string[];
+  files: File[];
+}
+
+interface Contributor {
+  id: string;
+  name: string;
+  image: string;
+  role: string;
+  posts: number;
+}
+
+interface PopularTag {
+  tag: string;
+  count: number;
+}
+
+async function uploadCommunityAttachments(files: File[]) {
+  const urls: string[] = [];
+
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/vault/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(data?.message || `Failed to upload ${file.name}.`);
+    }
+
+    if (data?.secure_url) {
+      urls.push(String(data.secure_url));
+    }
+  }
+
+  return urls;
+}
+
 export default function CommunityFeedPage() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeTopic, setActiveTopic] = useState("All");
+  const [sortMode, setSortMode] = useState<"Recent" | "Hot">("Recent");
   const [modalOpen, setModalOpen] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [stats, setStats] = useState(EMPTY_STATS);
+  const [topContributors, setTopContributors] = useState<Contributor[]>([]);
+  const [popularTags, setPopularTags] = useState<PopularTag[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [isPublishing, setIsPublishing] = useState(false);
 
-  const filtered = POSTS.filter((p) => {
-    const matchTopic = activeTopic === "All" || p.topic === activeTopic;
-    const matchSearch =
-      !search ||
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.excerpt.toLowerCase().includes(search.toLowerCase());
-    return matchTopic && matchSearch;
-  });
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  const fetchPosts = useCallback(async () => {
+    try {
+      setIsLoadingPosts(true);
+      const params = new URLSearchParams();
+      params.set("sort", sortMode);
+
+      if (activeTopic !== "All") {
+        params.set("category", activeTopic);
+      }
+
+      if (debouncedSearch) {
+        params.set("search", debouncedSearch);
+      }
+
+      const response = await fetch(`/api/community/posts?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to load discussions.");
+      }
+
+      setPosts(Array.isArray(data?.posts) ? data.posts : []);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load discussions."
+      );
+      setPosts([]);
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  }, [activeTopic, debouncedSearch, sortMode]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      setIsLoadingStats(true);
+      const response = await fetch("/api/community/stats", {
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to load community stats.");
+      }
+
+      setStats({ ...EMPTY_STATS, ...(data?.stats || {}) });
+      setTopContributors(
+        Array.isArray(data?.topContributors) ? data.topContributors : []
+      );
+      setPopularTags(Array.isArray(data?.popularTags) ? data.popularTags : []);
+    } catch {
+      setStats(EMPTY_STATS);
+      setTopContributors([]);
+      setPopularTags([]);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchPosts();
+  }, [fetchPosts]);
+
+  useEffect(() => {
+    void fetchStats();
+  }, [fetchStats]);
+
+  const publishPost = async (payload: CreatePostPayload) => {
+    try {
+      setIsPublishing(true);
+      const attachments = await uploadCommunityAttachments(payload.files);
+      const response = await fetch("/api/community/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: payload.title,
+          body: payload.body,
+          category: payload.category,
+          tags: payload.tags,
+          attachments,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to publish post.");
+      }
+
+      toast.success("Post published. +10 XP awarded.");
+      setModalOpen(false);
+      await Promise.all([fetchPosts(), fetchStats()]);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to publish post."
+      );
+      throw error;
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const toggleLike = async (postId: string) => {
+    const previousPosts = posts;
+
+    setPosts((current) =>
+      current.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              likedByMe: !post.likedByMe,
+              likes: post.likedByMe ? Math.max(0, post.likes - 1) : post.likes + 1,
+            }
+          : post
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/community/posts/${postId}/like`, {
+        method: "PATCH",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update like.");
+      }
+
+      setPosts((current) =>
+        current.map((post) =>
+          post.id === postId
+            ? { ...post, likedByMe: Boolean(data?.liked), likes: Number(data?.likes || 0) }
+            : post
+        )
+      );
+    } catch (error) {
+      setPosts(previousPosts);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update like."
+      );
+    }
+  };
+
+  const totalActivePosts = useMemo(() => stats.activePosts, [stats.activePosts]);
 
   return (
-    <div className="min-h-screen p-4 md:p-8 bg-slate-50 text-slate-900 dark:bg-[#0f0c13] dark:text-white">
-      {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+    <div className="min-h-screen bg-slate-50 p-4 text-slate-900 dark:bg-[#0f0c13] dark:text-white md:p-8">
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end"
+      >
         <div>
-          <div className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-[#8c30e8] mb-1">
+          <div className="mb-1 flex items-center gap-2 text-sm font-medium text-[#7C3AED]">
             <BookOpen size={16} /> Community Forum
           </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold">The Scholar&apos;s Agora</h1>
-          <p className="text-sm mt-1 text-slate-500 dark:text-gray-400">Ask questions, share insights, and learn together.</p>
+          <h1 className="text-3xl font-extrabold md:text-4xl">
+            The Scholar&apos;s Agora
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
+            Ask questions, share insights, and learn together.
+          </p>
         </div>
-        <button onClick={() => setModalOpen(true)} className="group relative flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-white overflow-hidden bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-shadow">
+        <button
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-2 rounded-2xl bg-[#7C3AED] px-6 py-3 font-bold text-white shadow-lg shadow-purple-500/25 transition-opacity hover:opacity-90"
+        >
           <Plus size={18} />
-          <span className="relative z-10">New Post</span>
-          <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-white/25 blur-md translate-x-0 group-hover:translate-x-[340%] transition-transform duration-700" />
+          <span>New Post</span>
         </button>
       </motion.div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Main column */}
-        <div className="flex-1 min-w-0">
-          {/* Search + Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <div className="min-w-0 flex-1">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500" />
+              <Search
+                size={16}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-gray-500"
+              />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search discussions..."
-                className="w-full pl-10 pr-4 py-3 rounded-xl border outline-none bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 dark:bg-white/5 dark:border-white/10 dark:text-white dark:placeholder-gray-500 dark:focus:border-[#8c30e8] dark:focus:ring-[#8c30e8]/20"
+                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-slate-900 outline-none placeholder-slate-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder-gray-500"
               />
             </div>
-            <button className="flex items-center gap-2 px-4 py-3 rounded-xl border font-medium bg-white border-slate-200 text-slate-700 hover:bg-slate-100 dark:bg-white/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10 transition-colors">
-              <Filter size={16} /> Filters
+            <button
+              onClick={() =>
+                setSortMode((current) => (current === "Recent" ? "Hot" : "Recent"))
+              }
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 font-medium text-slate-700 transition-colors hover:border-[#7C3AED] hover:text-[#7C3AED] dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+            >
+              <Filter size={16} /> {sortMode}
             </button>
           </div>
 
-          {/* Topic pills */}
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
+          <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
             {TOPIC_FILTERS.map((topic) => (
               <button
                 key={topic}
                 onClick={() => setActiveTopic(topic)}
-                className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
+                className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                   activeTopic === topic
-                    ? "bg-purple-600 text-white dark:bg-[#8c30e8]"
-                    : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 dark:bg-white/5 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10"
+                    ? "bg-[#7C3AED] text-white"
+                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10"
                 }`}
               >
                 {topic}
@@ -182,26 +304,51 @@ export default function CommunityFeedPage() {
             ))}
           </div>
 
-          {/* Post list */}
+          <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+            {isLoadingPosts ? "Loading discussions" : `${totalActivePosts.toLocaleString()} active posts`}
+          </div>
+
           <div className="space-y-4">
-            {filtered.map((post, i) => (
-              <PostCard key={post.id} post={post} index={i} />
-            ))}
-            {filtered.length === 0 && (
-              <div className="text-center py-16 text-slate-500 dark:text-gray-400">
+            {isLoadingPosts ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="animate-spin text-[#7C3AED]" size={30} />
+              </div>
+            ) : posts.length > 0 ? (
+              posts.map((post, index) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  index={index}
+                  onLike={toggleLike}
+                />
+              ))
+            ) : (
+              <div className="py-16 text-center text-slate-500 dark:text-gray-400">
                 <MessageSquare size={36} className="mx-auto mb-3 opacity-40" />
                 <p className="font-medium">No discussions found</p>
-                <p className="text-sm mt-1">Try a different search or topic filter.</p>
+                <p className="mt-1 text-sm">
+                  Try a different search or topic filter.
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Sidebar */}
-        <CommunitySidebar />
+        <CommunitySidebar
+          stats={stats}
+          topContributors={topContributors}
+          popularTags={popularTags}
+          isLoading={isLoadingStats}
+        />
       </div>
 
-      <CreatePostModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+      <CreatePostModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onPublish={publishPost}
+        categories={TOPIC_FILTERS}
+        isPublishing={isPublishing}
+      />
     </div>
   );
 }
