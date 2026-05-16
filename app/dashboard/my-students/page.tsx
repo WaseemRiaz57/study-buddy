@@ -9,6 +9,7 @@ import {
   Calendar,
   CalendarPlus,
   ClipboardList,
+  Gift,
   Loader2,
   MailWarning,
   MessageCircle,
@@ -18,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import AssignTaskModal from "@/components/modals/AssignTaskModal";
+import GiftCoinsModal from "@/components/modals/GiftCoinsModal";
 
 interface Student {
   id: string;
@@ -72,6 +74,7 @@ export default function MyStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [giftModalOpen, setGiftModalOpen] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [scheduleSubject, setScheduleSubject] = useState("");
@@ -126,6 +129,11 @@ export default function MyStudentsPage() {
   const openAssignModal = (student: Student) => {
     setSelectedStudent(student);
     setAssignModalOpen(true);
+  };
+
+  const openGiftModal = (student: Student) => {
+    setSelectedStudent(student);
+    setGiftModalOpen(true);
   };
 
   const openScheduleModal = (student: Student) => {
@@ -363,6 +371,14 @@ export default function MyStudentsPage() {
                     <ClipboardList size={15} />
                     <span className="hidden sm:inline">Assign</span>
                   </button>
+                  <button
+                    onClick={() => openGiftModal(student)}
+                    className="flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-purple-50 hover:text-[#7C3AED] dark:hover:bg-purple-500/10"
+                    title="Gift Coins"
+                  >
+                    <Gift size={15} />
+                    <span className="hidden sm:inline">Gift</span>
+                  </button>
                 </div>
               </motion.div>
             ))}
@@ -375,6 +391,13 @@ export default function MyStudentsPage() {
         onClose={() => setAssignModalOpen(false)}
         studentId={selectedStudent?.id ?? ""}
         studentName={selectedStudent?.name ?? ""}
+      />
+
+      <GiftCoinsModal
+        isOpen={giftModalOpen}
+        onClose={() => setGiftModalOpen(false)}
+        recipientId={selectedStudent?.id ?? ""}
+        recipientName={selectedStudent?.name ?? ""}
       />
 
       {scheduleModalOpen && selectedStudent && (

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { connectMongoDB } from "@/lib/mongodb";
 import MentorProfile from "@/models/MentorProfile";
+import Notification from "@/models/Notification";
 import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
 import UserProgress from "@/models/UserProgress";
@@ -22,6 +23,8 @@ export const REWARD_DICTIONARY: Record<GamificationActionType, RewardDefinition>
   CREATED_COMMENT: { xp: 5, coins: 1 },
   DAILY_LOGIN: { xp: 5, coins: 5 },
 };
+
+export const STREAK_FREEZE_COST = 200;
 
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -51,6 +54,11 @@ function calculateNextStreak(lastActiveDate: Date | null, currentStreak: number,
   }
 
   return 0;
+}
+
+function missedAtLeastOneDay(lastActiveDate: Date | null, today: Date) {
+  if (!lastActiveDate) return false;
+  return !isSameDay(lastActiveDate, today) && !isYesterday(lastActiveDate, today);
 }
 
 function applyStreakMultiplier(reward: RewardDefinition, nextStreak: number) {
@@ -117,14 +125,21 @@ export async function awardUser(
   const today = new Date();
   const userObjectId = new mongoose.Types.ObjectId(userId);
   const currentProfile = await ProfileModel.findOne({ userId: userObjectId })
-    .select("xp coins streak lastActiveDate")
+    .select("xp coins streak streakFreezes lastActiveDate")
     .lean();
 
   const currentStreak = Number(currentProfile?.streak || 0);
+  const currentFreezes = Number(currentProfile?.streakFreezes || 0);
   const lastActiveDate = currentProfile?.lastActiveDate
     ? new Date(currentProfile.lastActiveDate)
     : null;
-  const nextStreak = calculateNextStreak(lastActiveDate, currentStreak, today);
+  const shouldUseFreeze =
+    actionType === "DAILY_LOGIN" &&
+    missedAtLeastOneDay(lastActiveDate, today) &&
+    currentFreezes > 0;
+  const nextStreak = shouldUseFreeze
+    ? Math.max(1, currentStreak)
+    : calculateNextStreak(lastActiveDate, currentStreak, today);
   const alreadyClaimedDailyLogin =
     actionType === "DAILY_LOGIN" &&
     Boolean(lastActiveDate && isSameDay(lastActiveDate, today));
@@ -136,7 +151,11 @@ export async function awardUser(
     { userId: userObjectId },
     {
       $setOnInsert: { userId: userObjectId },
-      $inc: { xp: earned.xp, coins: earned.coins },
+      $inc: {
+        xp: earned.xp,
+        coins: earned.coins,
+        ...(shouldUseFreeze ? { streakFreezes: -1 } : {}),
+      },
       $set: { streak: nextStreak, lastActiveDate: today },
     },
     { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
@@ -148,17 +167,91 @@ export async function awardUser(
     today,
   });
 
+  if (shouldUseFreeze) {
+    await Notification.create({
+      userId: userObjectId,
+      recipientId: userObjectId,
+      senderId: null,
+      type: "system",
+      title: "Streak Freeze Used",
+      message: "Streak saved by Freeze!",
+      read: false,
+      metadata: {
+        actionType,
+        streak: nextStreak,
+      },
+    });
+  }
+
   return {
     actionType,
     xpAwarded: earned.xp,
     coinsAwarded: earned.coins,
     multiplier: earned.multiplier,
     alreadyClaimed: alreadyClaimedDailyLogin,
+    streakFreezeUsed: shouldUseFreeze,
+    message: shouldUseFreeze ? "Streak saved by Freeze!" : "",
     profile: {
       xp: Number(profile?.xp || 0),
       coins: Number(profile?.coins || 0),
       streak: Number(profile?.streak || 0),
+      streakFreezes: Number(profile?.streakFreezes || 0),
       lastActiveDate: profile?.lastActiveDate || today,
+    },
+  };
+}
+
+export async function purchaseStreakFreeze(userId: string) {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Valid user id is required.");
+  }
+
+  await connectMongoDB();
+
+  const user = await User.findById(userId).select("role").lean();
+
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  const normalizedRole = String(user.role || "student").toLowerCase();
+  const ProfileModel = normalizedRole === "mentor" ? MentorProfile : StudentProfile;
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  const profile = await ProfileModel.findOneAndUpdate(
+    {
+      userId: userObjectId,
+      coins: { $gte: STREAK_FREEZE_COST },
+    },
+    {
+      $inc: {
+        coins: -STREAK_FREEZE_COST,
+        streakFreezes: 1,
+      },
+      $setOnInsert: { userId: userObjectId },
+    },
+    { new: true, runValidators: true, setDefaultsOnInsert: true }
+  ).lean();
+
+  if (!profile) {
+    const existingProfile = await ProfileModel.findOne({ userId: userObjectId })
+      .select("coins")
+      .lean();
+
+    if (!existingProfile) {
+      await ProfileModel.create({ userId: userObjectId });
+    }
+
+    throw new Error("Not enough coins to buy a Streak Freeze.");
+  }
+
+  return {
+    cost: STREAK_FREEZE_COST,
+    profile: {
+      xp: Number(profile.xp || 0),
+      coins: Number(profile.coins || 0),
+      streak: Number(profile.streak || 0),
+      streakFreezes: Number(profile.streakFreezes || 0),
+      lastActiveDate: profile.lastActiveDate || null,
     },
   };
 }
@@ -176,13 +269,14 @@ export async function getGamificationStats(userId: string) {
   const profile = await ProfileModel.findOne({
     userId: new mongoose.Types.ObjectId(userId),
   })
-    .select("xp coins streak lastActiveDate")
+    .select("xp coins streak streakFreezes lastActiveDate")
     .lean();
 
   return {
     xp: Number(profile?.xp || 0),
     coins: Number(profile?.coins || 0),
     streak: Number(profile?.streak || 0),
+    streakFreezes: Number(profile?.streakFreezes || 0),
     level: Math.floor(Number(profile?.xp || 0) / 1000) + 1,
     nextLevelXp: (Math.floor(Number(profile?.xp || 0) / 1000) + 1) * 1000,
     role: normalizedRole,
