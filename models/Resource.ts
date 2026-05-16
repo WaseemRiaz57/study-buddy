@@ -7,7 +7,9 @@ export interface IResource extends Document {
   tags: string[];
   fileUrl: string;
   fileSize: string;
+  size: number;
   fileType: string;
+  status: "pending" | "approved" | "rejected";
   pageCount: number;
   rating: number;
   downloadCount: number;
@@ -43,9 +45,20 @@ const resourceSchema = new Schema<IResource>({
     type: String,
     required: true,
   },
+  size: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   fileType: {
     type: String,
     required: true,
+  },
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending",
+    index: true,
   },
   pageCount: {
     type: Number,

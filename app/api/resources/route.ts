@@ -140,9 +140,11 @@ export async function POST(request: Request) {
         : [],
       fileUrl: cloudinaryResult.secure_url,
       fileSize: `${(cloudinaryResult.bytes / (1024 * 1024)).toFixed(2)} MB`,
+      size: cloudinaryResult.bytes,
       fileType: normalizedType,
       pageCount: cloudinaryResult.pages ?? 0,
       uploadedBy: session.user.id,
+      status: "pending",
     });
 
     return NextResponse.json(resource, { status: 201 });
@@ -164,10 +166,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = String(searchParams.get("search") || "").trim().slice(0, 100);
 
-    const query: Record<string, unknown> = {};
+    const query: Record<string, unknown> = {
+      status: "approved",
+    };
 
     if (search) {
-      query.title = { $regex: escapeRegex(search), $options: "i" };
+      query.$or = [
+        { title: { $regex: escapeRegex(search), $options: "i" } },
+        { subject: { $regex: escapeRegex(search), $options: "i" } },
+      ];
     }
 
     const resources = await Resource.find(query)
