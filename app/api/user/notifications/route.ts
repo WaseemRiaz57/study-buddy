@@ -53,15 +53,20 @@ export async function GET() {
     }
 
     const audienceCandidates = getAudienceCandidates(user);
+    const currentUserPlan = String((user as any).plan || "Free").trim();
     const notifications = await Notification.find({
       $or: [
+        { userId: session.user.id },
         { recipientId: session.user.id },
+        { isGlobal: true },
+        { audience: "All Users" },
+        { audience: currentUserPlan },
         { audience: { $in: audienceCandidates } },
       ],
     })
       .populate("senderId", "name image")
       .sort({ createdAt: -1 })
-      .limit(50)
+      .limit(20)
       .lean();
 
     const unreadCount = notifications.filter((notification) => !notification.read).length;

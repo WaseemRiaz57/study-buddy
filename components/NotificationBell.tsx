@@ -69,8 +69,12 @@ export function NotificationBell() {
 
         if (!active) return;
 
+        const notificationArray = Array.isArray(data?.notifications)
+          ? data.notifications
+          : [];
+
         setNotifications(
-          (data?.notifications || []).map((notification: any) => ({
+          notificationArray.map((notification: any) => ({
             id: String(notification._id || notification.id),
             title: notification.title || "Notification",
             message: notification.message || "",

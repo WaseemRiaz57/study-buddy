@@ -72,6 +72,7 @@ export async function POST(request: Request) {
     if (users.length > 0) {
       await Notification.insertMany(
         users.map((user) => ({
+          userId: user._id,
           recipientId: user._id,
           senderId,
           type: "system",

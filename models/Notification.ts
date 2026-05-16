@@ -1,7 +1,8 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface INotification extends Document {
-  recipientId: mongoose.Types.ObjectId;
+  userId?: mongoose.Types.ObjectId;
+  recipientId?: mongoose.Types.ObjectId;
   senderId: mongoose.Types.ObjectId | null;
   type:
     | "buddy_request"
@@ -19,10 +20,15 @@ export interface INotification extends Document {
 
 const NotificationSchema = new Schema<INotification>(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
     recipientId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
     },
     senderId: {
       type: Schema.Types.ObjectId,
@@ -71,6 +77,7 @@ const NotificationSchema = new Schema<INotification>(
 );
 
 NotificationSchema.index({ recipientId: 1, read: 1, createdAt: -1 });
+NotificationSchema.index({ userId: 1, read: 1, createdAt: -1 });
 
 export default mongoose.models.Notification ||
   mongoose.model<INotification>("Notification", NotificationSchema);
