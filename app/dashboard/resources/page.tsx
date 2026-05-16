@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   Search,
   SlidersHorizontal,
@@ -46,6 +47,8 @@ interface ApiResource {
   uploadedBy?: {
     name?: string;
   };
+  price?: number;
+  isUnlocked?: boolean;
 }
 
 interface ResourceItem extends Resource {
@@ -78,6 +81,7 @@ export default function ResourcesPage() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [unlockingResourceId, setUnlockingResourceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchResources = async () => {
@@ -111,6 +115,8 @@ export default function ResourcesPage() {
           author,
           authorAvatar: getInitials(author),
           downloads: item.downloadCount ?? 0,
+          price: Math.max(0, Number(item.price || 0)),
+          isUnlocked: Boolean(item.isUnlocked || Number(item.price || 0) === 0),
           createdAt: item.createdAt,
         };
       });
@@ -127,6 +133,40 @@ export default function ResourcesPage() {
   useEffect(() => {
     void fetchResources();
   }, [search, subject]);
+
+  const handleUnlockResource = async (resource: Resource) => {
+    if (!window.confirm(`Unlock "${resource.title}" for ${resource.price} coins?`)) {
+      return;
+    }
+
+    try {
+      setUnlockingResourceId(resource.id);
+      const response = await fetch(`/api/resources/${resource.id}/purchase`, {
+        method: "POST",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to unlock resource.");
+      }
+
+      setResources((current) =>
+        current.map((item) =>
+          item.id === resource.id ? { ...item, isUnlocked: true } : item
+        )
+      );
+      window.dispatchEvent(new Event("gamification-stats-updated"));
+      toast.success(data?.message || "Resource unlocked.");
+    } catch (unlockError) {
+      toast.error(
+        unlockError instanceof Error
+          ? unlockError.message
+          : "Failed to unlock resource."
+      );
+    } finally {
+      setUnlockingResourceId(null);
+    }
+  };
 
   /* ---- Filtering & sorting ---- */
   const filtered = useMemo(() => {
@@ -150,7 +190,7 @@ export default function ResourcesPage() {
         className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8"
       >
         <div>
-          <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
+          <div className="flex items-center gap-2 text-[#7C3AED] mb-1">
             <Library size={18} />
             <span className="text-xs font-bold uppercase tracking-wider">
               Digital Library
@@ -163,7 +203,7 @@ export default function ResourcesPage() {
 
         <button
           onClick={() => setIsUploadOpen(true)}
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-purple-500/20 transition-colors"
+          className="flex items-center gap-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-purple-500/20 transition-colors"
         >
           <Plus size={18} />
           Upload Resource
@@ -265,7 +305,11 @@ export default function ResourcesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.04 }}
             >
-              <ResourceCard resource={resource} />
+              <ResourceCard
+                resource={resource}
+                onUnlock={handleUnlockResource}
+                isUnlocking={unlockingResourceId === resource.id}
+              />
             </motion.div>
           ))}
         </motion.div>

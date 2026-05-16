@@ -39,6 +39,42 @@ function sanitizePublicIdFileName(fileName: string): string {
   return `${baseName || "resource"}${extension}`;
 }
 
+function normalizePrice(value: FormDataEntryValue | null) {
+  const price = Number(value ?? 0);
+
+  if (!Number.isFinite(price) || price < 0) {
+    return null;
+  }
+
+  return Math.floor(price);
+}
+
+function userHasAccess(resource: any, userId: string) {
+  const price = Number(resource.price || 0);
+
+  if (price === 0) return true;
+
+  return Array.isArray(resource.allowedUsers)
+    ? resource.allowedUsers.some((allowedUserId: unknown) => {
+        if (!allowedUserId) return false;
+        return String(allowedUserId) === userId;
+      })
+    : false;
+}
+
+function serializeResource(resource: any, userId: string) {
+  const isUnlocked = userHasAccess(resource, userId);
+  const price = Math.max(0, Number(resource.price || 0));
+
+  return {
+    ...resource,
+    price,
+    isUnlocked,
+    fileUrl: isUnlocked ? resource.fileUrl : "",
+    allowedUsers: undefined,
+  };
+}
+
 function uploadToCloudinary(buffer: Buffer, fileName: string, folder = "study-buddy/resources") {
   return new Promise<{
     secure_url: string;
@@ -87,11 +123,19 @@ export async function POST(request: Request) {
     const subject = String(formData.get("subject") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
     const tagsRaw = String(formData.get("tags") ?? "").trim();
+    const price = normalizePrice(formData.get("price"));
     const uploadedFile = formData.get("file");
 
     if (!title || !subject || !description || !(uploadedFile instanceof File)) {
       return NextResponse.json(
         { message: "title, subject, description and file are required." },
+        { status: 400 }
+      );
+    }
+
+    if (price === null) {
+      return NextResponse.json(
+        { message: "Price must be a valid non-negative coin amount." },
         { status: 400 }
       );
     }
@@ -144,6 +188,8 @@ export async function POST(request: Request) {
       fileType: normalizedType,
       pageCount: cloudinaryResult.pages ?? 0,
       uploadedBy: session.user.id,
+      allowedUsers: [session.user.id],
+      price,
       status: "pending",
     });
 
@@ -165,10 +211,15 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const search = String(searchParams.get("search") || "").trim().slice(0, 100);
+    const subject = String(searchParams.get("subject") || "").trim().slice(0, 100);
 
     const query: Record<string, unknown> = {
       status: "approved",
     };
+
+    if (subject) {
+      query.subject = subject;
+    }
 
     if (search) {
       query.$or = [
@@ -182,7 +233,9 @@ export async function GET(request: Request) {
       .sort({ createdAt: -1 })
       .lean();
 
-    return NextResponse.json(resources);
+    return NextResponse.json(
+      resources.map((resource) => serializeResource(resource, session.user.id))
+    );
   } catch (error) {
     console.error("Fetch resources error:", error);
     return NextResponse.json({ message: "Failed to fetch resources" }, { status: 500 });

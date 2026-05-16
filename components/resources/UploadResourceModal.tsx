@@ -11,6 +11,7 @@ import {
   Tag,
   AlignLeft,
   CheckCircle2,
+  Coins,
   Loader2,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
+  const [price, setPrice] = useState("0");
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -80,6 +82,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
       formData.append("subject", subject);
       formData.append("description", description);
       formData.append("tags", tags);
+      formData.append("price", price.trim() || "0");
       formData.append("file", file);
 
       const response = await fetch("/api/resources", {
@@ -107,6 +110,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
     setSubject("");
     setDescription("");
     setTags("");
+    setPrice("0");
     setFile(null);
     setError(null);
   };
@@ -136,7 +140,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
             {/* ---- Left decorative panel ---- */}
             <div className="w-1/3 bg-purple-50 dark:bg-purple-900/10 p-8 hidden md:flex flex-col justify-between">
               <div>
-                <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-[#7C3AED]/10 dark:bg-[#7C3AED]/20 flex items-center justify-center text-[#7C3AED] mb-4">
                   <Sparkles size={24} />
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -155,6 +159,10 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={14} className="text-emerald-500" />
                   <span>Max file size: 25 MB</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  <span>List for free or earn platform coins</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={14} className="text-emerald-500" />
@@ -187,7 +195,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
                   <input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                    className="w-full p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/40"
                     placeholder="e.g. Calculus II Complete Notes"
                   />
                 </div>
@@ -200,7 +208,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
                   <select
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    className="w-full p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                    className="w-full p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/40"
                   >
                     <option value="">Select a subject</option>
                     {SUBJECTS.map((s) => (
@@ -220,7 +228,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={3}
-                    className="w-full p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                    className="w-full p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/40"
                     placeholder="Brief description of the resource…"
                   />
                 </div>
@@ -233,9 +241,28 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
                   <input
                     value={tags}
                     onChange={(e) => setTags(e.target.value)}
-                    className="w-full p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                    className="w-full p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/40"
                     placeholder="Comma‑separated, e.g. calculus, midterm, notes"
                   />
+                </div>
+
+                {/* Price */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <Coins size={14} /> Price
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    className="w-full p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/40"
+                    placeholder="0 for free, or enter coin price"
+                  />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Set to 0 for a free resource.
+                  </p>
                 </div>
 
                 {/* Dropzone */}
@@ -246,8 +273,8 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
                   onClick={() => fileInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl h-32 flex flex-col items-center justify-center cursor-pointer transition-colors ${
                     isDragging
-                      ? "border-purple-500 bg-purple-50 dark:bg-purple-500/10"
-                      : "border-slate-300 dark:border-white/20 hover:border-purple-400 dark:hover:border-purple-500/50"
+                      ? "border-[#7C3AED] bg-[#7C3AED]/5"
+                      : "border-slate-300 dark:border-white/20 hover:border-[#7C3AED]/60"
                   }`}
                 >
                   <input
@@ -259,14 +286,14 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
                   />
                   {file ? (
                     <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                      <FileUp size={20} className="text-purple-500" />
+                      <FileUp size={20} className="text-[#7C3AED]" />
                       <span className="text-sm font-medium">{file.name}</span>
                     </div>
                   ) : (
                     <>
                       <Upload size={24} className="text-slate-400 dark:text-slate-500 mb-1" />
                       <span className="text-sm text-slate-500 dark:text-slate-400">
-                        Drop file here or <span className="text-purple-600 dark:text-purple-400 font-semibold">browse</span>
+                        Drop file here or <span className="text-[#7C3AED] font-semibold">browse</span>
                       </span>
                     </>
                   )}
@@ -280,7 +307,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
                 <button
                   onClick={handleUpload}
                   disabled={!title || !subject || !description || !file || isUploading}
-                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-colors shadow-lg shadow-purple-500/20"
+                  className="w-full py-3 bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-colors shadow-lg shadow-purple-500/20"
                 >
                   {isUploading ? (
                     <span className="inline-flex items-center gap-2">

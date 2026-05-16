@@ -13,6 +13,8 @@ export interface IResource extends Document {
   pageCount: number;
   rating: number;
   downloadCount: number;
+  price: number;
+  allowedUsers: mongoose.Types.ObjectId[];
   uploadedBy: mongoose.Types.ObjectId;
   createdAt: Date;
 }
@@ -72,6 +74,17 @@ const resourceSchema = new Schema<IResource>({
     type: Number,
     default: 0,
   },
+  price: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  allowedUsers: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
   uploadedBy: {
     type: Schema.Types.ObjectId,
     ref: "User",
@@ -81,6 +94,21 @@ const resourceSchema = new Schema<IResource>({
     type: Date,
     default: Date.now,
   },
+});
+
+resourceSchema.pre("validate", function ensureUploaderAccess() {
+  if (!this.uploadedBy) return;
+
+  const uploaderId = this.uploadedBy.toString();
+  const allowedUsers = this.allowedUsers || [];
+  const hasUploaderAccess = allowedUsers.some(
+    (userId) => userId.toString() === uploaderId
+  );
+
+  if (!hasUploaderAccess) {
+    allowedUsers.push(this.uploadedBy);
+    this.allowedUsers = allowedUsers;
+  }
 });
 
 const Resource = models.Resource || mongoose.model<IResource>("Resource", resourceSchema);

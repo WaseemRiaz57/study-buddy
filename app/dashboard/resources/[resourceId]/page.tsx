@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Download,
+  Coins,
   Star,
   Eye,
   FileText,
@@ -16,6 +18,8 @@ import {
   Share2,
   ThumbsUp,
   MessageSquare,
+  LockKeyhole,
+  Loader2,
 } from "lucide-react";
 import FlagResourceModal from "@/components/resources/FlagResourceModal";
 
@@ -25,12 +29,14 @@ interface ApiResource {
   subject: string;
   description: string;
   tags: string[];
-  fileUrl: string;
+  fileUrl?: string;
   fileSize: string;
   fileType: string;
   pageCount: number;
   rating: number;
   downloadCount: number;
+  price: number;
+  isUnlocked: boolean;
   createdAt: string;
   uploadedBy?: {
     name?: string;
@@ -86,6 +92,7 @@ export default function ResourceDetailPage() {
   const [isFlagOpen, setIsFlagOpen] = useState(false);
   const [resources, setResources] = useState<ApiResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -123,9 +130,10 @@ export default function ResourceDetailPage() {
 
   const authorName = resource?.uploadedBy?.name?.trim() || "Unknown User";
   const authorAvatar = getInitials(authorName);
+  const isPaidLocked = Boolean(resource && resource.price > 0 && !resource.isUnlocked);
 
   const handleDownload = () => {
-    if (!resource?.fileUrl) return;
+    if (!resource?.fileUrl || !resource.isUnlocked) return;
 
     const downloadUrl = resource.fileUrl.replace("/upload/", "/upload/fl_attachment/");
     const anchor = document.createElement("a");
@@ -134,6 +142,48 @@ export default function ResourceDetailPage() {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
+  };
+
+  const handleUnlock = async () => {
+    if (!resource) return;
+
+    if (!window.confirm(`Unlock "${resource.title}" for ${resource.price} coins?`)) {
+      return;
+    }
+
+    try {
+      setIsUnlocking(true);
+      const response = await fetch(`/api/resources/${resource._id}/purchase`, {
+        method: "POST",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to unlock resource.");
+      }
+
+      setResources((current) =>
+        current.map((item) =>
+          item._id === resource._id
+            ? {
+                ...item,
+                isUnlocked: true,
+                fileUrl: data?.fileUrl || item.fileUrl,
+              }
+            : item
+        )
+      );
+      window.dispatchEvent(new Event("gamification-stats-updated"));
+      toast.success(data?.message || "Resource unlocked.");
+    } catch (unlockError) {
+      toast.error(
+        unlockError instanceof Error
+          ? unlockError.message
+          : "Failed to unlock resource."
+      );
+    } finally {
+      setIsUnlocking(false);
+    }
   };
 
   if (isLoading) {
@@ -157,7 +207,7 @@ export default function ResourceDetailPage() {
       <div className="min-h-screen bg-slate-50 dark:bg-[#0f0c13] p-6 md:p-8">
         <button
           onClick={() => router.push("/dashboard/resources")}
-          className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 mb-6 transition-colors"
+          className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-[#7C3AED] mb-6 transition-colors"
         >
           <ArrowLeft size={16} />
           Back to Resource Hub
@@ -172,7 +222,7 @@ export default function ResourceDetailPage() {
       {/* ---- Back button ---- */}
       <button
         onClick={() => router.push("/dashboard/resources")}
-        className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 mb-6 transition-colors"
+        className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-[#7C3AED] mb-6 transition-colors"
       >
         <ArrowLeft size={16} />
         Back to Resource Hub
@@ -188,7 +238,7 @@ export default function ResourceDetailPage() {
         <div className="w-full lg:w-5/12 bg-slate-100 dark:bg-white/5 relative flex items-center justify-center min-h-[320px]">
           {/* Blurred "document" visual */}
           <div className="absolute inset-0 flex items-center justify-center opacity-10">
-            <div className="w-48 h-64 rounded-lg bg-gradient-to-br from-purple-500 to-purple-800 blur-sm" />
+            <div className="w-48 h-64 rounded-lg bg-[#7C3AED] blur-sm" />
           </div>
 
           <div className="relative text-center z-10">
@@ -219,7 +269,7 @@ export default function ResourceDetailPage() {
         {/* ---- Right: Details ---- */}
         <div className="flex-1 p-6 md:p-8 overflow-y-auto">
           {/* Subject badge */}
-          <span className="inline-block text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-500/10 px-3 py-1 rounded-lg uppercase tracking-wider">
+          <span className="inline-block text-xs font-bold text-[#7C3AED] bg-[#7C3AED]/10 px-3 py-1 rounded-lg uppercase tracking-wider">
             {resource.subject}
           </span>
 
@@ -245,6 +295,13 @@ export default function ResourceDetailPage() {
               { icon: FileText, label: resource.fileType },
               { icon: HardDrive, label: resource.fileSize },
               { icon: BookOpen, label: `${resource.pageCount} pages` },
+              {
+                icon: Coins,
+                label:
+                  resource.price > 0
+                    ? `${resource.price} coins`
+                    : "Free",
+              },
               { icon: Calendar, label: formatDate(resource.createdAt) },
             ].map((m) => (
               <div
@@ -276,7 +333,7 @@ export default function ResourceDetailPage() {
 
           {/* Author card */}
           <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 mb-6">
-            <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-300 text-sm font-bold flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-[#7C3AED]/10 dark:bg-[#7C3AED]/20 text-[#7C3AED] text-sm font-bold flex items-center justify-center">
               {authorAvatar}
             </div>
             <div>
@@ -291,13 +348,28 @@ export default function ResourceDetailPage() {
 
           {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-3 mb-8">
-            <button
-              onClick={handleDownload}
-              className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold shadow-lg hover:shadow-emerald-500/20 transition-shadow"
-            >
-              <Download size={18} />
-              Download Resource
-            </button>
+            {isPaidLocked ? (
+              <button
+                onClick={() => void handleUnlock()}
+                disabled={isUnlocking}
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-[#7C3AED] text-white font-bold shadow-lg shadow-purple-500/20 transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isUnlocking ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <LockKeyhole size={18} />
+                )}
+                {isUnlocking ? "Unlocking..." : `Unlock for ${resource.price} Coins`}
+              </button>
+            ) : (
+              <button
+                onClick={handleDownload}
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-emerald-600 text-white font-bold shadow-lg hover:bg-emerald-700 transition-colors"
+              >
+                <Download size={18} />
+                Download Resource
+              </button>
+            )}
 
             <button className="flex items-center justify-center gap-2 px-5 py-4 rounded-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
               <Share2 size={16} /> Share

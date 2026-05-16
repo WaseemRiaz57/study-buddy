@@ -1,7 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FileText, FileImage, FileSpreadsheet, File, Download, Star } from "lucide-react";
+import {
+  FileText,
+  FileImage,
+  FileSpreadsheet,
+  File,
+  Download,
+  Star,
+  Coins,
+  LockKeyhole,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -16,6 +25,8 @@ export interface Resource {
   author: string;
   authorAvatar: string;
   downloads: number;
+  price: number;
+  isUnlocked: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -37,9 +48,18 @@ function formatDownloads(n: number): string {
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
-export default function ResourceCard({ resource }: { resource: Resource }) {
+export default function ResourceCard({
+  resource,
+  onUnlock,
+  isUnlocking = false,
+}: {
+  resource: Resource;
+  onUnlock?: (resource: Resource) => void;
+  isUnlocking?: boolean;
+}) {
   const router = useRouter();
   const { icon: TypeIcon, bg: iconBg, text: iconText } = FILE_ICON_MAP[resource.fileType] ?? FILE_ICON_MAP.OTHER;
+  const isPaidLocked = resource.price > 0 && !resource.isUnlocked;
 
   return (
     <article
@@ -60,10 +80,10 @@ export default function ResourceCard({ resource }: { resource: Resource }) {
 
       {/* Subject + Title */}
       <div className="mb-4">
-        <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-300">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
           {resource.subject}
         </span>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1 line-clamp-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1 line-clamp-2 group-hover:text-[#7C3AED] transition-colors">
           {resource.title}
         </h3>
       </div>
@@ -71,16 +91,46 @@ export default function ResourceCard({ resource }: { resource: Resource }) {
       {/* Footer: author + downloads */}
       <div className="pt-4 border-t border-slate-100 dark:border-white/5 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-2">
-          <span className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-300 text-[10px] font-bold flex items-center justify-center">
+          <span className="w-6 h-6 rounded-full bg-[#7C3AED]/10 dark:bg-[#7C3AED]/20 text-[#7C3AED] text-[10px] font-bold flex items-center justify-center">
             {resource.authorAvatar}
           </span>
           <span>By {resource.author}</span>
         </div>
 
-        <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-          <Download size={12} />
-          {formatDownloads(resource.downloads)}
+        <div className="flex items-center gap-2">
+          {resource.price > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#7C3AED]/10 px-2 py-0.5 font-bold text-[#7C3AED]">
+              <Coins size={12} />
+              {resource.price}
+            </span>
+          )}
+          <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+            <Download size={12} />
+            {formatDownloads(resource.downloads)}
+          </div>
         </div>
+      </div>
+
+      <div className="mt-4">
+        {isPaidLocked ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onUnlock?.(resource);
+            }}
+            disabled={isUnlocking}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <LockKeyhole size={15} />
+            {isUnlocking ? "Unlocking..." : `Unlock for ${resource.price} Coins`}
+          </button>
+        ) : (
+          <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition-colors group-hover:border-[#7C3AED]/40 group-hover:text-[#7C3AED] dark:border-white/10 dark:text-slate-300">
+            <Download size={15} />
+            View Resource
+          </div>
+        )}
       </div>
     </article>
   );
