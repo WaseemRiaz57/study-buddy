@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Clock, FileText, Sparkles, Zap, Target, CheckSquare, Brain, Timer, Star, BookMarked, Lock, ArrowRight, Users } from "lucide-react";
+import { Clock, FileText, Sparkles, Zap, Target, CheckSquare, Brain, Timer, Star, BookMarked, Lock, ArrowRight, Users, ClipboardList } from "lucide-react";
 import ReviewModal from "@/components/mentorship/ReviewModal";
 
 const fadeIn = {
@@ -47,6 +47,16 @@ interface StudentMentorSession {
   status: SessionStatus;
   roomId?: string;
   reviewSubmitted?: boolean;
+}
+
+interface PendingAssignment {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string | null;
+  mentor?: {
+    name?: string;
+  };
 }
 
 function getMentor(session: StudentMentorSession): PopulatedMentor {
@@ -96,6 +106,7 @@ function isPastReviewCandidate(session: StudentMentorSession) {
 export function StudentDashboard() {
   const [recentNotes, setRecentNotes] = useState<RecentAINote[]>([]);
   const [mentorSessions, setMentorSessions] = useState<StudentMentorSession[]>([]);
+  const [pendingAssignments, setPendingAssignments] = useState<PendingAssignment[]>([]);
   const [sessionLoadError, setSessionLoadError] = useState<string | null>(null);
   const [selectedReviewSession, setSelectedReviewSession] =
     useState<StudentMentorSession | null>(null);
@@ -141,9 +152,22 @@ export function StudentDashboard() {
     }
   }, []);
 
+  const fetchAssignments = useCallback(async () => {
+    try {
+      const res = await fetch("/api/student/assignments", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setPendingAssignments(
+        Array.isArray(data?.assignments) ? data.assignments.slice(0, 3) : []
+      );
+    } catch {
+    }
+  }, []);
+
   useEffect(() => {
     fetchRecentNotes();
     fetchMentorSessions();
+    fetchAssignments();
 
     const onNotesUpdated = () => {
       fetchRecentNotes();
@@ -153,7 +177,7 @@ export function StudentDashboard() {
     return () => {
       window.removeEventListener("ai-notes-updated", onNotesUpdated);
     };
-  }, [fetchRecentNotes, fetchMentorSessions]);
+  }, [fetchAssignments, fetchRecentNotes, fetchMentorSessions]);
 
   const noteTypeMeta: Record<AINoteType, { gradient: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string }> = {
     notes: { gradient: "from-emerald-500 to-teal-600", icon: Brain, label: "Smart Notes" },
@@ -320,6 +344,40 @@ export function StudentDashboard() {
             </div>
 
             <div className="space-y-3">
+              {pendingAssignments.length > 0 && (
+                <div className="space-y-3">
+                  {pendingAssignments.map((assignment) => (
+                    <div
+                      key={assignment.id}
+                      className="flex items-center justify-between p-4 glass-panel rounded-2xl hover:border-[#7C3AED]/50 transition-all"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                          <ClipboardList className="text-[#7C3AED]" size={20} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-foreground truncate">
+                            {assignment.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {assignment.mentor?.name || "Mentor"}
+                            {assignment.dueDate
+                              ? ` - Due ${formatSessionDate(assignment.dueDate)}`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => window.location.href = "/dashboard/focus-rooms"}
+                        className="bg-[#7C3AED] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-lg shadow-purple-500/20 hover:opacity-90 transition-opacity"
+                      >
+                        Start
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Quest 1 - Completed */}
               <div className="flex items-center justify-between p-4 glass-panel rounded-2xl hover:border-primary/50 transition-all cursor-pointer group">
                 <div className="flex items-center gap-4">
@@ -474,7 +532,7 @@ export function StudentDashboard() {
                             with {mentorName}
                           </p>
                           <p className="mt-1 text-xs font-medium text-muted-foreground">
-                            {formatSessionDate(session.scheduledAt)} ·{" "}
+                            {formatSessionDate(session.scheduledAt)} -{" "}
                             {formatSessionTime(session.scheduledAt)}
                           </p>
                         </div>

@@ -23,6 +23,9 @@ interface Task {
   text: string;
   done: boolean;
   priority: "High" | "Med" | "Low";
+  source?: "task" | "assignment";
+  dueDate?: string | null;
+  mentorName?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -113,16 +116,42 @@ export default function FocusRoomsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [resTasks, resProgress] = await Promise.all([
+        const [resTasks, resAssignments, resProgress] = await Promise.all([
           fetch("/api/tasks"),
+          fetch("/api/student/assignments"),
           fetch("/api/focus"),
         ]);
 
+        let personalTasks: Task[] = [];
         if (resTasks.ok) {
-          setTasks(await resTasks.json());
+          const data = await resTasks.json();
+          personalTasks = Array.isArray(data)
+            ? data.map((task) => ({ ...task, source: "task" as const }))
+            : [];
         } else {
           toast.error("Failed to load tasks.");
         }
+
+        let mentorAssignments: Task[] = [];
+        if (resAssignments.ok) {
+          const data = await resAssignments.json();
+          const assignments = Array.isArray(data?.assignments)
+            ? data.assignments
+            : [];
+          mentorAssignments = assignments.map((assignment: any) => ({
+            _id: String(assignment.id),
+            text: assignment.title || "Mentor assignment",
+            done: false,
+            priority: "High" as const,
+            source: "assignment" as const,
+            dueDate: assignment.dueDate || null,
+            mentorName: assignment?.mentor?.name || "Mentor",
+          }));
+        } else {
+          toast.error("Failed to load mentor assignments.");
+        }
+
+        setTasks([...mentorAssignments, ...personalTasks]);
 
         if (resProgress.ok) {
           const data = await resProgress.json();
@@ -252,14 +281,24 @@ export default function FocusRoomsPage() {
   const toggleTask = async (task: Task) => {
     setTasks((p) => p.map((t) => (t._id === task._id ? { ...t, done: !t.done } : t)));
     try {
-      const res = await fetch("/api/tasks", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: task._id, done: !task.done }),
-      });
+      const res =
+        task.source === "assignment"
+          ? await fetch("/api/student/assignments", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: task._id, status: "completed" }),
+            })
+          : await fetch("/api/tasks", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: task._id, done: !task.done }),
+            });
       if (!res.ok) {
         setTasks((p) => p.map((t) => (t._id === task._id ? { ...t, done: task.done } : t)));
         toast.error("Failed to update task.");
+      } else if (task.source === "assignment") {
+        setTasks((p) => p.filter((t) => t._id !== task._id));
+        toast.success("Mentor assignment completed.");
       }
     } catch (error) {
       setTasks((p) => p.map((t) => (t._id === task._id ? { ...t, done: task.done } : t)));
@@ -268,6 +307,13 @@ export default function FocusRoomsPage() {
   };
 
   const removeTask = async (id: string) => {
+    const task = tasks.find((item) => item._id === id);
+
+    if (task?.source === "assignment") {
+      toast.info("Mentor assignments can be completed, not deleted.");
+      return;
+    }
+
     const snapshot = tasks;
     setTasks((p) => p.filter((t) => t._id !== id));
     try {
@@ -433,16 +479,29 @@ export default function FocusRoomsPage() {
                         <p className={`text-sm font-medium group-hover:text-primary dark:group-hover:text-purple-400 transition-colors ${task.done ? "line-through text-text-muted dark:text-slate-500" : "text-text-main dark:text-white"}`}>
                           {task.text}
                         </p>
+                        {task.source === "assignment" && (
+                          <p className="mt-0.5 text-[11px] font-medium text-[#7C3AED]">
+                            Assigned by {task.mentorName}
+                            {task.dueDate
+                              ? ` - Due ${new Date(task.dueDate).toLocaleDateString("en", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}`
+                              : ""}
+                          </p>
+                        )}
                       </div>
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${priorityStyles[task.priority]}`}>
                         {task.priority.charAt(0) === "H" ? "High" : task.priority.charAt(0) === "M" ? "Med" : "Low"}
                       </div>
-                      <button
-                        onClick={() => removeTask(task._id)}
-                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all shrink-0"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {task.source !== "assignment" && (
+                        <button
+                          onClick={() => removeTask(task._id)}
+                          className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all shrink-0"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                     {i < tasks.length - 1 && (
                       <div className="h-px w-full bg-primary/5 dark:bg-white/[0.04] mt-3" />
