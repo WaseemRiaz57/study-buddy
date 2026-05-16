@@ -1,110 +1,130 @@
 "use client";
 
-import { useTheme } from "next-themes";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Flame, Coins, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
+import { BookOpen, Coins, Flame, Moon, Sun } from "lucide-react";
 import { useUserStore } from "@/store/useUserStore";
 import { NotificationBell } from "./NotificationBell";
-import { useState } from "react";
+
+interface GamificationStats {
+  xp: number;
+  coins: number;
+  streak: number;
+  level: number;
+  nextLevelXp: number;
+}
+
+const EMPTY_STATS: GamificationStats = {
+  xp: 0,
+  coins: 0,
+  streak: 0,
+  level: 1,
+  nextLevelXp: 1000,
+};
 
 export function DashboardTopbar() {
   const { resolvedTheme, setTheme } = useTheme();
   const { data: session, status } = useSession();
   const { role } = useUserStore();
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [gamificationStats, setGamificationStats] =
+    useState<GamificationStats>(EMPTY_STATS);
 
   const fullName = session?.user?.name || "User";
   const firstName = session?.user?.name?.split(" ")[0] || "User";
   const userEmail = session?.user?.email || "";
   const userImage = avatarFailed ? "" : session?.user?.image || "";
-  const userInitials = fullName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "U";
-  const mentorRoleLabel = session?.user?.role
+  const userInitials =
+    fullName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "U";
+  const roleLabel = session?.user?.role
     ? `${session.user.role.charAt(0).toUpperCase()}${session.user.role.slice(1).toLowerCase()}`
-    : "Mentor";
+    : role === "MENTOR"
+      ? "Mentor"
+      : "Scholar";
 
-  // Sample data - can be replaced with dynamic data later
-  const studentData = {
-    xp: 4500,
-    maxXp: 5000,
-    streak: 12,
-    coins: 1240,
-    title: "Master Scholar",
-    level: 14,
-    initials: "AS",
-  };
+  const xpForCurrentLevel = gamificationStats.xp % 1000;
+  const xpProgress = Math.min(100, Math.round((xpForCurrentLevel / 1000) * 100));
 
-  const mentorData = {
-    role: mentorRoleLabel,
-    xp: 8450,
-    maxXp: 10000,
-    gold: 1200,
-  };
+  const fetchGamificationStats = useCallback(async () => {
+    if (status !== "authenticated") return;
 
-  const data = role === "MENTOR" ? mentorData : studentData;
+    const response = await fetch("/api/user/gamification-stats", {
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => null);
+
+    if (response.ok && data?.stats) {
+      setGamificationStats({
+        ...EMPTY_STATS,
+        ...data.stats,
+      });
+    }
+  }, [status]);
+
+  useEffect(() => {
+    void fetchGamificationStats();
+
+    const onStatsUpdated = () => {
+      void fetchGamificationStats();
+    };
+
+    window.addEventListener("gamification-stats-updated", onStatsUpdated);
+    return () => {
+      window.removeEventListener("gamification-stats-updated", onStatsUpdated);
+    };
+  }, [fetchGamificationStats]);
 
   const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
-      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-        {/* Left Side - Logo & Navigation/XP Bar */}
+    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
         <div className="flex items-center gap-8">
-          {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className={`w-9 h-9 bg-gradient-to-br ${
-              role === "MENTOR" 
-                ? "from-blue-600 to-purple-600" 
-                : "from-primary to-purple-600"
-            } rounded-lg flex items-center justify-center shadow-lg ${
-              role === "MENTOR" 
-                ? "shadow-blue-500/20" 
-                : "shadow-primary/20"
-            }`}>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#7C3AED] shadow-lg shadow-purple-500/20">
               <BookOpen className="text-white" size={20} />
             </div>
-            <h1 className={`text-xl font-bold bg-gradient-to-r ${
-              role === "MENTOR" 
-                ? "from-blue-600 to-purple-600" 
-                : "from-primary to-purple-400"
-            } bg-clip-text text-transparent`}>
-              StudyBuddy
-            </h1>
+            <h1 className="text-xl font-bold text-[#7C3AED]">StudyBuddy</h1>
           </div>
 
-          {/* XP Progress (Student) or Navigation (Mentor) */}
           {role === "STUDENT" ? (
-            <div className="hidden md:flex flex-col w-48">
-              <div className="flex justify-between text-[10px] font-bold text-primary uppercase tracking-wider mb-1">
+            <div className="hidden w-48 flex-col md:flex">
+              <div className="mb-1 flex justify-between text-[10px] font-bold uppercase tracking-wider text-[#7C3AED]">
                 <span>Scholar Rank</span>
-                <span>{studentData.xp.toLocaleString()}/{studentData.maxXp.toLocaleString()} XP</span>
+                <span>
+                  {xpForCurrentLevel.toLocaleString()}/1,000 XP
+                </span>
               </div>
-              <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
-                <motion.div 
+              <div className="h-2 overflow-hidden rounded-full bg-[#7C3AED]/10">
+                <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${(studentData.xp / studentData.maxXp) * 100}%` }}
+                  animate={{ width: `${xpProgress}%` }}
                   transition={{ duration: 1, delay: 0.2 }}
-                  className="h-full bg-gradient-to-r from-primary to-purple-500 rounded-full relative"
+                  className="relative h-full rounded-full bg-[#7C3AED]"
                 >
                   <div className="absolute inset-0 bg-white/30 animate-pulse" />
                 </motion.div>
               </div>
             </div>
           ) : (
-            <nav className="hidden md:flex items-center gap-6">
-              {['Dashboard', 'Sessions', 'Students', 'Resources'].map((item, i) => (
-                <a 
-                  key={item} 
-                  href="#" 
+            <nav className="hidden items-center gap-6 md:flex">
+              {["Dashboard", "Sessions", "Students", "Resources"].map((item, index) => (
+                <a
+                  key={item}
+                  href="#"
                   className={`text-sm font-medium transition-colors ${
-                    i === 0 ? "text-primary font-semibold" : "text-muted-foreground hover:text-primary"
+                    index === 0
+                      ? "font-semibold text-[#7C3AED]"
+                      : "text-muted-foreground hover:text-[#7C3AED]"
                   }`}
                 >
                   {item}
@@ -114,71 +134,74 @@ export function DashboardTopbar() {
           )}
         </div>
 
-        {/* Right Side - Stats, Theme Toggle, Notifications & Profile */}
         <div className="flex items-center gap-4">
-          {/* Streak (Student Only) */}
-          {role === "STUDENT" && (
-            <div className="flex items-center gap-1.5 bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
-              <Flame className="text-orange-500" size={16} />
-              <span className="font-bold text-orange-600 dark:text-orange-400 text-sm">{studentData.streak}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5">
+            <Flame className="text-orange-500" size={16} />
+            <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
+              {gamificationStats.streak}
+            </span>
+          </div>
 
-          {/* XP Bar (Mentor Only) */}
           {role === "MENTOR" && (
-            <div className="hidden lg:flex flex-col items-end">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-primary uppercase tracking-wider">{mentorData.role}</span>
-                <span className="text-xs font-medium text-muted-foreground">{mentorData.xp.toLocaleString()} / {mentorData.maxXp.toLocaleString()} XP</span>
+            <div className="hidden flex-col items-end lg:flex">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
+                  {roleLabel}
+                </span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {xpForCurrentLevel.toLocaleString()} / 1,000 XP
+                </span>
               </div>
-              <div className="w-48 h-1.5 bg-primary/10 rounded-full overflow-hidden">
-                <motion.div 
+              <div className="h-1.5 w-48 overflow-hidden rounded-full bg-[#7C3AED]/10">
+                <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${(mentorData.xp / mentorData.maxXp) * 100}%` }}
+                  animate={{ width: `${xpProgress}%` }}
                   transition={{ duration: 1, delay: 0.2 }}
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
+                  className="h-full rounded-full bg-[#7C3AED]"
                 />
               </div>
             </div>
           )}
 
-          {/* Coins/Gold */}
-          <div className="flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/20">
+          <div className="flex items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-3 py-1.5">
             <Coins className="text-yellow-600 dark:text-yellow-400" size={16} />
-            <span className="font-bold text-yellow-700 dark:text-yellow-400 text-sm">
-              {role === "MENTOR" ? mentorData.gold.toLocaleString() : studentData.coins.toLocaleString()}
+            <span className="text-sm font-bold text-yellow-700 dark:text-yellow-400">
+              {gamificationStats.coins.toLocaleString()}
             </span>
           </div>
 
-          {/* Theme Switcher */}
-          <button 
+          <button
             onClick={toggleTheme}
-            className="relative p-2 hover:bg-primary/10 rounded-lg transition-colors group"
+            className="group relative rounded-lg p-2 transition-colors hover:bg-[#7C3AED]/10"
             aria-label="Toggle theme"
           >
             {resolvedTheme === "dark" ? (
-              <Sun className="text-muted-foreground group-hover:text-primary transition-colors" size={20} />
+              <Sun
+                className="text-muted-foreground transition-colors group-hover:text-[#7C3AED]"
+                size={20}
+              />
             ) : (
-              <Moon className="text-muted-foreground group-hover:text-primary transition-colors" size={20} />
+              <Moon
+                className="text-muted-foreground transition-colors group-hover:text-[#7C3AED]"
+                size={20}
+              />
             )}
           </button>
 
-          {/* Notifications */}
           <NotificationBell />
 
-          {/* Profile */}
           {role === "STUDENT" ? (
-            <div className="flex items-center gap-3 pl-4 border-l border-border/50">
-              <div className="text-right hidden sm:block">
+            <div className="flex items-center gap-3 border-l border-border/50 pl-4">
+              <div className="hidden text-right sm:block">
                 <p className="text-sm font-bold leading-none">
                   {status === "loading" ? "Loading..." : `Welcome ${firstName}`}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {userEmail || `${studentData.title} • Level ${studentData.level}`}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {userEmail || `Level ${gamificationStats.level}`}
                 </p>
               </div>
-              <div className="relative cursor-pointer group">
-                <div className="w-10 h-10 rounded-full ring-2 ring-background ring-offset-2 ring-offset-primary/20 overflow-hidden bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+              <div className="group relative cursor-pointer">
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold text-white shadow-lg ring-2 ring-background ring-offset-2 ring-offset-primary/20">
                   {userImage ? (
                     <img
                       src={userImage}
@@ -191,11 +214,13 @@ export function DashboardTopbar() {
                     userInitials
                   )}
                 </div>
-                <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-background shadow-sm text-black">{studentData.level}</div>
+                <div className="absolute -bottom-1 -right-1 rounded-md border border-background bg-yellow-400 px-1.5 py-0.5 text-[9px] font-black text-black shadow-sm">
+                  {gamificationStats.level}
+                </div>
               </div>
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-full ring-2 ring-primary/20 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold cursor-pointer hover:shadow-lg transition-shadow">
+            <div className="flex h-10 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold text-white ring-2 ring-primary/20 transition-shadow hover:shadow-lg">
               {userImage ? (
                 <img
                   src={userImage}

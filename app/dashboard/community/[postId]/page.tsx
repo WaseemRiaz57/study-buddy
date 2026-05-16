@@ -293,7 +293,13 @@ export default function PostDetailPage() {
           comment.id === optimisticComment.id ? data.comment : comment
         )
       );
-      toast.success("Comment added. +5 XP awarded.");
+      const reward = data?.reward;
+      const rewardText = reward
+        ? `+${reward.xpAwarded} XP, +${reward.coinsAwarded} coins`
+        : "reward added";
+
+      toast.success(`Comment added. ${rewardText}.`);
+      window.dispatchEvent(new Event("gamification-stats-updated"));
     } catch (error) {
       setComments((current) =>
         current.filter((comment) => comment.id !== optimisticComment.id)

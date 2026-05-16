@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
-import { awardCommunityXp } from "@/lib/community-xp";
+import { awardUser } from "@/lib/gamificationEngine";
 import { logActivity } from "@/lib/logActivity";
 import { connectMongoDB } from "@/lib/mongodb";
 import Comment from "@/models/Comment";
@@ -190,13 +190,8 @@ export async function POST(request: Request) {
       attachments,
     });
 
-    await Promise.allSettled([
-      awardCommunityXp({
-        userId: session.user.id,
-        email: session.user.email,
-        role: session.user.role,
-        xp: 10,
-      }),
+    const [rewardResult] = await Promise.allSettled([
+      awardUser(session.user.id, "CREATED_POST"),
       logActivity({
         actionType: "COMMUNITY_POST_CREATED",
         message: `${session.user.name || "A user"} published a community post: ${title}`,
@@ -211,7 +206,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         post: populatedPost ? await serializePost(populatedPost, 0, session.user.id) : null,
-        earnedXp: 10,
+        reward: rewardResult.status === "fulfilled" ? rewardResult.value : null,
       },
       { status: 201 }
     );

@@ -2,14 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
+import { awardUser } from "@/lib/gamificationEngine";
 import { connectMongoDB } from "@/lib/mongodb";
 import MentorProfile from "@/models/MentorProfile";
 import MentorSession from "@/models/MentorSession";
 import Notification from "@/models/Notification";
-import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
-
-const COMPLETION_XP_AWARD = 100;
 
 function isAllowedRole(role: unknown) {
   const normalizedRole = String(role ?? "").toLowerCase();
@@ -94,7 +92,7 @@ export async function PATCH(
       .lean();
     const mentorName = mentorUser?.name || "your mentor";
 
-    const [updatedMentorProfile, updatedStudentProfile] = await Promise.all([
+    const [updatedMentorProfile, studentReward] = await Promise.all([
       MentorProfile.findOneAndUpdate(
         { userId: mentorSession.mentorId },
         {
@@ -103,24 +101,21 @@ export async function PATCH(
         },
         { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
       ),
-      StudentProfile.findOneAndUpdate(
-        { userId: mentorSession.studentId },
-        {
-          $setOnInsert: { userId: mentorSession.studentId },
-          $inc: { xp: COMPLETION_XP_AWARD },
-        },
-        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
-      ),
+      awardUser(String(mentorSession.studentId), "COMPLETED_SESSION"),
+    ]);
+
+    await Promise.all([
       Notification.create({
         recipientId: mentorSession.studentId,
         senderId: mentorSession.mentorId,
         type: "system",
         title: "Session Completed",
-        message: `Your session with ${mentorName} has concluded. 100 XP added to your profile!`,
+        message: `Your session with ${mentorName} has concluded. ${studentReward.xpAwarded} XP and ${studentReward.coinsAwarded} coins were added to your profile!`,
         read: false,
         metadata: {
           sessionId: String(mentorSession._id),
-          xpAwarded: COMPLETION_XP_AWARD,
+          xpAwarded: studentReward.xpAwarded,
+          coinsAwarded: studentReward.coinsAwarded,
           earningsAwarded: sessionEarnings,
         },
       }),
@@ -133,8 +128,11 @@ export async function PATCH(
       rewards: {
         mentorEarningsAdded: sessionEarnings,
         mentorTotalEarnings: updatedMentorProfile?.totalEarnings ?? 0,
-        studentXpAdded: COMPLETION_XP_AWARD,
-        studentXp: updatedStudentProfile?.xp ?? COMPLETION_XP_AWARD,
+        studentXpAdded: studentReward.xpAwarded,
+        studentCoinsAdded: studentReward.coinsAwarded,
+        studentXp: studentReward.profile.xp,
+        studentCoins: studentReward.profile.coins,
+        studentStreak: studentReward.profile.streak,
       },
     });
   } catch (error) {

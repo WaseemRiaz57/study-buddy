@@ -181,7 +181,13 @@ export default function CommunityFeedPage() {
         throw new Error(data?.message || "Failed to publish post.");
       }
 
-      toast.success("Post published. +10 XP awarded.");
+      const reward = data?.reward;
+      const rewardText = reward
+        ? `+${reward.xpAwarded} XP, +${reward.coinsAwarded} coins`
+        : "reward added";
+
+      toast.success(`Post published. ${rewardText}.`);
+      window.dispatchEvent(new Event("gamification-stats-updated"));
       setModalOpen(false);
       await Promise.all([fetchPosts(), fetchStats()]);
     } catch (error) {

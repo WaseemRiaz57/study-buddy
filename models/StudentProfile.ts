@@ -18,6 +18,9 @@ export interface IStudentProfile extends Document {
   strictMentorship: boolean;
   subscriptionTier: StudentSubscriptionTier;
   xp: number;
+  coins: number;
+  streak: number;
+  lastActiveDate?: Date;
 }
 
 const StudentProfileSchema = new Schema<IStudentProfile>(
@@ -37,6 +40,9 @@ const StudentProfileSchema = new Schema<IStudentProfile>(
     socraticAiMode: { type: Boolean, default: false },
     strictMentorship: { type: Boolean, default: false },
     xp: { type: Number, default: 0, min: 0 },
+    coins: { type: Number, default: 0, min: 0 },
+    streak: { type: Number, default: 0, min: 0 },
+    lastActiveDate: { type: Date, default: null },
     subscriptionTier: {
       type: String,
       enum: ["Standard", "Pro Scholar", "Elite Master"],
