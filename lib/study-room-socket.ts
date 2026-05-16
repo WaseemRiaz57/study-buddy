@@ -37,9 +37,20 @@ type BuddyRequestAcceptedPayload = {
   requestId: string;
 };
 
+type ConversationJoinPayload = {
+  conversationId?: string;
+  userId?: string;
+};
+
+type ConversationMessagePayload = {
+  conversationId?: string;
+  message?: unknown;
+};
+
 type StudyRoomSocketData = {
   roomMemberships?: string[];
   roomUserId?: string;
+  conversationMemberships?: string[];
 };
 
 const autoCloseTimers = new Map<string, NodeJS.Timeout>();
@@ -63,6 +74,10 @@ function roomHostChannel(roomId: string): string {
 
 function userChannel(userId: string): string {
   return `user:${userId.trim()}`;
+}
+
+function conversationChannel(conversationId: string): string {
+  return `conversation:${conversationId.trim()}`;
 }
 
 function escapeRegex(text: string): string {
@@ -117,6 +132,19 @@ function removeSocketMembership(socket: Socket, roomId: string): void {
     : [];
 
   data.roomMemberships = memberships.filter((memberRoomId) => memberRoomId !== roomId);
+}
+
+function addConversationMembership(socket: Socket, conversationId: string): void {
+  const data = getSocketData(socket);
+  const memberships = Array.isArray(data.conversationMemberships)
+    ? data.conversationMemberships
+    : [];
+
+  if (!memberships.includes(conversationId)) {
+    memberships.push(conversationId);
+  }
+
+  data.conversationMemberships = memberships;
 }
 
 function resolveRoomHostId(room: unknown): string {
@@ -245,6 +273,45 @@ function handleStudyBuddyIdentifyEvent(
   });
 }
 
+function handleJoinConversationEvent(
+  socket: Socket,
+  payload: ConversationJoinPayload
+): void {
+  if (!isNonEmptyString(payload.conversationId) || !isNonEmptyString(payload.userId)) {
+    socket.emit("messages:error", {
+      message: "conversationId and userId are required for join-conversation",
+    });
+    return;
+  }
+
+  const conversationId = payload.conversationId.trim();
+  const userId = payload.userId.trim();
+
+  getSocketData(socket).roomUserId = userId;
+  addConversationMembership(socket, conversationId);
+  socket.join(conversationChannel(conversationId));
+  socket.join(userChannel(userId));
+  socket.emit("conversation-joined", { conversationId });
+}
+
+function handleSendMessageEvent(
+  socket: Socket,
+  payload: ConversationMessagePayload
+): void {
+  if (!isNonEmptyString(payload.conversationId) || !payload.message) {
+    socket.emit("messages:error", {
+      message: "conversationId and message are required for send-message",
+    });
+    return;
+  }
+
+  const conversationId = payload.conversationId.trim();
+  socket.nsp.to(conversationChannel(conversationId)).emit("receive-message", {
+    conversationId,
+    message: payload.message,
+  });
+}
+
 async function handleKnockRoomEvent(
   socket: Socket,
   payload: KnockRoomPayload
@@ -352,6 +419,14 @@ export function registerStudyRoomNamespace(io: Server): Namespace {
   namespace.on("connection", (socket: Socket) => {
     socket.on("study-buddy:identify", (payload: StudyBuddyIdentifyPayload) => {
       handleStudyBuddyIdentifyEvent(socket, payload);
+    });
+
+    socket.on("join-conversation", (payload: ConversationJoinPayload) => {
+      handleJoinConversationEvent(socket, payload);
+    });
+
+    socket.on("send-message", (payload: ConversationMessagePayload) => {
+      handleSendMessageEvent(socket, payload);
     });
 
     socket.on("study-room:join", async (payload: StudyRoomJoinPayload) => {
