@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 
@@ -23,8 +22,6 @@ const PricingCards = dynamic(() => import("./PricingCards"), {
 });
 
 export default function SubscriptionPage() {
-  const [annual, setAnnual] = useState(true);
-
   return (
     <main className="pb-20">
       <motion.div
@@ -46,37 +43,7 @@ export default function SubscriptionPage() {
           </p>
         </header>
 
-        <section
-          className="flex items-center justify-center gap-4 mb-12"
-          aria-label="Billing interval"
-        >
-          <button
-            type="button"
-            onClick={() => setAnnual(false)}
-            aria-pressed={!annual}
-            className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
-              !annual
-                ? "bg-primary text-white shadow-lg shadow-primary/25"
-                : "text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white"
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            type="button"
-            onClick={() => setAnnual(true)}
-            aria-pressed={annual}
-            className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${
-              annual
-                ? "bg-primary text-white shadow-lg shadow-primary/25"
-                : "text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white"
-            }`}
-          >
-            Annual (-20%)
-          </button>
-        </section>
-
-        <PricingCards annual={annual} />
+        <PricingCards />
       </motion.div>
     </main>
   );

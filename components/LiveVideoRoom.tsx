@@ -928,6 +928,17 @@ export default function LiveVideoRoom({
     }
   }, [roomId]);
 
+  const updateRoomParticipantLifecycle = useCallback(async () => {
+    try {
+      await fetch(`/api/study-rooms/${encodeURIComponent(roomId)}/leave`, {
+        method: "POST",
+        keepalive: true,
+      });
+    } catch (error) {
+      console.error("Study Room Leave Error:", error);
+    }
+  }, [roomId]);
+
   const leaveRoom = useCallback(async () => {
     if (isLeaving) return;
     setIsLeaving(true);
@@ -954,11 +965,12 @@ export default function LiveVideoRoom({
       console.error("Leave Room Error:", error);
     } finally {
       previewStreamRef.current?.getTracks().forEach((track) => track.stop());
+      await updateRoomParticipantLifecycle();
       await roomRef.current?.disconnect();
       await resetWaitingRoomStatus();
       router.push(DASHBOARD_REDIRECT_PATH);
     }
-  }, [isHost, isLeaving, publishRoomControlMessage, resetWaitingRoomStatus, roomId, router, updateSessionDatabase]);
+  }, [isHost, isLeaving, publishRoomControlMessage, resetWaitingRoomStatus, roomId, router, updateRoomParticipantLifecycle, updateSessionDatabase]);
 
   const handleCancelPreJoin = useCallback(() => {
     previewStreamRef.current?.getTracks().forEach((track) => track.stop());

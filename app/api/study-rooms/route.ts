@@ -25,12 +25,8 @@ export async function GET() {
     await connectDB();
 
     const rooms = await StudyRoom.find({
-      $or: [
-        { $and: [{ isActive: true }, { status: "active" }] },
-        { $and: [{ isActive: { $exists: false } }, { isLive: true }] },
-        { $and: [{ status: { $exists: false } }, { isLive: true }] },
-        { isLive: true },
-      ],
+      status: "active",
+      "participants.0": { $exists: true },
     })
       .populate("createdBy", "name image profileImage")
       .sort({ createdAt: -1 })

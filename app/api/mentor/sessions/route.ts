@@ -35,10 +35,19 @@ export async function GET() {
     await connectMongoDB();
 
     const sessions = await MentorSession.find({ mentorId: session.user.id })
-      .populate("studentId", "name image email")
-      .sort({ scheduledAt: 1 });
+      .select(
+        "studentId mentorId subject scheduledAt duration type status paymentStatus paymentReceipt roomId createdAt updatedAt"
+      )
+      .populate("studentId", "name profileImage")
+      .sort({ scheduledAt: 1 })
+      .lean();
 
-    return NextResponse.json(sessions);
+    return NextResponse.json(
+      sessions.map((mentorSession) => ({
+        ...mentorSession,
+        student: mentorSession.studentId,
+      }))
+    );
   } catch (error) {
     console.error("Fetch mentor sessions error:", error);
     return NextResponse.json(

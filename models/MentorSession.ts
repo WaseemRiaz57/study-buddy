@@ -82,6 +82,7 @@ const MentorSessionSchema = new Schema<IMentorSession>(
 
 MentorSessionSchema.index({ studentId: 1, scheduledAt: -1 });
 MentorSessionSchema.index({ mentorId: 1, scheduledAt: -1 });
+MentorSessionSchema.index({ mentorId: 1, status: 1, scheduledAt: 1 });
 MentorSessionSchema.index({ status: 1, paymentStatus: 1 });
 MentorSessionSchema.index({ type: 1, status: 1 });
 

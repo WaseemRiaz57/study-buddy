@@ -32,6 +32,7 @@ type PopulatedUser = {
   _id?: string;
   name?: string;
   image?: string;
+  profileImage?: string;
   email?: string;
 };
 
@@ -44,6 +45,7 @@ type MentorProfileSummary = {
 
 type DashboardSession = {
   _id: string;
+  student?: PopulatedUser | string;
   studentId?: PopulatedUser | string;
   mentorId?: PopulatedUser | string;
   mentorProfile?: MentorProfileSummary | null;
@@ -133,12 +135,13 @@ function Avatar({
   fallback: string;
 }) {
   const name = user.name || fallback;
+  const imageSrc = user.profileImage || user.image || "";
 
   return (
     <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#7C3AED] text-sm font-black text-white">
-      {user.image ? (
+      {imageSrc ? (
         <Image
-          src={user.image}
+          src={imageSrc}
           alt={name}
           width={48}
           height={48}
@@ -318,7 +321,7 @@ function MentorSessionCard({
   onOpenReceipt: (session: DashboardSession) => void;
   onComplete: (id: string) => void;
 }) {
-  const student = getPopulatedUser(session.studentId);
+  const student = getPopulatedUser(session.student || session.studentId);
   const studentName = student.name || "Student";
   const acceptingKey = `${session._id}-accepted`;
   const decliningKey = `${session._id}-declined`;
@@ -584,7 +587,7 @@ export default function SessionsPage() {
           return;
         }
 
-        if (userRole === "mentor") {
+        if (userRole === "teacher" || userRole === "mentor") {
           const response = await fetch("/api/mentor/sessions", {
             cache: "no-store",
           });
@@ -794,7 +797,7 @@ export default function SessionsPage() {
             <Loader2 className="h-4 w-4 animate-spin text-[#7C3AED]" />
             Loading sessions...
           </div>
-        ) : userRole !== "student" && userRole !== "mentor" ? (
+        ) : userRole !== "student" && userRole !== "teacher" && userRole !== "mentor" ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500 dark:border-slate-800 dark:bg-surface-dark">
             Sessions are available for student and mentor accounts.
           </div>

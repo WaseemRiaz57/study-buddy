@@ -87,6 +87,8 @@ export const PRICING_PLANS: PricingPlanConfig[] = [
   },
 ];
 
+export const pricingPlans = PRICING_PLANS;
+
 export const PRICING_BY_ID = PRICING_PLANS.reduce(
   (plans, plan) => {
     plans[plan.id] = plan;

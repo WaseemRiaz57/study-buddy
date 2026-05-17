@@ -213,8 +213,8 @@ export function DashboardTopbar({
   return (
     <>
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 lg:px-6 lg:py-3">
-        <div className="flex min-w-0 items-center gap-3 lg:gap-8">
+      <div className="mx-auto flex max-w-screen-2xl items-center gap-3 px-3 py-2.5 sm:px-4 lg:px-6 lg:py-3">
+        <div className="mr-auto flex min-w-0 flex-1 items-center gap-3 lg:gap-8">
           <button
             type="button"
             onClick={onOpenSidebar}
@@ -224,10 +224,13 @@ export function DashboardTopbar({
             <Menu size={20} />
           </button>
 
-          {role === "STUDENT" && (
-            <div className="hidden w-48 flex-col md:flex">
+          <div className="hidden w-48 flex-col md:flex">
               <div className="mb-1 flex justify-between text-[10px] font-bold uppercase tracking-wider text-[#7C3AED]">
-                <span>Scholar Rank</span>
+                <span>
+                  {role === "TEACHER" || role === "MENTOR"
+                    ? "Teacher Rank"
+                    : "Scholar Rank"}
+                </span>
                 <span>
                   {xpForCurrentLevel.toLocaleString()}/1,000 XP
                 </span>
@@ -243,10 +246,9 @@ export function DashboardTopbar({
                 </motion.div>
               </div>
             </div>
-          )}
         </div>
 
-        <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2 lg:gap-4">
+        <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2 lg:gap-4">
           <button
             onClick={() => setStoreOpen(true)}
             className="hidden min-h-[44px] items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:flex"
@@ -257,27 +259,6 @@ export function DashboardTopbar({
               {gamificationStats.streak}
             </span>
           </button>
-
-          {(role === "TEACHER" || role === "MENTOR") && (
-            <div className="hidden flex-col items-end lg:flex">
-              <div className="mb-1 flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
-                  {roleLabel}
-                </span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  {xpForCurrentLevel.toLocaleString()} / 1,000 XP
-                </span>
-              </div>
-              <div className="h-1.5 w-48 overflow-hidden rounded-full bg-[#7C3AED]/10">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${xpProgress}%` }}
-                  transition={{ duration: 1, delay: 0.2 }}
-                  className="h-full rounded-full bg-[#7C3AED]"
-                />
-              </div>
-            </div>
-          )}
 
           <button
             onClick={() => setStoreOpen(true)}
