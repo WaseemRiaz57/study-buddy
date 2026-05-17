@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { awardUser } from "@/lib/gamificationEngine";
+import { trackProgress } from "@/lib/challengeTracker";
 import { connectMongoDB } from "@/lib/mongodb";
 import MentorProfile from "@/models/MentorProfile";
 import MentorSession from "@/models/MentorSession";
@@ -92,7 +93,7 @@ export async function PATCH(
       .lean();
     const mentorName = mentorUser?.name || "your mentor";
 
-    const [updatedMentorProfile, studentReward] = await Promise.all([
+    const [updatedMentorProfile, studentReward, teacherSessionProgress] = await Promise.all([
       MentorProfile.findOneAndUpdate(
         { userId: mentorSession.mentorId },
         {
@@ -102,6 +103,7 @@ export async function PATCH(
         { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
       ),
       awardUser(String(mentorSession.studentId), "COMPLETED_SESSION"),
+      trackProgress(String(mentorSession.studentId), "teacher_session", 1),
     ]);
 
     await Promise.all([
@@ -133,6 +135,7 @@ export async function PATCH(
         studentXp: studentReward.profile.xp,
         studentCoins: studentReward.profile.coins,
         studentStreak: studentReward.profile.streak,
+        challengeProgress: teacherSessionProgress,
       },
     });
   } catch (error) {

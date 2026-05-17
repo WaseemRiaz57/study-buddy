@@ -9,6 +9,7 @@ export interface INotification extends Document {
     | "buddy_accepted"
     | "room_created"
     | "room_ended"
+    | "challenge"
     | "system";
   title: string;
   message: string;
@@ -42,6 +43,7 @@ const NotificationSchema = new Schema<INotification>(
         "buddy_accepted",
         "room_created",
         "room_ended",
+        "challenge",
         "system",
       ],
       required: true,

@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
+import { trackProgress } from "@/lib/challengeTracker";
 import { connectMongoDB } from "@/lib/mongodb";
 import UserProgress from "@/models/UserProgress";
 
@@ -69,8 +70,11 @@ export async function POST(req: Request) {
     progress.level = newLevel;
 
     await progress.save();
+    const challengeProgress = session.user.id
+      ? await trackProgress(session.user.id, "focus_room", 1)
+      : [];
 
-    return NextResponse.json({ progress, earnedXp });
+    return NextResponse.json({ progress, earnedXp, challengeProgress });
   } catch {
     return NextResponse.json({ message: "Error updating focus session" }, { status: 500 });
   }

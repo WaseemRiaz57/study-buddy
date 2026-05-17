@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/authOptions";
 import { logActivity } from "@/lib/logActivity";
 import { connectMongoDB } from "@/lib/mongodb";
 import Challenge, { type ChallengeType } from "@/models/Challenge";
+import Notification from "@/models/Notification";
 import User from "@/models/User";
 import UserChallengeProgress from "@/models/UserChallengeProgress";
 
@@ -176,6 +177,31 @@ export async function POST(request: Request) {
     await connectMongoDB();
 
     const challenge = await Challenge.create(payload);
+    const recipients = await User.find({
+      role: { $ne: "admin" },
+      status: { $ne: "suspended" },
+    })
+      .select("_id")
+      .lean();
+
+    if (recipients.length) {
+      await Notification.insertMany(
+        recipients.map((user) => ({
+          userId: user._id,
+          recipientId: user._id,
+          senderId: null,
+          type: "challenge",
+          title: "New Challenge Unlocked! 🏆",
+          message: `A new quest: ${challenge.title} is now available. Complete it to earn rewards!`,
+          read: false,
+          metadata: {
+            challengeId: String(challenge._id),
+            challengeType: challenge.type,
+          },
+        })),
+        { ordered: false }
+      );
+    }
 
     await logActivity({
       actionType: "CHALLENGE_CREATED",
