@@ -40,8 +40,8 @@ interface NavItem {
 
 const buildNavItems = (isCommunity: boolean): NavItem[] => [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", roles: ["STUDENT", "TEACHER", "MENTOR"] },
-  { icon: FileText, label: "AI Generator", href: "/dashboard/content-generator", roles: ["STUDENT"], badge: "AI" },
-  { icon: ClipboardList, label: "Quiz Generator", href: "/dashboard/content-generator", roles: ["TEACHER", "MENTOR"] },
+  { icon: FileText, label: "AI Studio", href: "/dashboard/content-generator", roles: ["STUDENT"], badge: "AI" },
+  { icon: ClipboardList, label: "AI Studio", href: "/dashboard/content-generator", roles: ["TEACHER", "MENTOR"], badge: "AI" },
   { icon: Library, label: "Resource Hub", href: "/dashboard/resources", roles: ["STUDENT", "TEACHER", "MENTOR"] },
   { icon: Users, label: "My Students", href: "/dashboard/my-students", roles: ["TEACHER", "MENTOR"] },
   { icon: CalendarCheck, label: "Sessions", href: "/dashboard/sessions", roles: ["TEACHER", "MENTOR"] },
@@ -150,7 +150,12 @@ export function Sidebar({
           }`}
           aria-label={!mobile && isCollapsed ? "Expand sidebar" : "Dashboard"}
         >
-          <BrandLogo compact={!mobile && isCollapsed} />
+          <BrandLogo />
+          {(mobile || !isCollapsed) && (
+            <span className="whitespace-nowrap text-lg font-bold text-[#7C3AED]">
+              StudyBuddy
+            </span>
+          )}
         </Link>
 
         {mobile ? (

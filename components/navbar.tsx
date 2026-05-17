@@ -67,6 +67,7 @@ export function Navbar() {
           className="flex items-center gap-2 font-bold tracking-tight group"
         >
           <BrandLogo />
+          <span className="text-lg font-bold text-[#7C3AED]">StudyBuddy</span>
         </Link>
 
         {/* Mobile Menu Button */}
