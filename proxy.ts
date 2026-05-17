@@ -10,6 +10,21 @@ export const proxy = withAuth(
       return NextResponse.redirect(new URL("/login", req.url));
     }
 
+    if (
+      token?.accountStatus === "banned" &&
+      pathname !== "/account-suspended" &&
+      !pathname.startsWith("/api/auth")
+    ) {
+      if (pathname.startsWith("/api")) {
+        return NextResponse.json(
+          { message: "Account suspended." },
+          { status: 403 }
+        );
+      }
+
+      return NextResponse.redirect(new URL("/account-suspended", req.url));
+    }
+
     if (pathname.startsWith("/admin") && String(token?.role || "").toUpperCase() !== "ADMIN") {
       return NextResponse.redirect(new URL("/login", req.url));
     }
@@ -24,7 +39,10 @@ export const proxy = withAuth(
     },
     callbacks: {
       authorized: ({ token, req }) => {
-        if (req.nextUrl.pathname.startsWith("/dashboard") || req.nextUrl.pathname.startsWith("/admin")) {
+        if (
+          req.nextUrl.pathname.startsWith("/dashboard") ||
+          req.nextUrl.pathname.startsWith("/admin")
+        ) {
           return !!token;
         }
         return true;
@@ -34,5 +52,5 @@ export const proxy = withAuth(
 );
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/api/:path*"],
 };

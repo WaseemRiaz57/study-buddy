@@ -46,6 +46,18 @@ const userSchema = new Schema(
       default: "active",
       index: true,
     },
+    accountStatus: {
+      type: String,
+      enum: ["active", "suspended", "banned"],
+      default: "active",
+      index: true,
+    },
+    activeStrikes: {
+      type: Number,
+      default: 0,
+      min: 0,
+      index: true,
+    },
     // Naya feature: Study with Buddy ke liye topics (Static Profile)
     subjects: {
       type: [String],

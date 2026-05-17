@@ -13,6 +13,7 @@ declare module "next-auth" {
       id: string;
       role: Role;
       subscriptionPlan?: "free" | "pro" | "elite";
+      accountStatus?: "active" | "suspended" | "banned";
       name?: string | null;
       email?: string | null;
       image?: string | null;
@@ -25,6 +26,7 @@ declare module "next-auth/jwt" {
     id: string;
     role: Role;
     subscriptionPlan?: "free" | "pro" | "elite";
+    accountStatus?: "active" | "suspended" | "banned";
     image?: string | null;
   }
 }
@@ -32,13 +34,13 @@ declare module "next-auth/jwt" {
 function normalizeRole(role: unknown): Role {
   const r = String(role).toUpperCase();
   if (r === "ADMIN") return "ADMIN";
-  if (r === "TEACHER" || r === "MENTOR") return "TEACHER";
+  if (r === "TEACHER" || r === "MENTOR") return "MENTOR";
   return "STUDENT";
 }
 
-function normalizeSignupRole(role: unknown): "student" | "teacher" {
+function normalizeSignupRole(role: unknown): "student" | "mentor" {
   const normalized = String(role).toLowerCase();
-  return normalized === "teacher" || normalized === "mentor" ? "teacher" : "student";
+  return normalized === "teacher" || normalized === "mentor" ? "mentor" : "student";
 }
 
 function normalizeSubscriptionPlan(plan: unknown): "free" | "pro" | "elite" {
@@ -46,6 +48,15 @@ function normalizeSubscriptionPlan(plan: unknown): "free" | "pro" | "elite" {
   if (normalized === "elite") return "elite";
   if (normalized === "pro") return "pro";
   return "free";
+}
+
+function normalizeAccountStatus(
+  status: unknown
+): "active" | "suspended" | "banned" {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "banned") return "banned";
+  if (normalized === "suspended") return "suspended";
+  return "active";
 }
 
 function normalizeEmail(email: unknown): string {
@@ -156,6 +167,9 @@ export const authOptions: NextAuthOptions = {
             token.subscriptionPlan = normalizeSubscriptionPlan(
               (dbUser as any).subscriptionPlan || (dbUser as any).plan
             );
+            token.accountStatus = normalizeAccountStatus(
+              (dbUser as any).accountStatus || (dbUser as any).status
+            );
           }
 
           if (session?.user) {
@@ -197,6 +211,9 @@ export const authOptions: NextAuthOptions = {
           token.subscriptionPlan = normalizeSubscriptionPlan(
             (dbUser as any).subscriptionPlan || (dbUser as any).plan
           );
+          token.accountStatus = normalizeAccountStatus(
+            (dbUser as any).accountStatus || (dbUser as any).status
+          );
         } else {
           token.id = user.id;
           token.email = user.email;
@@ -204,10 +221,31 @@ export const authOptions: NextAuthOptions = {
           token.image = user.image ?? null;
           token.role = normalizeRole((user as { role?: unknown }).role);
           token.subscriptionPlan = "free";
+          token.accountStatus = "active";
+        }
+      } else if (token.id) {
+        try {
+          await connectMongoDB();
+          const dbUser = await User.findById(token.id, "accountStatus status role subscriptionPlan plan image name email").lean();
+          if (dbUser) {
+            token.email = dbUser.email;
+            token.name = dbUser.name;
+            token.image = dbUser.image ?? token.image ?? null;
+            token.role = normalizeRole(dbUser.role);
+            token.subscriptionPlan = normalizeSubscriptionPlan(
+              (dbUser as any).subscriptionPlan || (dbUser as any).plan
+            );
+            token.accountStatus = normalizeAccountStatus(
+              (dbUser as any).accountStatus || (dbUser as any).status
+            );
+          }
+        } catch (error) {
+          console.error("Error refreshing account status:", error);
         }
       }
       token.role = normalizeRole(token.role);
       token.subscriptionPlan = normalizeSubscriptionPlan(token.subscriptionPlan);
+      token.accountStatus = normalizeAccountStatus(token.accountStatus);
       return token;
     },
 
@@ -219,6 +257,7 @@ export const authOptions: NextAuthOptions = {
         session.user.image = token.image ?? null;
         session.user.role = normalizeRole(token.role);
         session.user.subscriptionPlan = normalizeSubscriptionPlan(token.subscriptionPlan);
+        session.user.accountStatus = normalizeAccountStatus(token.accountStatus);
       }
       return session;
     },
