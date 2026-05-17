@@ -161,7 +161,7 @@ export default function LeaderboardControlPage() {
         body: JSON.stringify({
           action: "adjust-xp",
           userId: modal.user.id,
-          xpDelta: xpAdjust,
+          newXP: Math.max(0, modal.user.totalXP + xpAdjust),
         }),
       });
       const data = await response.json().catch(() => null);

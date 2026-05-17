@@ -211,45 +211,62 @@ export async function PATCH(request: Request) {
       });
     }
 
-    const xpDelta = Number(body.xpDelta);
-
-    if (!Number.isFinite(xpDelta) || !Number.isInteger(xpDelta)) {
-      return NextResponse.json(
-        { message: "XP adjustment must be a whole number." },
-        { status: 400 }
-      );
-    }
-
     const ProfileModel =
       String(user.role || "").toLowerCase() === "mentor"
         ? MentorProfile
         : StudentProfile;
     const userObjectId = new mongoose.Types.ObjectId(userId);
     const profile = await ProfileModel.findOne({ userId: userObjectId });
+    const currentXP = Number(profile?.xp || 0);
+    const requestedNewXP = Number(body.newXP);
+    const requestedDelta = Number(body.xpDelta);
+    const hasNewXP = Number.isFinite(requestedNewXP);
+    const hasDelta = Number.isFinite(requestedDelta);
 
-    if (profile) {
-      profile.xp = Math.max(0, Number(profile.xp || 0) + xpDelta);
-      profile.weeklyXP = Math.max(0, Number(profile.weeklyXP || 0) + xpDelta);
-      profile.monthlyXP = Math.max(0, Number(profile.monthlyXP || 0) + xpDelta);
-      await profile.save();
-    } else {
-      await ProfileModel.create({
-        userId: userObjectId,
-        xp: Math.max(0, xpDelta),
-        weeklyXP: Math.max(0, xpDelta),
-        monthlyXP: Math.max(0, xpDelta),
-      });
+    if (!hasNewXP && !hasDelta) {
+      return NextResponse.json(
+        { message: "A new XP total or XP adjustment is required." },
+        { status: 400 }
+      );
     }
+
+    const newXP = Math.max(
+      0,
+      Math.floor(hasNewXP ? requestedNewXP : currentXP + requestedDelta)
+    );
+    const xpDifference = newXP - currentXP;
+
+    const updatedProfile =
+      profile ||
+      new ProfileModel({
+        userId: userObjectId,
+        xp: 0,
+        weeklyXP: 0,
+        monthlyXP: 0,
+      });
+
+    updatedProfile.xp = newXP;
+    updatedProfile.weeklyXP = Math.max(
+      0,
+      Number(updatedProfile.weeklyXP || 0) + xpDifference
+    );
+    updatedProfile.monthlyXP = Math.max(
+      0,
+      Number(updatedProfile.monthlyXP || 0) + xpDifference
+    );
+    await updatedProfile.save();
 
     await logActivity({
       actionType: "LEADERBOARD_XP_ADJUSTED",
-      message: `Admin adjusted ${user.name || user.email || "a user"} by ${xpDelta} XP`,
+      message: `Admin set ${user.name || user.email || "a user"} to ${newXP} XP (${xpDifference >= 0 ? "+" : ""}${xpDifference})`,
       targetId: userId,
     });
 
     return NextResponse.json({
       success: true,
       message: "XP updated successfully.",
+      xp: newXP,
+      xpDifference,
       adminId: session?.user?.id || "",
     });
   } catch (error) {
