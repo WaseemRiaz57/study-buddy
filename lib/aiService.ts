@@ -40,8 +40,8 @@ type GeneratedContentResult =
   | { type: "notes" | "summarizer"; text: string }
   | { type: "quiz"; questions: QuizQuestion[]; rawText: string };
 
-const PRIMARY_MODEL_NAME = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-const FALLBACK_MODEL_NAME = "gemini-1.5-flash";
+const PRIMARY_MODEL_NAME = "gemini-1.5-flash-latest";
+const FALLBACK_MODEL_NAME = "gemini-1.0-pro";
 const MAX_SOURCE_CHARS = 50000;
 
 function getGenAI() {
