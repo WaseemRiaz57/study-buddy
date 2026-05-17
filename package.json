@@ -11,9 +11,6 @@
   },
   "dependencies": {
     "@types/nodemailer": "^8.0.0",
-    "agora-access-token": "^2.0.4",
-    "agora-rtc-react": "^2.5.1",
-    "agora-rtc-sdk-ng": "^4.24.3",
     "cloudinary": "^2.9.0",
     "framer-motion": "^12.34.0",
     "livekit-client": "^2.18.9",

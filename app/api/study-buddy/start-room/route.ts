@@ -17,7 +17,7 @@ import User from "@/models/User";
  *   - sessionId → resolves both students from StudySession
  *   - peerId    → uses the caller + the given peer
  *
- * Returns Agora credentials + room details so the React frontend can connect.
+ * Returns room details so the React frontend can connect.
  * Restricted to students only.
  */
 export async function POST(req: NextRequest) {
@@ -140,10 +140,7 @@ export async function POST(req: NextRequest) {
       {
         message: "Study room created successfully!",
         roomId: result.roomId,
-        channelName: result.channelName,
         socketNamespace: result.socketNamespace,
-        agoraAppId: result.agoraAppId,
-        tokens: result.tokens,
         startTime: result.startTime,
       },
       { status: 201 }

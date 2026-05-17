@@ -1,11 +1,12 @@
 "use client";
 
-import { BookOpen, Menu, X, Moon, Sun, User, Settings } from "lucide-react";
+import { Menu, X, Moon, Sun, User, Settings } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react"; // 👈 NextAuth import
+import { BrandLogo } from "@/components/BrandLogo";
 
 const navItems: Array<{ href: string; label: string }> = [];
 
@@ -65,10 +66,7 @@ export function Navbar() {
           href="/" 
           className="flex items-center gap-2 font-bold tracking-tight group"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#7C3AED]">
-            <BookOpen className="h-5 w-5 text-white" strokeWidth={2.5} />
-          </span>
-          <span className="text-lg font-bold text-[#7C3AED]">StudyBuddy</span>
+          <BrandLogo />
         </Link>
 
         {/* Mobile Menu Button */}

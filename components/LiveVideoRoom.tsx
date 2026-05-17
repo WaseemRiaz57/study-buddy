@@ -231,6 +231,7 @@ export default function LiveVideoRoom({
     setIsMicLockedByHost(false);
   }
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const syncRoomState = useCallback((room: Room) => {
     const participants = Array.from(room.remoteParticipants.values());
     const localScreenPublication = room.localParticipant.getTrackPublication(Track.Source.ScreenShare);

@@ -182,7 +182,7 @@ export async function GET(req: Request) {
       }
 
       const peerId = isStudent ? matchedPeerId : studentId;
-      let room = match.roomId
+      const room = match.roomId
         ? ((await StudyRoom.findById(match.roomId).lean()) as LeanStudyRoom | null)
         : null;
 

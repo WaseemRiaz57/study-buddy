@@ -6,9 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Award,
   CalendarCheck,
-  ChevronLeft,
   ClipboardList,
-  X,
   DollarSign,
   FileText,
   GraduationCap,
@@ -17,6 +15,8 @@ import {
   Library,
   Lock,
   MessageSquare,
+  PanelLeftOpen,
+  PanelRightOpen,
   Send,
   Sparkles,
   Swords,
@@ -24,8 +24,10 @@ import {
   UserPlus,
   Users,
   Video,
+  X,
   type LucideIcon,
 } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useUserStore, type Plan, type Role } from "@/store/useUserStore";
 
 interface NavItem {
@@ -104,20 +106,22 @@ export function Sidebar({
         }`}
       >
         <Link
-          href="/dashboard"
-          onClick={onNavigate}
+          href={!mobile && isCollapsed ? "#" : "/dashboard"}
+          onClick={(event) => {
+            if (!mobile && isCollapsed) {
+              event.preventDefault();
+              setIsCollapsed(false);
+              return;
+            }
+
+            onNavigate?.();
+          }}
           className={`flex min-w-0 items-center gap-2 ${
             !mobile && isCollapsed ? "justify-center" : ""
           }`}
+          aria-label={!mobile && isCollapsed ? "Expand sidebar" : "Dashboard"}
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED] shadow-lg shadow-purple-500/20">
-            <Sparkles className="text-white" size={19} />
-          </div>
-          {(mobile || !isCollapsed) && (
-            <span className="truncate text-lg font-black text-[#7C3AED]">
-              StudyBuddy
-            </span>
-          )}
+          <BrandLogo compact={!mobile && isCollapsed} />
         </Link>
 
         {mobile ? (
@@ -134,12 +138,17 @@ export function Sidebar({
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <ChevronLeft
-              size={18}
-              className={`transition-transform duration-300 ${
-                isCollapsed ? "rotate-180" : ""
-              }`}
-            />
+            {isCollapsed ? (
+              <PanelRightOpen
+                size={18}
+                className="text-[#7C3AED] transition-transform duration-300"
+              />
+            ) : (
+              <PanelLeftOpen
+                size={18}
+                className="text-[#7C3AED] transition-transform duration-300"
+              />
+            )}
           </button>
         )}
       </div>

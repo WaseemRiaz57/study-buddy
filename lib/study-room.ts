@@ -1,5 +1,4 @@
 import { connectMongoDB } from "@/lib/mongodb";
-import { createRoomCredentials } from "@/lib/agora";
 import {
   initializeStudyRoomState,
   touchStudyRoomState,
@@ -12,10 +11,7 @@ import mongoose from "mongoose";
 
 export interface StartRoomResult {
   roomId: string;
-  channelName: string;
   socketNamespace: string;
-  agoraAppId: string;
-  tokens: { [userId: string]: string };
   startTime: Date;
 }
 
@@ -33,11 +29,10 @@ function generateShortRoomId() {
 /**
  * UC-14 / FR-7 — StartStudyRoom Algorithm
  *
- * 1. Generate a unique channel name for WebRTC / Agora signaling.
+ * 1. Generate a short room code for the shared study space.
  * 2. Create a StudyRoom record in MongoDB with ActiveStatus: true.
- * 3. Generate Agora tokens for both participants.
- * 4. Dispatch a "room_created" notification to the matched peer (FR-12).
- * 5. Return the room ID + credentials so the frontend can connect.
+ * 3. Dispatch a "room_created" notification to the matched peer (FR-12).
+ * 4. Return the room ID + socket namespace so the frontend can connect.
  */
 export async function startStudyRoom(
   studentAId: string,
@@ -46,10 +41,7 @@ export async function startStudyRoom(
 ): Promise<StartRoomResult> {
   await connectMongoDB();
 
-  // ── 1. Generate channel + tokens ──────────────────────────────────
-  const credentials = createRoomCredentials(studentAId, studentBId);
-
-  // ── 2. Persist StudyRoom ──────────────────────────────────────────
+  // ── 1. Persist StudyRoom ──────────────────────────────────────────
   let roomCode = generateShortRoomId();
   let existingRoom = await StudyRoom.exists({ roomId: roomCode });
 
@@ -91,7 +83,6 @@ export async function startStudyRoom(
     read: false,
     metadata: {
       roomId: room._id.toString(),
-      channelName: credentials.channelName,
       subject: subject || "",
     },
   });
@@ -109,17 +100,13 @@ export async function startStudyRoom(
     read: false,
     metadata: {
       roomId: room._id.toString(),
-      channelName: credentials.channelName,
       subject: subject || "",
     },
   });
 
   return {
     roomId: room.roomId,
-    channelName: credentials.channelName,
     socketNamespace: STUDY_ROOM_SOCKET_NAMESPACE,
-    agoraAppId: credentials.agoraAppId,
-    tokens: credentials.tokens,
     startTime: room.createdAt,
   };
 }

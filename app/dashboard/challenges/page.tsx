@@ -87,12 +87,12 @@ function getInitials(name: string) {
   );
 }
 
-function iconForType(type: ChallengeType): LucideIcon {
-  if (type === "weekly") return Trophy;
-  if (type === "global") return Users;
-  if (type === "elite") return Crown;
-  return Target;
-}
+const CHALLENGE_TYPE_ICONS: Record<ChallengeType, LucideIcon> = {
+  daily: Target,
+  weekly: Trophy,
+  global: Users,
+  elite: Crown,
+};
 
 function formatMetric(value: number) {
   return Number.isInteger(value) ? value.toLocaleString() : value.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -128,7 +128,7 @@ function ChallengeCard({
   onUnlock: () => void;
   isClaiming: boolean;
 }) {
-  const Icon = iconForType(challenge.type);
+  const Icon = CHALLENGE_TYPE_ICONS[challenge.type] || Target;
   const progress = Math.min(100, Math.max(0, challenge.progress.percentage || 0));
   const canClaim =
     challenge.progress.isCompleted &&
