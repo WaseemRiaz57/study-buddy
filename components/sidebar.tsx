@@ -150,9 +150,9 @@ export function Sidebar({
           }`}
           aria-label={!mobile && isCollapsed ? "Expand sidebar" : "Dashboard"}
         >
-          <BrandLogo />
+          <BrandLogo size={!mobile && isCollapsed ? "mark" : "lockup"} />
           {(mobile || !isCollapsed) && (
-            <span className="whitespace-nowrap text-lg font-bold text-[#7C3AED]">
+            <span className="whitespace-nowrap text-xl font-extrabold tracking-tight text-[#7C3AED]">
               StudyBuddy
             </span>
           )}
