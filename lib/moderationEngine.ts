@@ -132,15 +132,15 @@ export async function issuePenalty(
     isActive: true,
   });
 
-  const user = (await User.findByIdAndUpdate(
-    userId,
-    actionType === "strike"
-      ? { $inc: { activeStrikes: 1 } }
-      : actionType === "ban"
-        ? { $set: { accountStatus: "banned", status: "suspended" } }
-        : {},
-    { new: true, select: "name email activeStrikes" }
-  ).lean()) as LeanUser | null;
+  const user = (actionType === "warning"
+    ? await User.findById(userId, "name email activeStrikes").lean()
+    : await User.findByIdAndUpdate(
+        userId,
+        actionType === "strike"
+          ? { $inc: { activeStrikes: 1 } }
+          : { $set: { accountStatus: "banned", status: "suspended" } },
+        { new: true, select: "name email activeStrikes" }
+      ).lean()) as LeanUser | null;
 
   if (!user) {
     throw new Error("User not found.");
