@@ -252,7 +252,7 @@ export default function UserManagementPage() {
   if (!mounted) return <div className="min-h-screen" />;
 
   return (
-    <div className="p-6 bg-white dark:bg-[#0f0a16] min-h-screen">
+    <div className="min-h-screen bg-white p-3 dark:bg-[#0f0a16] sm:p-4 lg:p-6">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold flex items-center gap-2">
           <Users className="w-6 h-6 text-[#7C3AED]" /> User Management
@@ -474,7 +474,7 @@ export default function UserManagementPage() {
       </div>
       {modalUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#0f0a16] rounded-xl shadow-xl p-6 w-full max-w-md border border-slate-200 dark:border-white/10">
+          <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-white/10 dark:bg-[#0f0a16] sm:max-w-md sm:p-6">
             <div className="flex items-center gap-3 mb-4">
               {modalAction === "edit" && <Edit className="w-5 h-5 text-[#7C3AED]" />}
               {modalAction === "reset" && <Key className="w-5 h-5 text-green-500" />}

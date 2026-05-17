@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   ChevronLeft,
   ClipboardList,
+  X,
   DollarSign,
   FileText,
   GraduationCap,
@@ -59,9 +60,15 @@ const buildNavItems = (isCommunity: boolean): NavItem[] => [
 export function Sidebar({
   initialRole,
   initialPlan,
+  mobile = false,
+  onNavigate,
+  onClose,
 }: {
   initialRole?: Role;
   initialPlan?: Plan;
+  mobile?: boolean;
+  onNavigate?: () => void;
+  onClose?: () => void;
 }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -87,31 +94,54 @@ export function Sidebar({
 
   return (
     <aside
-      className={`relative flex h-screen flex-col border-r border-border bg-background text-muted-foreground transition-all duration-300 ease-in-out dark:border-white/[0.06] dark:bg-[#0a0a0f] dark:text-slate-300 ${
-        isCollapsed ? "w-20" : "w-72"
+      className={`relative flex h-screen shrink-0 flex-col border-r border-border bg-background text-muted-foreground transition-all duration-300 ease-in-out dark:border-white/[0.06] dark:bg-[#0a0a0f] dark:text-slate-300 ${
+        mobile ? "w-72 max-w-[86vw]" : isCollapsed ? "w-20" : "w-72"
       }`}
     >
       <div
         className={`flex h-16 items-center border-b border-border px-4 dark:border-white/[0.06] ${
-          isCollapsed ? "justify-center" : "justify-end"
+          mobile || !isCollapsed ? "justify-between" : "justify-center"
         }`}
       >
-        <button
-          onClick={() => setIsCollapsed((current) => !current)}
-          className={`rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white ${
-            isCollapsed
-              ? "absolute -right-3 top-5 z-10 border border-border bg-background shadow-lg dark:border-white/10 dark:bg-[#0a0a0f]"
-              : ""
+        <Link
+          href="/dashboard"
+          onClick={onNavigate}
+          className={`flex min-w-0 items-center gap-2 ${
+            !mobile && isCollapsed ? "justify-center" : ""
           }`}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <ChevronLeft
-            size={18}
-            className={`transition-transform duration-300 ${
-              isCollapsed ? "rotate-180" : ""
-            }`}
-          />
-        </button>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED] shadow-lg shadow-purple-500/20">
+            <Sparkles className="text-white" size={19} />
+          </div>
+          {(mobile || !isCollapsed) && (
+            <span className="truncate text-lg font-black text-[#7C3AED]">
+              StudyBuddy
+            </span>
+          )}
+        </Link>
+
+        {mobile ? (
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+            aria-label="Close sidebar"
+          >
+            <X size={18} />
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsCollapsed((current) => !current)}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <ChevronLeft
+              size={18}
+              className={`transition-transform duration-300 ${
+                isCollapsed ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        )}
       </div>
 
       <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto px-3 py-4">
@@ -122,12 +152,19 @@ export function Sidebar({
             <Link
               key={item.href}
               href={item.locked ? "#" : item.href}
-              onClick={(event) => item.locked && event.preventDefault()}
+              onClick={(event) => {
+                if (item.locked) {
+                  event.preventDefault();
+                  return;
+                }
+
+                onNavigate?.();
+              }}
               aria-disabled={item.locked}
             >
               <div
                 className={`group relative flex items-center gap-3 overflow-hidden rounded-xl transition-all duration-200 ${
-                  isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3"
+                  !mobile && isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3"
                 } ${
                   isActive
                     ? "bg-[#7C3AED]/10 text-[#7C3AED] dark:text-purple-400 dark:shadow-[inset_0_0_20px_rgba(140,48,232,0.08)]"
@@ -151,26 +188,26 @@ export function Sidebar({
                   }`}
                 />
 
-                {!isCollapsed && (
+                {(mobile || !isCollapsed) && (
                   <span className="whitespace-nowrap text-sm font-medium">
                     {item.label}
                   </span>
                 )}
 
-                {!isCollapsed && item.badge && (
+                {(mobile || !isCollapsed) && item.badge && (
                   <span className="ml-auto rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7C3AED] dark:bg-[#7C3AED]/15">
                     {item.badge}
                   </span>
                 )}
 
-                {!isCollapsed && item.locked && (
+                {(mobile || !isCollapsed) && item.locked && (
                   <Lock
                     size={14}
                     className="ml-auto text-muted-foreground/50 dark:text-slate-600"
                   />
                 )}
 
-                {isCollapsed && (
+                {!mobile && isCollapsed && (
                   <span className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg border border-border bg-slate-800 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-xl transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 dark:border-white/10 dark:bg-slate-900">
                     {item.label}
                     {item.locked && " Locked"}

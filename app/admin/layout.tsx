@@ -599,7 +599,9 @@ export default function AdminLayout({
         </header>
 
         {/* Page content */}
-        <div className="flex-1 p-6">{children}</div>
+        <div className="mx-auto w-full max-w-screen-2xl flex-1 p-3 sm:p-4 lg:p-6">
+          {children}
+        </div>
       </main>
     </div>
   );

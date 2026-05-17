@@ -211,7 +211,7 @@ export default function RegisterPage() {
         type="button"
         onClick={() => onSelect(cardRole)}
         aria-pressed={isSelected}
-        className={`relative cursor-pointer p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-3 group ${
+        className={`relative cursor-pointer p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-3 group sm:p-6 ${
           isSelected
             ? `${primaryColor} ${shadowColor} scale-[1.02]`
             : `border-border/50 ${hoverColor} hover:bg-slate-50 dark:hover:bg-white/5 opacity-70 hover:opacity-100`
@@ -257,7 +257,7 @@ export default function RegisterPage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="glass-panel mx-auto w-full max-w-2xl rounded-[2rem] p-8 md:p-12 shadow-2xl relative overflow-hidden bg-card/80 backdrop-blur-xl"
+        className="glass-panel mx-auto w-full max-w-2xl rounded-[2rem] p-5 sm:p-8 md:p-12 shadow-2xl relative overflow-hidden bg-card/80 backdrop-blur-xl"
       >
         <div className="text-center mb-8">
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-bold mb-3">

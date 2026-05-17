@@ -120,7 +120,7 @@ export default function LoginPage() {
         initial="initial"
         animate="animate"
         variants={staggerContainer}
-        className="w-full max-w-md"
+        className="w-full max-w-md px-4 sm:px-0"
       >
         {/* Header Section */}
         <motion.div variants={fadeInUp} className="mb-8 text-center">
@@ -172,7 +172,7 @@ export default function LoginPage() {
         {/* Form Card */}
         <motion.div
           variants={scaleIn}
-          className="relative overflow-hidden rounded-3xl border border-border/50 bg-card p-8 backdrop-blur-xl shadow-2xl"
+          className="relative overflow-hidden rounded-3xl border border-border/50 bg-card p-5 backdrop-blur-xl shadow-2xl sm:p-8"
         >
           <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
 

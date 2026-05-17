@@ -6,12 +6,12 @@ import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { signOut, useSession } from "next-auth/react";
 import {
-  BookOpen,
   ChevronDown,
   Coins,
   Flame,
   Loader2,
   LogOut,
+  Menu,
   Moon,
   Settings,
   Shield,
@@ -42,7 +42,11 @@ const EMPTY_STATS: GamificationStats = {
   nextLevelXp: 1000,
 };
 
-export function DashboardTopbar() {
+export function DashboardTopbar({
+  onOpenSidebar,
+}: {
+  onOpenSidebar?: () => void;
+}) {
   const { resolvedTheme, setTheme } = useTheme();
   const { data: session, status } = useSession();
   const { role } = useUserStore();
@@ -209,14 +213,16 @@ export function DashboardTopbar() {
   return (
     <>
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#7C3AED] shadow-lg shadow-purple-500/20">
-              <BookOpen className="text-white" size={20} />
-            </div>
-            <h1 className="text-xl font-bold text-[#7C3AED]">StudyBuddy</h1>
-          </div>
+      <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 lg:px-6 lg:py-3">
+        <div className="flex min-w-0 items-center gap-3 lg:gap-8">
+          <button
+            type="button"
+            onClick={onOpenSidebar}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED] md:hidden"
+            aria-label="Open navigation"
+          >
+            <Menu size={20} />
+          </button>
 
           {role === "STUDENT" ? (
             <div className="hidden w-48 flex-col md:flex">
@@ -238,7 +244,7 @@ export function DashboardTopbar() {
               </div>
             </div>
           ) : (
-            <nav className="hidden items-center gap-6 md:flex">
+            <nav className="hidden items-center gap-6 xl:flex">
               {["Dashboard", "Sessions", "Students", "Resources"].map((item, index) => (
                 <a
                   key={item}
@@ -256,10 +262,10 @@ export function DashboardTopbar() {
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2 lg:gap-4">
           <button
             onClick={() => setStoreOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 transition-colors hover:border-[#7C3AED]/40"
+            className="hidden items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:flex"
             title="Open streak store"
           >
             <Flame className="text-orange-500" size={16} />
@@ -291,7 +297,7 @@ export function DashboardTopbar() {
 
           <button
             onClick={() => setStoreOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-3 py-1.5 transition-colors hover:border-[#7C3AED]/40"
+            className="flex items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:px-3"
             title="Open coin store"
           >
             <Coins className="text-yellow-600 dark:text-yellow-400" size={16} />
@@ -320,9 +326,9 @@ export function DashboardTopbar() {
 
           <NotificationBell />
 
-          <div ref={userMenuRef} className="relative">
+          <div ref={userMenuRef} className="relative shrink-0">
             {role === "STUDENT" ? (
-              <div className="flex items-center gap-3 border-l border-border/50 pl-4">
+              <div className="flex items-center gap-2 border-l border-border/50 pl-2 sm:gap-3 sm:pl-4">
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-bold leading-none">
                   {status === "loading" ? "Loading..." : `Welcome ${firstName}`}
@@ -340,7 +346,7 @@ export function DashboardTopbar() {
             {userMenuOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-[80] mt-3 w-64 rounded-2xl border border-border bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-[#191121]"
+                className="absolute right-0 top-full z-[80] mt-3 w-[calc(100vw-1.5rem)] max-w-64 rounded-2xl border border-border bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-[#191121]"
               >
                 <div className="border-b border-border px-3 py-3 dark:border-white/10">
                   <p className="truncate text-sm font-bold text-foreground">
@@ -392,8 +398,8 @@ export function DashboardTopbar() {
       </div>
     </header>
     {storeOpen && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#191121]">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-4">
+        <div className="w-full max-w-sm rounded-2xl border border-border bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-[#191121] sm:max-w-md sm:p-6">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
@@ -484,8 +490,8 @@ export function DashboardTopbar() {
       </div>
     )}
     {reviewOpen && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#191121]">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-4">
+        <div className="w-full max-w-sm rounded-2xl border border-border bg-white p-4 shadow-2xl dark:border-white/10 dark:bg-[#191121] sm:max-w-md sm:p-6">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">

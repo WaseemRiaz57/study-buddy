@@ -447,10 +447,10 @@ export default function UpgradePage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-background px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-background px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
       {/* ── Background Decoration ───────────────────────────────── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 left-1/2 h-[500px] w-[700px] -translate-x-1/2 rounded-full bg-purple-500/10 blur-[120px] dark:bg-purple-600/15" />
+        <div className="absolute -top-32 left-1/2 h-[320px] w-[min(700px,90vw)] -translate-x-1/2 rounded-full bg-purple-500/10 blur-[120px] dark:bg-purple-600/15 sm:h-[500px]" />
         <div className="absolute top-60 right-0 h-[300px] w-[400px] rounded-full bg-amber-400/10 blur-[100px] dark:bg-amber-500/10" />
       </div>
 
