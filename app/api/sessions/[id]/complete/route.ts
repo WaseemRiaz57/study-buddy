@@ -107,7 +107,10 @@ export async function PATCH(
         { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
       ),
       awardUser(String(mentorSession.studentId), "COMPLETED_SESSION"),
-      trackProgress(String(mentorSession.studentId), "teacher_session", 1),
+      Promise.all([
+        trackProgress(String(mentorSession.studentId), "teacher_session", 1),
+        trackProgress(String(mentorSession.studentId), "completed_session", 1),
+      ]).then((results) => results.flat()),
     ]);
 
     await Promise.all([

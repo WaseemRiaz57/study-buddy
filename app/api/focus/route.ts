@@ -71,7 +71,10 @@ export async function POST(req: Request) {
 
     await progress.save();
     const challengeProgress = session.user.id
-      ? await trackProgress(session.user.id, "focus_room", 1)
+      ? await Promise.all([
+          trackProgress(session.user.id, "focus_room", 1),
+          trackProgress(session.user.id, "focus_minutes", focusMinutes),
+        ]).then((results) => results.flat())
       : [];
 
     return NextResponse.json({ progress, earnedXp, challengeProgress });

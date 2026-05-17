@@ -12,6 +12,7 @@ import {
   Pin,
   Flag,
   AlertTriangle,
+  Award,
   Scale,
   ShieldCheck,
   Users,
@@ -93,6 +94,7 @@ const navGroups: NavGroup[] = [
     items: [
       { icon: Trophy, label: "Leaderboard Control", href: "/admin/leaderboard" },
       { icon: Swords, label: "Challenges Mgmt", href: "/admin/challenges" },
+      { icon: Award, label: "Badge Management", href: "/admin/gamification/badges" },
     ],
   },
   {

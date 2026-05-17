@@ -129,7 +129,7 @@ export async function awardUser(
   }
 
   const normalizedRole = String(user.role || "student").toLowerCase();
-  const ProfileModel = normalizedRole === "mentor" ? MentorProfile : StudentProfile;
+  const ProfileModel = normalizedRole === "teacher" ? MentorProfile : StudentProfile;
   const today = new Date();
   const userObjectId = new mongoose.Types.ObjectId(userId);
   const currentProfile = await ProfileModel.findOne({ userId: userObjectId })
@@ -227,7 +227,7 @@ export async function purchaseStreakFreeze(userId: string) {
   }
 
   const normalizedRole = String(user.role || "student").toLowerCase();
-  const ProfileModel = normalizedRole === "mentor" ? MentorProfile : StudentProfile;
+  const ProfileModel = normalizedRole === "teacher" ? MentorProfile : StudentProfile;
   const userObjectId = new mongoose.Types.ObjectId(userId);
   const profile = await ProfileModel.findOneAndUpdate(
     {
@@ -277,7 +277,7 @@ export async function getGamificationStats(userId: string) {
 
   const user = await User.findById(userId).select("role").lean();
   const normalizedRole = String(user?.role || "student").toLowerCase();
-  const ProfileModel = normalizedRole === "mentor" ? MentorProfile : StudentProfile;
+  const ProfileModel = normalizedRole === "teacher" ? MentorProfile : StudentProfile;
   const profile = await ProfileModel.findOne({
     userId: new mongoose.Types.ObjectId(userId),
   })

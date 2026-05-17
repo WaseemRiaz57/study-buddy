@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
+import { trackProgress } from "@/lib/challengeTracker";
 import { awardUser, getGamificationStats } from "@/lib/gamificationEngine";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,10 @@ export async function POST() {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const reward = await awardUser(session.user.id, "DAILY_LOGIN");
+    const [reward] = await Promise.all([
+      awardUser(session.user.id, "DAILY_LOGIN"),
+      trackProgress(session.user.id, "daily_login", 1),
+    ]);
 
     return NextResponse.json({ reward, stats: reward.profile });
   } catch (error) {

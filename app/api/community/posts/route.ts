@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
+import { trackProgress } from "@/lib/challengeTracker";
 import { awardUser } from "@/lib/gamificationEngine";
 import { logActivity } from "@/lib/logActivity";
 import { connectMongoDB } from "@/lib/mongodb";
@@ -192,6 +193,7 @@ export async function POST(request: Request) {
 
     const [rewardResult] = await Promise.allSettled([
       awardUser(session.user.id, "CREATED_POST"),
+      trackProgress(session.user.id, "created_post", 1),
       logActivity({
         actionType: "COMMUNITY_POST_CREATED",
         message: `${session.user.name || "A user"} published a community post: ${title}`,

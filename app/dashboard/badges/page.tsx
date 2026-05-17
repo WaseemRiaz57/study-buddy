@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Award,
@@ -35,121 +35,33 @@ interface BadgeItem {
   progress?: { current: number; total: number; label: string };
 }
 
+type BadgeApiItem = Omit<BadgeItem, "icon"> & {
+  icon: string;
+  title?: string;
+  earnedAt?: string | null;
+  progressPercentage?: number;
+};
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  Award,
+  Crown,
+  Shield,
+  BookOpen,
+  Flame,
+  Users,
+  Star,
+  Zap,
+  Trophy,
+  Target,
+  MessageSquare,
+  Clock,
+  Sparkles,
+};
+
 type FilterKey = "all" | "legendary" | "rare" | "common";
 type SortKey = "rarity" | "newest" | "name";
 
 // ── Badge Data ─────────────────────────────────────────────
-const badgesData: BadgeItem[] = [
-  {
-    id: "master-scholar",
-    name: "Master Scholar",
-    description: "Complete 100 study sessions with a perfect focus score.",
-    icon: Crown,
-    rarity: "legendary",
-    earned: true,
-    earnedDate: "Jan 2026",
-  },
-  {
-    id: "community-legend",
-    name: "Community Legend",
-    description: "Receive 500 upvotes across all your community posts.",
-    icon: Trophy,
-    rarity: "legendary",
-    earned: true,
-    earnedDate: "Dec 2025",
-  },
-  {
-    id: "flame-keeper",
-    name: "Flame Keeper",
-    description: "Maintain a 30-day study streak without missing a single day.",
-    icon: Flame,
-    rarity: "legendary",
-    earned: false,
-    progress: { current: 22, total: 30, label: "22/30 Days" },
-  },
-  {
-    id: "knowledge-seeker",
-    name: "Knowledge Seeker",
-    description: "Read and annotate 50 shared resources in the Resource Hub.",
-    icon: BookOpen,
-    rarity: "rare",
-    earned: true,
-    earnedDate: "Feb 2026",
-  },
-  {
-    id: "teacher-heart",
-    name: "Teacher Heart",
-    description: "Help 25 students as a peer teacher with 5-star ratings.",
-    icon: Shield,
-    rarity: "rare",
-    earned: true,
-    earnedDate: "Nov 2025",
-  },
-  {
-    id: "team-player",
-    name: "Team Player",
-    description: "Join and actively participate in 20 study rooms.",
-    icon: Users,
-    rarity: "rare",
-    earned: false,
-    progress: { current: 14, total: 20, label: "14/20 Rooms" },
-  },
-  {
-    id: "discussion-spark",
-    name: "Discussion Spark",
-    description: "Start 50 discussions that receive at least 10 replies each.",
-    icon: MessageSquare,
-    rarity: "rare",
-    earned: false,
-    progress: { current: 22, total: 50, label: "22/50 Discussions" },
-  },
-  {
-    id: "rising-star",
-    name: "Rising Star",
-    description: "Reach the top 10 on the weekly leaderboard.",
-    icon: Star,
-    rarity: "common",
-    earned: true,
-    earnedDate: "Jan 2026",
-  },
-  {
-    id: "quick-learner",
-    name: "Quick Learner",
-    description: "Complete your first 10 study sessions within a week.",
-    icon: Zap,
-    rarity: "common",
-    earned: true,
-    earnedDate: "Oct 2025",
-  },
-  {
-    id: "focus-champion",
-    name: "Focus Champion",
-    description: "Spend 100 total hours in Focus Rooms without interruption.",
-    icon: Target,
-    rarity: "common",
-    earned: true,
-    earnedDate: "Dec 2025",
-  },
-  {
-    id: "early-adopter",
-    name: "Early Adopter",
-    description: "Join StudyBuddy within the first month of launch.",
-    icon: Sparkles,
-    rarity: "common",
-    earned: true,
-    earnedDate: "Sep 2025",
-  },
-  {
-    id: "night-owl",
-    name: "Night Owl",
-    description: "Log 50 study hours between 10 PM and 4 AM.",
-    icon: Clock,
-    rarity: "common",
-    earned: false,
-    progress: { current: 31, total: 50, label: "31/50 Hours" },
-  },
-];
-
 // ── Rarity Config ──────────────────────────────────────────
 const rarityConfig: Record<
   BadgeRarity,
@@ -239,15 +151,68 @@ const stagger = {
 
 // ── Component ──────────────────────────────────────────────
 export default function BadgesPage() {
+  const [badges, setBadges] = useState<BadgeItem[]>([]);
+  const [stats, setStats] = useState({
+    earnedCount: 0,
+    totalBadges: 0,
+    completionPercentage: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [sortBy, setSortBy] = useState<SortKey>("rarity");
   const [sortOpen, setSortOpen] = useState(false);
 
+  const fetchBadges = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError("");
+      const response = await fetch("/api/badges/my", { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to load badges.");
+      }
+
+      const mappedBadges = Array.isArray(data?.badges)
+        ? data.badges.map((badge: BadgeApiItem) => ({
+            id: badge.id,
+            name: badge.name || badge.title || "Untitled Badge",
+            description: badge.description || "",
+            icon: ICON_MAP[badge.icon] || Award,
+            rarity: badge.rarity || "common",
+            earned: Boolean(badge.earned),
+            earnedDate: badge.earnedDate || "",
+            progress: badge.progress,
+          }))
+        : [];
+
+      setBadges(mappedBadges);
+      setStats({
+        earnedCount: Number(data?.stats?.earnedCount || 0),
+        totalBadges: Number(data?.stats?.totalBadges || mappedBadges.length),
+        completionPercentage: Number(data?.stats?.completionPercentage || 0),
+      });
+    } catch (fetchError) {
+      setError(
+        fetchError instanceof Error
+          ? fetchError.message
+          : "Failed to load badges."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchBadges();
+  }, [fetchBadges]);
+
   // Filter
   const filtered =
     activeFilter === "all"
-      ? badgesData
-      : badgesData.filter((b) => b.rarity === activeFilter);
+      ? badges
+      : badges.filter((b) => b.rarity === activeFilter);
 
   // Sort
   const sorted = [...filtered].sort((a, b) => {
@@ -259,8 +224,9 @@ export default function BadgesPage() {
   });
 
   // Stats
-  const totalEarned = badgesData.filter((b) => b.earned).length;
-  const totalBadges = badgesData.length;
+  const totalEarned = stats.earnedCount;
+  const totalBadges = stats.totalBadges;
+  const completionPercentage = stats.completionPercentage;
 
   return (
     <div className="min-h-screen bg-[#f7f6f8] dark:bg-[#191121] transition-colors">
@@ -328,13 +294,15 @@ export default function BadgesPage() {
                     Grandmaster
                   </span>
                 </span>
-                <span className="font-bold text-foreground">850 / 1000 XP</span>
+                <span className="font-bold text-foreground">
+                  {totalEarned} / {totalBadges} badges
+                </span>
               </div>
               <div className="relative h-3 rounded-full bg-slate-200/80 dark:bg-white/[0.06] overflow-hidden">
                 <motion.div
                   className="absolute inset-y-0 left-0 rounded-full bg-[#7C3AED]    animate-liquid"
                   initial={{ width: 0 }}
-                  animate={{ width: "85%" }}
+                  animate={{ width: `${completionPercentage}%` }}
                   transition={{ duration: 1.2, ease: "easeOut" }}
                 />
                 <div className="absolute inset-0 rounded-full bg-white/20 dark:bg-white/10" />
@@ -421,9 +389,21 @@ export default function BadgesPage() {
           className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5"
         >
           <AnimatePresence mode="popLayout">
-            {sorted.map((badge) => (
-              <BadgeCard key={badge.id} badge={badge} />
-            ))}
+            {isLoading ? (
+              <div className="break-inside-avoid rounded-2xl border border-border bg-card/80 p-8 text-center text-sm text-muted-foreground">
+                Loading badges...
+              </div>
+            ) : error ? (
+              <div className="break-inside-avoid rounded-2xl border border-red-500/20 bg-red-500/10 p-8 text-center text-sm text-red-600 dark:text-red-400">
+                {error}
+              </div>
+            ) : sorted.length === 0 ? (
+              <div className="break-inside-avoid rounded-2xl border border-border bg-card/80 p-8 text-center text-sm text-muted-foreground">
+                No badges are available yet.
+              </div>
+            ) : (
+              sorted.map((badge) => <BadgeCard key={badge.id} badge={badge} />)
+            )}
           </AnimatePresence>
         </motion.div>
       </div>

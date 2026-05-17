@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
+import { checkBadgeEligibility } from "@/lib/badgeEngine";
 import { connectMongoDB } from "@/lib/mongodb";
 import Challenge from "@/models/Challenge";
 import UserChallengeProgress from "@/models/UserChallengeProgress";
+import UserMetric from "@/models/UserMetric";
 
 type TrackingResult = {
   challengeId: string;
@@ -33,6 +35,18 @@ export async function trackProgress(
   await connectMongoDB();
 
   const userObjectId = new mongoose.Types.ObjectId(userId);
+  const metricRow = await UserMetric.findOneAndUpdate(
+    { userId: userObjectId, metricLabel: normalizedMetric },
+    {
+      $inc: { totalValue: increment },
+      $setOnInsert: { userId: userObjectId, metricLabel: normalizedMetric },
+    },
+    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+  ).lean();
+  const totalMetricValue = Number(metricRow?.totalValue || 0);
+
+  await checkBadgeEligibility(userId, normalizedMetric, totalMetricValue);
+
   const matchingChallenges = await Challenge.find({
     isActive: true,
     metricLabel: normalizedMetric,
