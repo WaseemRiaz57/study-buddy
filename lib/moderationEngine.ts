@@ -265,7 +265,17 @@ export async function approveAppeal(appealId: string) {
 
   appeal.status = "approved";
   await appeal.save();
-  await revokeModerationLog(String(appeal.logId));
+  if (appeal.logId) {
+    await revokeModerationLog(String(appeal.logId));
+  } else {
+    await ModerationLog.updateMany(
+      { userId: appeal.userId, actionType: "ban", isActive: true },
+      { $set: { isActive: false } }
+    );
+    await User.findByIdAndUpdate(appeal.userId, {
+      $set: { accountStatus: "active", status: "active" },
+    });
+  }
 
   await logActivity({
     actionType: "APPEAL_APPROVED",

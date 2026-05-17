@@ -16,6 +16,10 @@ export const proxy = withAuth(
       !pathname.startsWith("/api/auth")
     ) {
       if (pathname.startsWith("/api")) {
+        if (pathname.startsWith("/api/appeals")) {
+          return NextResponse.next();
+        }
+
         return NextResponse.json(
           { message: "Account suspended." },
           { status: 403 }

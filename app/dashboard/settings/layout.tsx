@@ -8,6 +8,7 @@ import { signOut, useSession } from "next-auth/react";
 import {
   User,
   ShieldCheck,
+  ShieldAlert,
   Bell,
   BookOpen,
   CreditCard,
@@ -41,6 +42,7 @@ interface SettingsNavGroup {
 const commonLinks: SettingsNavItem[] = [
   { icon: User, label: "Public Profile", href: "/dashboard/settings/profile" },
   { icon: ShieldCheck, label: "Account & Security", href: "/dashboard/settings/security" },
+  { icon: ShieldAlert, label: "Trust & Safety", href: "/dashboard/settings/trust-safety" },
   { icon: Bell, label: "Notifications", href: "/dashboard/settings/notifications" },
 ];
 

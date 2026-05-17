@@ -15,12 +15,13 @@ import {
   Heart,
   Loader2,
   MessageSquare,
-  MoreHorizontal,
+  Flag,
   Send,
   Share2,
   ThumbsUp,
 } from "lucide-react";
 import PublicProfileModal from "@/components/PublicProfileModal";
+import ReportModal, { type ReportTarget } from "@/components/modals/ReportModal";
 
 interface Author {
   id: string;
@@ -56,10 +57,9 @@ interface Comment {
 
 function RoleBadge({ role }: { role: string }) {
   const rawRole = String(role || "student").toLowerCase();
-  const normalized = rawRole === "mentor" ? "teacher" : rawRole;
+  const normalized = rawRole === "teacher" ? "mentor" : rawRole;
   const styles: Record<string, string> = {
     admin: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
-    teacher: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
     mentor: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
     student: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400",
   };
@@ -168,6 +168,7 @@ export default function PostDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingComment, setIsSendingComment] = useState(false);
   const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
   const currentUserName = session?.user?.name || "User";
   const currentUser: Author = {
@@ -481,8 +482,18 @@ export default function PostDetailPage() {
             <button className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 font-semibold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-gray-300">
               <Share2 size={16} /> Share
             </button>
-            <button className="ml-auto rounded-xl p-2.5 text-slate-400 transition-colors hover:text-slate-600 dark:text-gray-500 dark:hover:text-white">
-              <MoreHorizontal size={18} />
+            <button
+              onClick={() =>
+                setReportTarget({
+                  targetType: "post",
+                  targetId: post.id,
+                  contentSnippet: post.title,
+                  label: post.title,
+                })
+              }
+              className="ml-auto flex items-center gap-2 rounded-xl px-4 py-2.5 font-semibold text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-gray-400 dark:hover:bg-red-500/10"
+            >
+              <Flag size={16} /> Report
             </button>
           </div>
         </motion.div>
@@ -529,6 +540,21 @@ export default function PostDetailPage() {
                       <Heart size={13} />
                       {comment.likes}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReportTarget({
+                          targetType: "comment",
+                          targetId: comment.id,
+                          contentSnippet: comment.text,
+                          label: `Comment by ${comment.author.name}`,
+                        })
+                      }
+                      className="ml-4 mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-red-500 dark:text-gray-500"
+                    >
+                      <Flag size={13} />
+                      Report
+                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -568,6 +594,10 @@ export default function PostDetailPage() {
       <PublicProfileModal
         userId={publicProfileUserId}
         onClose={() => setPublicProfileUserId(null)}
+      />
+      <ReportModal
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
       />
     </div>
   );

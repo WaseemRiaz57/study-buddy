@@ -4,7 +4,7 @@ export type AppealStatus = "pending" | "approved" | "rejected";
 
 export interface IAppeal extends Document {
   userId: mongoose.Types.ObjectId;
-  logId: mongoose.Types.ObjectId;
+  logId?: mongoose.Types.ObjectId | null;
   message: string;
   status: AppealStatus;
   createdAt: Date;
@@ -22,7 +22,8 @@ const AppealSchema = new Schema<IAppeal>(
     logId: {
       type: Schema.Types.ObjectId,
       ref: "ModerationLog",
-      required: true,
+      required: false,
+      default: null,
       index: true,
     },
     message: {

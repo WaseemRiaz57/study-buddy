@@ -8,6 +8,7 @@ import CreatePostModal from "@/components/community/CreatePostModal";
 import PostCard, { type Post } from "@/components/community/PostCard";
 import CommunitySidebar from "@/components/community/CommunitySidebar";
 import PublicProfileModal from "@/components/PublicProfileModal";
+import ReportModal, { type ReportTarget } from "@/components/modals/ReportModal";
 
 const TOPIC_FILTERS = [
   "All",
@@ -88,6 +89,7 @@ export default function CommunityFeedPage() {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -329,6 +331,14 @@ export default function CommunityFeedPage() {
                   index={index}
                   onLike={toggleLike}
                   onAuthorClick={setPublicProfileUserId}
+                  onReport={(reportedPost) =>
+                    setReportTarget({
+                      targetType: "post",
+                      targetId: reportedPost.id,
+                      contentSnippet: reportedPost.excerpt || reportedPost.title,
+                      label: reportedPost.title,
+                    })
+                  }
                 />
               ))
             ) : (
@@ -361,6 +371,10 @@ export default function CommunityFeedPage() {
       <PublicProfileModal
         userId={publicProfileUserId}
         onClose={() => setPublicProfileUserId(null)}
+      />
+      <ReportModal
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarDays,
   Coins,
+  Flag,
   Gift,
   Loader2,
   MessageCircle,
@@ -12,13 +13,14 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import ReportModal, { type ReportTarget } from "@/components/modals/ReportModal";
 
 export interface PublicUserProfile {
   _id: string;
   name: string;
   image: string;
   profileImage?: string;
-  role: "student" | "teacher";
+  role: "student" | "mentor" | "teacher";
   bio: string;
   xp: number;
   level: number;
@@ -66,6 +68,7 @@ export default function PublicProfileModal({
   const [connecting, setConnecting] = useState(false);
   const [giftAmount, setGiftAmount] = useState("");
   const [sendingGift, setSendingGift] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -121,6 +124,7 @@ export default function PublicProfileModal({
   }, [profile]);
 
   const image = profile?.profileImage || profile?.image || "";
+  const roleLabel = profile?.role === "teacher" ? "mentor" : profile?.role;
   const numericGiftAmount = Number(giftAmount);
   const canGift = Number.isInteger(numericGiftAmount) && numericGiftAmount > 0;
 
@@ -234,7 +238,7 @@ export default function PublicProfileModal({
                   <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7C3AED]/25 bg-[#7C3AED]/10 px-3 py-1 text-xs font-bold capitalize text-[#7C3AED]">
                       <ShieldCheck size={14} />
-                      {profile.role}
+                      {roleLabel}
                     </span>
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
                       <CalendarDays size={14} />
@@ -341,6 +345,22 @@ export default function PublicProfileModal({
                   </div>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReportTarget({
+                      targetType: "user",
+                      targetId: profile._id,
+                      contentSnippet: profile.bio || profile.name,
+                      label: profile.name,
+                    })
+                  }
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-5 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 dark:border-red-500/25 dark:text-red-400 dark:hover:bg-red-500/10"
+                >
+                  <Flag size={17} />
+                  Report User
+                </button>
+
                 {onConnect && (
                   <button
                     type="button"
@@ -358,6 +378,10 @@ export default function PublicProfileModal({
                 )}
               </div>
             )}
+            <ReportModal
+              target={reportTarget}
+              onClose={() => setReportTarget(null)}
+            />
           </motion.section>
         </motion.div>
       )}

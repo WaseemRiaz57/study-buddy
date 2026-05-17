@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ThumbsUp, MessageSquare, Eye, Flame } from "lucide-react";
+import { Flag, ThumbsUp, MessageSquare, Eye, Flame } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -36,6 +36,7 @@ interface PostCardProps {
   index?: number;
   onLike?: (postId: string) => void;
   onAuthorClick?: (userId: string) => void;
+  onReport?: (post: Post) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -43,10 +44,8 @@ interface PostCardProps {
 /* ------------------------------------------------------------------ */
 function RoleBadge({ role }: { role: string }) {
   const rawRole = String(role || "student").toLowerCase();
-  const normalizedRole = rawRole === "mentor" ? "teacher" : rawRole;
+  const normalizedRole = rawRole === "teacher" ? "mentor" : rawRole;
   const styles: Record<string, string> = {
-    teacher:
-      "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
     mentor:
       "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
     admin:
@@ -96,6 +95,7 @@ export default function PostCard({
   index = 0,
   onLike,
   onAuthorClick,
+  onReport,
 }: PostCardProps) {
   return (
     <motion.div
@@ -184,6 +184,17 @@ export default function PostCard({
                 <span className="flex items-center gap-1">
                   <Eye size={13} /> {post.views}
                 </span>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onReport?.(post);
+                  }}
+                  className="flex items-center gap-1 transition-colors hover:text-red-500"
+                >
+                  <Flag size={13} /> Report
+                </button>
                 <span className="ml-auto px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#7C3AED]/10 text-[#7C3AED] dark:bg-[#7C3AED]/20">
                   {post.category}
                 </span>
