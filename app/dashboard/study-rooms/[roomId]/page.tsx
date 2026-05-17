@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import type { LiveVideoRoomRenderState } from "@/components/LiveVideoRoom";
+import MobileBackButton from "@/components/MobileBackButton";
 import VaultView from "@/components/study-room/VaultView";
 import {
   Mic,
@@ -589,6 +590,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
         
         {/* Left: Room Info */}
         <div className="flex items-center gap-4">
+          <MobileBackButton className="md:hidden" />
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-colors
               bg-purple-100 text-purple-600

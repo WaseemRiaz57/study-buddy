@@ -177,7 +177,7 @@ export function DashboardTopbar({
     <button
       type="button"
       onClick={() => setUserMenuOpen((current) => !current)}
-      className="group flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-[#7C3AED]/10"
+      className="group flex min-h-[44px] items-center gap-2 rounded-full p-1 transition-colors hover:bg-[#7C3AED]/10"
       aria-haspopup="menu"
       aria-expanded={userMenuOpen}
     >
@@ -218,13 +218,13 @@ export function DashboardTopbar({
           <button
             type="button"
             onClick={onOpenSidebar}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED] md:hidden"
+            className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED] md:hidden"
             aria-label="Open navigation"
           >
             <Menu size={20} />
           </button>
 
-          {role === "STUDENT" ? (
+          {role === "STUDENT" && (
             <div className="hidden w-48 flex-col md:flex">
               <div className="mb-1 flex justify-between text-[10px] font-bold uppercase tracking-wider text-[#7C3AED]">
                 <span>Scholar Rank</span>
@@ -243,29 +243,13 @@ export function DashboardTopbar({
                 </motion.div>
               </div>
             </div>
-          ) : (
-            <nav className="hidden items-center gap-6 xl:flex">
-              {["Dashboard", "Sessions", "Students", "Resources"].map((item, index) => (
-                <a
-                  key={item}
-                  href="#"
-                  className={`text-sm font-medium transition-colors ${
-                    index === 0
-                      ? "font-semibold text-[#7C3AED]"
-                      : "text-muted-foreground hover:text-[#7C3AED]"
-                  }`}
-                >
-                  {item}
-                </a>
-              ))}
-            </nav>
           )}
         </div>
 
         <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2 lg:gap-4">
           <button
             onClick={() => setStoreOpen(true)}
-            className="hidden items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:flex"
+            className="hidden min-h-[44px] items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:flex"
             title="Open streak store"
           >
             <Flame className="text-orange-500" size={16} />
@@ -297,7 +281,7 @@ export function DashboardTopbar({
 
           <button
             onClick={() => setStoreOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:px-3"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:px-3"
             title="Open coin store"
           >
             <Coins className="text-yellow-600 dark:text-yellow-400" size={16} />
@@ -308,7 +292,7 @@ export function DashboardTopbar({
 
           <button
             onClick={toggleTheme}
-            className="group relative rounded-lg p-2 transition-colors hover:bg-[#7C3AED]/10"
+            className="group relative min-h-[44px] min-w-[44px] rounded-lg p-3 transition-colors hover:bg-[#7C3AED]/10"
             aria-label="Toggle theme"
           >
             {resolvedTheme === "dark" ? (
@@ -364,7 +348,7 @@ export function DashboardTopbar({
                 <Link
                   href="/dashboard/settings"
                   onClick={() => setUserMenuOpen(false)}
-                  className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED]"
+                  className="mt-2 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED]"
                   role="menuitem"
                 >
                   <Settings size={16} />
@@ -376,7 +360,7 @@ export function DashboardTopbar({
                     setUserMenuOpen(false);
                     setReviewOpen(true);
                   }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED]"
+                  className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED]"
                   role="menuitem"
                 >
                   <Star size={16} />
@@ -385,7 +369,7 @@ export function DashboardTopbar({
                 <button
                   type="button"
                   onClick={() => void handleLogout()}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                  className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
                   role="menuitem"
                 >
                   <LogOut size={16} />

@@ -16,7 +16,6 @@ import {
   Lock,
   MessageSquare,
   PanelLeftOpen,
-  PanelRightOpen,
   Send,
   Sparkles,
   Swords,
@@ -127,29 +126,24 @@ export function Sidebar({
         {mobile ? (
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+            className="min-h-[44px] min-w-[44px] rounded-lg p-3 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
             aria-label="Close sidebar"
           >
             <X size={18} />
           </button>
-        ) : (
+        ) : !isCollapsed ? (
           <button
             onClick={() => setIsCollapsed((current) => !current)}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+            className="min-h-[44px] min-w-[44px] rounded-lg p-3 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {isCollapsed ? (
-              <PanelRightOpen
-                size={18}
-                className="text-[#7C3AED] transition-transform duration-300"
-              />
-            ) : (
-              <PanelLeftOpen
-                size={18}
-                className="text-[#7C3AED] transition-transform duration-300"
-              />
-            )}
+            <PanelLeftOpen
+              size={18}
+              className="text-[#7C3AED] transition-transform duration-300"
+            />
           </button>
+        ) : (
+          null
         )}
       </div>
 
@@ -173,7 +167,7 @@ export function Sidebar({
             >
               <div
                 className={`group relative flex items-center gap-3 overflow-hidden rounded-xl transition-all duration-200 ${
-                  !mobile && isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3"
+                  !mobile && isCollapsed ? "min-h-[44px] justify-center px-0 py-3" : "min-h-[44px] px-4 py-3"
                 } ${
                   isActive
                     ? "bg-[#7C3AED]/10 text-[#7C3AED] dark:text-purple-400 dark:shadow-[inset_0_0_20px_rgba(140,48,232,0.08)]"

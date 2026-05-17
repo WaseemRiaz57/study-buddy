@@ -9,7 +9,6 @@ import {
   User,
   ShieldCheck,
   ShieldAlert,
-  Bell,
   BookOpen,
   CreditCard,
   Briefcase,
@@ -23,6 +22,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { useUserStore } from "@/store/useUserStore";
+import MobileBackButton from "@/components/MobileBackButton";
 
 /* ------------------------------------------------------------------ */
 /* Navigation definitions                                             */
@@ -43,7 +43,6 @@ const commonLinks: SettingsNavItem[] = [
   { icon: User, label: "Public Profile", href: "/dashboard/settings/profile" },
   { icon: ShieldCheck, label: "Account & Security", href: "/dashboard/settings/security" },
   { icon: ShieldAlert, label: "Trust & Safety", href: "/dashboard/settings/trust-safety" },
-  { icon: Bell, label: "Notifications", href: "/dashboard/settings/notifications" },
 ];
 
 const studentOnly: SettingsNavItem[] = [
@@ -166,12 +165,15 @@ export default function SettingsLayout({
         {/* Dynamic Header: Shows 'Back' button if inside a feature */}
         <div className="mb-6 lg:mb-8 flex items-center gap-4">
           {!isRootMenu && (
+            <>
+            <MobileBackButton className="md:hidden" />
             <Link 
               href="/dashboard/settings" 
-              className="p-2.5 bg-white dark:bg-slate-900 rounded-full shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-all transform hover:-translate-x-1"
+              className="hidden min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 shadow-sm transition-all hover:-translate-x-1 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 md:flex"
             >
               <ArrowLeft className="text-slate-700 dark:text-slate-300" size={20} />
             </Link>
+            </>
           )}
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -205,7 +207,7 @@ export default function SettingsLayout({
                         <li key={item.href}>
                           <Link
                             href={item.href}
-                            className="flex items-center justify-between px-3 py-3 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-50 hover:text-purple-600 dark:text-slate-300 dark:hover:bg-white/[0.04] transition-all group"
+                            className="flex min-h-[44px] items-center justify-between px-3 py-3 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-50 hover:text-purple-600 dark:text-slate-300 dark:hover:bg-white/[0.04] transition-all group"
                           >
                             <div className="flex items-center gap-3">
                               <item.icon size={20} className="text-slate-400 group-hover:text-purple-600 transition-colors" aria-hidden="true" />

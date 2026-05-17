@@ -68,7 +68,7 @@ export function DashboardClientShell({
         </div>
       )}
 
-      <main className="min-w-0 flex-1 overflow-y-auto transition-all duration-300">
+      <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto transition-all duration-300">
         <DashboardTopbar onOpenSidebar={() => setMobileSidebarOpen(true)} />
         <div className="mx-auto w-full max-w-screen-2xl">
           {children}

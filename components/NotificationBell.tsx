@@ -115,7 +115,7 @@ export function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10 transition-colors"
+        className="relative min-h-[44px] min-w-[44px] rounded-full p-3 text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10"
       >
         <Bell size={20} />
         {unreadCount > 0 && (
@@ -134,7 +134,7 @@ export function NotificationBell() {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-xs flex items-center gap-1 text-[#7C3AED] hover:opacity-80 font-medium transition-colors"
+                className="flex min-h-[44px] items-center gap-1 text-xs font-medium text-[#7C3AED] transition-colors hover:opacity-80"
               >
                 <Check size={14} /> Mark all as read
               </button>
@@ -157,7 +157,7 @@ export function NotificationBell() {
                   <div
                     key={notif.id}
                     onClick={() => markAsRead(notif.id)}
-                    className={`px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors relative ${
+                    className={`relative min-h-[44px] cursor-pointer px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.02] ${
                       !notif.read ? "bg-purple-50/50 dark:bg-purple-900/10" : ""
                     }`}
                   >
@@ -188,7 +188,7 @@ export function NotificationBell() {
           </div>
 
           <div className="px-4 py-2 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02] text-center">
-            <button className="text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors font-medium">
+            <button className="min-h-[44px] text-xs font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
               View all notifications
             </button>
           </div>
