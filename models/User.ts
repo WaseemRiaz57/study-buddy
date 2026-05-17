@@ -60,6 +60,11 @@ const userSchema = new Schema(
       default: Date.now,
       index: true,
     },
+    isLeaderboardBanned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   { timestamps: true } // Yeh automatically createdAt aur updatedAt fields bana dega
 );

@@ -20,6 +20,8 @@ export interface IMentorProfile extends Document {
   rating: number;
   totalReviews: number;
   xp: number;
+  weeklyXP: number;
+  monthlyXP: number;
   coins: number;
   streak: number;
   streakFreezes: number;
@@ -120,6 +122,8 @@ const MentorProfileSchema = new Schema<IMentorProfile>(
     rating: { type: Number, default: 0 },
     totalReviews: { type: Number, default: 0, min: 0 },
     xp: { type: Number, default: 0, min: 0 },
+    weeklyXP: { type: Number, default: 0, min: 0 },
+    monthlyXP: { type: Number, default: 0, min: 0 },
     coins: { type: Number, default: 0, min: 0 },
     streak: { type: Number, default: 0, min: 0 },
     streakFreezes: { type: Number, default: 0, min: 0 },

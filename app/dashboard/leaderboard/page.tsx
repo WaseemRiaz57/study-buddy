@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowUp,
@@ -32,9 +32,15 @@ interface Scholar {
   initials: string;
   role: string;
   xp: number;
+  totalXP: number;
+  weeklyXP: number;
+  monthlyXP: number;
   coins: number;
   streak: number;
   badges: string[];
+  xpToNextRank?: number;
+  nextRankXp?: number;
+  progressToNextRank?: number;
 }
 
 type TimeFilter = "weekly" | "monthly" | "all-time";
@@ -194,7 +200,7 @@ export default function LeaderboardPage() {
     const fetchLeaderboard = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/leaderboard?range=${filter}`, {
+        const response = await fetch(`/api/leaderboard?timeframe=${filter}`, {
           cache: "no-store",
         });
         const data = await response.json().catch(() => null);
@@ -222,15 +228,9 @@ export default function LeaderboardPage() {
   const topThree = leaderboard.slice(0, 3);
   const rest = leaderboard.slice(3);
 
-  const nextRankXp = useMemo(() => {
-    if (!currentUser) return 1000;
-    const nextRank = leaderboard.find((user) => user.rank === currentUser.rank - 1);
-    return Math.max(currentUser.xp + 1, nextRank?.xp || Math.ceil((currentUser.xp + 1) / 1000) * 1000);
-  }, [currentUser, leaderboard]);
-
-  const progressPct = currentUser
-    ? Math.min(100, Math.round((currentUser.xp / nextRankXp) * 100))
-    : 0;
+  const progressPct = currentUser?.progressToNextRank ?? 0;
+  const timeframeLabel =
+    TIME_FILTERS.find((item) => item.key === filter)?.label || "All Time";
 
   return (
     <div className="relative min-h-screen bg-background pb-28 text-foreground transition-colors duration-300">
@@ -291,7 +291,7 @@ export default function LeaderboardPage() {
                 <span>Rank</span>
                 <span>Scholar</span>
                 <span className="hidden pr-2 text-right sm:block">Badges</span>
-                <span className="text-right">Total XP</span>
+                <span className="text-right">{timeframeLabel} XP</span>
               </div>
 
               <div className="space-y-2">
@@ -325,7 +325,7 @@ export default function LeaderboardPage() {
                       ))}
                     </div>
 
-                    <span className="text-right font-mono text-sm font-semibold tabular-nums text-[#7C3AED]">
+                  <span className="text-right font-mono text-sm font-semibold tabular-nums text-[#7C3AED]">
                       {fmtXP(user.xp)}
                     </span>
                   </motion.div>
@@ -357,14 +357,18 @@ export default function LeaderboardPage() {
                     Your Rank: <span className="text-[#7C3AED]">#{currentUser.rank}</span>
                   </p>
                   <p className="font-mono text-xs text-muted-foreground">
-                    {fmtXP(currentUser.xp)} / {fmtXP(nextRankXp)} XP
+                    {fmtXP(currentUser.totalXP ?? currentUser.xp)} total XP
                   </p>
                 </div>
               </div>
 
               <div className="hidden max-w-xs flex-1 flex-col gap-1 sm:flex">
                 <div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
-                  <span>Progress to #{Math.max(1, currentUser.rank - 1)}</span>
+                  <span>
+                    {currentUser.rank <= 1
+                      ? "Top ranked"
+                      : `${fmtXP(currentUser.xpToNextRank || 0)} XP to #${Math.max(1, currentUser.rank - 1)}`}
+                  </span>
                   <span>{progressPct}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted dark:bg-white/[0.06]">

@@ -125,7 +125,7 @@ export async function awardUser(
   const today = new Date();
   const userObjectId = new mongoose.Types.ObjectId(userId);
   const currentProfile = await ProfileModel.findOne({ userId: userObjectId })
-    .select("xp coins streak streakFreezes lastActiveDate")
+    .select("xp weeklyXP monthlyXP coins streak streakFreezes lastActiveDate")
     .lean();
 
   const currentStreak = Number(currentProfile?.streak || 0);
@@ -153,6 +153,8 @@ export async function awardUser(
       $setOnInsert: { userId: userObjectId },
       $inc: {
         xp: earned.xp,
+        weeklyXP: earned.xp,
+        monthlyXP: earned.xp,
         coins: earned.coins,
         ...(shouldUseFreeze ? { streakFreezes: -1 } : {}),
       },
@@ -193,6 +195,8 @@ export async function awardUser(
     message: shouldUseFreeze ? "Streak saved by Freeze!" : "",
     profile: {
       xp: Number(profile?.xp || 0),
+      weeklyXP: Number(profile?.weeklyXP || 0),
+      monthlyXP: Number(profile?.monthlyXP || 0),
       coins: Number(profile?.coins || 0),
       streak: Number(profile?.streak || 0),
       streakFreezes: Number(profile?.streakFreezes || 0),
@@ -269,11 +273,13 @@ export async function getGamificationStats(userId: string) {
   const profile = await ProfileModel.findOne({
     userId: new mongoose.Types.ObjectId(userId),
   })
-    .select("xp coins streak streakFreezes lastActiveDate")
+    .select("xp weeklyXP monthlyXP coins streak streakFreezes lastActiveDate")
     .lean();
 
   return {
     xp: Number(profile?.xp || 0),
+    weeklyXP: Number(profile?.weeklyXP || 0),
+    monthlyXP: Number(profile?.monthlyXP || 0),
     coins: Number(profile?.coins || 0),
     streak: Number(profile?.streak || 0),
     streakFreezes: Number(profile?.streakFreezes || 0),

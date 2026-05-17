@@ -18,6 +18,8 @@ export interface IStudentProfile extends Document {
   strictMentorship: boolean;
   subscriptionTier: StudentSubscriptionTier;
   xp: number;
+  weeklyXP: number;
+  monthlyXP: number;
   coins: number;
   streak: number;
   streakFreezes: number;
@@ -41,6 +43,8 @@ const StudentProfileSchema = new Schema<IStudentProfile>(
     socraticAiMode: { type: Boolean, default: false },
     strictMentorship: { type: Boolean, default: false },
     xp: { type: Number, default: 0, min: 0 },
+    weeklyXP: { type: Number, default: 0, min: 0 },
+    monthlyXP: { type: Number, default: 0, min: 0 },
     coins: { type: Number, default: 0, min: 0 },
     streak: { type: Number, default: 0, min: 0 },
     streakFreezes: { type: Number, default: 0, min: 0 },
