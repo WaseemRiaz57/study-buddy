@@ -23,6 +23,7 @@ export interface IStudentProfile extends Document {
   coins: number;
   streak: number;
   streakFreezes: number;
+  hasEliteChallenges: boolean;
   lastActiveDate?: Date;
 }
 
@@ -48,6 +49,7 @@ const StudentProfileSchema = new Schema<IStudentProfile>(
     coins: { type: Number, default: 0, min: 0 },
     streak: { type: Number, default: 0, min: 0 },
     streakFreezes: { type: Number, default: 0, min: 0 },
+    hasEliteChallenges: { type: Boolean, default: false },
     lastActiveDate: { type: Date, default: null },
     subscriptionTier: {
       type: String,

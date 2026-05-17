@@ -25,6 +25,7 @@ export interface IMentorProfile extends Document {
   coins: number;
   streak: number;
   streakFreezes: number;
+  hasEliteChallenges: boolean;
   lastActiveDate?: Date;
   availability: IMentorAvailability[];
   status: "pending" | "approved" | "rejected" | "suspended";
@@ -127,6 +128,7 @@ const MentorProfileSchema = new Schema<IMentorProfile>(
     coins: { type: Number, default: 0, min: 0 },
     streak: { type: Number, default: 0, min: 0 },
     streakFreezes: { type: Number, default: 0, min: 0 },
+    hasEliteChallenges: { type: Boolean, default: false },
     lastActiveDate: { type: Date, default: null },
     availability: { type: [MentorAvailabilitySchema], default: [] },
     status: {

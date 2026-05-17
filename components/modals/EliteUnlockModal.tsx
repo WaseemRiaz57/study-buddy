@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react"; // 👈 useState import kiya
 import { motion, AnimatePresence } from "framer-motion";
-import { Key, Trophy, Star, Shield, Coins, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Key, Trophy, Star, Shield, Coins, X, Loader2 } from "lucide-react";
 
 interface EliteUnlockModalProps {
   isOpen: boolean;
   onClose: () => void; 
-  onUnlockAction?: () => void;
+  onUnlockAction?: () => void | Promise<void>;
+  isUnlocking?: boolean;
 }
 
 /* ───────────────── sub-components ───────────────── */
@@ -50,7 +50,7 @@ function BenefitRow({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-200 dark:bg-gradient-to-br dark:from-amber-500/30 dark:to-amber-700/30 text-amber-600 dark:text-amber-400">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#7C3AED]/10 text-[#7C3AED]">
         {icon}
       </div>
       <div>
@@ -67,9 +67,8 @@ export default function EliteUnlockModal({
   isOpen,
   onClose, 
   onUnlockAction,
+  isUnlocking = false,
 }: EliteUnlockModalProps) {
-  const router = useRouter();
-  
   // 👈 1. Client-side render check ke liye state add ki
   const [mounted, setMounted] = useState(false);
 
@@ -155,18 +154,18 @@ export default function EliteUnlockModal({
                 style={{ perspective: 800 }}
               >
                 {/* glow ring behind key */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-500/30 via-yellow-400/10 to-transparent blur-xl" />
-                <div className="absolute inset-2 rounded-full border-2 border-amber-500/20 animate-[border-pulse_4s_infinite_ease-in-out]" />
+                <div className="absolute inset-0 rounded-full bg-[#7C3AED]/15 blur-xl" />
+                <div className="absolute inset-2 rounded-full border-2 border-[#7C3AED]/20 animate-[border-pulse_4s_infinite_ease-in-out]" />
 
                 <Key
                   size={52}
-                  className="relative z-10 text-amber-600 dark:text-amber-400 drop-shadow-[0_0_18px_rgba(255,215,0,0.6)]"
+                  className="relative z-10 text-[#7C3AED] drop-shadow-[0_0_18px_rgba(124,58,237,0.35)]"
                   strokeWidth={1.5}
                 />
               </motion.div>
 
               {/* headline */}
-              <h2 className="mb-2 text-center text-2xl font-extrabold tracking-tight sm:text-3xl bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 dark:from-amber-300 dark:via-yellow-400 dark:to-amber-500 bg-clip-text text-transparent">
+              <h2 className="mb-2 text-center text-2xl font-extrabold tracking-tight text-[#7C3AED] sm:text-3xl">
                 Unlock the Path to Mastery
               </h2>
               <p className="max-w-xs text-center text-sm text-slate-700 dark:text-amber-300/50">
@@ -197,8 +196,8 @@ export default function EliteUnlockModal({
             {/* ── footer ── */}
             <div className="flex flex-col items-center gap-4 px-6 pt-6 pb-8">
               {/* cost badge */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-600 dark:bg-amber-900/20 px-4 py-1.5 text-sm font-medium text-white dark:border-amber-500/30 dark:text-amber-300">
-                <Coins size={16} className="text-white dark:text-amber-400" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#7C3AED]/20 bg-[#7C3AED]/10 px-4 py-1.5 text-sm font-medium text-[#7C3AED]">
+                <Coins size={16} className="text-[#7C3AED]" />
                 Cost: 500 Coins
               </div>
 
@@ -206,13 +205,13 @@ export default function EliteUnlockModal({
               <motion.button
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  onUnlockAction?.();
-                  onClose(); 
-                  router.push('/dashboard/upgrade');
+                onClick={async () => {
+                  await onUnlockAction?.();
                 }}
-                className="relative w-full max-w-xs overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 bg-[length:200%_100%] px-8 py-3 text-base font-bold text-[#0f0b15] shadow-[0_0_30px_rgba(255,215,0,0.35)] transition-shadow hover:shadow-[0_0_50px_rgba(255,215,0,0.5)]"
+                disabled={isUnlocking}
+                className="relative flex w-full max-w-xs items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#7C3AED] px-8 py-3 text-base font-bold text-white shadow-[0_0_30px_rgba(124,58,237,0.25)] transition-all hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
               >
+                {isUnlocking ? <Loader2 size={18} className="animate-spin" /> : null}
                 Unlock Now
               </motion.button>
             </div>

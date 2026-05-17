@@ -10,7 +10,8 @@ export type GamificationActionType =
   | "COMPLETED_SESSION"
   | "CREATED_POST"
   | "CREATED_COMMENT"
-  | "DAILY_LOGIN";
+  | "DAILY_LOGIN"
+  | "CHALLENGE_COMPLETED";
 
 type RewardDefinition = {
   xp: number;
@@ -22,6 +23,7 @@ export const REWARD_DICTIONARY: Record<GamificationActionType, RewardDefinition>
   CREATED_POST: { xp: 10, coins: 2 },
   CREATED_COMMENT: { xp: 5, coins: 1 },
   DAILY_LOGIN: { xp: 5, coins: 5 },
+  CHALLENGE_COMPLETED: { xp: 0, coins: 0 },
 };
 
 export const STREAK_FREEZE_COST = 200;
@@ -100,13 +102,19 @@ async function syncUserProgress({
 
 export async function awardUser(
   userId: string,
-  actionType: GamificationActionType
+  actionType: GamificationActionType,
+  rewardOverride?: Partial<RewardDefinition>
 ) {
-  const reward = REWARD_DICTIONARY[actionType];
+  const baseReward = REWARD_DICTIONARY[actionType];
 
-  if (!reward) {
+  if (!baseReward) {
     throw new Error(`Unsupported gamification action: ${actionType}`);
   }
+
+  const reward = {
+    xp: Math.max(0, Math.round(Number(rewardOverride?.xp ?? baseReward.xp))),
+    coins: Math.max(0, Math.round(Number(rewardOverride?.coins ?? baseReward.coins))),
+  };
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     throw new Error("Valid user id is required for gamification awards.");

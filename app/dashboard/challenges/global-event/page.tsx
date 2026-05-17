@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   Radio,
@@ -91,7 +91,15 @@ function AnimatedCounter({ target }: { target: number }) {
 /*  SVG PROGRESS RING                                                 */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function ProgressRing({ progress }: { progress: number }) {
+function ProgressRing({
+  progress,
+  current,
+  goal,
+}: {
+  progress: number;
+  current: number;
+  goal: number;
+}) {
   const radius = 140;
   const stroke = 14;
   const normalizedRadius = radius - stroke / 2;
@@ -119,7 +127,7 @@ function ProgressRing({ progress }: { progress: number }) {
           cy={radius}
           r={normalizedRadius}
           fill="none"
-          stroke="url(#ringGlow)"
+          stroke="#7C3AED"
           strokeWidth={stroke + 8}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -134,7 +142,7 @@ function ProgressRing({ progress }: { progress: number }) {
           cy={radius}
           r={normalizedRadius}
           fill="none"
-          stroke="url(#ringGradient)"
+          stroke="#7C3AED"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -142,27 +150,16 @@ function ProgressRing({ progress }: { progress: number }) {
           animate={{ strokeDashoffset: circumference * (1 - progress) }}
           transition={{ duration: 2.5, ease: "easeOut" }}
         />
-        <defs>
-          <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#8c30e8" />
-            <stop offset="50%" stopColor="#ec4899" />
-            <stop offset="100%" stopColor="#00FFA3" />
-          </linearGradient>
-          <linearGradient id="ringGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#8c30e8" />
-            <stop offset="100%" stopColor="#ec4899" />
-          </linearGradient>
-        </defs>
       </svg>
 
       {/* Center text */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-3xl sm:text-4xl font-black text-foreground tracking-tight">
-          <AnimatedCounter target={CURRENT_HOURS} />
+          <AnimatedCounter target={current} />
         </span>
         <span className="text-sm text-muted-foreground font-medium">hrs contributed</span>
         <span className="text-xs text-muted-foreground/70 mt-1">
-          Goal: {GOAL_HOURS.toLocaleString()} hrs
+          Goal: {goal.toLocaleString()} hrs
         </span>
       </div>
     </div>
@@ -199,10 +196,61 @@ function InfiniteTickerBar() {
 
 export default function GlobalEventPage() {
   const { data: session } = useSession();
+  const [eventStats, setEventStats] = useState({
+    title: "The Great Convergence",
+    description:
+      "A global community challenge where every study hour counts toward unlocking rewards for everyone.",
+    current: CURRENT_HOURS,
+    goal: GOAL_HOURS,
+    progress: PROGRESS,
+  });
   const currentUserName = session?.user?.name || "User";
   const personalizedMiniLeaderboard = miniLeaderboard.map((entry) =>
     entry.isUser ? { ...entry, name: currentUserName } : entry,
   );
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadGlobalEvent() {
+      try {
+        const res = await fetch("/api/challenges", { cache: "no-store" });
+        const data = await res.json();
+
+        if (!res.ok || ignore) return;
+
+        const globalChallenge = Array.isArray(data.challenges)
+          ? data.challenges.find((challenge: any) => challenge.type === "global")
+          : null;
+        const current = Number(
+          globalChallenge?.progress?.currentValue ||
+            data.globalStats?.totalStudyHours ||
+            0
+        );
+        const goal = Math.max(1, Number(globalChallenge?.targetMetric || GOAL_HOURS));
+
+        setEventStats({
+          title: globalChallenge?.title || "The Great Convergence",
+          description:
+            globalChallenge?.description ||
+            "A global community challenge where every study hour counts toward unlocking rewards for everyone.",
+          current,
+          goal,
+          progress: Math.min(1, current / goal),
+        });
+      } catch {
+        if (!ignore) {
+          setEventStats((prev) => prev);
+        }
+      }
+    }
+
+    void loadGlobalEvent();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
@@ -240,8 +288,8 @@ export default function GlobalEventPage() {
 
           {/* Title */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
-            <span className="bg-gradient-to-r from-purple-600 via-pink-500 to-emerald-400 bg-clip-text text-transparent">
-              The Great Convergence
+            <span className="text-[#7C3AED]">
+              {eventStats.title}
             </span>
           </h1>
 
@@ -368,7 +416,11 @@ export default function GlobalEventPage() {
                 </div>
 
                 {/* Progress Ring */}
-                <ProgressRing progress={PROGRESS} />
+                <ProgressRing
+                  progress={eventStats.progress}
+                  current={eventStats.current}
+                  goal={eventStats.goal}
+                />
 
                 {/* Percentage */}
                 <motion.p
@@ -377,7 +429,7 @@ export default function GlobalEventPage() {
                   transition={{ delay: 1.5 }}
                   className="text-lg font-bold text-foreground mt-4"
                 >
-                  {(PROGRESS * 100).toFixed(1)}% Complete
+                  {(eventStats.progress * 100).toFixed(1)}% Complete
                 </motion.p>
 
                 {/* Stats row */}
@@ -398,7 +450,7 @@ export default function GlobalEventPage() {
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.97 }}
                   className="mt-6 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl
-                             bg-gradient-to-r from-purple-600 via-pink-500 to-emerald-400
+                             bg-[#7C3AED] hover:bg-[#6D28D9]
                              text-white font-bold text-sm tracking-wide
                              shadow-[0_0_30px_rgba(140,48,232,0.3)] dark:shadow-[0_0_40px_rgba(140,48,232,0.5)]
                              hover:shadow-[0_0_50px_rgba(140,48,232,0.4)] dark:hover:shadow-[0_0_60px_rgba(140,48,232,0.6)]
@@ -426,9 +478,9 @@ export default function GlobalEventPage() {
                   <div className="h-2.5 rounded-full bg-black/5 dark:bg-white/5 overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${PROGRESS * 100}%` }}
+                      animate={{ width: `${eventStats.progress * 100}%` }}
                       transition={{ duration: 2.5, ease: "easeOut" }}
-                      className="h-full rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-emerald-400"
+                      className="h-full rounded-full bg-[#7C3AED]"
                     />
                   </div>
                   {/* Markers */}
@@ -442,7 +494,7 @@ export default function GlobalEventPage() {
                       <div key={m.label} className="text-center">
                         <div
                           className={`w-2 h-2 rounded-full mx-auto mb-1 ${
-                            PROGRESS * 100 >= m.pct
+                            eventStats.progress * 100 >= m.pct
                               ? "bg-primary"
                               : "bg-muted-foreground/30"
                           }`}
