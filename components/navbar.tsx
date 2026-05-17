@@ -64,10 +64,10 @@ export function Navbar() {
         {/* Logo */}
         <Link 
           href="/" 
-          className="flex items-center gap-1.5 font-bold tracking-tight group"
+          className="flex items-center gap-1 font-bold tracking-tight group"
         >
           <BrandLogo size="lockup" />
-          <span className="text-xl font-extrabold tracking-tight text-[#7C3AED]">
+          <span className="text-2xl font-bold tracking-tight text-[#7C3AED]">
             StudyBuddy
           </span>
         </Link>

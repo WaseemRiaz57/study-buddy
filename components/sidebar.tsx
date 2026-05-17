@@ -145,14 +145,14 @@ export function Sidebar({
 
             onNavigate?.();
           }}
-          className={`flex min-w-0 items-center gap-1.5 ${
+          className={`flex min-w-0 items-center gap-1 ${
             !mobile && isCollapsed ? "justify-center" : ""
           }`}
           aria-label={!mobile && isCollapsed ? "Expand sidebar" : "Dashboard"}
         >
           <BrandLogo size={!mobile && isCollapsed ? "mark" : "lockup"} />
           {(mobile || !isCollapsed) && (
-            <span className="whitespace-nowrap text-xl font-extrabold tracking-tight text-[#7C3AED]">
+            <span className="whitespace-nowrap text-2xl font-bold tracking-tight text-[#7C3AED]">
               StudyBuddy
             </span>
           )}
