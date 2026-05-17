@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -73,6 +73,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const storeRole = useUserStore((state) => state.role);
   const storePlan = useUserStore((state) => state.plan);
   const role = initialRole || storeRole;
@@ -92,6 +93,35 @@ export function Sidebar({
 
     return true;
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await fetch("/api/messages/unread-count", {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => null);
+
+        if (!cancelled && response.ok) {
+          setUnreadMessagesCount(Number(data?.unreadConversations || 0));
+        }
+      } catch {
+        if (!cancelled) {
+          setUnreadMessagesCount(0);
+        }
+      }
+    };
+
+    void fetchUnreadCount();
+    window.addEventListener("messages:unread-updated", fetchUnreadCount);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("messages:unread-updated", fetchUnreadCount);
+    };
+  }, []);
 
   return (
     <aside
@@ -203,12 +233,27 @@ export function Sidebar({
                   </span>
                 )}
 
+                {(mobile || !isCollapsed) &&
+                  item.href === "/dashboard/messages" &&
+                  unreadMessagesCount > 0 && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                      {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+                    </span>
+                  )}
+
                 {(mobile || !isCollapsed) && item.locked && (
                   <Lock
                     size={14}
                     className="ml-auto text-muted-foreground/50 dark:text-slate-600"
                   />
                 )}
+
+                {!mobile &&
+                  isCollapsed &&
+                  item.href === "/dashboard/messages" &&
+                  unreadMessagesCount > 0 && (
+                    <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
+                  )}
 
                 {!mobile && isCollapsed && (
                   <span className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg border border-border bg-slate-800 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-xl transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 dark:border-white/10 dark:bg-slate-900">

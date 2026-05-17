@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarDays,
@@ -62,10 +63,12 @@ export default function PublicProfileModal({
   onClose,
   onConnect,
 }: PublicProfileModalProps) {
+  const router = useRouter();
   const [profile, setProfile] = useState<PublicUserProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [connecting, setConnecting] = useState(false);
+  const [openingMessage, setOpeningMessage] = useState(false);
   const [giftAmount, setGiftAmount] = useState("");
   const [sendingGift, setSendingGift] = useState(false);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
@@ -136,6 +139,38 @@ export default function PublicProfileModal({
       await onConnect(profile);
     } finally {
       setConnecting(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!profile || openingMessage) return;
+
+    try {
+      setOpeningMessage(true);
+      const response = await fetch("/api/chat/conversations/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId: profile._id }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Unable to open chat.");
+      }
+
+      const conversationId = String(data?.conversationId || data?.conversation?.id || "");
+      if (!conversationId) {
+        throw new Error("Unable to open chat.");
+      }
+
+      onClose();
+      router.push(`/dashboard/messages?chatId=${encodeURIComponent(conversationId)}`);
+    } catch (messageError) {
+      toast.error(
+        messageError instanceof Error ? messageError.message : "Unable to open chat."
+      );
+    } finally {
+      setOpeningMessage(false);
     }
   };
 
@@ -359,6 +394,20 @@ export default function PublicProfileModal({
                 >
                   <Flag size={17} />
                   Report User
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleSendMessage()}
+                  disabled={openingMessage}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#7C3AED]/20 transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {openingMessage ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <MessageCircle size={18} />
+                  )}
+                  Send Message
                 </button>
 
                 {onConnect && (

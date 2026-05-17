@@ -132,6 +132,8 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [messageInput, setMessageInput] = useState("");
+  const [typingUserName, setTypingUserName] = useState("");
+  const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [showSidebar, setShowSidebar] = useState(false);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -139,6 +141,7 @@ export default function MessagesPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const activeConversationRef = useRef("");
+  const typingTimeoutRef = useRef<number | null>(null);
 
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId
@@ -194,6 +197,7 @@ export default function MessagesPage() {
         setIsLoadingConversations(true);
         const params = new URLSearchParams(window.location.search);
         const targetUserId = String(params.get("user") || "").trim();
+        const targetChatId = String(params.get("chatId") || "").trim();
 
         if (targetUserId) {
           const conversation = await ensureConversation(targetUserId);
@@ -208,7 +212,9 @@ export default function MessagesPage() {
         const nextConversations = await loadConversations();
         if (!mounted) return;
 
-        setActiveConversationId((current) => current || nextConversations[0]?.id || "");
+        setActiveConversationId(
+          (current) => current || targetChatId || nextConversations[0]?.id || ""
+        );
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -252,6 +258,63 @@ export default function MessagesPage() {
     });
 
     socket.on(
+      "study-buddy:identified",
+      (payload: { onlineUserIds?: string[] }) => {
+        setOnlineUserIds(Array.isArray(payload?.onlineUserIds) ? payload.onlineUserIds : []);
+      }
+    );
+
+    socket.on(
+      "user_online",
+      (payload: { userId?: string; onlineUserIds?: string[] }) => {
+        setOnlineUserIds((current) =>
+          Array.isArray(payload?.onlineUserIds)
+            ? payload.onlineUserIds
+            : payload?.userId && !current.includes(payload.userId)
+              ? [...current, payload.userId]
+              : current
+        );
+      }
+    );
+
+    socket.on(
+      "user_offline",
+      (payload: { userId?: string; onlineUserIds?: string[] }) => {
+        setOnlineUserIds((current) =>
+          Array.isArray(payload?.onlineUserIds)
+            ? payload.onlineUserIds
+            : payload?.userId
+              ? current.filter((userId) => userId !== payload.userId)
+              : current
+        );
+      }
+    );
+
+    socket.on(
+      "typing",
+      (payload: { conversationId?: string; userId?: string; userName?: string }) => {
+        if (
+          payload?.conversationId === activeConversationRef.current &&
+          payload?.userId !== currentUserId
+        ) {
+          setTypingUserName(payload.userName || "User");
+        }
+      }
+    );
+
+    socket.on(
+      "stop_typing",
+      (payload: { conversationId?: string; userId?: string }) => {
+        if (
+          payload?.conversationId === activeConversationRef.current &&
+          payload?.userId !== currentUserId
+        ) {
+          setTypingUserName("");
+        }
+      }
+    );
+
+    socket.on(
       "receive-message",
       (payload: { conversationId?: string; message?: ChatMessage }) => {
         const conversationId = String(payload?.conversationId || "");
@@ -286,6 +349,11 @@ export default function MessagesPage() {
 
     return () => {
       socket.off("receive-message");
+      socket.off("study-buddy:identified");
+      socket.off("user_online");
+      socket.off("user_offline");
+      socket.off("typing");
+      socket.off("stop_typing");
       socket.disconnect();
       socketRef.current = null;
     };
@@ -323,6 +391,7 @@ export default function MessagesPage() {
                 : conversation
             )
           );
+          window.dispatchEvent(new Event("messages:unread-updated"));
         }
       } catch (error) {
         toast.error(
@@ -336,6 +405,10 @@ export default function MessagesPage() {
     void loadMessages();
 
     return () => {
+      socketRef.current?.emit("leave-conversation", {
+        conversationId: activeConversationId,
+        userId: currentUserId,
+      });
       mounted = false;
     };
   }, [activeConversationId, currentUserId]);
@@ -344,9 +417,52 @@ export default function MessagesPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, activeConversationId]);
 
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        window.clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const selectConversation = (id: string) => {
     setActiveConversationId(id);
+    setTypingUserName("");
     setShowSidebar(false);
+  };
+
+  const emitStopTyping = useCallback(() => {
+    if (!activeConversationId || !currentUserId) return;
+
+    socketRef.current?.emit("stop_typing", {
+      conversationId: activeConversationId,
+      userId: currentUserId,
+    });
+  }, [activeConversationId, currentUserId]);
+
+  const handleMessageInputChange = (value: string) => {
+    setMessageInput(value);
+
+    if (!activeConversationId || !currentUserId) return;
+
+    if (!value.trim()) {
+      emitStopTyping();
+      return;
+    }
+
+    socketRef.current?.emit("typing", {
+      conversationId: activeConversationId,
+      userId: currentUserId,
+      userName: session?.user?.name || "User",
+    });
+
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = window.setTimeout(() => {
+      emitStopTyping();
+    }, 1200);
   };
 
   const sendMessage = async () => {
@@ -364,6 +480,7 @@ export default function MessagesPage() {
     };
 
     setMessageInput("");
+    emitStopTyping();
     setMessages((current) => [...current, tempMessage]);
 
     try {
@@ -401,6 +518,7 @@ export default function MessagesPage() {
         conversationId: activeConversationId,
         message: savedMessage,
       });
+      window.dispatchEvent(new Event("messages:unread-updated"));
     } catch (error) {
       setMessages((current) =>
         current.filter((message) => message.id !== tempMessage.id)
@@ -429,7 +547,7 @@ export default function MessagesPage() {
           user.initials
         )}
       </div>
-      {isRecentlyActive(user.lastActive) && (
+      {(onlineUserIds.includes(user.id) || isRecentlyActive(user.lastActive)) && (
         <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-[#191121]" />
       )}
     </div>
@@ -553,7 +671,8 @@ export default function MessagesPage() {
                     {activeConversation.otherParticipant.name}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    {isRecentlyActive(activeConversation.otherParticipant.lastActive) ? (
+                    {onlineUserIds.includes(activeConversation.otherParticipant.id) ||
+                    isRecentlyActive(activeConversation.otherParticipant.lastActive) ? (
                       <>
                         <span className="text-emerald-500">Online</span>
                         {" - "}
@@ -666,6 +785,11 @@ export default function MessagesPage() {
           </div>
 
           <div className="shrink-0 space-y-2.5 border-t border-border bg-white/80 px-4 py-3 backdrop-blur-xl dark:bg-white/5 md:px-6">
+            {typingUserName && activeConversation && (
+              <p className="px-1 text-xs font-medium text-[#7C3AED]">
+                {typingUserName} is typing...
+              </p>
+            )}
             <div className="flex gap-2 overflow-x-auto">
               {QUICK_ACTIONS.map((action) => (
                 <button
@@ -686,7 +810,8 @@ export default function MessagesPage() {
               <div className="flex flex-1 items-end gap-2 rounded-2xl border border-border bg-white px-4 py-2.5 transition-shadow focus-within:ring-2 focus-within:ring-[#7C3AED]/50 dark:bg-white/5">
                 <textarea
                   value={messageInput}
-                  onChange={(event) => setMessageInput(event.target.value)}
+                  onChange={(event) => handleMessageInputChange(event.target.value)}
+                  onBlur={emitStopTyping}
                   placeholder={
                     activeConversation
                       ? "Type a message..."

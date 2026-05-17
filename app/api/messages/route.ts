@@ -1,122 +1,20 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
+import {
+  CHAT_USER_SELECT,
+  findOrCreateConversation,
+  isValidObjectId,
+  serializeChatConversation,
+  serializeChatMessage,
+  toObjectId,
+} from "@/lib/chat";
 import { connectMongoDB } from "@/lib/mongodb";
 import Conversation from "@/models/Conversation";
 import Message from "@/models/Message";
-import User from "@/models/User";
+import { isUserInConversationRoom } from "@/lib/study-room-socket";
 
 export const dynamic = "force-dynamic";
-
-const USER_SELECT = "name image profileImage role lastActive";
-
-function isValidObjectId(value: string) {
-  return mongoose.Types.ObjectId.isValid(value);
-}
-
-function toObjectId(value: string) {
-  return new mongoose.Types.ObjectId(value);
-}
-
-function getUserImage(user: any) {
-  return user?.profileImage || user?.image || "";
-}
-
-function getInitials(name: string) {
-  return (
-    name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "SB"
-  );
-}
-
-function serializeUser(user: any) {
-  const name = user?.name || "Study Buddy";
-
-  return {
-    id: String(user?._id || ""),
-    name,
-    image: getUserImage(user),
-    initials: getInitials(name),
-    role: user?.role || "student",
-    lastActive: user?.lastActive || null,
-  };
-}
-
-function serializeMessage(message: any) {
-  return {
-    id: String(message._id),
-    conversationId: String(message.conversationId),
-    senderId: String(
-      typeof message.senderId === "object" && message.senderId?._id
-        ? message.senderId._id
-        : message.senderId
-    ),
-    text: message.text || "",
-    isRead: Boolean(message.isRead),
-    createdAt: message.createdAt || null,
-    sender:
-      typeof message.senderId === "object" && message.senderId?._id
-        ? serializeUser(message.senderId)
-        : null,
-  };
-}
-
-async function findOrCreateConversation(currentUserId: string, otherUserId: string) {
-  if (currentUserId === otherUserId) {
-    throw new Error("You cannot start a conversation with yourself.");
-  }
-
-  const otherUser = await User.findById(otherUserId).select(USER_SELECT).lean();
-
-  if (!otherUser) {
-    throw new Error("User not found.");
-  }
-
-  const participants = [toObjectId(currentUserId), toObjectId(otherUserId)];
-  let conversation = await Conversation.findOne({
-    participants: { $all: participants, $size: 2 },
-  });
-
-  if (!conversation) {
-    conversation = await Conversation.create({
-      participants,
-      lastMessage: "",
-      lastMessageAt: new Date(),
-    });
-  }
-
-  return Conversation.findById(conversation._id)
-    .populate("participants", USER_SELECT)
-    .lean();
-}
-
-async function serializeConversation(conversation: any, currentUserId: string) {
-  const participants = Array.isArray(conversation.participants)
-    ? conversation.participants
-    : [];
-  const otherParticipant =
-    participants.find((participant: any) => String(participant?._id || participant) !== currentUserId) ||
-    participants[0];
-
-  const unreadCount = await Message.countDocuments({
-    conversationId: conversation._id,
-    senderId: { $ne: toObjectId(currentUserId) },
-    isRead: false,
-  });
-
-  return {
-    id: String(conversation._id),
-    otherParticipant: serializeUser(otherParticipant),
-    lastMessage: conversation.lastMessage || "",
-    lastMessageAt: conversation.lastMessageAt || conversation.updatedAt || conversation.createdAt,
-    unreadCount,
-  };
-}
 
 async function getSessionUserId() {
   const session = await getServerSession(authOptions);
@@ -164,7 +62,7 @@ export async function GET(request: Request) {
       }
 
       const messages = await Message.find({ conversationId })
-        .populate("senderId", USER_SELECT)
+        .populate("senderId", CHAT_USER_SELECT)
         .sort({ createdAt: 1 })
         .lean();
 
@@ -176,9 +74,13 @@ export async function GET(request: Request) {
         },
         { $set: { isRead: true } }
       );
+      await Conversation.updateOne(
+        { _id: conversationId },
+        { $set: { [`unreadCounts.${currentUserId}`]: 0 } }
+      );
 
       return NextResponse.json({
-        messages: messages.map(serializeMessage),
+        messages: messages.map(serializeChatMessage),
       });
     }
 
@@ -200,20 +102,20 @@ export async function GET(request: Request) {
       }
 
       return NextResponse.json({
-        conversation: await serializeConversation(conversation, currentUserId),
+        conversation: await serializeChatConversation(conversation, currentUserId),
       });
     }
 
     const conversations = await Conversation.find({
       participants: toObjectId(currentUserId),
     })
-      .populate("participants", USER_SELECT)
+      .populate("participants", CHAT_USER_SELECT)
       .sort({ lastMessageAt: -1, updatedAt: -1 })
       .lean();
 
     const serialized = await Promise.all(
       conversations.map((conversation) =>
-        serializeConversation(conversation, currentUserId)
+        serializeChatConversation(conversation, currentUserId)
       )
     );
 
@@ -286,36 +188,60 @@ export async function POST(request: Request) {
       );
     }
 
+    const participantIds = Array.isArray(conversation.participants)
+      ? conversation.participants.map((participant: any) =>
+          String(participant?._id || participant)
+        )
+      : [];
+    const receiverUserId =
+      participantIds.find((participantId: string) => participantId !== currentUserId) ||
+      receiverId;
+    const receiverInRoom =
+      Boolean(receiverUserId) &&
+      isUserInConversationRoom(String(conversation._id), receiverUserId);
+
     const message = await Message.create({
       conversationId: conversation._id,
       senderId: currentUserId,
       text,
-      isRead: false,
+      isRead: receiverInRoom,
     });
 
     const now = new Date();
+    const conversationUpdate: Record<string, any> = {
+      $set: {
+        lastMessage: text,
+        lastMessageAt: now,
+      },
+    };
+
+    if (receiverUserId) {
+      if (receiverInRoom) {
+        conversationUpdate.$set[`unreadCounts.${receiverUserId}`] = 0;
+      } else {
+        conversationUpdate.$inc = {
+          [`unreadCounts.${receiverUserId}`]: 1,
+        };
+      }
+    }
+
     const updatedConversation = await Conversation.findByIdAndUpdate(
       conversation._id,
-      {
-        $set: {
-          lastMessage: text,
-          lastMessageAt: now,
-        },
-      },
+      conversationUpdate,
       { new: true }
     )
-      .populate("participants", USER_SELECT)
+      .populate("participants", CHAT_USER_SELECT)
       .lean();
 
     const populatedMessage = await Message.findById(message._id)
-      .populate("senderId", USER_SELECT)
+      .populate("senderId", CHAT_USER_SELECT)
       .lean();
 
     return NextResponse.json(
       {
-        message: serializeMessage(populatedMessage || message),
+        message: serializeChatMessage(populatedMessage || message),
         conversation: updatedConversation
-          ? await serializeConversation(updatedConversation, currentUserId)
+          ? await serializeChatConversation(updatedConversation, currentUserId)
           : null,
       },
       { status: 201 }

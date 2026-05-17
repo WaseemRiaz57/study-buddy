@@ -47,6 +47,12 @@ type ConversationMessagePayload = {
   message?: unknown;
 };
 
+type ConversationTypingPayload = {
+  conversationId?: string;
+  userId?: string;
+  userName?: string;
+};
+
 type StudyRoomSocketData = {
   roomMemberships?: string[];
   roomUserId?: string;
@@ -54,6 +60,9 @@ type StudyRoomSocketData = {
 };
 
 const autoCloseTimers = new Map<string, NodeJS.Timeout>();
+const socketUserIds = new Map<string, string>();
+const userSocketIds = new Map<string, Set<string>>();
+const conversationUserSockets = new Map<string, Map<string, Set<string>>>();
 let studyRoomNamespace: Namespace | null = null;
 
 function isNonEmptyString(value: unknown): value is string {
@@ -78,6 +87,10 @@ function userChannel(userId: string): string {
 
 function conversationChannel(conversationId: string): string {
   return `conversation:${conversationId.trim()}`;
+}
+
+function normalizeConversationId(conversationId: string): string {
+  return conversationId.trim();
 }
 
 function escapeRegex(text: string): string {
@@ -136,15 +149,116 @@ function removeSocketMembership(socket: Socket, roomId: string): void {
 
 function addConversationMembership(socket: Socket, conversationId: string): void {
   const data = getSocketData(socket);
+  const normalizedConversationId = normalizeConversationId(conversationId);
   const memberships = Array.isArray(data.conversationMemberships)
     ? data.conversationMemberships
     : [];
 
-  if (!memberships.includes(conversationId)) {
-    memberships.push(conversationId);
+  if (!memberships.includes(normalizedConversationId)) {
+    memberships.push(normalizedConversationId);
   }
 
   data.conversationMemberships = memberships;
+}
+
+function removeConversationMembership(socket: Socket, conversationId: string): void {
+  const data = getSocketData(socket);
+  const normalizedConversationId = normalizeConversationId(conversationId);
+  const memberships = Array.isArray(data.conversationMemberships)
+    ? data.conversationMemberships
+    : [];
+
+  data.conversationMemberships = memberships.filter(
+    (memberConversationId) => memberConversationId !== normalizedConversationId
+  );
+}
+
+function markUserOnline(socket: Socket, userId: string): void {
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId) return;
+
+  socketUserIds.set(socket.id, normalizedUserId);
+  const sockets = userSocketIds.get(normalizedUserId) || new Set<string>();
+  sockets.add(socket.id);
+  userSocketIds.set(normalizedUserId, sockets);
+  getSocketData(socket).roomUserId = normalizedUserId;
+  socket.join(userChannel(normalizedUserId));
+
+  socket.nsp.emit("user_online", {
+    userId: normalizedUserId,
+    onlineUserIds: Array.from(userSocketIds.keys()),
+  });
+}
+
+function markUserOffline(socket: Socket): void {
+  const userId = socketUserIds.get(socket.id);
+  if (!userId) return;
+
+  socketUserIds.delete(socket.id);
+  const sockets = userSocketIds.get(userId);
+  sockets?.delete(socket.id);
+
+  if (!sockets || sockets.size === 0) {
+    userSocketIds.delete(userId);
+    socket.nsp.emit("user_offline", {
+      userId,
+      onlineUserIds: Array.from(userSocketIds.keys()),
+    });
+  }
+}
+
+function markConversationUserJoined(
+  socket: Socket,
+  conversationId: string,
+  userId: string
+): void {
+  const normalizedConversationId = normalizeConversationId(conversationId);
+  const normalizedUserId = userId.trim();
+  const users =
+    conversationUserSockets.get(normalizedConversationId) ||
+    new Map<string, Set<string>>();
+  const sockets = users.get(normalizedUserId) || new Set<string>();
+  sockets.add(socket.id);
+  users.set(normalizedUserId, sockets);
+  conversationUserSockets.set(normalizedConversationId, users);
+}
+
+function markConversationUserLeft(
+  socket: Socket,
+  conversationId: string,
+  userId?: string
+): void {
+  const normalizedConversationId = normalizeConversationId(conversationId);
+  const normalizedUserId = String(userId || socketUserIds.get(socket.id) || "").trim();
+  if (!normalizedConversationId || !normalizedUserId) return;
+
+  const users = conversationUserSockets.get(normalizedConversationId);
+  const sockets = users?.get(normalizedUserId);
+  sockets?.delete(socket.id);
+
+  if (sockets && sockets.size > 0) {
+    users?.set(normalizedUserId, sockets);
+    return;
+  }
+
+  users?.delete(normalizedUserId);
+
+  if (!users || users.size === 0) {
+    conversationUserSockets.delete(normalizedConversationId);
+  }
+}
+
+export function isUserInConversationRoom(
+  conversationId: string,
+  userId: string
+): boolean {
+  const normalizedConversationId = normalizeConversationId(conversationId);
+  const normalizedUserId = userId.trim();
+  const sockets = conversationUserSockets
+    .get(normalizedConversationId)
+    ?.get(normalizedUserId);
+
+  return Boolean(sockets && sockets.size > 0);
 }
 
 function resolveRoomHostId(room: unknown): string {
@@ -255,6 +369,20 @@ async function handleDisconnectingEvent(socket: Socket): Promise<void> {
   }
 }
 
+function cleanupConversationMemberships(socket: Socket): void {
+  const data = getSocketData(socket);
+  const userId = data.roomUserId || socketUserIds.get(socket.id);
+  const memberships = Array.isArray(data.conversationMemberships)
+    ? [...new Set(data.conversationMemberships)]
+    : [];
+
+  for (const conversationId of memberships) {
+    markConversationUserLeft(socket, conversationId, userId);
+  }
+
+  data.conversationMemberships = [];
+}
+
 function handleStudyBuddyIdentifyEvent(
   socket: Socket,
   payload: StudyBuddyIdentifyPayload
@@ -266,10 +394,12 @@ function handleStudyBuddyIdentifyEvent(
     return;
   }
 
-  socket.join(userChannel(payload.userId));
+  const userId = payload.userId.trim();
+  markUserOnline(socket, userId);
   socket.emit("study-buddy:identified", {
-    userId: payload.userId.trim(),
+    userId,
     namespace: STUDY_ROOM_SOCKET_NAMESPACE,
+    onlineUserIds: Array.from(userSocketIds.keys()),
   });
 }
 
@@ -287,11 +417,30 @@ function handleJoinConversationEvent(
   const conversationId = payload.conversationId.trim();
   const userId = payload.userId.trim();
 
-  getSocketData(socket).roomUserId = userId;
+  markUserOnline(socket, userId);
   addConversationMembership(socket, conversationId);
+  markConversationUserJoined(socket, conversationId, userId);
   socket.join(conversationChannel(conversationId));
   socket.join(userChannel(userId));
   socket.emit("conversation-joined", { conversationId });
+}
+
+function handleLeaveConversationEvent(
+  socket: Socket,
+  payload: ConversationJoinPayload
+): void {
+  if (!isNonEmptyString(payload.conversationId)) {
+    return;
+  }
+
+  const conversationId = payload.conversationId.trim();
+  const userId = isNonEmptyString(payload.userId)
+    ? payload.userId.trim()
+    : getSocketData(socket).roomUserId;
+
+  socket.leave(conversationChannel(conversationId));
+  removeConversationMembership(socket, conversationId);
+  markConversationUserLeft(socket, conversationId, userId);
 }
 
 function handleSendMessageEvent(
@@ -309,6 +458,25 @@ function handleSendMessageEvent(
   socket.nsp.to(conversationChannel(conversationId)).emit("receive-message", {
     conversationId,
     message: payload.message,
+  });
+}
+
+function handleTypingEvent(
+  socket: Socket,
+  payload: ConversationTypingPayload,
+  eventName: "typing" | "stop_typing"
+): void {
+  if (!isNonEmptyString(payload.conversationId) || !isNonEmptyString(payload.userId)) {
+    return;
+  }
+
+  const conversationId = payload.conversationId.trim();
+  const userId = payload.userId.trim();
+
+  socket.to(conversationChannel(conversationId)).emit(eventName, {
+    conversationId,
+    userId,
+    userName: isNonEmptyString(payload.userName) ? payload.userName.trim() : "User",
   });
 }
 
@@ -425,8 +593,20 @@ export function registerStudyRoomNamespace(io: Server): Namespace {
       handleJoinConversationEvent(socket, payload);
     });
 
+    socket.on("leave-conversation", (payload: ConversationJoinPayload) => {
+      handleLeaveConversationEvent(socket, payload);
+    });
+
     socket.on("send-message", (payload: ConversationMessagePayload) => {
       handleSendMessageEvent(socket, payload);
+    });
+
+    socket.on("typing", (payload: ConversationTypingPayload) => {
+      handleTypingEvent(socket, payload, "typing");
+    });
+
+    socket.on("stop_typing", (payload: ConversationTypingPayload) => {
+      handleTypingEvent(socket, payload, "stop_typing");
     });
 
     socket.on("study-room:join", async (payload: StudyRoomJoinPayload) => {
@@ -446,7 +626,12 @@ export function registerStudyRoomNamespace(io: Server): Namespace {
     });
 
     socket.on("disconnecting", async () => {
+      cleanupConversationMemberships(socket);
       await handleDisconnectingEvent(socket);
+    });
+
+    socket.on("disconnect", () => {
+      markUserOffline(socket);
     });
   });
 
