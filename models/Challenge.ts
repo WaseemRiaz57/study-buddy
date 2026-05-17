@@ -7,7 +7,9 @@ export interface IChallenge extends Document {
   description: string;
   type: ChallengeType;
   targetMetric: number;
+  metricLabel: string;
   xpReward: number;
+  coinsReward: number;
   isActive: boolean;
 }
 
@@ -22,7 +24,9 @@ const ChallengeSchema = new Schema<IChallenge>(
       index: true,
     },
     targetMetric: { type: Number, required: true, min: 1 },
+    metricLabel: { type: String, default: "items", trim: true, maxlength: 40 },
     xpReward: { type: Number, required: true, min: 0 },
+    coinsReward: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true }

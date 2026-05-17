@@ -1,604 +1,757 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
-    Swords,
-    Target,
-    Gift,
-    Plus,
-    Edit,
-    Trash2,
-    Clock,
-    Zap,
-    Coins,
-    X,
-    Flame,
-    Users,
-    Calendar,
-    Sparkles,
+  Calendar,
+  Coins,
+  Edit,
+  Gift,
+  Loader2,
+  Plus,
+  Sparkles,
+  Swords,
+  Target,
+  Trash2,
+  Users,
+  X,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
 
-// ─── Types ──────────────────────────────────────────────────────────────────────
-type Frequency = "daily" | "weekly" | "one-time";
+type ChallengeType = "daily" | "weekly" | "global" | "elite";
 
-interface Challenge {
-    id: string;
-    title: string;
-    description: string;
-    frequency: Frequency;
-    xpReward: number;
-    coinReward: number;
-    targetGoal: number;
-    targetUnit: string;
-    completedBy: number;
-    totalEligible: number;
-    active: boolean;
-}
-
-// ─── Frequency Config ───────────────────────────────────────────────────────────
-const FREQ_CONFIG: Record<
-    Frequency,
-    { label: string; badge: string; Icon: React.ElementType }
-> = {
-    daily: {
-        label: "Daily",
-        badge: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/25",
-        Icon: Clock,
-    },
-    weekly: {
-        label: "Weekly",
-        badge: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-400 dark:border-violet-500/25",
-        Icon: Calendar,
-    },
-    "one-time": {
-        label: "Special Event",
-        badge: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/25",
-        Icon: Sparkles,
-    },
+type Challenge = {
+  id: string;
+  title: string;
+  description: string;
+  type: ChallengeType;
+  xpReward: number;
+  coinsReward: number;
+  targetMetric: number;
+  metricLabel: string;
+  completions: number;
+  totalEligible: number;
+  completionPercentage: number;
+  xpDistributed: number;
+  isActive: boolean;
 };
 
-// ─── Mock Data ──────────────────────────────────────────────────────────────────
-const INITIAL_CHALLENGES: Challenge[] = [
-    {
-        id: "c1",
-        title: "Weekend Warrior",
-        description: "Study for 5 hours over the weekend to earn bonus rewards.",
-        frequency: "weekly",
-        xpReward: 500,
-        coinReward: 50,
-        targetGoal: 5,
-        targetUnit: "hours",
-        completedBy: 1240,
-        totalEligible: 3800,
-        active: true,
-    },
-    {
-        id: "c2",
-        title: "Flashcard Frenzy",
-        description: "Create and review 10 flashcard decks in a single day.",
-        frequency: "daily",
-        xpReward: 200,
-        coinReward: 20,
-        targetGoal: 10,
-        targetUnit: "decks",
-        completedBy: 876,
-        totalEligible: 3800,
-        active: true,
-    },
-    {
-        id: "c3",
-        title: "Helpful Mentor",
-        description: "Answer 15 questions from fellow students this week.",
-        frequency: "weekly",
-        xpReward: 750,
-        coinReward: 80,
-        targetGoal: 15,
-        targetUnit: "answers",
-        completedBy: 312,
-        totalEligible: 1100,
-        active: true,
-    },
-    {
-        id: "c4",
-        title: "Launch Day Blitz",
-        description: "Complete your first quiz and share your score during the launch event.",
-        frequency: "one-time",
-        xpReward: 1000,
-        coinReward: 150,
-        targetGoal: 1,
-        targetUnit: "quiz",
-        completedBy: 2045,
-        totalEligible: 3800,
-        active: false,
-    },
-];
+type Stats = {
+  activeChallenges: number;
+  totalCompletions: number;
+  xpDistributed: number;
+  totalEligible: number;
+};
 
-// ─── Toggle Component ───────────────────────────────────────────────────────────
+type FormState = {
+  title: string;
+  description: string;
+  type: ChallengeType;
+  xpReward: number;
+  coinsReward: number;
+  targetMetric: number;
+  metricLabel: string;
+  isActive: boolean;
+};
+
+const TYPE_CONFIG: Record<
+  ChallengeType,
+  { label: string; badge: string; Icon: LucideIcon }
+> = {
+  daily: {
+    label: "Daily",
+    badge:
+      "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/25",
+    Icon: Calendar,
+  },
+  weekly: {
+    label: "Weekly",
+    badge:
+      "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-400 dark:border-violet-500/25",
+    Icon: Target,
+  },
+  global: {
+    label: "Global",
+    badge:
+      "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/25",
+    Icon: Users,
+  },
+  elite: {
+    label: "Elite",
+    badge:
+      "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/25",
+    Icon: Sparkles,
+  },
+};
+
+const EMPTY_FORM: FormState = {
+  title: "",
+  description: "",
+  type: "daily",
+  xpReward: 100,
+  coinsReward: 0,
+  targetMetric: 1,
+  metricLabel: "items",
+  isActive: true,
+};
+
 function Toggle({
-    checked,
-    onChange,
+  checked,
+  disabled,
+  onChange,
 }: {
-    checked: boolean;
-    onChange: (v: boolean) => void;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (value: boolean) => void;
 }) {
-    return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={checked}
-            onClick={() => onChange(!checked)}
-            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 ${checked
-                    ? "bg-purple-600"
-                    : "bg-slate-300 dark:bg-white/10"
-                }`}
-        >
-            <span
-                className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? "translate-x-[18px]" : "translate-x-[3px]"
-                    }`}
-            />
-        </button>
-    );
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 disabled:cursor-not-allowed disabled:opacity-60 ${
+        checked ? "bg-[#7C3AED]" : "bg-slate-300 dark:bg-white/10"
+      }`}
+    >
+      <span
+        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+          checked ? "translate-x-[18px]" : "translate-x-[3px]"
+        }`}
+      />
+    </button>
+  );
 }
 
-// ─── Main Page ──────────────────────────────────────────────────────────────────
+function formFromChallenge(challenge: Challenge): FormState {
+  return {
+    title: challenge.title,
+    description: challenge.description,
+    type: challenge.type,
+    xpReward: challenge.xpReward,
+    coinsReward: challenge.coinsReward,
+    targetMetric: challenge.targetMetric,
+    metricLabel: challenge.metricLabel,
+    isActive: challenge.isActive,
+  };
+}
+
 export default function ChallengesManagementPage() {
-    const { resolvedTheme } = useTheme();
-    const [mounted, setMounted] = useState(false);
-    const [challenges, setChallenges] = useState<Challenge[]>(INITIAL_CHALLENGES);
-    const [modal, setModal] = useState<"create" | Challenge | null>(null);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    activeChallenges: 0,
+    totalCompletions: 0,
+    xpDistributed: 0,
+    totalEligible: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState("");
+  const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
+  const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Challenge | null>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
-    // Form state
-    const [formTitle, setFormTitle] = useState("");
-    const [formDesc, setFormDesc] = useState("");
-    const [formFreq, setFormFreq] = useState<Frequency>("daily");
-    const [formXP, setFormXP] = useState(100);
-    const [formCoins, setFormCoins] = useState(10);
-    const [formTarget, setFormTarget] = useState(1);
+  const fetchChallenges = useCallback(async () => {
+    setIsLoading(true);
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    try {
+      const res = await fetch("/api/admin/challenges", { cache: "no-store" });
+      const data = await res.json();
 
-    if (!mounted) {
-        return <div className="min-h-[60vh]" />;
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load challenges.");
+      }
+
+      setChallenges(Array.isArray(data.challenges) ? data.challenges : []);
+      setStats({
+        activeChallenges: Number(data.stats?.activeChallenges || 0),
+        totalCompletions: Number(data.stats?.totalCompletions || 0),
+        xpDistributed: Number(data.stats?.xpDistributed || 0),
+        totalEligible: Number(data.stats?.totalEligible || 0),
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load challenges."
+      );
+    } finally {
+      setIsLoading(false);
     }
+  }, []);
 
-    const openCreate = () => {
-        setFormTitle("");
-        setFormDesc("");
-        setFormFreq("daily");
-        setFormXP(100);
-        setFormCoins(10);
-        setFormTarget(1);
-        setModal("create");
-    };
+  useEffect(() => {
+    void fetchChallenges();
+  }, [fetchChallenges]);
 
-    const openEdit = (c: Challenge) => {
-        setFormTitle(c.title);
-        setFormDesc(c.description);
-        setFormFreq(c.frequency);
-        setFormXP(c.xpReward);
-        setFormCoins(c.coinReward);
-        setFormTarget(c.targetGoal);
-        setModal(c);
-    };
+  function openCreate() {
+    setForm(EMPTY_FORM);
+    setEditingChallenge(null);
+    setModalMode("create");
+  }
 
-    const handleToggle = (id: string, active: boolean) => {
-        setChallenges((prev) =>
-            prev.map((c) => (c.id === id ? { ...c, active } : c))
-        );
-    };
+  function openEdit(challenge: Challenge) {
+    setForm(formFromChallenge(challenge));
+    setEditingChallenge(challenge);
+    setModalMode("edit");
+  }
 
-    const handleDelete = (id: string) => {
-        setChallenges((prev) => prev.filter((c) => c.id !== id));
-    };
+  function closeModal() {
+    if (isSaving) return;
+    setModalMode(null);
+    setEditingChallenge(null);
+  }
 
-    const activeCount = challenges.filter((c) => c.active).length;
-    const totalCompleted = challenges.reduce((sum, c) => sum + c.completedBy, 0);
-    const totalXPDistributed = challenges.reduce(
-        (sum, c) => sum + c.completedBy * c.xpReward,
-        0
-    );
+  async function handleSubmit() {
+    setIsSaving(true);
 
-    return (
-        <div className="space-y-6">
-            {/* ════════ HEADER ════════ */}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center bg-indigo-100 border border-indigo-200 text-indigo-600 dark:bg-indigo-500/15 dark:border-indigo-500/25 dark:text-indigo-400">
-                        <Swords size={20} />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                            Challenges Management
-                        </h1>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                            Create and manage daily/weekly tasks and their rewards.
-                        </p>
-                    </div>
-                </div>
+    try {
+      const isEditing = modalMode === "edit" && editingChallenge;
+      const res = await fetch(
+        isEditing
+          ? `/api/admin/challenges/${editingChallenge.id}`
+          : "/api/admin/challenges",
+        {
+          method: isEditing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        }
+      );
+      const data = await res.json();
 
-                <button
-                    onClick={openCreate}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-purple-600 text-white shadow-md shadow-purple-500/30 hover:bg-purple-700 transition-all shrink-0"
-                >
-                    <Plus size={15} /> Create New Challenge
-                </button>
-            </div>
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to save challenge.");
+      }
 
-            {/* ════════ STAT CARDS ════════ */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Active Challenges */}
-                <div className="flex items-center gap-4 rounded-xl border p-4 bg-purple-50/60 border-purple-200 dark:bg-purple-500/[0.08] dark:border-purple-500/20">
-                    <div className="text-purple-500 dark:text-purple-400 shrink-0">
-                        <Target size={22} />
-                    </div>
-                    <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">
-                            Active Challenges
-                        </div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-                            {activeCount}
-                        </div>
-                    </div>
-                </div>
+      toast.success(
+        isEditing ? "Challenge updated." : "Challenge created."
+      );
+      closeModal();
+      await fetchChallenges();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save challenge."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
-                {/* Total Completions */}
-                <div className="flex items-center gap-4 rounded-xl border p-4 bg-emerald-50/60 border-emerald-200 dark:bg-emerald-500/[0.08] dark:border-emerald-500/20">
-                    <div className="text-emerald-500 dark:text-emerald-400 shrink-0">
-                        <Users size={22} />
-                    </div>
-                    <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                            Total Completions
-                        </div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-                            {totalCompleted.toLocaleString()}
-                        </div>
-                    </div>
-                </div>
+  async function handleToggle(challenge: Challenge, isActive: boolean) {
+    setTogglingId(challenge.id);
 
-                {/* XP Distributed */}
-                <div className="flex items-center gap-4 rounded-xl border p-4 bg-amber-50/60 border-amber-200 dark:bg-amber-500/[0.08] dark:border-amber-500/20">
-                    <div className="text-amber-500 dark:text-amber-400 shrink-0">
-                        <Gift size={22} />
-                    </div>
-                    <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                            XP Distributed
-                        </div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-                            {totalXPDistributed.toLocaleString()}
-                        </div>
-                    </div>
-                </div>
-            </div>
+    try {
+      const res = await fetch(`/api/admin/challenges/${challenge.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+      const data = await res.json();
 
-            {/* ════════ CHALLENGES GRID ════════ */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {challenges.length === 0 ? (
-                    <div className="col-span-full text-center py-20">
-                        <Swords
-                            size={42}
-                            className="mx-auto mb-3 text-slate-300 dark:text-slate-600"
-                        />
-                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
-                            No challenges yet.
-                        </p>
-                        <p className="text-xs text-slate-400/60 dark:text-slate-500/60 mt-1">
-                            Create your first challenge to get started.
-                        </p>
-                    </div>
-                ) : (
-                    challenges.map((challenge) => {
-                        const freq = FREQ_CONFIG[challenge.frequency];
-                        const progress =
-                            challenge.totalEligible > 0
-                                ? Math.round(
-                                    (challenge.completedBy / challenge.totalEligible) * 100
-                                )
-                                : 0;
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to update challenge.");
+      }
 
-                        return (
-                            <div
-                                key={challenge.id}
-                                className={`group rounded-2xl border bg-white dark:bg-white/[0.02] flex flex-col transition-all hover:shadow-lg hover:shadow-purple-500/5 ${challenge.active
-                                        ? "border-purple-300/60 dark:border-purple-500/30 shadow-sm"
-                                        : "border-slate-200 dark:border-white/[0.06] opacity-75"
-                                    }`}
-                            >
-                                {/* Card Header */}
-                                <div className="px-5 pt-5 pb-3">
-                                    <div className="flex items-start justify-between gap-2 mb-3">
-                                        <div className="min-w-0 flex-1">
-                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                                                {challenge.title}
-                                            </h3>
-                                        </div>
-                                        <span
-                                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 inline-flex items-center gap-1 ${freq.badge}`}
-                                        >
-                                            <freq.Icon size={10} />
-                                            {freq.label}
-                                        </span>
-                                    </div>
+      toast.success(isActive ? "Challenge activated." : "Challenge deactivated.");
+      await fetchChallenges();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update challenge."
+      );
+    } finally {
+      setTogglingId("");
+    }
+  }
 
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 min-h-[2.5rem]">
-                                        {challenge.description}
-                                    </p>
-                                </div>
+  async function handleDelete() {
+    if (!deleteTarget) return;
 
-                                {/* Progress */}
-                                <div className="px-5 pb-3">
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                                            Completed by{" "}
-                                            <strong className="text-slate-600 dark:text-slate-300">
-                                                {challenge.completedBy.toLocaleString()}
-                                            </strong>{" "}
-                                            users
-                                        </span>
-                                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                            {progress}%
-                                        </span>
-                                    </div>
-                                    <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/[0.06] overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full transition-all duration-500 ${challenge.active
-                                                    ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                                                    : "bg-slate-300 dark:bg-white/10"
-                                                }`}
-                                            style={{ width: `${progress}%` }}
-                                        />
-                                    </div>
-                                </div>
+    setIsSaving(true);
 
-                                {/* Rewards */}
-                                <div className="px-5 pb-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/15">
-                                            <Zap size={11} className="shrink-0" />+
-                                            {challenge.xpReward.toLocaleString()} XP
-                                        </span>
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/15">
-                                            <Coins size={11} className="shrink-0" />+
-                                            {challenge.coinReward} Coins
-                                        </span>
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-slate-50 text-slate-500 border border-slate-100 dark:bg-white/[0.03] dark:text-slate-400 dark:border-white/[0.06]">
-                                            <Target size={10} className="shrink-0" />
-                                            {challenge.targetGoal} {challenge.targetUnit}
-                                        </span>
-                                    </div>
-                                </div>
+    try {
+      const res = await fetch(`/api/admin/challenges/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
 
-                                {/* Card Footer */}
-                                <div className="mt-auto px-5 py-3 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Toggle
-                                            checked={challenge.active}
-                                            onChange={(v) =>
-                                                handleToggle(challenge.id, v)
-                                            }
-                                        />
-                                        <span
-                                            className={`text-[11px] font-semibold ${challenge.active
-                                                    ? "text-purple-600 dark:text-purple-400"
-                                                    : "text-slate-400 dark:text-slate-500"
-                                                }`}
-                                        >
-                                            {challenge.active ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to delete challenge.");
+      }
 
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => openEdit(challenge)}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-                                        >
-                                            <Edit size={14} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(challenge.id)}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
+      toast.success("Challenge deleted.");
+      setDeleteTarget(null);
+      await fetchChallenges();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete challenge."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
-            {/* ════════ FOOTER ════════ */}
-            <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
-                <span>
-                    {challenges.length} challenges · {activeCount} active
-                </span>
-                <span>StudyBuddy Admin · Challenges Panel</span>
-            </div>
-
-            {/* ════════ CREATE / EDIT MODAL ════════ */}
-            {modal !== null && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-                    onClick={() => setModal(null)}
-                >
-                    <div
-                        className="relative w-full max-w-lg rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a0f26] shadow-2xl flex flex-col max-h-[90vh]"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/10 shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400">
-                                    {modal === "create" ? (
-                                        <Plus size={16} />
-                                    ) : (
-                                        <Edit size={16} />
-                                    )}
-                                </div>
-                                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                                    {modal === "create"
-                                        ? "Create New Challenge"
-                                        : "Edit Challenge"}
-                                </h3>
-                            </div>
-                            <button
-                                onClick={() => setModal(null)}
-                                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-                            {/* Title */}
-                            <div>
-                                <label className="text-sm font-medium text-slate-900 dark:text-white block mb-1.5">
-                                    Challenge Title
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formTitle}
-                                    onChange={(e) => setFormTitle(e.target.value)}
-                                    placeholder="e.g. Weekend Warrior"
-                                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors"
-                                />
-                            </div>
-
-                            {/* Description */}
-                            <div>
-                                <label className="text-sm font-medium text-slate-900 dark:text-white block mb-1.5">
-                                    Description
-                                </label>
-                                <textarea
-                                    value={formDesc}
-                                    onChange={(e) => setFormDesc(e.target.value)}
-                                    placeholder="What should the student do?"
-                                    rows={3}
-                                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors resize-none"
-                                />
-                            </div>
-
-                            {/* Frequency */}
-                            <div>
-                                <label className="text-sm font-medium text-slate-900 dark:text-white block mb-1.5">
-                                    Frequency
-                                </label>
-                                <div className="flex gap-2">
-                                    {(
-                                        [
-                                            { key: "daily", label: "Daily" },
-                                            { key: "weekly", label: "Weekly" },
-                                            { key: "one-time", label: "One-Time" },
-                                        ] as const
-                                    ).map((opt) => {
-                                        const isActive = formFreq === opt.key;
-                                        return (
-                                            <button
-                                                key={opt.key}
-                                                onClick={() => setFormFreq(opt.key)}
-                                                className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${isActive
-                                                        ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20"
-                                                        : "border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.04]"
-                                                    }`}
-                                            >
-                                                {opt.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Rewards Row */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-sm font-medium text-slate-900 dark:text-white block mb-1.5">
-                                        <span className="inline-flex items-center gap-1">
-                                            <Zap size={13} className="text-purple-500" /> XP Reward
-                                        </span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formXP}
-                                        onChange={(e) =>
-                                            setFormXP(Number(e.target.value))
-                                        }
-                                        min={0}
-                                        className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-slate-900 dark:text-white block mb-1.5">
-                                        <span className="inline-flex items-center gap-1">
-                                            <Coins size={13} className="text-amber-500" /> Coin
-                                            Reward
-                                        </span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formCoins}
-                                        onChange={(e) =>
-                                            setFormCoins(Number(e.target.value))
-                                        }
-                                        min={0}
-                                        className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Target Goal */}
-                            <div>
-                                <label className="text-sm font-medium text-slate-900 dark:text-white block mb-1.5">
-                                    <span className="inline-flex items-center gap-1">
-                                        <Target size={13} className="text-indigo-500" /> Target Goal
-                                    </span>
-                                </label>
-                                <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">
-                                    The number the student must reach (e.g. 5 for &quot;5 hours&quot;, 10 for &quot;10 flashcards&quot;).
-                                </p>
-                                <input
-                                    type="number"
-                                    value={formTarget}
-                                    onChange={(e) =>
-                                        setFormTarget(Number(e.target.value))
-                                    }
-                                    min={1}
-                                    className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-white/10 shrink-0">
-                            <button
-                                onClick={() => setModal(null)}
-                                className="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => setModal(null)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-purple-600 text-white shadow-md shadow-purple-500/30 hover:bg-purple-700 transition-all"
-                            >
-                                {modal === "create" ? (
-                                    <>
-                                        <Plus size={14} /> Create Challenge
-                                    </>
-                                ) : (
-                                    <>
-                                        <Edit size={14} /> Save Changes
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#7C3AED]/20 bg-[#7C3AED]/10 text-[#7C3AED]">
+            <Swords size={20} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Challenges Management
+            </h1>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              Create and manage daily, weekly, global, and elite quests.
+            </p>
+          </div>
         </div>
-    );
+
+        <button
+          onClick={openCreate}
+          className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#7C3AED]/25 transition-all hover:bg-[#6D28D9]"
+        >
+          <Plus size={15} /> Create New Challenge
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="flex items-center gap-4 rounded-xl border border-[#7C3AED]/20 bg-[#7C3AED]/10 p-4">
+          <div className="shrink-0 text-[#7C3AED]">
+            <Target size={22} />
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#7C3AED]">
+              Active Challenges
+            </div>
+            <div className="mt-0.5 text-2xl font-bold text-slate-900 dark:text-white">
+              {stats.activeChallenges}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/[0.08]">
+          <div className="shrink-0 text-emerald-500 dark:text-emerald-400">
+            <Users size={22} />
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              Total Completions
+            </div>
+            <div className="mt-0.5 text-2xl font-bold text-slate-900 dark:text-white">
+              {stats.totalCompletions.toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/20 dark:bg-amber-500/[0.08]">
+          <div className="shrink-0 text-amber-500 dark:text-amber-400">
+            <Gift size={22} />
+          </div>
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              XP Distributed
+            </div>
+            <div className="mt-0.5 text-2xl font-bold text-slate-900 dark:text-white">
+              {stats.xpDistributed.toLocaleString()}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-slate-200 bg-white dark:border-white/[0.06] dark:bg-white/[0.02]">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#7C3AED]" />
+          <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+            Loading challenges...
+          </span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {challenges.length === 0 ? (
+            <div className="col-span-full py-20 text-center">
+              <Swords
+                size={42}
+                className="mx-auto mb-3 text-slate-300 dark:text-slate-600"
+              />
+              <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
+                No challenges yet.
+              </p>
+              <p className="mt-1 text-xs text-slate-400/60 dark:text-slate-500/60">
+                Create your first challenge to get started.
+              </p>
+            </div>
+          ) : (
+            challenges.map((challenge) => {
+              const config = TYPE_CONFIG[challenge.type] || TYPE_CONFIG.daily;
+              const Icon = config.Icon;
+              const progress = Math.min(
+                100,
+                Math.max(0, challenge.completionPercentage)
+              );
+
+              return (
+                <div
+                  key={challenge.id}
+                  className={`group flex flex-col rounded-2xl border bg-white transition-all hover:shadow-lg hover:shadow-[#7C3AED]/5 dark:bg-white/[0.02] ${
+                    challenge.isActive
+                      ? "border-[#7C3AED]/40 shadow-sm"
+                      : "border-slate-200 opacity-75 dark:border-white/[0.06]"
+                  }`}
+                >
+                  <div className="px-5 pb-3 pt-5">
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                          {challenge.title}
+                        </h3>
+                      </div>
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${config.badge}`}
+                      >
+                        <Icon size={10} />
+                        {config.label}
+                      </span>
+                    </div>
+
+                    <p className="line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                      {challenge.description}
+                    </p>
+                  </div>
+
+                  <div className="px-5 pb-3">
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                        Completed by{" "}
+                        <strong className="text-slate-600 dark:text-slate-300">
+                          {challenge.completions.toLocaleString()}
+                        </strong>{" "}
+                        users
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        {progress}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.06]">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          challenge.isActive
+                            ? "bg-[#7C3AED]"
+                            : "bg-slate-300 dark:bg-white/10"
+                        }`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="px-5 pb-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-[#7C3AED]/15 bg-[#7C3AED]/10 px-2 py-1 text-[11px] font-bold text-[#7C3AED]">
+                        <Zap size={11} className="shrink-0" />+
+                        {challenge.xpReward.toLocaleString()} XP
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-700 dark:border-amber-500/15 dark:bg-amber-500/10 dark:text-amber-400">
+                        <Coins size={11} className="shrink-0" />+
+                        {challenge.coinsReward.toLocaleString()} Coins
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-500 dark:border-white/[0.06] dark:bg-white/[0.03] dark:text-slate-400">
+                        <Target size={10} className="shrink-0" />
+                        {challenge.targetMetric.toLocaleString()}{" "}
+                        {challenge.metricLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto flex items-center justify-between border-t border-slate-100 px-5 py-3 dark:border-white/[0.06]">
+                    <div className="flex items-center gap-2">
+                      <Toggle
+                        checked={challenge.isActive}
+                        disabled={togglingId === challenge.id}
+                        onChange={(value) => void handleToggle(challenge, value)}
+                      />
+                      <span
+                        className={`text-[11px] font-semibold ${
+                          challenge.isActive
+                            ? "text-[#7C3AED]"
+                            : "text-slate-400 dark:text-slate-500"
+                        }`}
+                      >
+                        {challenge.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEdit(challenge)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#7C3AED] dark:text-slate-500 dark:hover:bg-white/[0.06]"
+                        aria-label={`Edit ${challenge.title}`}
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(challenge)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                        aria-label={`Delete ${challenge.title}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+        <span>
+          {challenges.length} challenges · {stats.activeChallenges} active
+        </span>
+        <span>StudyBuddy Admin · Challenges Panel</span>
+      </div>
+
+      {modalMode !== null ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={closeModal}
+        >
+          <div
+            className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#1a0f26]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7C3AED]/10 text-[#7C3AED]">
+                  {modalMode === "create" ? <Plus size={16} /> : <Edit size={16} />}
+                </div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {modalMode === "create"
+                    ? "Create New Challenge"
+                    : "Edit Challenge"}
+                </h3>
+              </div>
+              <button
+                onClick={closeModal}
+                disabled={isSaving}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 disabled:opacity-60 dark:text-slate-500 dark:hover:bg-white/[0.06]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-900 dark:text-white">
+                  Challenge Title
+                </label>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, title: event.target.value }))
+                  }
+                  placeholder="e.g. Weekend Warrior"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-900 dark:text-white">
+                  Description
+                </label>
+                <textarea
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
+                  }
+                  placeholder="What should the student do?"
+                  rows={3}
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-900 dark:text-white">
+                  Type
+                </label>
+                <select
+                  value={form.type}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      type: event.target.value as ChallengeType,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 transition-colors focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-[#241333] dark:text-white"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="global">Global</option>
+                  <option value="elite">Elite</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-900 dark:text-white">
+                    <span className="inline-flex items-center gap-1">
+                      <Zap size={13} className="text-[#7C3AED]" /> XP
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    value={form.xpReward}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        xpReward: Number(event.target.value),
+                      }))
+                    }
+                    min={0}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 transition-colors focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-900 dark:text-white">
+                    <span className="inline-flex items-center gap-1">
+                      <Coins size={13} className="text-amber-500" /> Coins
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    value={form.coinsReward}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        coinsReward: Number(event.target.value),
+                      }))
+                    }
+                    min={0}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 transition-colors focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-900 dark:text-white">
+                    Metric Number
+                  </label>
+                  <input
+                    type="number"
+                    value={form.targetMetric}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        targetMetric: Number(event.target.value),
+                      }))
+                    }
+                    min={1}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 transition-colors focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-900 dark:text-white">
+                    Metric Label
+                  </label>
+                  <input
+                    type="text"
+                    value={form.metricLabel}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        metricLabel: event.target.value,
+                      }))
+                    }
+                    placeholder="hours"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2.5 dark:border-white/10">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Active
+                </span>
+                <Toggle
+                  checked={form.isActive}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, isActive: value }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-between border-t border-slate-200 px-6 py-4 dark:border-white/10">
+              <button
+                onClick={closeModal}
+                disabled={isSaving}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/[0.04]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleSubmit()}
+                disabled={isSaving}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#7C3AED] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#7C3AED]/25 transition-all hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : modalMode === "create" ? (
+                  <Plus size={14} />
+                ) : (
+                  <Edit size={14} />
+                )}
+                {modalMode === "create" ? "Create Challenge" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => {
+            if (!isSaving) setDeleteTarget(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#1a0f26]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Delete challenge?
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              This will delete "{deleteTarget.title}" and all associated user
+              progress records. This cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={isSaving}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/[0.04]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleDelete()}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? <Loader2 size={14} className="animate-spin" /> : null}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
