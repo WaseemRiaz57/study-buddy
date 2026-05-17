@@ -29,6 +29,7 @@ import {
   LogOut,
   Sparkles,
   Search,
+  Star,
   Sun,
   Moon,
   ChevronDown,
@@ -68,6 +69,7 @@ const navGroups: NavGroup[] = [
       { icon: Library, label: "Resources Library", href: "/admin/content/resources", badge: "12", badgeColor: "bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400" },
       { icon: Bot, label: "AI Content Review", href: "/admin/content/ai-review" },
       { icon: Pin, label: "Featured Content", href: "/admin/content/featured" },
+      { icon: Star, label: "Platform Reviews", href: "/admin/reviews" },
     ],
   },
   {
@@ -80,7 +82,7 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: "Users & Mentors",
+    title: "Users & Teachers",
     items: [
       { icon: Users, label: "User Management", href: "/admin/users" },
       { icon: GraduationCap, label: "Mentor Management", href: "/admin/mentors", badge: "3", badgeColor: "bg-orange-500 text-white" },

@@ -15,6 +15,7 @@ import {
   Moon,
   Settings,
   Shield,
+  Star,
   Sun,
   X,
 } from "lucide-react";
@@ -47,6 +48,10 @@ export function DashboardTopbar() {
   const { role } = useUserStore();
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isBuyingFreeze, setIsBuyingFreeze] = useState(false);
   const [gamificationStats, setGamificationStats] =
@@ -130,6 +135,38 @@ export function DashboardTopbar() {
   const handleLogout = async () => {
     markStudyBuddyOffline();
     await signOut({ callbackUrl: "/" });
+  };
+
+  const handleSubmitReview = async () => {
+    try {
+      setIsSubmittingReview(true);
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: reviewRating,
+          comment: reviewComment,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to submit review.");
+      }
+
+      toast.success(
+        data?.message || "Thank you, your review is pending approval."
+      );
+      setReviewOpen(false);
+      setReviewRating(0);
+      setReviewComment("");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to submit review."
+      );
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const avatarButton = (
@@ -329,6 +366,18 @@ export function DashboardTopbar() {
                 </Link>
                 <button
                   type="button"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    setReviewOpen(true);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED]"
+                  role="menuitem"
+                >
+                  <Star size={16} />
+                  Review App
+                </button>
+                <button
+                  type="button"
                   onClick={() => void handleLogout()}
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
                   role="menuitem"
@@ -431,6 +480,85 @@ export function DashboardTopbar() {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    )}
+    {reviewOpen && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#191121]">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
+                Platform Review
+              </p>
+              <h2 className="mt-1 text-xl font-extrabold text-foreground">
+                Share Your Feedback
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Reviews are published after admin approval.
+              </p>
+            </div>
+            <button
+              onClick={() => setReviewOpen(false)}
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground dark:hover:bg-white/10"
+              aria-label="Close review modal"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="mb-5 flex items-center gap-2">
+            {Array.from({ length: 5 }).map((_, index) => {
+              const value = index + 1;
+              const active = value <= reviewRating;
+
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setReviewRating(value)}
+                  className="rounded-lg p-1 transition-transform hover:scale-110"
+                  aria-label={`Rate ${value} star${value === 1 ? "" : "s"}`}
+                >
+                  <Star
+                    size={30}
+                    className={
+                      active
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-slate-300 dark:text-slate-600"
+                    }
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          <textarea
+            value={reviewComment}
+            onChange={(event) => setReviewComment(event.target.value)}
+            rows={5}
+            maxLength={1200}
+            placeholder="Tell us what is working well, or what would make StudyBuddy better..."
+            className="w-full resize-none rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/15 dark:border-white/10"
+          />
+          <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+            <span>Minimum 10 characters</span>
+            <span>{reviewComment.length}/1200</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleSubmitReview()}
+            disabled={
+              isSubmittingReview ||
+              reviewRating === 0 ||
+              reviewComment.trim().length < 10
+            }
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSubmittingReview && <Loader2 size={16} className="animate-spin" />}
+            Submit Feedback
+          </button>
         </div>
       </div>
     )}

@@ -57,6 +57,17 @@ interface PricingPlan {
   excluded?: string[];
 }
 interface WorkflowStep { step: string; title: string; detail: string; }
+interface PublicReview {
+  id: string;
+  rating: number;
+  comment: string;
+  user: {
+    name: string;
+    role: string;
+    image?: string;
+    initials: string;
+  };
+}
 
 // ============================================================================
 // DATA
@@ -81,7 +92,7 @@ const features: Feature[] = [
   { icon: Clock,        title: "Focus Room",            description: "Distraction-free environment with Pomodoro timer, ambient sounds, and deep-work tracking.", glow: "pink" },
   { icon: MessageSquare,title: "Community Forums",      description: "Ask questions, share insights, and engage with thousands of motivated learners.", glow: "violet" },
   { icon: BookOpen,     title: "Resource Hub",          description: "A shared digital library of notes, PDFs, and guides rated by the community.", glow: "sky" },
-  { icon: GraduationCap,title: "Mentorship Network",   description: "Connect with experienced mentors who guide you through tough subjects one-on-one.", glow: "amber" },
+  { icon: GraduationCap,title: "Teacher Network",   description: "Connect with experienced teachers who guide you through tough subjects one-on-one.", glow: "amber" },
   { icon: Zap,          title: "Smart Analytics",       description: "Track your study hours, weak areas, and progress with AI-powered dashboards.", glow: "teal" },
 ];
 
@@ -96,12 +107,6 @@ const stats = [
   { value: "1M+",   label: "Study Hours",     icon: Clock  },
   { value: "98%",   label: "Success Rate",    icon: Target },
   { value: "4.9/5", label: "User Rating",     icon: Star   },
-];
-
-const testimonials = [
-  { name: "Sarah L.",  role: "University Student",  avatar: "SL", color: "bg-purple-600",  quote: "StudyBuddy's AI notes saved me hours of work. I can finally focus on understanding concepts instead of just transcribing lectures. It's a total game-changer for my exam prep!", stars: 5 },
-  { name: "David C.",  role: "High School Teacher", avatar: "DC", color: "bg-fuchsia-600", quote: "I use the marketplace to share my supplemental materials. It's a great way to help more students and earn some extra income. The platform is intuitive and easy to use.", stars: 5 },
-  { name: "Maria G.",  role: "College Sophomore",   avatar: "MG", color: "bg-pink-600",    quote: "The focus room and study streaks are brilliant! They keep me accountable and motivated. I've been more consistent with my studies than ever before.", stars: 5 },
 ];
 
 const pricingPlans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
@@ -459,7 +464,23 @@ const PricingCard = memo(function PricingCard({
 // ============================================================================
 // TESTIMONIALS MARQUEE
 // ============================================================================
-const TestimonialsMarquee = memo(function TestimonialsMarquee({ isMobile }: { isMobile: boolean }) {
+const TestimonialsMarquee = memo(function TestimonialsMarquee({
+  isMobile,
+  testimonials,
+}: {
+  isMobile: boolean;
+  testimonials: PublicReview[];
+}) {
+  if (testimonials.length === 0) {
+    return (
+      <div className="mx-auto max-w-xl px-6 py-8 text-center">
+        <div className="rounded-2xl border border-border bg-card/60 p-8 text-sm text-muted-foreground">
+          Approved community reviews will appear here soon.
+        </div>
+      </div>
+    );
+  }
+
   const tripled = [...testimonials, ...testimonials, ...testimonials];
   return (
     <div className="relative flex w-full overflow-hidden py-8">
@@ -477,24 +498,31 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({ isMobile }: { is
           >
             <div>
               <div className="mb-4 flex gap-1 text-yellow-400">
-                {Array.from({ length: t.stars }).map((_, j) => (
+                {Array.from({ length: Math.max(1, Math.min(5, t.rating)) }).map((_, j) => (
                   <Star key={j} size={15} fill="currentColor" />
                 ))}
               </div>
-              <p className="mb-8 text-sm italic leading-relaxed text-muted-foreground">&ldquo;{t.quote}&rdquo;</p>
+              <p className="mb-8 text-sm italic leading-relaxed text-muted-foreground">&ldquo;{t.comment}&rdquo;</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-white ${t.color}`}>{t.avatar}</div>
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-xs font-bold text-white">
+                {t.user.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={t.user.image} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  t.user.initials
+                )}
+              </div>
               <div>
-                <div className="text-sm font-bold text-foreground">{t.name}</div>
-                <div className="text-xs text-muted-foreground">{t.role}</div>
+                <div className="text-sm font-bold text-foreground">{t.user.name}</div>
+                <div className="text-xs text-muted-foreground">{t.user.role}</div>
               </div>
             </div>
           </motion.div>
         ))}
       </motion.div>
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-[#7C3AED]  " />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-[#7C3AED]  " />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-background to-transparent" />
     </div>
   );
 });
@@ -507,6 +535,26 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [isYearly, setIsYearly] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [testimonials, setTestimonials] = useState<PublicReview[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchReviews() {
+      const response = await fetch("/api/reviews/public", { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+
+      if (active && response.ok && Array.isArray(data?.reviews)) {
+        setTestimonials(data.reviews);
+      }
+    }
+
+    void fetchReviews();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (isMobile || prefersReducedMotion) return;
@@ -587,7 +635,7 @@ export default function Home() {
             variants={fadeUp}
             className="mx-auto mb-12 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed"
           >
-            Where learning meets innovation. Build knowledge, connect with mentors, and achieve your goals in a community that never stops growing.
+            Where learning meets innovation. Build knowledge, connect with teachers, and achieve your goals in a community that never stops growing.
           </motion.p>
 
           <motion.div variants={fadeUp} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -871,7 +919,7 @@ export default function Home() {
             <SectionHeading>Loved by Students and Teachers</SectionHeading>
           </div>
         </div>
-        <TestimonialsMarquee isMobile={isMobile} />
+        <TestimonialsMarquee isMobile={isMobile} testimonials={testimonials} />
       </section>
 
       <AnimatedDivider />

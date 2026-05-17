@@ -77,9 +77,9 @@ const badgesData: BadgeItem[] = [
     earnedDate: "Feb 2026",
   },
   {
-    id: "mentor-heart",
-    name: "Mentor Heart",
-    description: "Help 25 students as a peer mentor with 5-star ratings.",
+    id: "teacher-heart",
+    name: "Teacher Heart",
+    description: "Help 25 students as a peer teacher with 5-star ratings.",
     icon: Shield,
     rarity: "rare",
     earned: true,
@@ -337,7 +337,7 @@ export default function BadgesPage() {
                   animate={{ width: "85%" }}
                   transition={{ duration: 1.2, ease: "easeOut" }}
                 />
-                <div className="absolute inset-0 rounded-full bg-[#7C3AED]  " />
+                <div className="absolute inset-0 rounded-full bg-white/20 dark:bg-white/10" />
               </div>
             </div>
           </div>
@@ -447,7 +447,7 @@ function BadgeCard({ badge }: { badge: BadgeItem }) {
       <div
         className={`
           group relative rounded-2xl border p-5 transition-all duration-300
-          bg-[#7C3AED] ${config.gradient} ${config.border}
+          bg-card/80 dark:bg-white/[0.04] ${config.border}
           backdrop-blur-md
           ${isLocked ? "opacity-60 grayscale" : `${config.glow} hover:-translate-y-2 hover:scale-[1.01]`}
         `}
