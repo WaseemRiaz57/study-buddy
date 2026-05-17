@@ -40,17 +40,43 @@ type GeneratedContentResult =
   | { type: "notes" | "summarizer"; text: string }
   | { type: "quiz"; questions: QuizQuestion[]; rawText: string };
 
-const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const PRIMARY_MODEL_NAME = process.env.GEMINI_MODEL || "gemini-1.5-flash-latest";
+const FALLBACK_MODEL_NAME = "gemini-pro";
 const MAX_SOURCE_CHARS = 50000;
 
-function getModel() {
+function getGenAI() {
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured.");
   }
 
-  return new GoogleGenerativeAI(apiKey).getGenerativeModel({ model: MODEL_NAME });
+  return new GoogleGenerativeAI(apiKey);
+}
+
+async function generateWithGemini(prompt: string) {
+  const genAI = getGenAI();
+
+  try {
+    return await genAI
+      .getGenerativeModel({ model: PRIMARY_MODEL_NAME })
+      .generateContent(prompt);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const shouldFallback =
+      PRIMARY_MODEL_NAME !== FALLBACK_MODEL_NAME &&
+      (message.includes("404") ||
+        message.toLowerCase().includes("not found") ||
+        message.toLowerCase().includes("model"));
+
+    if (!shouldFallback) {
+      throw error;
+    }
+
+    return genAI
+      .getGenerativeModel({ model: FALLBACK_MODEL_NAME })
+      .generateContent(prompt);
+  }
 }
 
 function trimSource(value: string) {
@@ -141,7 +167,7 @@ export async function generateContent(
   params: GenerateContentParams
 ): Promise<GeneratedContentResult> {
   const prompt = buildPrompt(params);
-  const result = await getModel().generateContent(prompt);
+  const result = await generateWithGemini(prompt);
   const text = result.response.text().trim();
 
   if (!text) {
