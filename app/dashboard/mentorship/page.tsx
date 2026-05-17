@@ -8,8 +8,8 @@ import {
   CalendarCheck,
   Clock,
   CreditCard,
+  Inbox,
   Loader2,
-  Search,
   User,
   Zap,
 } from "lucide-react";
@@ -266,7 +266,8 @@ function SessionCard({
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-white/10 dark:bg-surface-dark">
+    <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-surface-dark">
+      <Inbox className="mx-auto mb-3 h-8 w-8 text-[#7C3AED] opacity-30" />
       {label}
     </div>
   );
@@ -411,8 +412,7 @@ export default function MentorshipActivitiesHub() {
             href="/dashboard/mentorship/find"
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-black text-white transition-colors hover:bg-purple-700"
           >
-            <Search className="h-4 w-4" />
-            🔍 Find a Mentor
+            Find a Mentor
           </Link>
         </header>
 

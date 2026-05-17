@@ -20,6 +20,7 @@ import {
   Share2,
   ThumbsUp,
 } from "lucide-react";
+import PublicProfileModal from "@/components/PublicProfileModal";
 
 interface Author {
   id: string;
@@ -54,9 +55,11 @@ interface Comment {
 }
 
 function RoleBadge({ role }: { role: string }) {
-  const normalized = String(role || "student").toLowerCase();
+  const rawRole = String(role || "student").toLowerCase();
+  const normalized = rawRole === "mentor" ? "teacher" : rawRole;
   const styles: Record<string, string> = {
     admin: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
+    teacher: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
     mentor: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
     student: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400",
   };
@@ -108,11 +111,17 @@ function getInitials(name: string) {
   );
 }
 
-function Avatar({ author, size = "h-10 w-10" }: { author: Author; size?: string }) {
-  return (
-    <div
-      className={`${size} flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-xs font-bold text-white`}
-    >
+function Avatar({
+  author,
+  size = "h-10 w-10",
+  onClick,
+}: {
+  author: Author;
+  size?: string;
+  onClick?: (userId: string) => void;
+}) {
+  const content = (
+    <>
       {author.image ? (
         <img
           src={author.image}
@@ -122,6 +131,27 @@ function Avatar({ author, size = "h-10 w-10" }: { author: Author; size?: string 
       ) : (
         author.initials || getInitials(author.name)
       )}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={() => onClick(author.id)}
+        className={`${size} flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-xs font-bold text-white transition-opacity hover:opacity-90`}
+        aria-label={`View ${author.name}'s public profile`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className={`${size} flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-xs font-bold text-white`}
+    >
+      {content}
     </div>
   );
 }
@@ -137,6 +167,7 @@ export default function PostDetailPage() {
   const [commentInput, setCommentInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingComment, setIsSendingComment] = useState(false);
+  const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
 
   const currentUserName = session?.user?.name || "User";
   const currentUser: Author = {
@@ -375,12 +406,16 @@ export default function PostDetailPage() {
           </h1>
 
           <div className="mb-6 flex items-center gap-3">
-            <Avatar author={post.author} />
+            <Avatar author={post.author} onClick={setPublicProfileUserId} />
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-900 dark:text-white">
+                <button
+                  type="button"
+                  onClick={() => setPublicProfileUserId(post.author.id)}
+                  className="font-semibold text-slate-900 transition-colors hover:text-[#7C3AED] dark:text-white"
+                >
                   {post.author.name}
-                </span>
+                </button>
                 <RoleBadge role={post.author.role} />
               </div>
               <p className="text-xs text-slate-400 dark:text-gray-500">
@@ -468,12 +503,20 @@ export default function PostDetailPage() {
                 className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#1e1629]"
               >
                 <div className="flex items-start gap-3">
-                  <Avatar author={comment.author} size="h-8 w-8" />
+                  <Avatar
+                    author={comment.author}
+                    size="h-8 w-8"
+                    onClick={setPublicProfileUserId}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <button
+                        type="button"
+                        onClick={() => setPublicProfileUserId(comment.author.id)}
+                        className="text-sm font-semibold text-slate-900 transition-colors hover:text-[#7C3AED] dark:text-white"
+                      >
                         {comment.author.name}
-                      </span>
+                      </button>
                       <RoleBadge role={comment.author.role} />
                       <span className="text-xs text-slate-400 dark:text-gray-500">
                         {formatRelativeTime(comment.createdAt)}
@@ -522,6 +565,10 @@ export default function PostDetailPage() {
           </button>
         </div>
       </div>
+      <PublicProfileModal
+        userId={publicProfileUserId}
+        onClose={() => setPublicProfileUserId(null)}
+      />
     </div>
   );
 }

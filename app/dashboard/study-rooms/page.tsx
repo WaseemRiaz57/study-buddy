@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Search, SlidersHorizontal, Clock3, Radio, Plus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import PublicProfileModal from "@/components/PublicProfileModal";
 import CreateRoomModal from "@/components/study-room/CreateRoomModal";
 
 type Room = {
@@ -12,6 +13,8 @@ type Room = {
   participantsCount: number;
   capacity: number;
   hostName: string;
+  hostId: string;
+  hostImage: string;
   isLive: boolean;
   isActive: boolean;
   status: string;
@@ -25,6 +28,7 @@ export default function StudyRoomsPage() {
   const [joinCode, setJoinCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
+  const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
   const router = useRouter();
 
   const loadRooms = async () => {
@@ -58,6 +62,8 @@ export default function StudyRoomsPage() {
                   : 0,
             capacity: typeof room.maxParticipants === "number" ? room.maxParticipants : 20,
             hostName: String(room?.createdBy?.name || "Unknown Host"),
+            hostId: String(room?.createdBy?._id || ""),
+            hostImage: String(room?.createdBy?.profileImage || room?.createdBy?.image || ""),
             isLive: Boolean(room?.isActive === true || room?.status === "active" || room?.isLive === true),
             isActive: room?.isActive === true,
             status: String(room?.status || ""),
@@ -122,7 +128,7 @@ export default function StudyRoomsPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-col gap-1">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 via-blue-600 to-purple-600 dark:from-[#4fd1c5] dark:via-[#63b3ed] dark:to-[#8c30e8]">
+                <span className="text-[#7C3AED]">
                   Group Sanctuaries
                 </span>
               </h1>
@@ -134,8 +140,7 @@ export default function StudyRoomsPage() {
             {/* ✨ NEW BUTTON POSITION (Like Study with Buddy) */}
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-transform hover:scale-105 hover:shadow-purple-500/25
-                bg-gradient-to-r from-[#8c30e8] to-[#e830d5]"
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#7C3AED] font-bold text-white shadow-lg transition-opacity hover:opacity-90"
             >
               <Plus size={20} />
               Forge New Room
@@ -252,7 +257,29 @@ export default function StudyRoomsPage() {
                 {/* Footer */}
                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
                   <div className="text-xs font-medium text-slate-500 dark:text-gray-300 truncate pr-3">
-                    Host: <span className="text-slate-700 dark:text-white">{room.hostName}</span>
+                    Host:{" "}
+                    {room.hostId ? (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setPublicProfileUserId(room.hostId);
+                        }}
+                        className="inline-flex max-w-[120px] items-center gap-1.5 truncate align-middle font-semibold text-[#7C3AED] hover:underline"
+                      >
+                        {room.hostImage && (
+                          <img
+                            src={room.hostImage}
+                            alt=""
+                            className="h-5 w-5 rounded-full object-cover"
+                          />
+                        )}
+                        <span className="truncate">{room.hostName}</span>
+                      </button>
+                    ) : (
+                      <span className="text-slate-700 dark:text-white">{room.hostName}</span>
+                    )}
                   </div>
                   <div className="text-slate-500 dark:text-white/60 text-sm font-medium flex items-center gap-1">
                     <Users size={14} />
@@ -266,6 +293,10 @@ export default function StudyRoomsPage() {
       </main>
 
       <CreateRoomModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onCreated={loadRooms} />
+      <PublicProfileModal
+        userId={publicProfileUserId}
+        onClose={() => setPublicProfileUserId(null)}
+      />
     </>
   );
 }

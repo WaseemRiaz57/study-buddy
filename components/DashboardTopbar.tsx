@@ -1,11 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
-import { useSession } from "next-auth/react";
-import { BookOpen, Coins, Flame, Loader2, Moon, Shield, Sun, X } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import {
+  BookOpen,
+  ChevronDown,
+  Coins,
+  Flame,
+  Loader2,
+  LogOut,
+  Moon,
+  Settings,
+  Shield,
+  Sun,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
+import { markStudyBuddyOffline } from "@/hooks/useOfflinePresence";
 import { useUserStore } from "@/store/useUserStore";
 import { NotificationBell } from "./NotificationBell";
 
@@ -33,9 +47,11 @@ export function DashboardTopbar() {
   const { role } = useUserStore();
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isBuyingFreeze, setIsBuyingFreeze] = useState(false);
   const [gamificationStats, setGamificationStats] =
     useState<GamificationStats>(EMPTY_STATS);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const fullName = session?.user?.name || "User";
   const firstName = session?.user?.name?.split(" ")[0] || "User";
@@ -86,9 +102,64 @@ export function DashboardTopbar() {
     };
   }, [fetchGamificationStats]);
 
+  useEffect(() => {
+    if (!userMenuOpen) return;
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!userMenuRef.current?.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [userMenuOpen]);
+
   const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
+
+  const handleLogout = async () => {
+    markStudyBuddyOffline();
+    await signOut({ callbackUrl: "/" });
+  };
+
+  const avatarButton = (
+    <button
+      type="button"
+      onClick={() => setUserMenuOpen((current) => !current)}
+      className="group flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-[#7C3AED]/10"
+      aria-haspopup="menu"
+      aria-expanded={userMenuOpen}
+    >
+      <div className="relative">
+        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold text-white shadow-lg ring-2 ring-background ring-offset-2 ring-offset-[#7C3AED]/20">
+          {userImage ? (
+            <img
+              src={userImage}
+              alt={fullName}
+              className="h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+              onError={() => setAvatarFailed(true)}
+            />
+          ) : (
+            userInitials
+          )}
+        </div>
+        {role === "STUDENT" && (
+          <div className="absolute -bottom-1 -right-1 rounded-md border border-background bg-yellow-400 px-1.5 py-0.5 text-[9px] font-black text-black shadow-sm">
+            {gamificationStats.level}
+          </div>
+        )}
+      </div>
+      <ChevronDown
+        size={14}
+        className={`hidden text-muted-foreground transition-transform sm:block ${
+          userMenuOpen ? "rotate-180" : ""
+        }`}
+      />
+    </button>
+  );
 
   return (
     <>
@@ -204,8 +275,9 @@ export function DashboardTopbar() {
 
           <NotificationBell />
 
-          {role === "STUDENT" ? (
-            <div className="flex items-center gap-3 border-l border-border/50 pl-4">
+          <div ref={userMenuRef} className="relative">
+            {role === "STUDENT" ? (
+              <div className="flex items-center gap-3 border-l border-border/50 pl-4">
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-bold leading-none">
                   {status === "loading" ? "Loading..." : `Welcome ${firstName}`}
@@ -214,40 +286,46 @@ export function DashboardTopbar() {
                   {userEmail || `Level ${gamificationStats.level}`}
                 </p>
               </div>
-              <div className="group relative cursor-pointer">
-                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold text-white shadow-lg ring-2 ring-background ring-offset-2 ring-offset-primary/20">
-                  {userImage ? (
-                    <img
-                      src={userImage}
-                      alt={fullName}
-                      className="h-full w-full object-cover"
-                      referrerPolicy="no-referrer"
-                      onError={() => setAvatarFailed(true)}
-                    />
-                  ) : (
-                    userInitials
-                  )}
+              {avatarButton}
+            </div>
+            ) : (
+              avatarButton
+            )}
+
+            {userMenuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-[80] mt-3 w-64 rounded-2xl border border-border bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-[#191121]"
+              >
+                <div className="border-b border-border px-3 py-3 dark:border-white/10">
+                  <p className="truncate text-sm font-bold text-foreground">
+                    {fullName}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {userEmail || roleLabel}
+                  </p>
                 </div>
-                <div className="absolute -bottom-1 -right-1 rounded-md border border-background bg-yellow-400 px-1.5 py-0.5 text-[9px] font-black text-black shadow-sm">
-                  {gamificationStats.level}
-                </div>
+                <Link
+                  href="/dashboard/settings"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED]"
+                  role="menuitem"
+                >
+                  <Settings size={16} />
+                  Settings
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                  role="menuitem"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
               </div>
-            </div>
-          ) : (
-            <div className="flex h-10 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold text-white ring-2 ring-primary/20 transition-shadow hover:shadow-lg">
-              {userImage ? (
-                <img
-                  src={userImage}
-                  alt={fullName}
-                  className="h-full w-full object-cover"
-                  referrerPolicy="no-referrer"
-                  onError={() => setAvatarFailed(true)}
-                />
-              ) : (
-                userInitials
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </header>

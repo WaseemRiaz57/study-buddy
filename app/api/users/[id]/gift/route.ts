@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
 const MAX_GIFT_AMOUNT = 100000;
 
 function getProfileModel(role: unknown) {
-  return String(role || "").toLowerCase() === "mentor"
+  const normalizedRole = String(role || "").toLowerCase();
+  return normalizedRole === "teacher" || normalizedRole === "mentor"
     ? MentorProfile
     : StudentProfile;
 }

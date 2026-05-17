@@ -16,6 +16,7 @@ import {
   Trophy,
   type LucideIcon,
 } from "lucide-react";
+import PublicProfileModal from "@/components/PublicProfileModal";
 
 interface BadgeMeta {
   label: string;
@@ -112,11 +113,17 @@ function BadgePill({ badge }: { badge: string }) {
   );
 }
 
-function Avatar({ scholar, className }: { scholar: Scholar; className: string }) {
-  return (
-    <div
-      className={`${className} flex items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold tracking-wide text-white`}
-    >
+function Avatar({
+  scholar,
+  className,
+  onClick,
+}: {
+  scholar: Scholar;
+  className: string;
+  onClick?: (userId: string) => void;
+}) {
+  const content = (
+    <>
       {scholar.avatar ? (
         <img
           src={scholar.avatar}
@@ -126,11 +133,40 @@ function Avatar({ scholar, className }: { scholar: Scholar; className: string })
       ) : (
         scholar.initials
       )}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={() => onClick(scholar.userId)}
+        className={`${className} flex items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold tracking-wide text-white transition-opacity hover:opacity-90`}
+        aria-label={`View ${scholar.name}'s public profile`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className={`${className} flex items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold tracking-wide text-white`}
+    >
+      {content}
     </div>
   );
 }
 
-function PodiumCard({ scholar, index }: { scholar: Scholar; index: number }) {
+function PodiumCard({
+  scholar,
+  index,
+  onProfileClick,
+}: {
+  scholar: Scholar;
+  index: number;
+  onProfileClick: (userId: string) => void;
+}) {
   const isWinner = scholar.rank === 1;
   const orderClass = index === 0 ? "order-2" : index === 1 ? "order-1" : "order-3";
   const heights = ["h-56 sm:h-64", "h-44 sm:h-52", "h-40 sm:h-48"];
@@ -145,7 +181,11 @@ function PodiumCard({ scholar, index }: { scholar: Scholar; index: number }) {
       className={`group flex flex-col items-center ${orderClass}`}
     >
       <div className="relative mb-2">
-        <Avatar scholar={scholar} className={avatarSize[index]} />
+        <Avatar
+          scholar={scholar}
+          className={avatarSize[index]}
+          onClick={onProfileClick}
+        />
         {isWinner && (
           <motion.div
             initial={{ rotate: -20, scale: 0 }}
@@ -162,9 +202,13 @@ function PodiumCard({ scholar, index }: { scholar: Scholar; index: number }) {
       {index === 1 && <Medal className="mb-0.5 h-5 w-5 text-slate-400 dark:text-slate-300" />}
       {index === 2 && <Medal className="mb-0.5 h-5 w-5 text-amber-700 dark:text-amber-500" />}
 
-      <p className={`text-sm font-semibold ${isWinner ? "text-yellow-600 dark:text-yellow-300" : "text-foreground"}`}>
+      <button
+        type="button"
+        onClick={() => onProfileClick(scholar.userId)}
+        className={`text-sm font-semibold transition-colors hover:text-[#7C3AED] ${isWinner ? "text-yellow-600 dark:text-yellow-300" : "text-foreground"}`}
+      >
         {scholar.name}
-      </p>
+      </button>
 
       <div
         className={`mt-3 flex w-24 flex-col items-center justify-start rounded-t-2xl border pt-5 backdrop-blur-xl transition-shadow duration-300 sm:w-32 ${heights[index]} ${
@@ -193,6 +237,7 @@ export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<Scholar[]>([]);
   const [currentUser, setCurrentUser] = useState<Scholar | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -282,7 +327,12 @@ export default function LeaderboardPage() {
           <>
             <section className="mb-12 flex items-end justify-center gap-3 sm:gap-8">
               {topThree.map((scholar, index) => (
-                <PodiumCard key={scholar.userId} scholar={scholar} index={index} />
+                <PodiumCard
+                  key={scholar.userId}
+                  scholar={scholar}
+                  index={index}
+                  onProfileClick={setPublicProfileUserId}
+                />
               ))}
             </section>
 
@@ -307,11 +357,19 @@ export default function LeaderboardPage() {
                     <span className="text-sm font-bold text-muted-foreground/70">#{user.rank}</span>
 
                     <div className="flex min-w-0 items-center gap-3">
-                      <Avatar scholar={user} className="h-9 w-9 shrink-0 text-xs" />
+                      <Avatar
+                        scholar={user}
+                        className="h-9 w-9 shrink-0 text-xs"
+                        onClick={setPublicProfileUserId}
+                      />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">
+                        <button
+                          type="button"
+                          onClick={() => setPublicProfileUserId(user.userId)}
+                          className="truncate text-left text-sm font-medium text-foreground transition-colors hover:text-[#7C3AED]"
+                        >
                           {user.name}
-                        </p>
+                        </button>
                         <div className="flex items-center gap-1 text-[10px] font-medium text-orange-500 dark:text-orange-400 sm:hidden">
                           <Flame className="h-3 w-3" />
                           {user.streak}d
@@ -347,7 +405,11 @@ export default function LeaderboardPage() {
             <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Avatar scholar={currentUser} className="h-10 w-10 text-xs" />
+                  <Avatar
+                    scholar={currentUser}
+                    className="h-10 w-10 text-xs"
+                    onClick={setPublicProfileUserId}
+                  />
                   <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#7C3AED] bg-background text-[9px] font-bold text-[#7C3AED] dark:bg-[#0f0a16]">
                     {currentUser.rank}
                   </span>
@@ -399,6 +461,10 @@ export default function LeaderboardPage() {
           </div>
         </motion.div>
       )}
+      <PublicProfileModal
+        userId={publicProfileUserId}
+        onClose={() => setPublicProfileUserId(null)}
+      />
     </div>
   );
 }

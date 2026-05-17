@@ -7,6 +7,7 @@ import { BookOpen, Filter, Loader2, MessageSquare, Plus, Search } from "lucide-r
 import CreatePostModal from "@/components/community/CreatePostModal";
 import PostCard, { type Post } from "@/components/community/PostCard";
 import CommunitySidebar from "@/components/community/CommunitySidebar";
+import PublicProfileModal from "@/components/PublicProfileModal";
 
 const TOPIC_FILTERS = [
   "All",
@@ -86,6 +87,7 @@ export default function CommunityFeedPage() {
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -326,6 +328,7 @@ export default function CommunityFeedPage() {
                   post={post}
                   index={index}
                   onLike={toggleLike}
+                  onAuthorClick={setPublicProfileUserId}
                 />
               ))
             ) : (
@@ -354,6 +357,10 @@ export default function CommunityFeedPage() {
         onPublish={publishPost}
         categories={TOPIC_FILTERS}
         isPublishing={isPublishing}
+      />
+      <PublicProfileModal
+        userId={publicProfileUserId}
+        onClose={() => setPublicProfileUserId(null)}
       />
     </div>
   );

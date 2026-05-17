@@ -343,13 +343,6 @@ export default function FocusRoomsPage() {
 
       <div className="px-4 md:px-10 pt-8 pb-24 max-w-6xl mx-auto">
         <section className="flex flex-col items-center justify-center mb-16 relative">
-          <div className="absolute top-0 right-0 hidden lg:block">
-            <button className="glass-panel px-4 py-2 rounded-full flex items-center gap-2 text-sm text-text-muted dark:text-slate-400 hover:text-primary transition-colors">
-              <Sparkles size={16} />
-              Zen Mode
-            </button>
-          </div>
-
           <h1 className="text-3xl md:text-5xl font-bold text-text-main dark:text-white mb-2 text-center tracking-tight">
             Current Focus
           </h1>
@@ -362,22 +355,16 @@ export default function FocusRoomsPage() {
             <div
               className={`absolute inset-0 rounded-full transition-all duration-700
                 ${isRunning
-                  ? "bg-gradient-to-tr from-primary/15 to-purple-300/20 dark:from-primary/20 dark:to-purple-500/15 blur-2xl scale-110"
-                  : "bg-gradient-to-tr from-primary/5 to-purple-200/20 dark:from-primary/5 dark:to-purple-400/10 blur-2xl"
+                  ? "bg-[#7C3AED]/15 blur-2xl scale-110"
+                  : "bg-[#7C3AED]/5 blur-2xl"
                 }`}
             />
             <svg className="w-full h-full -rotate-90 drop-shadow-xl" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="48" fill="rgba(255,255,255,0.2)" className="dark:fill-white/[0.04] dark:stroke-white/20" stroke="white" strokeWidth="0.5" />
               <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(140,48,232,0.08)" strokeWidth="1.5" className="dark:stroke-purple-500/10" />
               <circle
-                cx="50" cy="50" r="46" fill="none" stroke="url(#timerGrad)" strokeWidth="1.5" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - progressPercent / 100)} className="transition-all duration-1000 ease-linear"
+                cx="50" cy="50" r="46" fill="none" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - progressPercent / 100)} className="transition-all duration-1000 ease-linear"
               />
-              <defs>
-                <linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#8c30e8" />
-                  <stop offset="100%" stopColor="#c084fc" />
-                </linearGradient>
-              </defs>
             </svg>
 
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -423,7 +410,7 @@ export default function FocusRoomsPage() {
 
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           
-          <div className="glass-panel bg-gradient-to-br from-white/60 via-lavender-mist/30 to-mint-whisper/30 dark:from-white/[0.03] dark:via-purple-900/10 dark:to-transparent rounded-2xl p-6 hover-tilt relative overflow-hidden group">
+          <div className="glass-panel bg-white/60 dark:bg-white/[0.03] rounded-2xl p-6 hover-tilt relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
               <Sparkles size={28} className="text-primary dark:text-purple-400" />
             </div>
@@ -443,7 +430,7 @@ export default function FocusRoomsPage() {
             </div>
           </div>
 
-          <div className="glass-panel bg-gradient-to-br from-white/60 to-lavender-mist/40 dark:from-white/[0.03] dark:to-purple-900/5 rounded-2xl p-6 hover-tilt flex flex-col">
+          <div className="glass-panel bg-white/60 dark:bg-white/[0.03] rounded-2xl p-6 hover-tilt flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-text-main dark:text-white">Upcoming Tasks</h3>
               <button 
@@ -604,7 +591,7 @@ export default function FocusRoomsPage() {
           
           <div className="relative flex-1 h-1.5 bg-gray-200 dark:bg-white/[0.06] rounded-full overflow-hidden">
             <div 
-              className="absolute top-0 left-0 h-full shimmer-bg rounded-full shadow-[0_0_10px_rgba(140,48,232,0.6)] transition-all duration-1000 ease-out" 
+              className="absolute top-0 left-0 h-full rounded-full bg-[#7C3AED] shadow-[0_0_10px_rgba(140,48,232,0.35)] transition-all duration-1000 ease-out" 
               style={{ width: `${xpProgressPct}%` }}
             />
           </div>

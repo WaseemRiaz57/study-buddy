@@ -31,7 +31,7 @@ export async function GET() {
         { isLive: true },
       ],
     })
-      .populate("createdBy", "name")
+      .populate("createdBy", "name image profileImage")
       .sort({ createdAt: -1 })
       .lean();
 

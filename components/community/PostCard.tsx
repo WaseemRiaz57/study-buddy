@@ -35,14 +35,18 @@ interface PostCardProps {
   post: Post;
   index?: number;
   onLike?: (postId: string) => void;
+  onAuthorClick?: (userId: string) => void;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Role badge (local helper)                                          */
 /* ------------------------------------------------------------------ */
 function RoleBadge({ role }: { role: string }) {
-  const normalizedRole = String(role || "student").toLowerCase();
+  const rawRole = String(role || "student").toLowerCase();
+  const normalizedRole = rawRole === "mentor" ? "teacher" : rawRole;
   const styles: Record<string, string> = {
+    teacher:
+      "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
     mentor:
       "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
     admin:
@@ -87,7 +91,12 @@ function formatRelativeTime(value: string | null) {
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
-export default function PostCard({ post, index = 0, onLike }: PostCardProps) {
+export default function PostCard({
+  post,
+  index = 0,
+  onLike,
+  onAuthorClick,
+}: PostCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -98,7 +107,16 @@ export default function PostCard({ post, index = 0, onLike }: PostCardProps) {
         <div className="p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all cursor-pointer bg-white border-slate-200 hover:border-[#7C3AED] dark:bg-[#1e1629] dark:border-white/10 dark:hover:border-[#7C3AED]/70">
           <div className="flex items-start gap-4">
             {/* Avatar */}
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-[#7C3AED] text-white overflow-hidden">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onAuthorClick?.(post.author.id);
+              }}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-[#7C3AED] text-white overflow-hidden transition-opacity hover:opacity-90"
+              aria-label={`View ${post.author.name}'s public profile`}
+            >
               {post.author.image ? (
                 <img
                   src={post.author.image}
@@ -108,14 +126,22 @@ export default function PostCard({ post, index = 0, onLike }: PostCardProps) {
               ) : (
                 post.author.initials
               )}
-            </div>
+            </button>
 
             <div className="flex-1 min-w-0">
               {/* Meta row */}
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onAuthorClick?.(post.author.id);
+                  }}
+                  className="text-sm font-semibold text-slate-900 transition-colors hover:text-[#7C3AED] dark:text-white"
+                >
                   {post.author.name}
-                </span>
+                </button>
                 <RoleBadge role={post.author.role || post.role} />
                 <span className="text-xs text-slate-400 dark:text-gray-500">
                   {formatRelativeTime(post.createdAt)}

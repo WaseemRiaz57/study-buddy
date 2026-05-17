@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectMongoDB } from "@/lib/mongodb";
+import MentorProfile from "@/models/MentorProfile";
 import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
 import UserProgress from "@/models/UserProgress";
@@ -22,17 +23,27 @@ export async function GET(
     await connectMongoDB();
 
     const user = await User.findById(userId)
-      .select("_id name image subjects email")
+      .select("_id name image profileImage subjects email role createdAt")
       .lean();
 
     if (!user) {
       return NextResponse.json({ message: "User not found." }, { status: 404 });
     }
 
+    const normalizedRole =
+      String(user.role || "").toLowerCase() === "teacher" ||
+      String(user.role || "").toLowerCase() === "mentor"
+        ? "teacher"
+        : "student";
+
+    const ProfileModel = normalizedRole === "teacher" ? MentorProfile : StudentProfile;
+    const profileSelect =
+      normalizedRole === "teacher"
+        ? "bio headline subjects xp subscriptionTier academicLevel rating totalReviews status"
+        : "bio headline interestedSubjects xp subscriptionTier academicLevel";
+
     const [profile, progress] = await Promise.all([
-      StudentProfile.findOne({ userId: user._id })
-        .select("bio headline interestedSubjects xp subscriptionTier academicLevel")
-        .lean(),
+      ProfileModel.findOne({ userId: user._id }).select(profileSelect).lean(),
       UserProgress.findOne({
         $or: [{ userId }, { userId: String(user.email || "").toLowerCase() }],
       })
@@ -42,27 +53,37 @@ export async function GET(
 
     const preferredSubjects = Array.from(
       new Set([
-        ...((profile?.interestedSubjects || []) as string[]),
+        ...(((profile as any)?.interestedSubjects || []) as string[]),
+        ...(((profile as any)?.subjects || []) as string[]),
         ...((user.subjects || []) as string[]),
       ].map((subject) => String(subject || "").trim()).filter(Boolean))
     ).slice(0, 12);
 
-    const xp = Number(profile?.xp ?? progress?.xp ?? 0);
+    const xp = Number((profile as any)?.xp ?? progress?.xp ?? 0);
     const level = Number(progress?.level ?? Math.max(1, Math.floor(xp / 250) + 1));
-    const badges = [profile?.subscriptionTier, profile?.academicLevel]
+    const badges = [
+      (profile as any)?.subscriptionTier,
+      (profile as any)?.academicLevel,
+      normalizedRole === "teacher" ? "Teacher" : null,
+      (profile as any)?.status === "approved" ? "Verified" : null,
+    ]
       .map((badge) => String(badge || "").trim())
       .filter(Boolean);
+    const profileImage = (user as any).profileImage || user.image || "";
 
     return NextResponse.json({
       user: {
         _id: String(user._id),
         name: user.name || "Study Buddy",
-        image: user.image || "",
-        bio: profile?.bio || profile?.headline || "",
+        profileImage,
+        image: profileImage,
+        role: normalizedRole,
+        bio: (profile as any)?.bio || (profile as any)?.headline || "",
         xp,
         level,
         badges,
         preferredSubjects,
+        createdAt: user.createdAt || null,
       },
     });
   } catch (error) {
