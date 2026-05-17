@@ -18,9 +18,9 @@ import { type ElementType, type FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface RoleCardProps {
-  role: "student" | "mentor";
-  selectedRole: "student" | "mentor";
-  onSelect: (role: "student" | "mentor") => void;
+  role: "student" | "teacher";
+  selectedRole: "student" | "teacher";
+  onSelect: (role: "student" | "teacher") => void;
   title: string;
   description: string;
   icon: ElementType;
@@ -32,7 +32,7 @@ interface RoleCardProps {
 }
 
 export default function RegisterPage() {
-  const [role, setRole] = useState<"student" | "mentor">("student");
+  const [role, setRole] = useState<"student" | "teacher">("student");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
@@ -57,17 +57,16 @@ export default function RegisterPage() {
       iconBg: "bg-primary text-white",
       checkColor: "text-primary",
     },
-    mentor: {
-      title: "Mentor",
+    teacher: {
+      title: "Teacher",
       description: "I want to guide others, host sessions, and earn.",
       icon: Sparkles,
-      primaryColor: "border-accent-mint bg-accent-mint/5",
-      hoverColor: "hover:border-accent-mint/50",
-      shadowColor: "shadow-[0_0_30px_rgba(0,255,163,0.15)]",
-      buttonBg:
-        "bg-gradient-to-r from-emerald-500 to-accent-mint text-slate-900 shadow-emerald-500/20",
-      iconBg: "bg-accent-mint text-slate-900",
-      checkColor: "text-accent-mint",
+      primaryColor: "border-[#7C3AED] bg-[#7C3AED]/5",
+      hoverColor: "hover:border-[#7C3AED]/50",
+      shadowColor: "shadow-[0_0_30px_rgba(124,58,237,0.15)]",
+      buttonBg: "bg-[#7C3AED] hover:bg-purple-700 text-white shadow-purple-500/20",
+      iconBg: "bg-[#7C3AED] text-white",
+      checkColor: "text-[#7C3AED]",
     },
   };
 
@@ -273,7 +272,7 @@ export default function RegisterPage() {
           {step === 1 ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(Object.keys(roleConfig) as Array<"student" | "mentor">).map((key) => {
+                {(Object.keys(roleConfig) as Array<"student" | "teacher">).map((key) => {
                   const config = roleConfig[key];
                   return (
                     <RoleCard
@@ -483,3 +482,4 @@ export default function RegisterPage() {
     </main>
   );
 }
+

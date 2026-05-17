@@ -184,25 +184,12 @@
 
   /* Shimmer XP bar */
   .shimmer-bg {
-    background: linear-gradient(90deg, #8c30e8 0%, #b882f0 50%, #8c30e8 100%);
-    background-size: 200% 100%;
-    animation: shimmer 3s ease-in-out infinite;
+    background: #7C3AED;
   }
 
-  /* Text shimmer gradient animation */
+  /* Solid primary text treatment */
   .text-shimmer {
-    background: linear-gradient(
-      90deg,
-      #8c30e8 0%,
-      #b882f0 40%,
-      #ec4899 60%,
-      #8c30e8 100%
-    );
-    background-size: 300% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: text-shimmer-move 4s ease-in-out infinite;
+    color: #7C3AED;
   }
 
   /* Hide scrollbar (filter row) */
@@ -328,3 +315,4 @@ input[type=range].mentor-slider::-webkit-slider-runnable-track {
 .dark * {
   scrollbar-color: #334155 transparent;
 }
+

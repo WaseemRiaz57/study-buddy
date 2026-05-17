@@ -229,7 +229,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
                         disabled={!topic.trim() || !description.trim() || isCreating}
                         className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2
                           ${topic.trim() && description.trim() && !isCreating
-                            ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-purple-500/25 hover:scale-[1.02]" 
+                            ? "bg-[#7C3AED]   hover:shadow-purple-500/25 hover:scale-[1.02]" 
                             : "bg-slate-300 dark:bg-white/10 cursor-not-allowed text-slate-500 dark:text-gray-500"}`}
                       >
                         {isCreating ? "Forging..." : "Ignite Room"} <ArrowRight size={18} />
@@ -305,3 +305,4 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
     </AnimatePresence>
   );
 }
+

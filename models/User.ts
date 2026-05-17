@@ -25,8 +25,14 @@ const userSchema = new Schema(
     },
     role: {
       type: String,
-      enum: ["student", "mentor", "admin"],
+      enum: ["student", "teacher", "admin", "mentor"],
       default: "student", // Jo naya sign up karega wo default student banega
+    },
+    subscriptionPlan: {
+      type: String,
+      enum: ["free", "pro", "elite"],
+      default: "free",
+      index: true,
     },
     plan: {
       type: String,

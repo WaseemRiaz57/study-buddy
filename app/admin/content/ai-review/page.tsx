@@ -449,7 +449,7 @@ export default function AIContentReviewPage() {
               >
                 {/* User */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-xs font-bold shrink-0">
                     {item.userAvatar}
                   </div>
                   <div className="min-w-0">
@@ -600,7 +600,7 @@ export default function AIContentReviewPage() {
 
                   {/* User Details */}
                   <div className="flex items-center gap-3 p-3.5 rounded-xl border border-border dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02]">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-xs font-bold shrink-0">
                       {selectedItemForReview.userAvatar}
                     </div>
                     <div>
@@ -730,3 +730,4 @@ export default function AIContentReviewPage() {
     </div>
   );
 }
+

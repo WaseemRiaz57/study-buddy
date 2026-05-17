@@ -195,7 +195,7 @@ function ActiveSession({
                   className="w-10 h-10 rounded-full object-cover border-2 border-white/10"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                <div className="w-10 h-10 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white font-bold text-sm">
                   {peer.name.charAt(0)}
                 </div>
               )}
@@ -246,7 +246,7 @@ function ActiveSession({
           )}
           <button
             onClick={onEndSession}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/30 text-red-600 dark:text-red-200 text-sm font-bold shadow-[0_0_15px_rgba(239,68,68,0.15)] dark:shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:from-red-500/30 hover:to-pink-500/30 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#7C3AED]   border border-red-500/30 text-red-600 dark:text-red-200 text-sm font-bold shadow-[0_0_15px_rgba(239,68,68,0.15)] dark:shadow-[0_0_15px_rgba(239,68,68,0.2)]   transition-all"
           >
             <PhoneOff size={16} />
             <span className="hidden sm:inline">End Session</span>
@@ -351,7 +351,7 @@ function ActiveSession({
                         className="rounded-full size-12 object-cover border-2 border-white/10"
                       />
                     ) : (
-                      <div className="rounded-full size-12 bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold">
+                      <div className="rounded-full size-12 bg-[#7C3AED]   flex items-center justify-center text-white font-bold">
                         {peer.name.charAt(0)}
                       </div>
                     )}
@@ -407,7 +407,7 @@ function ActiveSession({
               <div className="p-4">
                 <button
                   onClick={onEndSession}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500/10 to-pink-500/10 border border-red-500/20 text-red-600 dark:text-red-300 text-sm font-bold hover:from-red-500/20 hover:to-pink-500/20 transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#7C3AED]   border border-red-500/20 text-red-600 dark:text-red-300 text-sm font-bold   transition-all"
                 >
                   <PhoneOff size={16} />
                   End Session
@@ -455,7 +455,7 @@ function VideoGrid({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-purple-600/20">
+          <div className="w-full h-full flex items-center justify-center bg-[#7C3AED]  ">
             <span className="text-5xl font-bold text-primary/60">
               {peer.name.charAt(0)}
             </span>
@@ -480,7 +480,7 @@ function VideoGrid({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-purple-600/20">
+          <div className="w-full h-full flex items-center justify-center bg-[#7C3AED]  ">
             <span className="text-5xl font-bold text-primary/60">
               {currentUser.name.charAt(0)}
             </span>
@@ -745,7 +745,7 @@ function PostSessionReview({
             className="glass-panel rounded-2xl p-6 relative overflow-hidden group
               border-slate-200 dark:border-white/10"
           >
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-primary/5 to-transparent dark:from-primary/10" />
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-[#7C3AED]   " />
             <h3 className="text-slate-500 dark:text-white/60 text-xs font-bold uppercase tracking-wider mb-4">
               Session Rewards
             </h3>
@@ -851,7 +851,7 @@ function PostSessionReview({
                     className="mx-auto mb-3 text-primary"
                   />
                 </div>
-                <h1 className="text-3xl md:text-4xl font-serif font-medium mb-2 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 dark:from-amber-200 dark:via-yellow-300 dark:to-amber-200">
+                <h1 className="text-3xl md:text-4xl font-serif font-medium mb-2 tracking-tight text-[#7C3AED] bg-[#7C3AED]      ">
                   Celebrate the Exchange
                 </h1>
                 <p className="text-slate-500 dark:text-white/60 text-sm max-w-md mx-auto">
@@ -921,7 +921,7 @@ function PostSessionReview({
                   onClick={handleSubmit}
                   disabled={rating === 0}
                   className="w-full max-w-sm py-4 rounded-xl font-bold text-white shadow-lg transition-all duration-300 disabled:opacity-40
-                    bg-gradient-to-r from-primary via-purple-500 to-primary bg-[length:200%_auto] hover:bg-right
+                    bg-[#7C3AED]    bg-[length:200%_auto] hover:bg-right
                     shadow-primary/30 dark:shadow-primary/40"
                 >
                   Submit Appreciation
@@ -948,7 +948,7 @@ function PostSessionReview({
                     stiffness: 260,
                     damping: 20,
                   }}
-                  className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center mb-6 shadow-lg shadow-primary/30"
+                  className="w-20 h-20 rounded-full bg-[#7C3AED]   flex items-center justify-center mb-6 shadow-lg shadow-primary/30"
                 >
                   <Sparkles size={36} className="text-white" />
                 </motion.div>
@@ -1085,3 +1085,4 @@ function SparkParticles() {
     </div>
   );
 }
+

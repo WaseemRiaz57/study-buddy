@@ -12,7 +12,11 @@ import User from "@/models/User";
 
 function isAllowedRole(role: unknown) {
   const normalizedRole = String(role ?? "").toLowerCase();
-  return normalizedRole === "mentor" || normalizedRole === "admin";
+  return (
+    normalizedRole === "teacher" ||
+    normalizedRole === "mentor" ||
+    normalizedRole === "admin"
+  );
 }
 
 export async function PATCH(
@@ -28,7 +32,7 @@ export async function PATCH(
 
     if (!isAllowedRole(session.user.role)) {
       return NextResponse.json(
-        { message: "Forbidden. Only mentors or admins can complete sessions." },
+        { message: "Forbidden. Only teachers or admins can complete sessions." },
         { status: 403 }
       );
     }
@@ -59,7 +63,7 @@ export async function PATCH(
     };
     const userRole = String(session.user.role ?? "").toLowerCase();
 
-    if (userRole === "mentor") {
+    if (userRole === "teacher" || userRole === "mentor") {
       sessionQuery.mentorId = session.user.id;
     }
 
@@ -77,7 +81,7 @@ export async function PATCH(
     }
 
     const rateSource =
-      userRole === "mentor"
+      userRole === "teacher" || userRole === "mentor"
         ? mentorProfile
         : await MentorProfile.findOne({ userId: mentorSession.mentorId })
             .select("hourlyRate")
@@ -146,3 +150,5 @@ export async function PATCH(
     );
   }
 }
+
+

@@ -21,6 +21,12 @@ function serializeUser(user: any) {
     email: user.email || "",
     image: user.image || "",
     role: user.role || "student",
+    subscriptionPlan:
+      String(user.subscriptionPlan || user.plan || "free").toLowerCase() === "elite"
+        ? "elite"
+        : String(user.subscriptionPlan || user.plan || "free").toLowerCase() === "pro"
+          ? "pro"
+          : "free",
     status: user.status || "active",
     createdAt: user.createdAt || null,
     updatedAt: user.updatedAt || null,
@@ -42,6 +48,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const search = String(searchParams.get("search") || "").trim();
+    const plan = String(searchParams.get("plan") || "all").toLowerCase();
     const searchQuery = search
       ? {
           $or: [
@@ -50,15 +57,39 @@ export async function GET(request: Request) {
           ],
         }
       : {};
+    const planQuery =
+      plan === "free" || plan === "pro" || plan === "elite"
+        ? {
+            $or: [
+              { subscriptionPlan: plan },
+              { plan: plan.charAt(0).toUpperCase() + plan.slice(1) },
+            ],
+          }
+        : {};
+    const queryParts = [searchQuery, planQuery].filter(
+      (query) => Object.keys(query).length > 0
+    );
+    const userQuery = queryParts.length > 0 ? { $and: queryParts } : {};
 
     await connectMongoDB();
 
     const activeTodayCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [totalUsers, activeToday, suspendedUsers, users] = await Promise.all([
+    const [
+      totalUsers,
+      activeToday,
+      suspendedUsers,
+      freeUsers,
+      proUsers,
+      eliteUsers,
+      users,
+    ] = await Promise.all([
       User.countDocuments({}),
       User.countDocuments({ lastActive: { $gt: activeTodayCutoff } }),
       User.countDocuments({ status: "suspended" }),
-      User.find(searchQuery)
+      User.countDocuments({ $or: [{ subscriptionPlan: "free" }, { plan: "Free" }, { subscriptionPlan: { $exists: false } }] }),
+      User.countDocuments({ $or: [{ subscriptionPlan: "pro" }, { plan: "Pro" }] }),
+      User.countDocuments({ $or: [{ subscriptionPlan: "elite" }, { plan: "Elite" }] }),
+      User.find(userQuery)
         .select("-password")
         .sort({ createdAt: -1 })
         .limit(100)
@@ -70,6 +101,9 @@ export async function GET(request: Request) {
         totalUsers,
         activeToday,
         suspendedUsers,
+        freeUsers,
+        proUsers,
+        eliteUsers,
       },
       users: users.map(serializeUser),
     });
@@ -81,3 +115,5 @@ export async function GET(request: Request) {
     );
   }
 }
+
+

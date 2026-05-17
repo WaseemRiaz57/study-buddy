@@ -1069,7 +1069,7 @@ export default function LiveVideoRoom({
               onClick={() => setHasJoined(true)}
               disabled={isJoinDisabled}
               type="button"
-              className="rounded-xl bg-gradient-to-r from-[#8c30e8] to-[#6f4bff] px-7 py-3 text-sm font-bold text-white shadow-lg transition-all hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="rounded-xl bg-[#7C3AED]   px-7 py-3 text-sm font-bold text-white shadow-lg transition-all hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isJoining || !token || !liveKitUrl ? "Preparing..." : "Join Room"}
             </button>
@@ -1248,3 +1248,4 @@ function LiveKitRemoteParticipantCard({
     </motion.div>
   );
 }
+

@@ -130,7 +130,7 @@ function XpBar() {
       </div>
       <div className="h-3 w-full rounded-full bg-slate-200/70 dark:bg-white/10 overflow-hidden">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-primary via-purple-400 to-pink-400 shadow-lg shadow-primary/30"
+          className="h-full rounded-full bg-[#7C3AED]    shadow-lg shadow-primary/30"
           initial={{ width: "0%" }}
           animate={{ width: `${fill}%` }}
           transition={{ duration: 1.2, delay: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
@@ -194,7 +194,7 @@ export default function SuccessView({
         className="relative w-full max-w-lg rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white/80 dark:bg-white/[0.06] backdrop-blur-xl shadow-2xl overflow-hidden"
       >
         {/* Top gradient accent */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-primary via-purple-400 to-pink-400" />
+        <div className="h-1.5 w-full bg-[#7C3AED]   " />
 
         <div className="p-6 sm:p-8 space-y-6">
           {/* ── Trophy icon ── */}
@@ -203,7 +203,7 @@ export default function SuccessView({
               initial={{ scale: 0, rotate: -30 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.3 }}
-              className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500 text-white shadow-lg shadow-amber-400/30"
+              className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#7C3AED]    text-white shadow-lg shadow-amber-400/30"
             >
               <Trophy size={36} />
             </motion.div>
@@ -232,7 +232,7 @@ export default function SuccessView({
           >
             {/* Mentor row */}
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-400 text-white font-bold text-sm ring-2 ring-primary/30 shadow-md shadow-primary/20">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#7C3AED]   text-white font-bold text-sm ring-2 ring-primary/30 shadow-md shadow-primary/20">
                 {initials}
               </div>
               <div className="min-w-0">
@@ -323,7 +323,7 @@ export default function SuccessView({
             </button>
             <button
               onClick={onClose}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold bg-gradient-to-r from-primary to-purple-400 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold bg-[#7C3AED]   text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all"
             >
               Enter Hub
               <ArrowRight size={16} />
@@ -334,3 +334,4 @@ export default function SuccessView({
     </motion.div>
   );
 }
+

@@ -64,11 +64,19 @@ export function DashboardTopbar() {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase())
       .join("") || "U";
+  const subscriptionPlan = String(
+    session?.user?.subscriptionPlan || ""
+  ).toLowerCase();
   const roleLabel = session?.user?.role
-    ? `${session.user.role.charAt(0).toUpperCase()}${session.user.role.slice(1).toLowerCase()}`
-    : role === "MENTOR"
-      ? "Mentor"
+    ? String(session.user.role).toLowerCase() === "teacher" ||
+      String(session.user.role).toLowerCase() === "mentor"
+      ? "Teacher"
+      : `${session.user.role.charAt(0).toUpperCase()}${session.user.role.slice(1).toLowerCase()}`
+    : role === "TEACHER" || role === "MENTOR"
+      ? "Teacher"
       : "Scholar";
+  const paidPlanLabel =
+    subscriptionPlan === "elite" ? "ELITE" : subscriptionPlan === "pro" ? "PRO" : "";
 
   const xpForCurrentLevel = gamificationStats.xp % 1000;
   const xpProgress = Math.min(100, Math.round((xpForCurrentLevel / 1000) * 100));
@@ -223,7 +231,7 @@ export function DashboardTopbar() {
             </span>
           </button>
 
-          {role === "MENTOR" && (
+          {(role === "TEACHER" || role === "MENTOR") && (
             <div className="hidden flex-col items-end lg:flex">
               <div className="mb-1 flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
@@ -300,6 +308,11 @@ export function DashboardTopbar() {
                 <div className="border-b border-border px-3 py-3 dark:border-white/10">
                   <p className="truncate text-sm font-bold text-foreground">
                     {fullName}
+                    {paidPlanLabel && (
+                      <span className="ml-2 rounded-full border border-[#7C3AED]/25 bg-[#7C3AED]/10 px-2 py-0.5 align-middle text-[10px] font-black text-[#7C3AED]">
+                        {paidPlanLabel}
+                      </span>
+                    )}
                   </p>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
                     {userEmail || roleLabel}
@@ -424,3 +437,4 @@ export function DashboardTopbar() {
     </>
   );
 }
+

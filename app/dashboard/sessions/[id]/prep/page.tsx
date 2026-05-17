@@ -401,7 +401,7 @@ export default function PrepRoomPage() {
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-pink-500 text-white shadow-lg shadow-primary/20">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#7C3AED]   text-white shadow-lg shadow-primary/20">
             <Rocket className="h-4 w-4" />
           </div>
           <div>
@@ -423,7 +423,7 @@ export default function PrepRoomPage() {
           <section className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 shadow-[0_4px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-slate-900/60 lg:col-span-4">
             <div className="border-b border-slate-200 bg-slate-100 p-4 dark:border-white/[0.08] dark:bg-white/5">
               <div className="flex items-center gap-4">
-                <div className="h-16 w-16 overflow-hidden rounded-full bg-gradient-to-br from-primary to-purple-700 ring-2 ring-primary/50">
+                <div className="h-16 w-16 overflow-hidden rounded-full bg-[#7C3AED]   ring-2 ring-primary/50">
                   {peerImage ? (
                     <img
                       src={peerImage}
@@ -595,7 +595,7 @@ export default function PrepRoomPage() {
               type="button"
               onClick={launchClassroom}
               disabled={!canLaunch}
-              className="relative flex h-14 min-w-[280px] items-center justify-center gap-4 overflow-hidden rounded-full bg-gradient-to-r from-primary to-pink-500 px-8 text-lg font-bold text-white shadow-2xl transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
+              className="relative flex h-14 min-w-[280px] items-center justify-center gap-4 overflow-hidden rounded-full bg-[#7C3AED]   px-8 text-lg font-bold text-white shadow-2xl transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
             >
               <span className="relative z-10 tracking-wide">
                 Launch Virtual Classroom
@@ -670,3 +670,4 @@ export default function PrepRoomPage() {
     </div>
   );
 }
+

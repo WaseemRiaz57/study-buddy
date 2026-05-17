@@ -167,43 +167,43 @@ const rarityConfig: Record<
   legendary: {
     label: "Legendary",
     gradient:
-      "from-yellow-200/60 via-amber-100/40 to-yellow-200/60 dark:from-yellow-900/30 dark:via-amber-800/20 dark:to-yellow-900/30",
+      "     ",
     border:
       "border-yellow-400/50 dark:border-yellow-500/30",
     glow: "shadow-[0_0_30px_rgba(251,191,36,0.15)] dark:shadow-[0_0_30px_rgba(251,191,36,0.2)]",
     iconBg:
-      "bg-gradient-to-br from-yellow-400 to-amber-500 dark:from-yellow-500 dark:to-amber-600",
+      "bg-[#7C3AED]    ",
     tagBg: "bg-yellow-500/15 dark:bg-yellow-500/20",
     tagText: "text-yellow-700 dark:text-yellow-300",
     progressBar:
-      "bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500",
+      "bg-[#7C3AED]   ",
   },
   rare: {
     label: "Rare",
     gradient:
-      "from-purple-200/50 via-blue-100/30 to-indigo-200/50 dark:from-purple-900/25 dark:via-blue-900/15 dark:to-indigo-900/25",
+      "     ",
     border:
       "border-purple-400/40 dark:border-purple-500/25",
     glow: "shadow-[0_0_25px_rgba(168,85,247,0.1)] dark:shadow-[0_0_25px_rgba(168,85,247,0.15)]",
     iconBg:
-      "bg-gradient-to-br from-purple-500 to-blue-500 dark:from-purple-600 dark:to-blue-600",
+      "bg-[#7C3AED]    ",
     tagBg: "bg-purple-500/15 dark:bg-purple-500/20",
     tagText: "text-purple-700 dark:text-purple-300",
     progressBar:
-      "bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500",
+      "bg-[#7C3AED]   ",
   },
   common: {
     label: "Common",
     gradient:
-      "from-slate-200/50 via-gray-100/30 to-slate-200/50 dark:from-slate-800/30 dark:via-gray-800/15 dark:to-slate-800/30",
+      "     ",
     border:
       "border-slate-300/50 dark:border-slate-600/30",
     glow: "shadow-sm dark:shadow-[0_0_15px_rgba(100,116,139,0.1)]",
     iconBg:
-      "bg-gradient-to-br from-slate-400 to-slate-500 dark:from-slate-500 dark:to-slate-600",
+      "bg-[#7C3AED]    ",
     tagBg: "bg-slate-500/15 dark:bg-slate-500/20",
     tagText: "text-slate-600 dark:text-slate-300",
-    progressBar: "bg-gradient-to-r from-slate-400 to-slate-500",
+    progressBar: "bg-[#7C3AED]  ",
   },
 };
 
@@ -289,7 +289,7 @@ export default function BadgesPage() {
               <div className="flex items-center gap-4">
                 {/* Avatar */}
                 <div className="relative">
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+                  <div className="h-14 w-14 rounded-2xl bg-[#7C3AED]   flex items-center justify-center shadow-lg">
                     <Award size={28} className="text-white" />
                   </div>
                   <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-yellow-400 border-2 border-white dark:border-[#191121] flex items-center justify-center">
@@ -332,12 +332,12 @@ export default function BadgesPage() {
               </div>
               <div className="relative h-3 rounded-full bg-slate-200/80 dark:bg-white/[0.06] overflow-hidden">
                 <motion.div
-                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 animate-liquid"
+                  className="absolute inset-y-0 left-0 rounded-full bg-[#7C3AED]    animate-liquid"
                   initial={{ width: 0 }}
                   animate={{ width: "85%" }}
                   transition={{ duration: 1.2, ease: "easeOut" }}
                 />
-                <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" />
+                <div className="absolute inset-0 rounded-full bg-[#7C3AED]  " />
               </div>
             </div>
           </div>
@@ -447,7 +447,7 @@ function BadgeCard({ badge }: { badge: BadgeItem }) {
       <div
         className={`
           group relative rounded-2xl border p-5 transition-all duration-300
-          bg-gradient-to-br ${config.gradient} ${config.border}
+          bg-[#7C3AED] ${config.gradient} ${config.border}
           backdrop-blur-md
           ${isLocked ? "opacity-60 grayscale" : `${config.glow} hover:-translate-y-2 hover:scale-[1.01]`}
         `}
@@ -526,3 +526,4 @@ function BadgeCard({ badge }: { badge: BadgeItem }) {
     </motion.div>
   );
 }
+

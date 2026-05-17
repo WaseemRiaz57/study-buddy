@@ -119,7 +119,7 @@ export default function PublicProfilePage() {
           <div className="flex flex-col sm:flex-row items-center gap-6">
             {/* Avatar with edit overlay */}
             <div className="relative shrink-0">
-              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-[2.5px] shadow-lg shadow-purple-500/20 dark:shadow-purple-500/10">
+              <div className="w-28 h-28 rounded-full bg-[#7C3AED]   p-[2.5px] shadow-lg shadow-purple-500/20 dark:shadow-purple-500/10">
                 <div className="w-full h-full rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-3xl font-bold text-purple-600 dark:text-purple-400">
                   {userImage ? (
                     <img src={userImage} alt={fullName} className="h-full w-full rounded-full object-cover" />
@@ -351,7 +351,7 @@ export default function PublicProfilePage() {
               <span
                 className="
                   pointer-events-none absolute inset-0
-                  bg-gradient-to-r from-transparent via-white/20 to-transparent
+                  bg-[#7C3AED]   
                   -translate-x-full animate-[shimmer-slide_3s_ease-in-out_infinite]
                 "
               />
@@ -364,3 +364,4 @@ export default function PublicProfilePage() {
     </div>
   );
 }
+

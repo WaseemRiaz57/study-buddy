@@ -693,7 +693,7 @@ export function MentorDashboard() {
                 </div>
               </div>
 
-              <button className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+              <button className="w-full py-4 bg-[#7C3AED]   text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
                 <CreditCard size={18} />
                 Request Payout
               </button>
@@ -744,3 +744,4 @@ export function MentorDashboard() {
     </div>
   );
 }
+

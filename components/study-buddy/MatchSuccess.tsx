@@ -232,7 +232,7 @@ export default function MatchSuccess({ onCloseAction, matchData, sessionId }: Ma
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center text-white font-bold text-2xl">
+                  <div className="w-full h-full bg-[#7C3AED]     flex items-center justify-center text-white font-bold text-2xl">
                     {initials}
                   </div>
                 )}
@@ -257,7 +257,7 @@ export default function MatchSuccess({ onCloseAction, matchData, sessionId }: Ma
                 {currentUserImage ? (
                   <img src={currentUserImage} alt={currentUserName} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-2xl">
+                  <div className="w-full h-full bg-[#7C3AED]   flex items-center justify-center text-white font-bold text-2xl">
                     {currentUserInitials}
                   </div>
                 )}
@@ -285,7 +285,7 @@ export default function MatchSuccess({ onCloseAction, matchData, sessionId }: Ma
             transition={{ delay: 0.5 }}
             className="text-4xl md:text-5xl font-bold mb-2 font-sans tracking-tight"
           >
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 via-slate-800 to-yellow-500 dark:from-[#FFD700] dark:via-white dark:to-[#C0C0C0] animate-shine bg-[length:200%_auto]">
+            <span className="text-[#7C3AED] bg-[#7C3AED]       animate-shine bg-[length:200%_auto]">
               It&apos;s a Match!
             </span>
           </motion.h1>
@@ -329,7 +329,7 @@ export default function MatchSuccess({ onCloseAction, matchData, sessionId }: Ma
             <button
               onClick={() => handleSelectMode("chat")}
               disabled={isNavigating}
-              className="py-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#8c30e8] to-[#e830d5] shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="py-4 rounded-xl font-bold text-white bg-[#7C3AED]   shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isNavigating && selectedMode === "chat" ? (
                 <Loader2 size={20} className="animate-spin" />

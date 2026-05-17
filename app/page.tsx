@@ -31,6 +31,7 @@ import {
 import { memo, useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { Reveal } from "@/components/landing/Reveal";
+import { PRICING_PLANS } from "@/lib/pricingConfig";
 
 // ============================================================================
 // TYPES
@@ -103,28 +104,17 @@ const testimonials = [
   { name: "Maria G.",  role: "College Sophomore",   avatar: "MG", color: "bg-pink-600",    quote: "The focus room and study streaks are brilliant! They keep me accountable and motivated. I've been more consistent with my studies than ever before.", stars: 5 },
 ];
 
-const pricingPlans: PricingPlan[] = [
-  {
-    title: "Community Plan", monthlyPrice: "$0", yearlyPrice: "$0",
-    monthlyPkr: "Free Forever", yearlyPkr: "Free Forever",
-    desc: "Everything you need to study smart — free, forever.", ctaText: "Get Started",
-    features: ["AI Notes Generator (10/day)","Flashcards & Quizzes (5/day)","Study Rooms (Unlimited)","Focus Room & Pomodoro","Resource Hub (Download)"],
-    excluded: ["AI Study Assistant (Chatbot)","Upload to Marketplace","Advanced Analytics","Priority Support"],
-  },
-  {
-    title: "Pro Plan", monthlyPrice: "$7", yearlyPrice: "$5",
-    monthlyPkr: "PKR 1,500 /mo", yearlyPkr: "PKR 14,400 /yr",
-    desc: "Unlock smarter studying with premium power.", highlight: true, ctaText: "Upgrade to Pro",
-    features: ["Unlimited AI Notes & Flashcards","Smart Planner with AI","Emergency Study Mode","AI Study Assistant (30/day)","Sell Resources (20/mo)","No Ads"],
-    excluded: ["Unlimited AI Voice Assistant","Sell Unlimited Resources","Custom AI Tutor Training"],
-  },
-  {
-    title: "Elite Plan", monthlyPrice: "$15", yearlyPrice: "$12",
-    monthlyPkr: "PKR 3,200 /mo", yearlyPkr: "PKR 30,700 /yr",
-    desc: "Study, earn, and teach without limits.", ctaText: "Go Elite",
-    features: ["Everything in Pro, PLUS:","Unlimited AI Voice Tutor","Sell Unlimited Resources","Advanced Seller Analytics","AI Tutor Bot (Custom Trained)","Priority Support & Badge"],
-  },
-];
+const pricingPlans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
+  title: `${plan.name} Plan`,
+  monthlyPrice: plan.displayPrice,
+  yearlyPrice: plan.price === 0 ? "$0" : `$${Math.round(plan.price * 10) / 10}`,
+  monthlyPkr: plan.price === 0 ? "Free Forever" : "Billed monthly",
+  yearlyPkr: plan.price === 0 ? "Free Forever" : "Annual billing available",
+  desc: plan.description,
+  highlight: plan.featured,
+  ctaText: plan.cta,
+  features: plan.features,
+}));
 
 // ============================================================================
 // ANIMATION VARIANTS
@@ -139,7 +129,6 @@ const stagger: Variants = {
   hidden: {},
   show:   { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
 };
-
 // ============================================================================
 // FLOATING PARTICLES
 // ============================================================================
@@ -219,7 +208,7 @@ function FadeOutGradientText({ children }: { children: React.ReactNode }) {
   return (
     <span
       style={{
-        backgroundImage: "linear-gradient(90deg, #a855f7 0%, #c084fc 40%, #d8b4fe 65%, rgba(216,180,254,0.18) 100%)",
+        backgroundImage: "none",
         WebkitBackgroundClip: "text",
         backgroundClip: "text",
         WebkitTextFillColor: "transparent",
@@ -242,7 +231,7 @@ function AnimatedDivider() {
       whileInView={{ scaleX: 1, opacity: 1 }}
       viewport={{ once: true }}
       transition={{ duration: 1.1, ease }}
-      className="mx-auto h-px w-full max-w-2xl bg-gradient-to-r from-transparent via-purple-500/40 to-transparent"
+      className="mx-auto h-px w-full max-w-2xl bg-[#7C3AED]   "
     />
   );
 }
@@ -320,7 +309,7 @@ const FeatureCard = memo(function FeatureCard({ feature, index }: { feature: Fea
     >
       {/* Shine sweep on hover */}
       <div className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
-           style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent)" }} />
+           style={{ background: "#7C3AED" }} />
 
       {feature.badge && (
         <motion.div
@@ -350,13 +339,13 @@ const FeatureCard = memo(function FeatureCard({ feature, index }: { feature: Fea
 // ============================================================================
 // ANIMATED PROGRESS BAR
 // ============================================================================
-function AnimatedProgressBar({ pct, color = "from-purple-500 to-violet-500" }: { pct: number; color?: string }) {
+function AnimatedProgressBar({ pct, color = " " }: { pct: number; color?: string }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true });
   return (
     <div ref={ref} className="h-2 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
       <motion.div
-        className={`h-full rounded-full bg-gradient-to-r ${color}`}
+        className={`h-full rounded-full bg-[#7C3AED] ${color}`}
         initial={{ width: 0 }}
         animate={inView ? { width: `${pct}%` } : {}}
         transition={{ duration: 1.3, ease, delay: 0.35 }}
@@ -399,7 +388,7 @@ const PricingCard = memo(function PricingCard({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-purple-500/[0.05] via-transparent to-fuchsia-500/[0.04]"
+            className="pointer-events-none absolute inset-0 rounded-2xl bg-[#7C3AED]   "
           />
         )}
       </AnimatePresence>
@@ -409,7 +398,7 @@ const PricingCard = memo(function PricingCard({
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: index * 0.13 + 0.3, type: "spring", stiffness: 280 }}
-          className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-fuchsia-600 to-purple-600 px-5 py-1 text-[11px] font-bold text-white uppercase tracking-wider shadow-lg"
+          className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#7C3AED]   px-5 py-1 text-[11px] font-bold text-white uppercase tracking-wider shadow-lg"
         >
           Most Popular
         </motion.div>
@@ -512,8 +501,8 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({ isMobile }: { is
           </motion.div>
         ))}
       </motion.div>
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-background to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-[#7C3AED]  " />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-[#7C3AED]  " />
     </div>
   );
 });
@@ -641,7 +630,7 @@ export default function Home() {
             animate={{ y: [0, 8, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           >
-            <div className="h-8 w-[1px] bg-gradient-to-b from-transparent to-purple-400/40" />
+            <div className="h-8 w-[1px] bg-[#7C3AED]  " />
             <div className="h-1 w-1 rounded-full bg-purple-400/40" />
           </motion.div>
         </motion.div>
@@ -662,7 +651,7 @@ export default function Home() {
         <motion.div
           className="pointer-events-none absolute inset-0 opacity-[0.015]"
           style={{
-            backgroundImage: "linear-gradient(#a855f7 1px,transparent 1px),linear-gradient(90deg,#a855f7 1px,transparent 1px)",
+            backgroundImage: "none",
             backgroundSize: "60px 60px",
           }}
           animate={{ backgroundPosition: ["0px 0px", "60px 60px"] }}
@@ -779,7 +768,7 @@ export default function Home() {
                         whileInView={{ scaleY: 1 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.7, delay: i * 0.15 + 0.4, ease }}
-                        style={{ background: "linear-gradient(to bottom, rgba(168,85,247,0.4), transparent)", transformOrigin: "top" }}
+                        style={{ background: "#7C3AED", transformOrigin: "top" }}
                       />
                     )}
                   </div>
@@ -966,7 +955,7 @@ export default function Home() {
             ))}
             <br />
             {["Start", "Achieving."].map((w, i) => (
-              <motion.span key={i} variants={fadeUp} className="inline-block mr-3 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-fuchsia-400">
+              <motion.span key={i} variants={fadeUp} className="inline-block mr-3 text-[#7C3AED] bg-[#7C3AED]  ">
                 {w}
               </motion.span>
             ))}
@@ -996,3 +985,7 @@ export default function Home() {
     </div>
   );
 }
+
+
+
+

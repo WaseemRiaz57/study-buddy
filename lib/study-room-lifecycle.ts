@@ -268,3 +268,4 @@ export async function maybeAutoCloseStudyRoom(
     reason: "already-closed",
   };
 }
+

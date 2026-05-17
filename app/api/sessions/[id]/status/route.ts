@@ -31,9 +31,9 @@ export async function PATCH(
 
     const userRole = String(session.user.role ?? "").toLowerCase();
 
-    if (userRole !== "mentor") {
+    if (userRole !== "teacher" && userRole !== "mentor") {
       return NextResponse.json(
-        { message: "Forbidden. This feature is only available to mentors." },
+        { message: "Forbidden. This feature is only available to teachers." },
         { status: 403 }
       );
     }
@@ -125,3 +125,5 @@ export async function PATCH(
     );
   }
 }
+
+

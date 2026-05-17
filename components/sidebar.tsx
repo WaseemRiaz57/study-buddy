@@ -25,7 +25,7 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
-import { useUserStore, type Role } from "@/store/useUserStore";
+import { useUserStore, type Plan, type Role } from "@/store/useUserStore";
 
 interface NavItem {
   icon: LucideIcon;
@@ -37,36 +37,45 @@ interface NavItem {
 }
 
 const buildNavItems = (isCommunity: boolean): NavItem[] => [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", roles: ["STUDENT", "MENTOR"] },
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", roles: ["STUDENT", "TEACHER", "MENTOR"] },
   { icon: FileText, label: "AI Generator", href: "/dashboard/content-generator", roles: ["STUDENT"], badge: "AI" },
-  { icon: ClipboardList, label: "Quiz Generator", href: "/dashboard/content-generator", roles: ["MENTOR"] },
-  { icon: Library, label: "Resource Hub", href: "/dashboard/resources", roles: ["STUDENT", "MENTOR"] },
-  { icon: Users, label: "My Students", href: "/dashboard/my-students", roles: ["MENTOR"] },
-  { icon: CalendarCheck, label: "Sessions", href: "/dashboard/sessions", roles: ["MENTOR"] },
+  { icon: ClipboardList, label: "Quiz Generator", href: "/dashboard/content-generator", roles: ["TEACHER", "MENTOR"] },
+  { icon: Library, label: "Resource Hub", href: "/dashboard/resources", roles: ["STUDENT", "TEACHER", "MENTOR"] },
+  { icon: Users, label: "My Students", href: "/dashboard/my-students", roles: ["TEACHER", "MENTOR"] },
+  { icon: CalendarCheck, label: "Sessions", href: "/dashboard/sessions", roles: ["TEACHER", "MENTOR"] },
   { icon: UserPlus, label: "Study with Buddy", href: "/dashboard/study-buddy", roles: ["STUDENT"] },
   { icon: GraduationCap, label: "Mentorship", href: "/dashboard/mentorship", roles: ["STUDENT"] },
-  { icon: Video, label: "Study Rooms", href: "/dashboard/study-rooms", roles: ["STUDENT", "MENTOR"] },
-  { icon: Headphones, label: "Focus Rooms", href: "/dashboard/focus-rooms", roles: ["STUDENT", "MENTOR"] },
-  { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", roles: ["STUDENT", "MENTOR"] },
-  { icon: Swords, label: "Challenges", href: "/dashboard/challenges", roles: ["STUDENT", "MENTOR"] },
-  { icon: Award, label: "Badges", href: "/dashboard/badges", roles: ["STUDENT", "MENTOR"] },
-  { icon: MessageSquare, label: "Community", href: "/dashboard/community", roles: ["STUDENT", "MENTOR"] },
-  { icon: Send, label: "Messages", href: "/dashboard/messages", roles: ["STUDENT", "MENTOR"] },
-  { icon: DollarSign, label: "Earnings", href: "/dashboard/earnings", roles: ["MENTOR"], locked: isCommunity },
-  { icon: Sparkles, label: "Upgrade to Pro", href: "/dashboard/upgrade", roles: ["STUDENT", "MENTOR"], badge: "NEW" },
+  { icon: Video, label: "Study Rooms", href: "/dashboard/study-rooms", roles: ["STUDENT", "TEACHER", "MENTOR"] },
+  { icon: Headphones, label: "Focus Rooms", href: "/dashboard/focus-rooms", roles: ["STUDENT", "TEACHER", "MENTOR"] },
+  { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", roles: ["STUDENT", "TEACHER", "MENTOR"] },
+  { icon: Swords, label: "Challenges", href: "/dashboard/challenges", roles: ["STUDENT", "TEACHER", "MENTOR"] },
+  { icon: Award, label: "Badges", href: "/dashboard/badges", roles: ["STUDENT", "TEACHER", "MENTOR"] },
+  { icon: MessageSquare, label: "Community", href: "/dashboard/community", roles: ["STUDENT", "TEACHER", "MENTOR"] },
+  { icon: Send, label: "Messages", href: "/dashboard/messages", roles: ["STUDENT", "TEACHER", "MENTOR"] },
+  { icon: DollarSign, label: "Earnings", href: "/dashboard/earnings", roles: ["TEACHER", "MENTOR"], locked: isCommunity },
+  { icon: Sparkles, label: "Upgrade to Pro", href: "/dashboard/upgrade", roles: ["STUDENT", "TEACHER", "MENTOR"], badge: "NEW" },
 ];
 
-export function Sidebar() {
+export function Sidebar({
+  initialRole,
+  initialPlan,
+}: {
+  initialRole?: Role;
+  initialPlan?: Plan;
+}) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const role = useUserStore((state) => state.role);
-  const plan = useUserStore((state) => state.plan);
+  const storeRole = useUserStore((state) => state.role);
+  const storePlan = useUserStore((state) => state.plan);
+  const role = initialRole || storeRole;
+  const plan = initialPlan || storePlan;
+  const isTeacher = role === "TEACHER" || role === "MENTOR";
 
-  const navItems = buildNavItems(plan === "COMMUNITY").filter((item) => {
+  const navItems = buildNavItems(plan === "FREE" || plan === "COMMUNITY").filter((item) => {
     if (!item.roles.includes(role)) return false;
 
     if (
-      role === "MENTOR" &&
+      isTeacher &&
       (item.href === "/dashboard/focus-rooms" ||
         item.href === "/dashboard/study-buddy")
     ) {
@@ -175,3 +184,4 @@ export function Sidebar() {
     </aside>
   );
 }
+

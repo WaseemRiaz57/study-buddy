@@ -12,6 +12,7 @@ declare module "next-auth" {
     user: {
       id: string;
       role: Role;
+      subscriptionPlan?: "free" | "pro" | "elite";
       name?: string | null;
       email?: string | null;
       image?: string | null;
@@ -23,6 +24,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: Role;
+    subscriptionPlan?: "free" | "pro" | "elite";
     image?: string | null;
   }
 }
@@ -30,12 +32,20 @@ declare module "next-auth/jwt" {
 function normalizeRole(role: unknown): Role {
   const r = String(role).toUpperCase();
   if (r === "ADMIN") return "ADMIN";
-  if (r === "MENTOR") return "MENTOR";
+  if (r === "TEACHER" || r === "MENTOR") return "TEACHER";
   return "STUDENT";
 }
 
-function normalizeSignupRole(role: unknown): "student" | "mentor" {
-  return String(role).toLowerCase() === "mentor" ? "mentor" : "student";
+function normalizeSignupRole(role: unknown): "student" | "teacher" {
+  const normalized = String(role).toLowerCase();
+  return normalized === "teacher" || normalized === "mentor" ? "teacher" : "student";
+}
+
+function normalizeSubscriptionPlan(plan: unknown): "free" | "pro" | "elite" {
+  const normalized = String(plan || "").trim().toLowerCase();
+  if (normalized === "elite") return "elite";
+  if (normalized === "pro") return "pro";
+  return "free";
 }
 
 function normalizeEmail(email: unknown): string {
@@ -143,6 +153,9 @@ export const authOptions: NextAuthOptions = {
             token.name = dbUser.name;
             token.image = dbUser.image ?? null;
             token.role = normalizeRole(dbUser.role);
+            token.subscriptionPlan = normalizeSubscriptionPlan(
+              (dbUser as any).subscriptionPlan || (dbUser as any).plan
+            );
           }
 
           if (session?.user) {
@@ -181,15 +194,20 @@ export const authOptions: NextAuthOptions = {
           token.name = dbUser.name;
           token.image = dbUser.image ?? null;
           token.role = normalizeRole(dbUser.role);
+          token.subscriptionPlan = normalizeSubscriptionPlan(
+            (dbUser as any).subscriptionPlan || (dbUser as any).plan
+          );
         } else {
           token.id = user.id;
           token.email = user.email;
           token.name = user.name;
           token.image = user.image ?? null;
           token.role = normalizeRole((user as { role?: unknown }).role);
+          token.subscriptionPlan = "free";
         }
       }
       token.role = normalizeRole(token.role);
+      token.subscriptionPlan = normalizeSubscriptionPlan(token.subscriptionPlan);
       return token;
     },
 
@@ -200,6 +218,7 @@ export const authOptions: NextAuthOptions = {
         session.user.name = token.name ?? null;
         session.user.image = token.image ?? null;
         session.user.role = normalizeRole(token.role);
+        session.user.subscriptionPlan = normalizeSubscriptionPlan(token.subscriptionPlan);
       }
       return session;
     },
@@ -209,3 +228,4 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
+

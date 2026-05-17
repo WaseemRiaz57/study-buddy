@@ -8,3 +8,4 @@ export default async function CommunityPostAliasPage({
   const { postId } = await params;
   redirect(`/dashboard/community/${postId}`);
 }
+

@@ -406,3 +406,4 @@ export default function ResourceDetailPage() {
     </div>
   );
 }
+

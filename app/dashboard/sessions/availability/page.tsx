@@ -488,7 +488,7 @@ export default function AvailabilityPage() {
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 block mb-3">
                   Primary Region
                 </label>
-                <div className="h-32 w-full rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 relative overflow-hidden group cursor-pointer border border-slate-200 dark:border-slate-700">
+                <div className="h-32 w-full rounded-xl bg-[#7C3AED]   relative overflow-hidden group cursor-pointer border border-slate-200 dark:border-slate-700">
                   {/* placeholder map bg */}
                   <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-700 transition-colors" />
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -513,3 +513,4 @@ export default function AvailabilityPage() {
     </div>
   );
 }
+

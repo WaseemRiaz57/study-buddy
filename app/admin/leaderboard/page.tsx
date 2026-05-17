@@ -728,3 +728,4 @@ export default function LeaderboardControlPage() {
     </div>
   );
 }
+

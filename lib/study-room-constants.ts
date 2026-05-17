@@ -48,3 +48,4 @@ export function isAllowedUploadType(fileName: string, mimeType: string): boolean
     )
   );
 }
+

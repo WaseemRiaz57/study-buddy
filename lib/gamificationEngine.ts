@@ -297,3 +297,4 @@ export async function getGamificationStats(userId: string) {
     lastActiveDate: profile?.lastActiveDate || null,
   };
 }
+

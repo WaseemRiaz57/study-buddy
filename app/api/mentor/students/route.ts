@@ -28,7 +28,9 @@ export async function GET() {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    if (String(session.user.role || "").toLowerCase() !== "mentor") {
+    const userRole = String(session.user.role ?? "").toLowerCase();
+
+    if (userRole !== "teacher" && userRole !== "mentor") {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
@@ -98,3 +100,5 @@ export async function GET() {
     );
   }
 }
+
+

@@ -74,3 +74,4 @@ export async function requireStudyRoomJwt(
     role: resolveRoleFromToken(token),
   };
 }
+

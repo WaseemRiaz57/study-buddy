@@ -413,7 +413,7 @@ export default function CheckoutModal({
                 className={`relative flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-bold transition-all ${
                   stage === "success"
                     ? "bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.35)]"
-                    : "bg-gradient-to-r from-primary via-primary-soft to-primary bg-[length:200%_100%] text-primary-foreground shadow-[0_0_24px_rgba(140,48,232,0.25)] hover:shadow-[0_0_36px_rgba(140,48,232,0.4)]"
+                    : "bg-[#7C3AED]    bg-[length:200%_100%] text-primary-foreground shadow-[0_0_24px_rgba(140,48,232,0.25)] hover:shadow-[0_0_36px_rgba(140,48,232,0.4)]"
                 }`}
               >
                 <AnimatePresence mode="wait">

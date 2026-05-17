@@ -52,3 +52,4 @@ export function Reveal({
     </motion.div>
   );
 }
+

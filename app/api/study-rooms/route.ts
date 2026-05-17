@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
 import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
+import { getUserSubscriptionPlan, upgradeRequiredResponse } from "@/lib/subscriptionAccess";
 import StudyRoom from "@/models/StudyRoom";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +76,35 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const creatorObjectId = new mongoose.Types.ObjectId(session.user.id);
+    const plan = await getUserSubscriptionPlan(session.user.id);
+    const activeRoomLimit = plan.limits.activeStudyRooms;
+    const capacityLimit = plan.limits.studyRoomCapacity;
+
+    if (maxParticipants > capacityLimit) {
+      return NextResponse.json(
+        upgradeRequiredResponse(
+          `${plan.name} study rooms allow up to ${capacityLimit} participants. Upgrade for larger rooms.`
+        ),
+        { status: 403 }
+      );
+    }
+
+    if (activeRoomLimit !== null) {
+      const activeRooms = await StudyRoom.countDocuments({
+        createdBy: creatorObjectId,
+        isActive: true,
+        status: "active",
+      });
+
+      if (activeRooms >= activeRoomLimit) {
+        return NextResponse.json(
+          upgradeRequiredResponse(
+            `${plan.name} allows ${activeRoomLimit} active study room${activeRoomLimit === 1 ? "" : "s"}. Upgrade to create more.`
+          ),
+          { status: 403 }
+        );
+      }
+    }
 
     const room = await StudyRoom.create({
       roomId: normalizedRoomId,
@@ -102,3 +132,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+

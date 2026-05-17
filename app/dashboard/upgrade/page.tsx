@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useUserStore, type Plan } from "@/store/useUserStore";
+import { PRICING_PLANS } from "@/lib/pricingConfig";
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /* TYPES & DATA                                                      */
@@ -38,79 +39,26 @@ interface PricingPlan {
   premium?: boolean;
 }
 
-const plans: PricingPlan[] = [
-  {
-    id: "COMMUNITY",
-    name: "Community",
-    tagline: "Get started for free",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    icon: Users,
-    accent: "slate",
-    glowColor: "rgba(100,116,139,0.15)",
-    features: [
-      { text: "Basic Study Rooms (up to 4)", included: true },
-      { text: "Standard Quizzes", included: true },
-      { text: "Community Forum Access", included: true },
-      { text: "Weekly Challenges", included: true },
-      { text: "AI Content Generator", included: false },
-      { text: "Elite Challenges", included: false },
-      { text: "Ad-Free Experience", included: false },
-      { text: "Mentor Earnings", included: false },
-      { text: "Priority Matching", included: false },
-      { text: "Mythic Auras & Badges", included: false },
-    ],
-  },
-  {
-    id: "PRO",
-    name: "Pro",
-    tagline: "For serious learners",
-    monthlyPrice: 9.99,
-    yearlyPrice: 7.99,
-    icon: Zap,
-    accent: "purple",
-    glowColor: "rgba(140,48,232,0.3)",
-    badge: "Most Popular",
-    popular: true,
-    features: [
-      { text: "Basic Study Rooms (up to 4)", included: true },
-      { text: "Standard Quizzes", included: true },
-      { text: "Community Forum Access", included: true },
-      { text: "Weekly Challenges", included: true },
-      { text: "Unlimited AI Generator", included: true },
-      { text: "Elite Challenges", included: true },
-      { text: "Ad-Free Experience", included: true },
-      { text: "Mentor Earnings", included: false },
-      { text: "Priority Matching", included: false },
-      { text: "Mythic Auras & Badges", included: false },
-    ],
-  },
-  {
-    id: "ELITE",
-    name: "Elite",
-    tagline: "Unlock everything",
-    monthlyPrice: 19.99,
-    yearlyPrice: 15.99,
-    icon: Crown,
-    accent: "amber",
-    glowColor: "rgba(245,158,11,0.3)",
-    badge: "Best Value",
-    premium: true,
-    features: [
-      { text: "Basic Study Rooms (up to 4)", included: true },
-      { text: "Standard Quizzes", included: true },
-      { text: "Community Forum Access", included: true },
-      { text: "Weekly Challenges", included: true },
-      { text: "Unlimited AI Generator", included: true },
-      { text: "Elite Challenges", included: true },
-      { text: "Ad-Free Experience", included: true },
-      { text: "Unlock Mentor Earnings", included: true },
-      { text: "Priority Student Matching", included: true },
-      { text: "Exclusive Mythic Auras", included: true },
-    ],
-  },
-];
+const planIconMap: Record<string, LucideIcon> = {
+  free: Users,
+  pro: Zap,
+  elite: Crown,
+};
 
+const plans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
+  id: (plan.id === "free" ? "FREE" : plan.id.toUpperCase()) as Plan,
+  name: plan.name,
+  tagline: plan.description,
+  monthlyPrice: plan.price,
+  yearlyPrice: plan.price === 0 ? 0 : Math.round(plan.price * 0.8 * 100) / 100,
+  icon: planIconMap[plan.id],
+  accent: plan.id === "elite" ? "purple" : plan.id === "pro" ? "purple" : "slate",
+  glowColor: "rgba(124,58,237,0.22)",
+  badge: plan.featured ? "Most Popular" : plan.id === "elite" ? "Best Value" : undefined,
+  popular: Boolean(plan.featured),
+  premium: plan.id === "elite",
+  features: plan.features.map((text) => ({ text, included: true })),
+}));
 /* comparison table rows */
 const comparisonRows = [
   { feature: "Study Rooms", community: "Up to 4", pro: "Unlimited", elite: "Unlimited" },
@@ -206,7 +154,7 @@ function PricingCard({
   const price = yearly ? plan.yearlyPrice : plan.monthlyPrice;
   const Icon = plan.icon;
 
-  const isInteractive = !isCurrent && plan.id !== "COMMUNITY";
+  const isInteractive = !isCurrent && plan.id !== "FREE";
 
   /* border / glow style for popular & premium */
   const borderClass = plan.popular
@@ -331,7 +279,7 @@ function CtaButton({
     );
   }
 
-  if (plan.id === "COMMUNITY") {
+  if (plan.id === "FREE") {
     return (
       <button className="w-full rounded-xl border-2 border-border py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors">
         Downgrade
@@ -339,9 +287,7 @@ function CtaButton({
     );
   }
 
-  const base = plan.popular
-    ? "bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/25 text-white"
-    : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-lg shadow-amber-500/25 text-white";
+  const base = "bg-[#7C3AED] hover:bg-purple-700 shadow-lg shadow-purple-500/25 text-white";
 
   return (
     <button
@@ -523,7 +469,7 @@ export default function UpgradePage() {
 
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             Unlock Your Full{" "}
-            <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+            <span className="bg-[#7C3AED]   text-[#7C3AED]">
               Potential
             </span>
           </h1>
@@ -592,3 +538,5 @@ export default function UpgradePage() {
     </div>
   );
 }
+
+

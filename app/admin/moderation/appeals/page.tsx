@@ -336,7 +336,7 @@ export default function AppealsManagementPage() {
                                             {/* User Info */}
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                                    <div className="w-9 h-9 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-xs font-bold shrink-0">
                                                         {appeal.avatar}
                                                     </div>
                                                     <div className="min-w-0">
@@ -427,7 +427,7 @@ export default function AppealsManagementPage() {
                         {/* Modal Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/10 shrink-0">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-sm font-bold shrink-0">
                                     {reviewModal.avatar}
                                 </div>
                                 <div>
@@ -553,3 +553,4 @@ export default function AppealsManagementPage() {
         </div>
     );
 }
+

@@ -89,7 +89,7 @@ const ACHIEVEMENTS: Achievement[] = [
     badge: "PERMANENT",
     badgeColor: "text-primary",
     badgeBg: "bg-primary/5 border-primary/10",
-    iconBg: "bg-gradient-to-br from-purple-100 to-white dark:from-purple-900/30 dark:to-slate-800 border-primary/20",
+    iconBg: "bg-[#7C3AED]     border-primary/20",
     iconColor: "text-primary",
   },
   {
@@ -99,7 +99,7 @@ const ACHIEVEMENTS: Achievement[] = [
     badge: "NEW UNLOCK",
     badgeColor: "text-amber-500",
     badgeBg: "bg-amber-500/5 border-amber-500/10",
-    iconBg: "bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/20 dark:to-slate-800 border-amber-500/20",
+    iconBg: "bg-[#7C3AED]     border-amber-500/20",
     iconColor: "text-amber-500",
   },
   {
@@ -109,7 +109,7 @@ const ACHIEVEMENTS: Achievement[] = [
     badge: "LEVEL 2",
     badgeColor: "text-emerald-500",
     badgeBg: "bg-emerald-500/5 border-emerald-500/10",
-    iconBg: "bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-slate-800 border-emerald-500/20",
+    iconBg: "bg-[#7C3AED]     border-emerald-500/20",
     iconColor: "text-emerald-500",
   },
   {
@@ -326,7 +326,7 @@ export default function EarningsReportPage() {
         <div
           className="absolute inset-0 opacity-[0.03] dark:opacity-[0.04]"
           style={{
-            backgroundImage: "radial-gradient(#8c30e8 0.5px, transparent 0.5px)",
+            backgroundImage: "rgba(124,58,237,0.08)",
             backgroundSize: "24px 24px",
           }}
         />
@@ -348,7 +348,7 @@ export default function EarningsReportPage() {
               <BadgeCheck size={16} />
               <span>Monthly Financial Harvest</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight bg-gradient-to-r from-slate-900 via-primary to-amber-600 dark:from-white dark:via-primary dark:to-amber-400 bg-clip-text text-transparent">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight bg-[#7C3AED]       text-[#7C3AED]">
               April 2024: Your Impact &amp; Growth
             </h2>
             <p className="mt-2 text-slate-500 dark:text-slate-400 max-w-2xl text-sm">
@@ -496,13 +496,13 @@ export default function EarningsReportPage() {
             {/* Oracle AI Projection */}
             <div className="relative overflow-hidden rounded-2xl p-6 text-white shadow-xl">
               {/* Gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 to-purple-900 z-0" />
+              <div className="absolute inset-0 bg-[#7C3AED]   z-0" />
               {/* Stardust texture */}
               <div
                 className="absolute inset-0 opacity-20 z-0"
                 style={{
                   backgroundImage:
-                    "radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)",
+                    "rgba(124,58,237,0.08)",
                   backgroundSize: "6px 6px",
                 }}
               />
@@ -637,3 +637,4 @@ export default function EarningsReportPage() {
     </div>
   );
 }
+

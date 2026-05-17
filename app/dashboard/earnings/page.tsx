@@ -162,11 +162,7 @@ function BackgroundParticles() {
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: `
-            radial-gradient(circle at 15% 50%, rgba(140,48,232,0.08) 0%, transparent 25%),
-            radial-gradient(circle at 85% 30%, rgba(0,240,181,0.05) 0%, transparent 20%),
-            radial-gradient(circle at 50% 80%, rgba(255,215,0,0.03) 0%, transparent 30%)
-          `,
+          backgroundImage: "none",
         }}
       />
       {/* Floating particles */}
@@ -333,7 +329,7 @@ function BankCard() {
   return (
     <div className="relative w-full aspect-[1.58] rounded-xl overflow-hidden group cursor-pointer">
       {/* Card background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1f35] to-[#0d0a14] z-0" />
+      <div className="absolute inset-0 bg-[#7C3AED]   z-0" />
 
       {/* Dot grid texture */}
       <div
@@ -369,7 +365,7 @@ function BankCard() {
       </div>
 
       {/* Shine sweep effect */}
-      <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:left-full transition-all duration-1000 ease-in-out z-20" />
+      <div className="absolute top-0 -left-full w-full h-full bg-[#7C3AED]    group-hover:left-full transition-all duration-1000 ease-in-out z-20" />
     </div>
   );
 }
@@ -396,7 +392,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         {/* Student */}
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-violet-400 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-[10px] font-bold shrink-0">
               {tx.initials}
             </div>
             {/* Gold / Silver aura */}
@@ -539,7 +535,7 @@ export default function EarningsPage() {
           
           {/* 👇 LINK TO MONTHLY REPORT ADDED HERE 👇 */}
           <Link href="/dashboard/earnings/report">
-            <button className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-purple-600 text-white rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300">
+            <button className="flex items-center gap-2 px-5 py-2.5 bg-[#7C3AED]   text-white rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300">
               <Sparkles className="w-4 h-4" />
               <span className="font-bold text-sm">View Monthly Report</span>
             </button>
@@ -605,11 +601,11 @@ export default function EarningsPage() {
             whileHover={{ y: -4 }}
             className="glass-panel rounded-2xl p-6 relative overflow-hidden group transition-transform duration-300 cursor-default border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute inset-0 bg-[#7C3AED]   opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <p className="text-slate-500 dark:text-white/60 text-sm font-medium mb-1">
               Lifetime Earnings
             </p>
-            <h3 className="text-3xl font-bold tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-white dark:to-slate-400">
+            <h3 className="text-3xl font-bold tracking-tight mb-2 text-[#7C3AED] bg-[#7C3AED]      ">
               {formatCurrency(EARNINGS_DATA.lifetime)}
             </h3>
             <div className="flex items-center gap-2">

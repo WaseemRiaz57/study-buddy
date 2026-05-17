@@ -63,10 +63,10 @@ export const DEFAULT_STUDENT: StudentRequestData = {
    ──────────────────────────────────────────────── */
 
 function gradeBarColor(pct: number) {
-  if (pct >= 90) return "from-emerald-500 to-teal-400";
-  if (pct >= 80) return "from-blue-500 to-cyan-400";
-  if (pct >= 70) return "from-amber-500 to-yellow-400";
-  return "from-rose-500 to-pink-400";
+  if (pct >= 90) return " ";
+  if (pct >= 80) return " ";
+  if (pct >= 70) return " ";
+  return " ";
 }
 
 /* ────────────────────────────────────────────────
@@ -185,7 +185,7 @@ export default function RequestApprovalModal({
               >
                 {/* Avatar with glow */}
                 <div className="relative mb-4">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-[0_0_20px_rgba(140,48,232,0.4)]">
+                  <div className="w-24 h-24 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-2xl font-bold shadow-[0_0_20px_rgba(140,48,232,0.4)]">
                     {initials}
                   </div>
                   {/* Aura ring */}
@@ -264,7 +264,7 @@ export default function RequestApprovalModal({
                       </div>
                       <div className="w-full h-2 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
                         <motion.div
-                          className={`h-full rounded-full bg-gradient-to-r ${gradeBarColor(s.percent)}`}
+                          className={`h-full rounded-full bg-[#7C3AED] ${gradeBarColor(s.percent)}`}
                           initial={{ width: 0 }}
                           animate={{ width: `${s.percent}%` }}
                           transition={{ duration: 0.7, delay: 0.3 }}
@@ -300,10 +300,10 @@ export default function RequestApprovalModal({
               {/* Accept button */}
               <button 
                 onClick={onClose} // <-- YAHAN ONCLICK ADD KIYA
-                className="relative w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-shadow overflow-hidden"
+                className="relative w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-[#7C3AED]   shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-shadow overflow-hidden"
               >
                 {/* Shine */}
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[glow-slide_3s_linear_infinite]" />
+                <span className="absolute inset-0 bg-[#7C3AED]    -translate-x-full animate-[glow-slide_3s_linear_infinite]" />
                 <CheckCircle size={16} />
                 Accept Request
               </button>

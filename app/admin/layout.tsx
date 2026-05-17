@@ -351,7 +351,7 @@ export default function AdminLayout({
           </Link>
 
           <div className="flex items-center gap-3 px-3 py-2.5">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-sm font-bold shrink-0">
               A
             </div>
             <div className="min-w-0 flex-1">
@@ -448,7 +448,7 @@ export default function AdminLayout({
               isCollapsed ? "justify-center py-2.5" : "gap-3 px-3 py-2.5"
             }`}
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-sm font-bold shrink-0">
               A
             </div>
             {!isCollapsed && (
@@ -532,7 +532,7 @@ export default function AdminLayout({
                 onClick={() => setProfileOpen((p) => !p)}
                 className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-xs font-bold shrink-0">
                   AD
                 </div>
                 <span className="hidden md:block text-sm font-medium text-foreground dark:text-white">
@@ -600,3 +600,4 @@ export default function AdminLayout({
     </div>
   );
 }
+

@@ -77,13 +77,13 @@ export default function MatchRequestNotification({
       >
         <div className="relative overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 bg-white/80 dark:bg-[#1a1523]/80 backdrop-blur-xl shadow-2xl shadow-purple-500/10">
           {/* Glow accent */}
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5 pointer-events-none" />
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500" />
+          <div className="absolute inset-0 bg-[#7C3AED]    pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#7C3AED]   " />
 
           <div className="relative p-5">
             {/* Header */}
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/20 flex items-center justify-center overflow-hidden">
+              <div className="flex-shrink-0 h-12 w-12 rounded-full bg-[#7C3AED]   border border-purple-500/20 flex items-center justify-center overflow-hidden">
                 {request.requester.image ? (
                   <img
                     src={request.requester.image}
@@ -146,7 +146,7 @@ export default function MatchRequestNotification({
               <button
                 onClick={() => handleRespond("accept")}
                 disabled={isResponding}
-                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-500/20 transition-all hover:shadow-xl hover:shadow-purple-500/30 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED]   px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-purple-500/20 transition-all hover:shadow-xl hover:shadow-purple-500/30 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isResponding && respondingAction === "accept" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -162,3 +162,4 @@ export default function MatchRequestNotification({
     </AnimatePresence>
   );
 }
+

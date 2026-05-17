@@ -89,7 +89,7 @@ function ProgressBar({ current }: { current: number }) {
           }}
         >
           {/* Leading glow edge */}
-          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-r from-transparent to-white/30 rounded-full" />
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-[#7C3AED]   rounded-full" />
         </motion.div>
       </div>
     </div>
@@ -122,7 +122,7 @@ function RewardsCard() {
 /** Security card with abstract gradient bg */
 function SecurityCard() {
   return (
-    <div className="bg-gradient-to-br from-primary to-purple-700 rounded-xl p-6 text-white shadow-lg shadow-purple-200 dark:shadow-none relative overflow-hidden">
+    <div className="bg-[#7C3AED]   rounded-xl p-6 text-white shadow-lg shadow-purple-200 dark:shadow-none relative overflow-hidden">
       {/* Abstract blur shapes */}
       <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
       <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
@@ -188,7 +188,7 @@ export default function EarningsSetupPage() {
   const currentStep = 0; // Step 1 active (0-indexed)
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-slate-50 to-purple-50/50 dark:from-background dark:to-background text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="relative min-h-screen bg-[#7C3AED]     text-slate-900 dark:text-slate-100 transition-colors">
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-start py-8 px-4 md:px-8">
         <div className="w-full max-w-5xl flex flex-col gap-8">
@@ -397,7 +397,7 @@ export default function EarningsSetupPage() {
                     <span className="hidden md:inline-block text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full whitespace-nowrap">
                       +50 XP on completion
                     </span>
-                    <button className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-purple-600 hover:to-primary text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-primary/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
+                    <button className="w-full md:w-auto flex items-center justify-center gap-2 bg-[#7C3AED]     text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-primary/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
                       Verify &amp; Connect
                       <ArrowRight size={16} />
                     </button>
@@ -411,3 +411,4 @@ export default function EarningsSetupPage() {
     </div>
   );
 }
+

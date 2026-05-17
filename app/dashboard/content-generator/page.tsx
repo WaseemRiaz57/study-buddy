@@ -375,7 +375,7 @@ export default function ContentGeneratorPage() {
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
-            <span className="bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+            <span className="bg-[#7C3AED]   text-[#7C3AED]">
               AI Studio
             </span>
           </h1>
@@ -584,7 +584,7 @@ export default function ContentGeneratorPage() {
             <button
               onClick={handleGenerate}
               disabled={isGenerating}
-              className="w-full group relative overflow-hidden rounded-xl bg-gradient-to-r from-primary to-purple-400 p-4 text-white shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              className="w-full group relative overflow-hidden rounded-xl bg-[#7C3AED]   p-4 text-white shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
               <div className="absolute inset-0 bg-white/20 group-hover:bg-white/10 transition-colors" />
               <div className="relative flex items-center justify-center gap-2 font-bold text-lg">
@@ -699,7 +699,7 @@ export default function ContentGeneratorPage() {
 
                 {/* Bottom scroll fade */}
                 {aiResponseText && (
-                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white dark:from-[#0f0a16]/80 to-transparent pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-[#7C3AED]  /80  pointer-events-none" />
                 )}
               </div>
             </motion.div>

@@ -281,3 +281,4 @@ export function getProgressPercentage(currentValue: number, targetMetric: number
 
   return Math.min(100, Math.round((currentValue / targetMetric) * 100));
 }
+

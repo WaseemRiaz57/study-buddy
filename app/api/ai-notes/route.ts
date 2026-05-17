@@ -67,3 +67,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Error saving AI note" }, { status: 500 });
   }
 }
+
+

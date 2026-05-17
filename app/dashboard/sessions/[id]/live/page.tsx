@@ -78,14 +78,14 @@ function PipVideo({
         />
         <div className="relative w-44 h-32 rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-slate-900 shadow-2xl">
           {/* Placeholder video */}
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-200 dark:from-slate-800 to-slate-300 dark:to-slate-900 flex items-center justify-center">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-purple-700 flex items-center justify-center text-base font-bold text-white">
+          <div className="absolute inset-0 bg-[#7C3AED]     flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full bg-[#7C3AED]   flex items-center justify-center text-base font-bold text-white">
               {person.avatar}
             </div>
           </div>
 
           {/* Bottom overlay */}
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex items-center justify-between">
+          <div className="absolute bottom-0 inset-x-0 bg-[#7C3AED]   p-2 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-semibold text-white">
                 {person.name}
@@ -118,7 +118,7 @@ function ChatBubble({ msg }: { msg: ChatMessage }) {
       <div
         className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold ${
           msg.isMentor
-            ? "bg-gradient-to-br from-primary to-purple-700 text-white"
+            ? "bg-[#7C3AED]   text-white"
             : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
         }`}
       >
@@ -251,7 +251,7 @@ export default function LiveClassroomPage() {
           className="absolute inset-0"
           style={{
             backgroundImage:
-              "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
+              "rgba(124,58,237,0.08)",
             backgroundSize: "30px 30px",
           }}
         />
@@ -457,7 +457,7 @@ export default function LiveClassroomPage() {
               <div className="flex flex-col gap-1 p-5 pb-4 border-b border-slate-200 dark:border-white/10">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h1 className="text-3xl font-black tracking-tight mb-1 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-amber-700 to-slate-900 dark:from-white dark:via-amber-200 dark:to-white animate-[shimmer_4s_linear_infinite]" style={{ backgroundSize: '200% auto'}}>
+                    <h1 className="text-3xl font-black tracking-tight mb-1 text-[#7C3AED] bg-[#7C3AED]       animate-[shimmer_4s_linear_infinite]" style={{ backgroundSize: '200% auto'}}>
                       Session Concluded
                     </h1>
                     <p className="text-slate-600 dark:text-slate-300 font-normal text-base">Excellent work! Here is your session summary log.</p>
@@ -545,7 +545,7 @@ export default function LiveClassroomPage() {
                 </button>
                 <button 
                   onClick={handleFinalize}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-gradient-to-br from-primary to-pink-500 text-white font-bold shadow-lg shadow-primary/40 hover:shadow-primary/60 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-[#7C3AED]   text-white font-bold shadow-lg shadow-primary/40 hover:shadow-primary/60 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" />
                   Finalize & Log Session

@@ -287,3 +287,4 @@ export default async function ScholarProfilePage({ params }: ScholarPageProps) {
     </main>
   );
 }
+

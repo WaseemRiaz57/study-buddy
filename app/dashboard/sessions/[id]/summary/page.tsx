@@ -262,11 +262,11 @@ export default function SessionSummaryPage() {
           {/* glowing avatar */}
           <div className="relative mb-4">
             <motion.div
-              className="absolute -inset-3 rounded-full bg-gradient-to-br from-primary/40 via-pink-500/20 to-amber-400/20 blur-xl"
+              className="absolute -inset-3 rounded-full bg-[#7C3AED]    blur-xl"
               animate={{ opacity: [0.5, 0.8, 0.5], scale: [1, 1.1, 1] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
             />
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary/40 bg-gradient-to-br from-slate-100 dark:from-slate-900 to-slate-200 dark:to-slate-800 text-lg font-bold text-primary shadow-[0_0_30px_rgba(140,48,232,0.3)]">
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary/40 bg-[#7C3AED]     text-lg font-bold text-primary shadow-[0_0_30px_rgba(140,48,232,0.3)]">
               {s.mentorAvatar}
             </div>
             {/* rank badge */}
@@ -464,3 +464,4 @@ export default function SessionSummaryPage() {
     </div>
   );
 }
+

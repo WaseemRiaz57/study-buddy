@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSession, signIn } from "next-auth/react";
-import { ArrowLeft, Mail, Lock, Sparkles, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { ArrowLeft, Mail, Lock, BookOpen, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState } from "react";
 
 const fadeInUp = {
@@ -35,9 +35,9 @@ export default function LoginPage() {
   const prefersReducedMotion = useReducedMotion();
 
   // 🔴 Google Login Handler
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    signIn("google", { callbackUrl: "/dashboard" });
+    await signIn("google", { callbackUrl: "/dashboard" });
   };
 
   // 📧 Email/Password Login Handler
@@ -135,8 +135,11 @@ export default function LoginPage() {
               transition={{ duration: 0.5 }}
             >
               <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
-              <div className="relative rounded-2xl bg-gradient-to-br from-primary/15 to-primary/10 p-5 backdrop-blur-xl border border-primary/20">
-                <Sparkles className="h-8 w-8 text-primary" strokeWidth={2} />
+              <div className="relative flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 p-5 backdrop-blur-xl">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7C3AED]">
+                  <BookOpen className="h-5 w-5 text-white" strokeWidth={2} />
+                </div>
+                <span className="text-xl font-bold text-[#7C3AED]">StudyBuddy</span>
               </div>
             </motion.div>
           </motion.div>
@@ -169,9 +172,9 @@ export default function LoginPage() {
         {/* Form Card */}
         <motion.div
           variants={scaleIn}
-          className="relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-card/90 to-card/50 p-8 backdrop-blur-xl shadow-2xl"
+          className="relative overflow-hidden rounded-3xl border border-border/50 bg-card p-8 backdrop-blur-xl shadow-2xl"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
 
           <form className="relative space-y-6" onSubmit={handleSubmit}>
             {/* Error Message */}
@@ -321,7 +324,7 @@ export default function LoginPage() {
                   animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
                   transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
                 >
-                  <Sparkles className="h-4 w-4" strokeWidth={2} />
+                  <BookOpen className="h-4 w-4" strokeWidth={2} />
                 </motion.div>
               </Link>
             </motion.div>
@@ -346,3 +349,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

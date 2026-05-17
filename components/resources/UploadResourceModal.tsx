@@ -326,3 +326,4 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
     </AnimatePresence>
   );
 }
+

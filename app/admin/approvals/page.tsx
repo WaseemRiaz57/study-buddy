@@ -317,7 +317,7 @@ export default function ApprovalsPage() {
               >
                 {/* Applicant */}
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-sm font-bold shrink-0">
                     {applicant.avatar}
                   </div>
                   <div className="min-w-0">
@@ -408,3 +408,4 @@ export default function ApprovalsPage() {
     </div>
   );
 }
+

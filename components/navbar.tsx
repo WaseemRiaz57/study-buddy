@@ -1,17 +1,13 @@
 "use client";
 
-import { Sparkles, Menu, X, Moon, Sun, User, Settings } from "lucide-react";
+import { BookOpen, Menu, X, Moon, Sun, User, Settings } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react"; // 👈 NextAuth import
 
-const navItems = [
-  { href: "#features", label: "Features" },
-  { href: "#workflow", label: "Workflow" },
-  { href: "#community", label: "Community" },
-];
+const navItems: Array<{ href: string; label: string }> = [];
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -69,13 +65,10 @@ export function Navbar() {
           href="/" 
           className="flex items-center gap-2 font-bold tracking-tight group"
         >
-          <motion.div
-            whileHover={{ rotate: 180 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Sparkles className="h-5 w-5 text-primary" strokeWidth={2.5} />
-          </motion.div>
-          <span className="text-lg">StudyBuddy</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#7C3AED]">
+            <BookOpen className="h-5 w-5 text-white" strokeWidth={2.5} />
+          </span>
+          <span className="text-lg font-bold text-[#7C3AED]">StudyBuddy</span>
         </Link>
 
         {/* Mobile Menu Button */}
@@ -170,7 +163,7 @@ export function Navbar() {
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link
                   href="/register"
-                  className="rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/40"
+                  className="rounded-full bg-[#7C3AED] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-purple-700"
                 >
                   Join Free
                 </Link>
@@ -266,7 +259,7 @@ export function Navbar() {
                     <Link
                       href="/register"
                       onClick={() => setIsOpen(false)}
-                      className="rounded-lg bg-primary px-4 py-3 text-sm font-bold text-center text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90"
+                      className="rounded-lg bg-[#7C3AED] px-4 py-3 text-sm font-bold text-center text-white shadow-lg shadow-primary/30 transition-all hover:bg-purple-700"
                     >
                       Join Free
                     </Link>
@@ -280,3 +273,4 @@ export function Navbar() {
     </nav>
   );
 }
+

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
-export type Role = "STUDENT" | "MENTOR" | "ADMIN";
-export type Plan = "COMMUNITY" | "PRO" | "ELITE";
+export type Role = "STUDENT" | "TEACHER" | "MENTOR" | "ADMIN";
+export type Plan = "FREE" | "COMMUNITY" | "PRO" | "ELITE";
 
 interface UserState {
   role: Role;

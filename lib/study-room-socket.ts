@@ -452,3 +452,4 @@ export function registerStudyRoomNamespace(io: Server): Namespace {
 
   return namespace;
 }
+

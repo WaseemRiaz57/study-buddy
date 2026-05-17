@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
+import { connectMongoDB } from "@/lib/mongodb";
+import { getUserSubscriptionPlan, todayUsageWindow, upgradeRequiredResponse } from "@/lib/subscriptionAccess";
+import UsageCounter from "@/models/UsageCounter";
 // @ts-expect-error - pdf-parse-fork handles ESM/CommonJS better for Vercel builds
 import pdf from 'pdf-parse-fork';
 import {
@@ -176,6 +179,29 @@ export async function POST(req: Request) {
     if (!session?.user?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
+    await connectMongoDB();
+
+    const plan = await getUserSubscriptionPlan(session.user.id);
+    const dailyLimit = plan.limits.aiGenerationsPerDay;
+
+    if (dailyLimit !== null) {
+      const usage = await UsageCounter.findOne({
+        userId: session.user.id,
+        feature: "ai_generation",
+        windowStart: todayUsageWindow(),
+      })
+        .select("count")
+        .lean();
+
+      if (Number(usage?.count || 0) >= dailyLimit) {
+        return NextResponse.json(
+          upgradeRequiredResponse(
+            `Your ${plan.name} plan includes ${dailyLimit} AI generations per day. Upgrade to continue generating.`
+          ),
+          { status: 403 }
+        );
+      }
+    }
 
     const { userPrompt, extractedFileText, outputMode, validationError } =
       await parseIncomingRequest(req);
@@ -287,6 +313,16 @@ export async function POST(req: Request) {
       },
     });
 
+    await UsageCounter.findOneAndUpdate(
+      {
+        userId: session.user.id,
+        feature: "ai_generation",
+        windowStart: todayUsageWindow(),
+      },
+      { $inc: { count: 1 } },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+
     return new Response(stream, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
@@ -297,3 +333,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
+
+

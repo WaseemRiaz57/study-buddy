@@ -180,9 +180,9 @@ export function StudentDashboard() {
   }, [fetchAssignments, fetchRecentNotes, fetchMentorSessions]);
 
   const noteTypeMeta: Record<AINoteType, { gradient: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string }> = {
-    notes: { gradient: "from-emerald-500 to-teal-600", icon: Brain, label: "Smart Notes" },
-    summarizer: { gradient: "from-indigo-500 to-purple-600", icon: FileText, label: "Summary" },
-    quiz: { gradient: "from-orange-500 to-red-600", icon: Zap, label: "Quiz" },
+    notes: { gradient: " ", icon: Brain, label: "Smart Notes" },
+    summarizer: { gradient: " ", icon: FileText, label: "Summary" },
+    quiz: { gradient: " ", icon: Zap, label: "Quiz" },
   };
 
   const completedSessionsCount = mentorSessions.filter(
@@ -281,7 +281,7 @@ export function StudentDashboard() {
           </motion.div>
 
           {/* Next Session Card */}
-          <motion.div {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel rounded-[2rem] p-6 bg-gradient-to-br from-blue-500/5 to-purple-500/5 border border-primary/10 flex flex-col justify-between relative overflow-hidden">
+          <motion.div {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel rounded-[2rem] p-6 bg-[#7C3AED]   border border-primary/10 flex flex-col justify-between relative overflow-hidden">
             <div className="absolute inset-0 bg-primary/5 opacity-0 hover:opacity-100 transition-opacity" />
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-4">
@@ -445,7 +445,7 @@ export function StudentDashboard() {
                 const Icon = meta.icon;
                 return (
                 <div key={note._id} className="min-w-[260px] glass-panel rounded-[1.5rem] p-5 hover:-translate-y-2 transition-all cursor-pointer group relative overflow-hidden">
-                  <div className={`aspect-[4/3] rounded-2xl mb-4 overflow-hidden relative bg-gradient-to-br ${meta.gradient} flex items-center justify-center shadow-inner`}>
+                  <div className={`aspect-[4/3] rounded-2xl mb-4 overflow-hidden relative bg-[#7C3AED] ${meta.gradient} flex items-center justify-center shadow-inner`}>
                     <div className="absolute inset-0 bg-black/10" />
                     <Icon className="text-white/60 group-hover:scale-110 transition-transform duration-500" size={48} />
                   </div>
@@ -580,3 +580,4 @@ export function StudentDashboard() {
     </div>
   );
 }
+

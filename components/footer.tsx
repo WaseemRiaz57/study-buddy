@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, Github, Twitter, MessageCircle } from "lucide-react";
+import { BookOpen, Github, Twitter, MessageCircle } from "lucide-react";
 
 const productLinks = [
   { label: "Focus Room", href: "#focus-room" },
@@ -36,8 +36,10 @@ export function Footer() {
         <div className="grid gap-12 md:grid-cols-3">
           <div>
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <span className="text-lg font-semibold">StudyBuddy</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#7C3AED]">
+                <BookOpen className="h-5 w-5 text-white" />
+              </span>
+              <span className="text-lg font-bold text-[#7C3AED]">StudyBuddy</span>
             </div>
             <p className="mt-4 text-sm text-slate-600 dark:text-gray-400">
               Leveling up the way students learn and collaborate globally.
@@ -103,3 +105,4 @@ export function Footer() {
     </footer>
   );
 }
+

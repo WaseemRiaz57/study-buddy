@@ -43,3 +43,4 @@ export async function requireRole(...roles: AllowedRole[]) {
 
   return { error: null, session };
 }
+

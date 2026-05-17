@@ -40,7 +40,7 @@ export default function DashboardView({ onStartMatching }: DashboardViewProps) {
         </div>
         
         <h1 className="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6 tracking-tight">
-          Find your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8c30e8] to-[#e830d5]">Study Circle</span>
+          Find your <span className="text-[#7C3AED] bg-[#7C3AED]  ">Study Circle</span>
         </h1>
         
         <p className="text-slate-600 dark:text-gray-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
@@ -59,7 +59,7 @@ export default function DashboardView({ onStartMatching }: DashboardViewProps) {
         {/* Card 1: Find a Buddy (Primary) */}
         <motion.div variants={itemVariants} className="group relative bg-white dark:bg-[#1a1524] border border-slate-200 dark:border-white/10 rounded-3xl p-8 flex flex-col items-center text-center hover:border-purple-500/50 transition-all duration-300 hover:-translate-y-2 shadow-xl shadow-slate-200/50 dark:shadow-none">
           {/* Light Mode Glow */}
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-50/50 to-transparent dark:from-purple-900/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 bg-[#7C3AED]    rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
           
           <div className="relative z-10 w-20 h-20 bg-purple-100 dark:bg-[#8c30e8]/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
             <Users size={40} className="text-[#8c30e8]" />
@@ -72,7 +72,7 @@ export default function DashboardView({ onStartMatching }: DashboardViewProps) {
           
           <button 
             onClick={onStartMatching}
-            className="relative z-10 w-full py-4 rounded-xl font-bold text-white bg-gradient-to-r from-[#8c30e8] to-[#e830d5] hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-2 group-hover:gap-3"
+            className="relative z-10 w-full py-4 rounded-xl font-bold text-white bg-[#7C3AED]   hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-2 group-hover:gap-3"
           >
             Start Matching <ArrowRight size={20} />
           </button>

@@ -109,7 +109,7 @@ export default function MythicBadgeModal({
           className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-md"
           style={{
             background:
-              "radial-gradient(ellipse at center, rgba(88, 28, 135, 0.55) 0%, rgba(0, 0, 0, 0.85) 80%)",
+              "rgba(124,58,237,0.08)",
           }}
           onClick={onClose} // Yahan theek kar diya hai
         >
@@ -122,7 +122,7 @@ export default function MythicBadgeModal({
             exit="exit"
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-md mx-4 rounded-3xl border border-purple-200 dark:border-purple-500/30
-                       bg-white dark:bg-gradient-to-b dark:from-[#1a0533] dark:via-[#0f0a1a] dark:to-[#0a0612]
+                       bg-white dark:bg-[#7C3AED]   
                        shadow-[0_0_50px_rgba(140,48,232,0.5)] overflow-hidden"
           >
             {/* ---- Ambient glow rings ---- */}
@@ -151,12 +151,12 @@ export default function MythicBadgeModal({
                 <motion.div
                   variants={pulseGlow}
                   animate="animate"
-                  className="absolute -inset-6 rounded-full bg-gradient-to-tr from-purple-600/40 via-amber-400/30 to-purple-600/40 blur-2xl"
+                  className="absolute -inset-6 rounded-full bg-[#7C3AED]    blur-2xl"
                 />
                 {/* Star emblem */}
                 <div
                   className="relative flex h-28 w-28 items-center justify-center rounded-full
-                             border-2 border-amber-400/60 bg-gradient-to-br from-purple-900/80 to-purple-950
+                             border-2 border-amber-400/60 bg-[#7C3AED]  
                              shadow-[0_0_30px_rgba(217,170,0,0.35)]"
                 >
                   <Star className="h-14 w-14 fill-amber-400 text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.7)]" />
@@ -184,7 +184,7 @@ export default function MythicBadgeModal({
                 className="mb-4 text-3xl font-extrabold leading-tight sm:text-4xl"
               >
                 <span
-                  className="bg-gradient-to-r from-amber-300 via-purple-400 to-amber-300 bg-clip-text text-transparent"
+                  className="bg-[#7C3AED]    text-[#7C3AED]"
                 >
                   Mythic Ascension
                 </span>
@@ -238,7 +238,7 @@ export default function MythicBadgeModal({
                   onClose(); // Yahan theek kar diya hai
                 }}
                 className="group relative overflow-hidden rounded-full
-                           bg-gradient-to-r from-purple-600 via-purple-500 to-amber-500
+                           bg-[#7C3AED]   
                            px-10 py-3 text-sm font-bold uppercase tracking-wider text-white
                            shadow-[0_0_24px_rgba(140,48,232,0.5)] transition-shadow
                            hover:shadow-[0_0_36px_rgba(140,48,232,0.7)]"
@@ -247,7 +247,7 @@ export default function MythicBadgeModal({
                 <motion.span
                   variants={shineSweep}
                   animate="animate"
-                  className="pointer-events-none absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+                  className="pointer-events-none absolute inset-0 -skew-x-12 bg-[#7C3AED]   "
                 />
                 <span className="relative z-10 flex items-center gap-2">
                   <Sparkles size={16} />

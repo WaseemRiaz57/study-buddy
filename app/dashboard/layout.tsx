@@ -1,41 +1,42 @@
-"use client";
-import { Sidebar } from "@/components/sidebar";
-import { DashboardTopbar } from "@/components/DashboardTopbar";
-import { useOfflinePresence } from "@/hooks/useOfflinePresence";
-import { useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { DashboardClientShell } from "@/components/DashboardClientShell";
+import { authOptions } from "@/lib/authOptions";
+import { normalizeSubscriptionPlan } from "@/lib/pricingConfig";
+import { type Plan, type Role } from "@/store/useUserStore";
 
-export default function DashboardLayout({
+function normalizeRole(role: unknown): Role {
+  const normalized = String(role || "").toLowerCase();
+  if (normalized === "admin") return "ADMIN";
+  if (normalized === "teacher" || normalized === "mentor") return "TEACHER";
+  return "STUDENT";
+}
+
+function normalizePlan(plan: unknown): Plan {
+  const normalized = normalizeSubscriptionPlan(plan);
+  if (normalized === "elite") return "ELITE";
+  if (normalized === "pro") return "PRO";
+  return "FREE";
+}
+
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { status } = useSession();
-  useOfflinePresence();
+  const session = await getServerSession(authOptions);
 
-  useEffect(() => {
-    if (status !== "authenticated") return;
-
-    const awardDailyLogin = async () => {
-      const response = await fetch("/api/user/gamification-stats", {
-        method: "POST",
-      });
-
-      if (response.ok) {
-        window.dispatchEvent(new Event("gamification-stats-updated"));
-      }
-    };
-
-    void awardDailyLogin();
-  }, [status]);
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden relative">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto transition-all duration-300">
-        <DashboardTopbar />
-        {children}
-      </main>
-    </div>
+    <DashboardClientShell
+      initialRole={normalizeRole(session.user.role)}
+      initialPlan={normalizePlan(session.user.subscriptionPlan)}
+    >
+      {children}
+    </DashboardClientShell>
   );
 }
+

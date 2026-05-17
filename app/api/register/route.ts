@@ -8,8 +8,9 @@ function normalizeEmail(email: unknown): string {
   return String(email || "").trim().toLowerCase();
 }
 
-function normalizeRole(role: unknown): "student" | "mentor" {
-  return String(role).toLowerCase() === "mentor" ? "mentor" : "student";
+function normalizeRole(role: unknown): "student" | "teacher" {
+  const normalized = String(role).toLowerCase();
+  return normalized === "teacher" || normalized === "mentor" ? "teacher" : "student";
 }
 
 export async function POST(req: Request) {
@@ -79,3 +80,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Error registering user." }, { status: 500 });
   }
 }
+
+

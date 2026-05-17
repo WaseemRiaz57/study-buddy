@@ -818,7 +818,7 @@ export default function StudyPlanPage() {
               <span
                 className="
                   pointer-events-none absolute inset-0
-                  bg-gradient-to-r from-transparent via-white/20 to-transparent
+                  bg-[#7C3AED]   
                   -translate-x-full animate-[shimmer-slide_3s_ease-in-out_infinite]
                 "
               />
@@ -837,3 +837,4 @@ export default function StudyPlanPage() {
     </main>
   );
 }
+

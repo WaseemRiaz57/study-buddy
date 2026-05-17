@@ -71,3 +71,5 @@ export async function POST(
     return NextResponse.json({ message: "Failed to join room" }, { status: 500 });
   }
 }
+
+

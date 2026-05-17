@@ -123,7 +123,7 @@ export default function BillingPage() {
             </span>
           </div>
 
-          <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-300 dark:from-slate-300 dark:via-amber-400 dark:to-slate-300 bg-clip-text text-transparent w-fit pb-1 bg-[length:200%_auto] animate-[shimmer_5s_linear_infinite]">
+          <h2 className="text-3xl md:text-4xl font-bold bg-[#7C3AED]       text-[#7C3AED] w-fit pb-1 bg-[length:200%_auto] animate-[shimmer_5s_linear_infinite]">
             Financial Hub
           </h2>
           <p className="text-slate-600 dark:text-slate-400 mt-2 max-w-2xl text-base">
@@ -142,8 +142,8 @@ export default function BillingPage() {
           <div
             className="
               relative overflow-hidden rounded-2xl p-8
-              bg-gradient-to-br from-amber-50 to-white border-2 border-amber-300/40
-              dark:from-slate-900 dark:to-slate-950 dark:border-amber-500/30
+              bg-[#7C3AED]   border-2 border-amber-300/40
+                dark:border-amber-500/30
               shadow-[0_0_30px_rgba(255,215,0,0.05)]
               animate-[border-pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]
               group
@@ -177,7 +177,7 @@ export default function BillingPage() {
 
               <Link
                 href="/dashboard/settings/subscription"
-                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 text-black font-bold shadow-lg shadow-amber-900/20 hover:shadow-amber-600/30 hover:scale-[1.02] transition-all"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#7C3AED]   text-black font-bold shadow-lg shadow-amber-900/20 hover:shadow-amber-600/30 hover:scale-[1.02] transition-all"
               >
                 Manage Plan
                 <ArrowRight size={16} />
@@ -307,7 +307,7 @@ export default function BillingPage() {
               </div>
               <div className="w-full h-2 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full"
+                  className="h-full bg-[#7C3AED]   rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: "66%" }}
                   transition={{ duration: 0.8, ease: "easeOut", delay: 0.5 }}
@@ -333,3 +333,4 @@ export default function BillingPage() {
     </motion.div>
   );
 }
+

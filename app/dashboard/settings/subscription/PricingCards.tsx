@@ -104,7 +104,7 @@ export default function PricingCards({ annual }: { annual: boolean }) {
             " border-2 border-primary shadow-[0_0_20px_rgba(140,48,232,0.3)] md:scale-105 z-10 bg-white dark:bg-slate-900";
         } else if (tier.elite) {
           cardCls +=
-            " border border-yellow-400 dark:border-yellow-500/40 shadow-[0_0_20px_rgba(251,191,36,0.2)] bg-gradient-to-b from-white to-yellow-50 dark:from-slate-900 dark:to-yellow-900/10";
+            " border border-yellow-400 dark:border-yellow-500/40 shadow-[0_0_20px_rgba(251,191,36,0.2)] bg-[#7C3AED]    ";
         } else {
           cardCls +=
             " border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm";
@@ -194,7 +194,7 @@ export default function PricingCards({ annual }: { annual: boolean }) {
                 {tier.cta}
               </button>
             ) : (
-              <button className="w-full py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-white font-bold shadow-lg shadow-yellow-500/25 hover:from-yellow-500 hover:to-yellow-700 transition-colors">
+              <button className="w-full py-3 rounded-xl bg-[#7C3AED]   text-white font-bold shadow-lg shadow-yellow-500/25   transition-colors">
                 {tier.cta}
               </button>
             )}
@@ -204,3 +204,4 @@ export default function PricingCards({ annual }: { annual: boolean }) {
     </motion.section>
   );
 }
+

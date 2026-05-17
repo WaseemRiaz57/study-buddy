@@ -592,7 +592,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-colors
               bg-purple-100 text-purple-600
-              dark:bg-gradient-to-br dark:from-[#8c30e8] dark:to-purple-600 dark:text-white">
+              dark:bg-[#7C3AED]   dark:text-white">
               SB
             </div>
             <div>
@@ -1047,3 +1047,4 @@ function ControlBtn({ isActive, onClick, iconOn: IconOn, iconOff: IconOff }: any
     </button>
   );
 }
+

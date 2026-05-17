@@ -46,3 +46,4 @@ export const connectMongoDB = async () => {
 
   return cached.conn;
 };
+
