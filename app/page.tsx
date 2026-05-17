@@ -207,14 +207,7 @@ function SectionHeading({ children, className = "" }: { children: string; classN
 function FadeOutGradientText({ children }: { children: React.ReactNode }) {
   return (
     <span
-      style={{
-        backgroundImage: "none",
-        WebkitBackgroundClip: "text",
-        backgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        color: "transparent",
-        display: "inline",
-      }}
+      className="bg-gradient-to-r from-purple-700 to-purple-300 bg-clip-text text-transparent"
     >
       {children}
     </span>
@@ -308,8 +301,7 @@ const FeatureCard = memo(function FeatureCard({ feature, index }: { feature: Fea
                  transition-colors duration-300 cursor-pointer"
     >
       {/* Shine sweep on hover */}
-      <div className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
-           style={{ background: "#7C3AED" }} />
+      <div className="pointer-events-none absolute inset-0 -translate-x-full bg-white/20 opacity-0 transition-all duration-700 group-hover:translate-x-full group-hover:opacity-100 dark:bg-white/5" />
 
       {feature.badge && (
         <motion.div
@@ -388,7 +380,7 @@ const PricingCard = memo(function PricingCard({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-none absolute inset-0 rounded-2xl bg-[#7C3AED]   "
+            className="pointer-events-none absolute inset-0 rounded-2xl border border-purple-500/20"
           />
         )}
       </AnimatePresence>
@@ -955,7 +947,7 @@ export default function Home() {
             ))}
             <br />
             {["Start", "Achieving."].map((w, i) => (
-              <motion.span key={i} variants={fadeUp} className="inline-block mr-3 text-[#7C3AED] bg-[#7C3AED]  ">
+              <motion.span key={i} variants={fadeUp} className="inline-block mr-3 text-[#7C3AED]">
                 {w}
               </motion.span>
             ))}

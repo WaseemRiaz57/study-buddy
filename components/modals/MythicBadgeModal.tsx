@@ -183,9 +183,7 @@ export default function MythicBadgeModal({
                 transition={{ delay: 0.45 }}
                 className="mb-4 text-3xl font-extrabold leading-tight sm:text-4xl"
               >
-                <span
-                  className="bg-[#7C3AED]    text-[#7C3AED]"
-                >
+                <span className="text-[#7C3AED]">
                   Mythic Ascension
                 </span>
               </motion.h2>

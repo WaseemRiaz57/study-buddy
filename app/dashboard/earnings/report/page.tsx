@@ -348,7 +348,7 @@ export default function EarningsReportPage() {
               <BadgeCheck size={16} />
               <span>Monthly Financial Harvest</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight bg-[#7C3AED]       text-[#7C3AED]">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-[#7C3AED]">
               April 2024: Your Impact &amp; Growth
             </h2>
             <p className="mt-2 text-slate-500 dark:text-slate-400 max-w-2xl text-sm">

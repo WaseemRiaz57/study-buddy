@@ -285,7 +285,7 @@ export default function MatchSuccess({ onCloseAction, matchData, sessionId }: Ma
             transition={{ delay: 0.5 }}
             className="text-4xl md:text-5xl font-bold mb-2 font-sans tracking-tight"
           >
-            <span className="text-[#7C3AED] bg-[#7C3AED]       animate-shine bg-[length:200%_auto]">
+            <span className="text-[#7C3AED]">
               It&apos;s a Match!
             </span>
           </motion.h1>

@@ -123,7 +123,7 @@ export default function BillingPage() {
             </span>
           </div>
 
-          <h2 className="text-3xl md:text-4xl font-bold bg-[#7C3AED]       text-[#7C3AED] w-fit pb-1 bg-[length:200%_auto] animate-[shimmer_5s_linear_infinite]">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#7C3AED] w-fit pb-1">
             Financial Hub
           </h2>
           <p className="text-slate-600 dark:text-slate-400 mt-2 max-w-2xl text-base">

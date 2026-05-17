@@ -40,7 +40,7 @@ export default function DashboardView({ onStartMatching }: DashboardViewProps) {
         </div>
         
         <h1 className="text-4xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6 tracking-tight">
-          Find your <span className="text-[#7C3AED] bg-[#7C3AED]  ">Study Circle</span>
+          Find your <span className="text-[#7C3AED]">Study Circle</span>
         </h1>
         
         <p className="text-slate-600 dark:text-gray-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">

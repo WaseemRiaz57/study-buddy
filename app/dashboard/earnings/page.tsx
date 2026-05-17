@@ -605,7 +605,7 @@ export default function EarningsPage() {
             <p className="text-slate-500 dark:text-white/60 text-sm font-medium mb-1">
               Lifetime Earnings
             </p>
-            <h3 className="text-3xl font-bold tracking-tight mb-2 text-[#7C3AED] bg-[#7C3AED]      ">
+            <h3 className="text-3xl font-bold tracking-tight mb-2 text-[#7C3AED]">
               {formatCurrency(EARNINGS_DATA.lifetime)}
             </h3>
             <div className="flex items-center gap-2">

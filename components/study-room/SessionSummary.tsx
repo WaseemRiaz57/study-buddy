@@ -25,7 +25,7 @@ export default function SessionSummary({ onReturn }: SessionSummaryProps) {
           <Sparkles size={14} />
           Session Complete
         </div>
-        <h1 className="text-5xl md:text-6xl font-black text-[#7C3AED] bg-[#7C3AED]   pb-2">
+        <h1 className="text-5xl md:text-6xl font-black text-[#7C3AED] pb-2">
           Great Collaboration!
         </h1>
       </header>

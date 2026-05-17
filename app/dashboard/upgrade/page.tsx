@@ -469,7 +469,7 @@ export default function UpgradePage() {
 
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             Unlock Your Full{" "}
-            <span className="bg-[#7C3AED]   text-[#7C3AED]">
+            <span className="text-[#7C3AED]">
               Potential
             </span>
           </h1>

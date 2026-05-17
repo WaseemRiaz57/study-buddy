@@ -375,7 +375,7 @@ export default function ContentGeneratorPage() {
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
-            <span className="bg-[#7C3AED]   text-[#7C3AED]">
+            <span className="text-[#7C3AED]">
               AI Studio
             </span>
           </h1>

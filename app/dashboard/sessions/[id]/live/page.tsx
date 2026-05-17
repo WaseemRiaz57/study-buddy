@@ -457,7 +457,7 @@ export default function LiveClassroomPage() {
               <div className="flex flex-col gap-1 p-5 pb-4 border-b border-slate-200 dark:border-white/10">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h1 className="text-3xl font-black tracking-tight mb-1 text-[#7C3AED] bg-[#7C3AED]       animate-[shimmer_4s_linear_infinite]" style={{ backgroundSize: '200% auto'}}>
+                    <h1 className="text-3xl font-black tracking-tight mb-1 text-[#7C3AED]">
                       Session Concluded
                     </h1>
                     <p className="text-slate-600 dark:text-slate-300 font-normal text-base">Excellent work! Here is your session summary log.</p>

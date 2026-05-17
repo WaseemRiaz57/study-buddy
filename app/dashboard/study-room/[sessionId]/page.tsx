@@ -851,7 +851,7 @@ function PostSessionReview({
                     className="mx-auto mb-3 text-primary"
                   />
                 </div>
-                <h1 className="text-3xl md:text-4xl font-serif font-medium mb-2 tracking-tight text-[#7C3AED] bg-[#7C3AED]      ">
+                <h1 className="text-3xl md:text-4xl font-serif font-medium mb-2 tracking-tight text-[#7C3AED]">
                   Celebrate the Exchange
                 </h1>
                 <p className="text-slate-500 dark:text-white/60 text-sm max-w-md mx-auto">
@@ -921,7 +921,7 @@ function PostSessionReview({
                   onClick={handleSubmit}
                   disabled={rating === 0}
                   className="w-full max-w-sm py-4 rounded-xl font-bold text-white shadow-lg transition-all duration-300 disabled:opacity-40
-                    bg-[#7C3AED]    bg-[length:200%_auto] hover:bg-right
+                    bg-[#7C3AED] hover:bg-purple-700
                     shadow-primary/30 dark:shadow-primary/40"
                 >
                   Submit Appreciation
