@@ -9,6 +9,8 @@ export interface ICommunityPost extends Document {
   attachments: string[];
   likes: mongoose.Types.ObjectId[];
   views: number;
+  isPinned: boolean;
+  status: "Published" | "Flagged";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,10 +75,22 @@ const CommunityPostSchema = new Schema<ICommunityPost>(
       default: 0,
       min: 0,
     },
+    isPinned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ["Published", "Flagged"],
+      default: "Published",
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
+CommunityPostSchema.index({ isPinned: -1, createdAt: -1 });
 CommunityPostSchema.index({ createdAt: -1 });
 CommunityPostSchema.index({ category: 1, createdAt: -1 });
 
