@@ -33,6 +33,8 @@ interface LeaderboardUser {
   initials: string;
   totalXP: number;
   timeframeXP: number;
+  weeklyXP: number;
+  monthlyXP: number;
   streak: number;
   trend: Trend;
   trendDelta: number;
@@ -318,7 +320,7 @@ export default function LeaderboardControlPage() {
             >
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
-              <option value="all-time">All-Time</option>
+              <option value="all-time">All Time</option>
             </select>
             <ChevronDown
               size={13}
@@ -359,7 +361,7 @@ export default function LeaderboardControlPage() {
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-white/[0.06] dark:bg-white/[0.02]">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[780px]">
+          <table className="w-full min-w-[920px]">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 dark:border-white/[0.06] dark:bg-white/[0.02]">
                 <th className="w-16 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -369,7 +371,10 @@ export default function LeaderboardControlPage() {
                   User
                 </th>
                 <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  {titleCase(timeframe)} XP
+                  Weekly XP
+                </th>
+                <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Monthly XP
                 </th>
                 <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   Total XP
@@ -388,7 +393,7 @@ export default function LeaderboardControlPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center">
+                  <td colSpan={8} className="py-16 text-center">
                     <Loader2
                       size={34}
                       className="mx-auto mb-3 animate-spin text-[#7C3AED]"
@@ -400,7 +405,7 @@ export default function LeaderboardControlPage() {
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center">
+                  <td colSpan={8} className="py-16 text-center">
                     <Trophy
                       size={36}
                       className="mx-auto mb-3 text-slate-300 dark:text-slate-600"
@@ -465,7 +470,16 @@ export default function LeaderboardControlPage() {
 
                       <td className="px-5 py-4">
                         <span className="text-sm font-bold text-[#7C3AED]">
-                          {formatXP(user.timeframeXP)}
+                          {formatXP(user.weeklyXP)}
+                        </span>
+                        <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">
+                          XP
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span className="text-sm font-bold text-[#7C3AED]">
+                          {formatXP(user.monthlyXP)}
                         </span>
                         <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">
                           XP

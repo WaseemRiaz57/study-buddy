@@ -21,6 +21,13 @@ function normalizeTimeframe(value: string | null): Timeframe {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "weekly") return "weekly";
   if (normalized === "monthly") return "monthly";
+  if (
+    normalized === "all time" ||
+    normalized === "all-time" ||
+    normalized === "all_time"
+  ) {
+    return "all-time";
+  }
   return "all-time";
 }
 
@@ -216,8 +223,12 @@ export async function PATCH(request: Request) {
         ? MentorProfile
         : StudentProfile;
     const userObjectId = new mongoose.Types.ObjectId(userId);
-    const profile = await ProfileModel.findOne({ userId: userObjectId });
+    const profile = await ProfileModel.findOne({ userId: userObjectId })
+      .select("xp weeklyXP monthlyXP")
+      .lean();
     const currentXP = Number(profile?.xp || 0);
+    const currentWeeklyXP = Number(profile?.weeklyXP || 0);
+    const currentMonthlyXP = Number(profile?.monthlyXP || 0);
     const requestedNewXP = Number(body.newXP);
     const requestedDelta = Number(body.xpDelta);
     const hasNewXP = Number.isFinite(requestedNewXP);
@@ -235,26 +246,26 @@ export async function PATCH(request: Request) {
       Math.floor(hasNewXP ? requestedNewXP : currentXP + requestedDelta)
     );
     const xpDifference = newXP - currentXP;
+    const updatedWeeklyXP = Math.max(0, currentWeeklyXP + xpDifference);
+    const updatedMonthlyXP = Math.max(0, currentMonthlyXP + xpDifference);
 
-    const updatedProfile =
-      profile ||
-      new ProfileModel({
-        userId: userObjectId,
-        xp: 0,
-        weeklyXP: 0,
-        monthlyXP: 0,
-      });
-
-    updatedProfile.xp = newXP;
-    updatedProfile.weeklyXP = Math.max(
-      0,
-      Number(updatedProfile.weeklyXP || 0) + xpDifference
+    await ProfileModel.findOneAndUpdate(
+      { userId: userObjectId },
+      {
+        $set: {
+          userId: userObjectId,
+          xp: newXP,
+          weeklyXP: updatedWeeklyXP,
+          monthlyXP: updatedMonthlyXP,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
     );
-    updatedProfile.monthlyXP = Math.max(
-      0,
-      Number(updatedProfile.monthlyXP || 0) + xpDifference
-    );
-    await updatedProfile.save();
 
     await logActivity({
       actionType: "LEADERBOARD_XP_ADJUSTED",
@@ -266,6 +277,8 @@ export async function PATCH(request: Request) {
       success: true,
       message: "XP updated successfully.",
       xp: newXP,
+      weeklyXP: updatedWeeklyXP,
+      monthlyXP: updatedMonthlyXP,
       xpDifference,
       adminId: session?.user?.id || "",
     });
