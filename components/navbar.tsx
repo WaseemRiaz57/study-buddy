@@ -64,7 +64,7 @@ export function Navbar() {
         {/* Logo */}
         <Link 
           href="/" 
-          className="flex items-center gap-2.5 font-bold tracking-tight group"
+          className="flex items-center gap-1.5 font-bold tracking-tight group"
         >
           <BrandLogo size="lockup" />
           <span className="text-xl font-extrabold tracking-tight text-[#7C3AED]">

@@ -10,9 +10,9 @@ export const metadata: Metadata = {
   title: "StudyBuddy",
   description: "Obsidian Zen study companion.",
   icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: "/favicon.ico",
+    icon: [{ url: "/logo.png", sizes: "32x32", type: "image/png" }],
+    shortcut: [{ url: "/favicon.ico" }],
+    apple: [{ url: "/logo.png", sizes: "180x180", type: "image/png" }],
   },
 };
 

@@ -145,7 +145,7 @@ export function Sidebar({
 
             onNavigate?.();
           }}
-          className={`flex min-w-0 items-center gap-2 ${
+          className={`flex min-w-0 items-center gap-1.5 ${
             !mobile && isCollapsed ? "justify-center" : ""
           }`}
           aria-label={!mobile && isCollapsed ? "Expand sidebar" : "Dashboard"}
