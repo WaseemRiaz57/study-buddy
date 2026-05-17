@@ -1,174 +1,179 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "sonner";
 import {
-  Pin,
-  Star,
-  Megaphone,
-  Plus,
-  Trash2,
-  Edit3,
   Calendar,
+  Loader2,
+  Megaphone,
+  Pin,
+  Plus,
+  Star,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/* Types & Mock Data                                                  */
-/* ------------------------------------------------------------------ */
 type Tab = "announcements" | "pinned_posts" | "editors_picks";
-type Audience = "All Users" | "Students Only" | "Mentors Only";
-type Duration = "24 Hours" | "3 Days" | "1 Week" | "Until Manually Removed";
+type TargetAudience = "all" | "students" | "mentors";
 
-interface Announcement {
-  id: number;
+type Announcement = {
+  id: string;
   title: string;
-  message: string;
-  audience: Audience;
-  expiresOn: string;
-}
-
-interface PinnedPost {
-  id: number;
   content: string;
-  author: string;
-  datePinned: string;
+  targetAudience: TargetAudience;
+  expiresAt: string | null;
+  isActive: boolean;
+  createdAt: string | null;
+};
+
+const audienceLabels: Record<TargetAudience, string> = {
+  all: "All Users",
+  students: "Students Only",
+  mentors: "Mentors Only",
+};
+
+function formatDate(value: string | null) {
+  if (!value) return "No expiry";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Invalid date";
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
-interface EditorsPick {
-  id: number;
-  title: string;
-  author: string;
-  datePinned: string;
+function getDefaultExpiryDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return date.toISOString().slice(0, 10);
 }
 
-const mockAnnouncements: Announcement[] = [
-  {
-    id: 1,
-    title: "Welcome to Study Buddy 2.0!",
-    message:
-      "We're excited to launch a new version with improved study rooms, smarter AI, and a fresh look. Dive in and explore the new features!",
-    audience: "All Users",
-    expiresOn: "Feb 29, 2026",
-  },
-  {
-    id: 2,
-    title: "Mentor Applications Open",
-    message:
-      "Mentors can now apply for the Spring 2026 cohort. Check the dashboard for eligibility and application details.",
-    audience: "Mentors Only",
-    expiresOn: "Mar 10, 2026",
-  },
-  {
-    id: 3,
-    title: "Scheduled Maintenance",
-    message:
-      "The platform will be down for maintenance on March 2, 2026, from 1 AM to 3 AM UTC. Please save your work.",
-    audience: "All Users",
-    expiresOn: "Mar 2, 2026",
-  },
-];
-
-const mockPinnedPosts: PinnedPost[] = [
-  {
-    id: 1,
-    content:
-      "Just finished an incredible deep-dive into React Server Components. The mental model shift is real!",
-    author: "Sophia Chen",
-    datePinned: "Feb 22, 2026",
-  },
-  {
-    id: 2,
-    content:
-      "Pro tip for my students: always break down complex algorithms into sub-problems first. It saves you hours of debugging later.",
-    author: "Marcus Lee",
-    datePinned: "Feb 21, 2026",
-  },
-];
-
-const mockEditorsPicks: EditorsPick[] = [
-  {
-    id: 1,
-    title: "Data Structures & Algorithms Handbook",
-    author: "Dr. Anika Rao",
-    datePinned: "Feb 20, 2026",
-  },
-  {
-    id: 2,
-    title: "Linear Algebra Lecture Series",
-    author: "James Carter",
-    datePinned: "Feb 18, 2026",
-  },
-];
-
-const audienceOptions: Audience[] = [
-  "All Users",
-  "Students Only",
-  "Mentors Only",
-];
-const durationOptions: Duration[] = [
-  "24 Hours",
-  "3 Days",
-  "1 Week",
-  "Until Manually Removed",
-];
-
-/* ------------------------------------------------------------------ */
-/* Component                                                          */
-/* ------------------------------------------------------------------ */
 export default function FeaturedContentPage() {
   const [activeTab, setActiveTab] = useState<Tab>("announcements");
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
-
-  const [announcements, setAnnouncements] = useState<Announcement[]>(
-    mockAnnouncements
-  );
-  const [pinnedPosts, setPinnedPosts] = useState<PinnedPost[]>(mockPinnedPosts);
-  const [editorsPicks, setEditorsPicks] = useState<EditorsPick[]>(
-    mockEditorsPicks
-  );
-
-  // Modal form state
+  const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
   const [newTitle, setNewTitle] = useState("");
-  const [newMessage, setNewMessage] = useState("");
-  const [newAudience, setNewAudience] = useState<Audience>("All Users");
-  const [newDuration, setNewDuration] = useState<Duration>("24 Hours");
+  const [newContent, setNewContent] = useState("");
+  const [newAudience, setNewAudience] = useState<TargetAudience>("all");
+  const [newExpiryDate, setNewExpiryDate] = useState(getDefaultExpiryDate());
 
-  // Actions
-  const handlePublishAnnouncement = () => {
-    setAnnouncements((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        title: newTitle,
-        message: newMessage,
-        audience: newAudience,
-        expiresOn: getExpiryDate(newDuration),
-      },
-    ]);
-    setIsAnnouncementModalOpen(false);
+  const fetchAnnouncements = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/announcements", { cache: "no-store" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load announcements.");
+      }
+
+      setAnnouncements(
+        Array.isArray(data.announcements) ? data.announcements : []
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to load announcements."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchAnnouncements();
+  }, [fetchAnnouncements]);
+
+  function resetForm() {
     setNewTitle("");
-    setNewMessage("");
-    setNewAudience("All Users");
-    setNewDuration("24 Hours");
-  };
+    setNewContent("");
+    setNewAudience("all");
+    setNewExpiryDate(getDefaultExpiryDate());
+  }
 
-  const handleDeleteAnnouncement = (id: number) =>
-    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+  function openCreateModal() {
+    resetForm();
+    setIsAnnouncementModalOpen(true);
+  }
 
-  const handleUnpinPost = (id: number) =>
-    setPinnedPosts((prev) => prev.filter((p) => p.id !== id));
+  async function handlePublishAnnouncement() {
+    setIsSaving(true);
 
-  const handleRemoveEditorsPick = (id: number) =>
-    setEditorsPicks((prev) => prev.filter((e) => e.id !== id));
+    try {
+      const expiresAt = new Date(`${newExpiryDate}T23:59:59`);
+      const res = await fetch("/api/admin/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTitle,
+          content: newContent,
+          targetAudience: newAudience,
+          expiresAt: expiresAt.toISOString(),
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to create announcement.");
+      }
+
+      toast.success("Announcement created.");
+      setIsAnnouncementModalOpen(false);
+      resetForm();
+      await fetchAnnouncements();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to create announcement."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDeleteAnnouncement() {
+    if (!deleteTarget) return;
+    setIsSaving(true);
+
+    try {
+      const res = await fetch(`/api/admin/announcements/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to delete announcement.");
+      }
+
+      toast.success("Announcement deleted.");
+      setDeleteTarget(null);
+      await fetchAnnouncements();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete announcement."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
-      {/* ── Header & Actions ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground dark:text-white">
+          <h1 className="text-2xl font-bold text-foreground dark:text-white md:text-3xl">
             Featured Content & Announcements
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -176,8 +181,8 @@ export default function FeaturedContentPage() {
           </p>
         </div>
         <button
-          onClick={() => setIsAnnouncementModalOpen(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-md shadow-purple-500/20"
+          onClick={openCreateModal}
+          className="inline-flex items-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#7C3AED]/20 transition-colors hover:bg-[#6D28D9]"
         >
           <Plus size={17} />
           <Megaphone size={17} />
@@ -185,14 +190,13 @@ export default function FeaturedContentPage() {
         </button>
       </div>
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-2 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.04] w-fit">
+      <div className="flex w-fit gap-2 rounded-xl bg-slate-100 p-1 dark:bg-white/[0.04]">
         <button
           onClick={() => setActiveTab("announcements")}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+          className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all duration-200 ${
             activeTab === "announcements"
-              ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
-              : "text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5"
+              ? "bg-[#7C3AED] text-white shadow-md shadow-[#7C3AED]/25"
+              : "text-muted-foreground hover:bg-slate-50 hover:text-foreground dark:hover:bg-white/5 dark:hover:text-white"
           }`}
         >
           <Megaphone size={15} />
@@ -200,10 +204,10 @@ export default function FeaturedContentPage() {
         </button>
         <button
           onClick={() => setActiveTab("pinned_posts")}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+          className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all duration-200 ${
             activeTab === "pinned_posts"
-              ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
-              : "text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5"
+              ? "bg-[#7C3AED] text-white shadow-md shadow-[#7C3AED]/25"
+              : "text-muted-foreground hover:bg-slate-50 hover:text-foreground dark:hover:bg-white/5 dark:hover:text-white"
           }`}
         >
           <Pin size={15} />
@@ -211,144 +215,87 @@ export default function FeaturedContentPage() {
         </button>
         <button
           onClick={() => setActiveTab("editors_picks")}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
+          className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-all duration-200 ${
             activeTab === "editors_picks"
-              ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
-              : "text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5"
+              ? "bg-[#7C3AED] text-white shadow-md shadow-[#7C3AED]/25"
+              : "text-muted-foreground hover:bg-slate-50 hover:text-foreground dark:hover:bg-white/5 dark:hover:text-white"
           }`}
         >
           <Star size={15} className="text-amber-500" />
-          Editor's Picks (Resources)
+          Editor's Picks
         </button>
       </div>
 
-      {/* ── Content Sections ── */}
       {activeTab === "announcements" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {announcements.map((a) => (
-            <div
-              key={a.id}
-              className="relative rounded-2xl border border-primary/20 bg-primary/5 p-6 shadow-sm hover:shadow-lg transition-shadow duration-200 group"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <Megaphone size={20} className="text-purple-500" />
-                <h2 className="text-lg font-bold text-foreground dark:text-white truncate">
-                  {a.title}
-                </h2>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                {a.message}
-              </p>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400">
-                  <Users size={12} />
-                  {a.audience}
-                </span>
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-white">
-                  <Calendar size={12} />
-                  Expires {a.expiresOn}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 transition-colors"
-                  title="Edit"
-                  // onClick={() => ...}
-                >
-                  <Edit3 size={15} />
-                </button>
-                <button
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                  title="Delete"
-                  onClick={() => handleDeleteAnnouncement(a.id)}
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
+        <div>
+          {isLoading ? (
+            <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-border bg-white dark:bg-white/[0.02]">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin text-[#7C3AED]" />
+              <span className="text-sm font-medium text-muted-foreground">
+                Loading announcements...
+              </span>
             </div>
-          ))}
+          ) : announcements.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16 text-muted-foreground">
+              <Megaphone size={40} className="mb-3 opacity-30" />
+              <p className="text-sm">No announcements have been published.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {announcements.map((announcement) => (
+                <div
+                  key={announcement.id}
+                  className="group relative rounded-2xl border border-[#7C3AED]/20 bg-[#7C3AED]/5 p-6 shadow-sm transition-shadow duration-200 hover:shadow-lg"
+                >
+                  <div className="mb-2 flex items-center gap-3">
+                    <Megaphone size={20} className="text-[#7C3AED]" />
+                    <h2 className="truncate text-lg font-bold text-foreground dark:text-white">
+                      {announcement.title}
+                    </h2>
+                  </div>
+                  <p className="mb-4 line-clamp-3 text-sm text-muted-foreground">
+                    {announcement.content}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#7C3AED]/10 px-3 py-1 text-xs font-bold text-[#7C3AED]">
+                      <Users size={12} />
+                      {audienceLabels[announcement.targetAudience]}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 dark:bg-white/10 dark:text-white">
+                      <Calendar size={12} />
+                      Expires {formatDate(announcement.expiresAt)}
+                    </span>
+                  </div>
+                  <div className="absolute right-4 top-4 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                      title="Delete"
+                      onClick={() => setDeleteTarget(announcement)}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {activeTab === "pinned_posts" && (
-        <div className="rounded-2xl border border-border dark:border-white/10 bg-white dark:bg-white/[0.02] overflow-hidden">
-          <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-6 py-3 border-b border-border dark:border-white/[0.06] bg-slate-50/60 dark:bg-white/[0.02] text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            <span>Content</span>
-            <span>Author</span>
-            <span>Date Pinned</span>
-            <span className="text-right">Actions</span>
-          </div>
-          {pinnedPosts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <Pin size={40} className="mb-3 opacity-30" />
-              <p className="text-sm">No pinned posts.</p>
-            </div>
-          ) : (
-            pinnedPosts.map((p) => (
-              <div
-                key={p.id}
-                className="grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-6 py-4 items-center border-b border-border/50 dark:border-white/[0.04] last:border-b-0 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group"
-              >
-                <p className="text-sm text-foreground dark:text-white line-clamp-2">
-                  {p.content}
-                </p>
-                <span className="text-sm text-muted-foreground">{p.author}</span>
-                <span className="text-xs text-muted-foreground">{p.datePinned}</span>
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => handleUnpinPost(p.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 transition-all"
-                  >
-                    <Pin size={13} />
-                    Unpin
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-white py-16 text-muted-foreground dark:bg-white/[0.02]">
+          <Pin size={40} className="mb-3 opacity-30" />
+          <p className="text-sm">Pinned community content is not configured yet.</p>
         </div>
       )}
 
       {activeTab === "editors_picks" && (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 overflow-hidden">
-          <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-6 py-3 border-b border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/10 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-            <span>Title</span>
-            <span>Author</span>
-            <span>Date Pinned</span>
-            <span className="text-right">Actions</span>
-          </div>
-          {editorsPicks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-amber-500/80">
-              <Star size={40} className="mb-3" />
-              <p className="text-sm">No editor's picks yet.</p>
-            </div>
-          ) : (
-            editorsPicks.map((e) => (
-              <div
-                key={e.id}
-                className="grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-6 py-4 items-center border-b border-amber-500/10 last:border-b-0 hover:bg-amber-50/60 dark:hover:bg-amber-500/10 transition-colors group"
-              >
-                <p className="text-sm text-amber-700 dark:text-amber-300 font-semibold line-clamp-2">
-                  {e.title}
-                </p>
-                <span className="text-sm text-muted-foreground">{e.author}</span>
-                <span className="text-xs text-muted-foreground">{e.datePinned}</span>
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => handleRemoveEditorsPick(e.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 transition-all"
-                  >
-                    <Trash2 size={13} />
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10 py-16 text-amber-600 dark:text-amber-300">
+          <Star size={40} className="mb-3" />
+          <p className="text-sm">Editor's picks are not configured yet.</p>
         </div>
       )}
 
-      {/* ── Create Announcement Modal ── */}
       <AnimatePresence>
         {isAnnouncementModalOpen && (
           <motion.div
@@ -356,8 +303,10 @@ export default function FeaturedContentPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setIsAnnouncementModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            onClick={() => {
+              if (!isSaving) setIsAnnouncementModalOpen(false);
+            }}
           >
             <motion.div
               key="announcement-modal"
@@ -365,96 +314,100 @@ export default function FeaturedContentPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-2xl border border-primary/20 bg-white dark:bg-[#0f0a16] shadow-2xl shadow-purple-500/10 overflow-hidden"
+              onClick={(event) => event.stopPropagation()}
+              className="w-full max-w-lg overflow-hidden rounded-2xl border border-[#7C3AED]/20 bg-white shadow-2xl shadow-[#7C3AED]/10 dark:bg-[#0f0a16]"
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border dark:border-white/[0.06]">
+              <div className="flex items-center justify-between border-b border-border px-6 py-4 dark:border-white/[0.06]">
                 <h2 className="text-lg font-bold text-foreground dark:text-white">
                   Create Announcement
                 </h2>
                 <button
                   onClick={() => setIsAnnouncementModalOpen(false)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+                  disabled={isSaving}
+                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground disabled:opacity-60 dark:hover:bg-white/[0.06] dark:hover:text-white"
                 >
                   <X size={18} />
                 </button>
               </div>
               <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handlePublishAnnouncement();
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handlePublishAnnouncement();
                 }}
-                className="p-6 space-y-5"
+                className="space-y-5 p-6"
               >
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     Announcement Title
                   </label>
                   <input
                     type="text"
                     value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
+                    onChange={(event) => setNewTitle(event.target.value)}
                     required
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-white/10 bg-white dark:bg-white/[0.04] text-foreground dark:text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors"
+                    className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Message
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    Content
                   </label>
                   <textarea
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    value={newContent}
+                    onChange={(event) => setNewContent(event.target.value)}
                     required
                     rows={4}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-white/10 bg-white dark:bg-white/[0.04] text-foreground dark:text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors resize-none"
+                    className="w-full resize-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     Target Audience
                   </label>
                   <select
                     value={newAudience}
-                    onChange={(e) => setNewAudience(e.target.value as Audience)}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-white/10 bg-white dark:bg-white/[0.04] text-foreground dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors appearance-none cursor-pointer"
+                    onChange={(event) =>
+                      setNewAudience(event.target.value as TargetAudience)
+                    }
+                    className="w-full cursor-pointer appearance-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-foreground transition-colors focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-[#241333] dark:text-white"
                   >
-                    {audienceOptions.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
-                    ))}
+                    <option value="all">All Users</option>
+                    <option value="students">Students Only</option>
+                    <option value="mentors">Mentors Only</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Duration / Expiry
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    Expiry Date
                   </label>
-                  <select
-                    value={newDuration}
-                    onChange={(e) => setNewDuration(e.target.value as Duration)}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-white/10 bg-white dark:bg-white/[0.04] text-foreground dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors appearance-none cursor-pointer"
-                  >
-                    {durationOptions.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    type="date"
+                    value={newExpiryDate}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={(event) => setNewExpiryDate(event.target.value)}
+                    required
+                    className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-sm text-foreground transition-colors focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                  />
                 </div>
                 <div className="flex items-center justify-end gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setIsAnnouncementModalOpen(false)}
-                    className="px-5 py-2.5 text-sm font-medium rounded-xl border border-border dark:border-white/10 bg-white dark:bg-white/[0.04] text-foreground dark:text-white hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors"
+                    disabled={isSaving}
+                    className="rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.06]"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-md shadow-purple-500/20"
+                    disabled={isSaving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-medium text-white shadow-md shadow-[#7C3AED]/20 transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <Megaphone size={15} />
+                    {isSaving ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <Megaphone size={15} />
+                    )}
                     Publish Announcement
                   </button>
                 </div>
@@ -463,29 +416,60 @@ export default function FeaturedContentPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div
+            key="delete-announcement-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            onClick={() => {
+              if (!isSaving) setDeleteTarget(null);
+            }}
+          >
+            <motion.div
+              key="delete-announcement-modal"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(event) => event.stopPropagation()}
+              className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#0f0a16]"
+            >
+              <h2 className="text-lg font-bold text-foreground dark:text-white">
+                Delete announcement?
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                This will remove "{deleteTarget.title}" from every dashboard.
+              </p>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={isSaving}
+                  className="rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.06]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteAnnouncement()}
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSaving ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={15} />
+                  )}
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
-
-// Helper to get expiry date string from duration
-function getExpiryDate(duration: Duration): string {
-  const now = new Date();
-  switch (duration) {
-    case "24 Hours":
-      now.setDate(now.getDate() + 1);
-      break;
-    case "3 Days":
-      now.setDate(now.getDate() + 3);
-      break;
-    case "1 Week":
-      now.setDate(now.getDate() + 7);
-      break;
-    case "Until Manually Removed":
-      return "—";
-  }
-  return now.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
