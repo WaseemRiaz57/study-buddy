@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -25,6 +26,8 @@ import {
   Coins,
   type LucideIcon,
 } from "lucide-react";
+import { showRewardToast } from "@/components/gamification/RewardToast";
+import { useGamificationStore } from "@/store/useGamificationStore";
 
 type TabId = "notes" | "summarizer" | "quiz";
 
@@ -143,6 +146,7 @@ function serializeQuiz(questions: QuizQuestion[]) {
 
 export default function ContentGeneratorPage() {
   const { data: session, status } = useSession();
+  const refreshGamificationStats = useGamificationStore((state) => state.refresh);
   const isTeacher = isTeacherRole(session?.user?.role);
   const availableTabs = useMemo(
     () => TABS.filter((tab) => tab.id !== "quiz" || isTeacher),
@@ -151,6 +155,7 @@ export default function ContentGeneratorPage() {
 
   const [activeTab, setActiveTab] = useState<TabId>("notes");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [upgradeModal, setUpgradeModal] = useState<{ message: string } | null>(null);
   const [markdownResult, setMarkdownResult] = useState("");
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [resultType, setResultType] = useState<TabId>("notes");
@@ -307,6 +312,13 @@ export default function ContentGeneratorPage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        if (response.status === 403 && data?.upgradeRequired) {
+          setUpgradeModal({
+            message: data?.message || "Upgrade to Pro to continue using this feature.",
+          });
+          return;
+        }
+
         throw new Error(data?.message || "Failed to generate content.");
       }
 
@@ -318,8 +330,14 @@ export default function ContentGeneratorPage() {
 
       await fetchRecentCreations();
       window.dispatchEvent(new Event("ai-notes-updated"));
+      await refreshGamificationStats();
       window.dispatchEvent(new Event("gamification-stats-updated"));
-      toast.custom(
+      showRewardToast({
+        title: "Generation Successful!",
+        xp: 10,
+        coins: 5,
+      });
+      false && toast.custom(
         (id) => (
           <motion.div
             initial={{ opacity: 0, x: 40, scale: 0.96 }}
@@ -642,6 +660,38 @@ export default function ContentGeneratorPage() {
               />
             </div>
           </div>
+        </div>
+      )}
+      {upgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <section
+            className="w-full max-w-md rounded-3xl border border-[#7C3AED]/25 bg-white p-6 text-center shadow-2xl shadow-purple-500/20 dark:bg-[#120d1f]"
+            aria-label="Upgrade required"
+          >
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#7C3AED] text-white">
+              <BrainCircuit size={24} />
+            </div>
+            <h2 className="text-2xl font-black text-foreground">Upgrade to Pro</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {upgradeModal.message}
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setUpgradeModal(null)}
+                className="min-h-[44px] flex-1 rounded-xl border border-border px-4 py-2 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted"
+              >
+                Not now
+              </button>
+              <Link
+                href="/dashboard/settings/subscription"
+                prefetch={true}
+                className="min-h-[44px] flex-1 rounded-xl bg-[#7C3AED] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+              >
+                View Plans
+              </Link>
+            </div>
+          </section>
         </div>
       )}
     </div>

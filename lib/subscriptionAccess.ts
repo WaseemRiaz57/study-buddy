@@ -1,4 +1,5 @@
-import { getPricingPlan, normalizeSubscriptionPlan } from "@/lib/pricingConfig";
+import { normalizeSubscriptionPlan } from "@/lib/pricingConfig";
+import { getSubscriptionPlan } from "@/lib/subscriptionPlans";
 import User from "@/models/User";
 
 export async function getUserSubscriptionPlan(userId: string) {
@@ -10,7 +11,7 @@ export async function getUserSubscriptionPlan(userId: string) {
     (user as any)?.subscriptionPlan || (user as any)?.plan
   );
 
-  return getPricingPlan(subscriptionPlan);
+  return getSubscriptionPlan(subscriptionPlan);
 }
 
 export function upgradeRequiredResponse(message: string) {

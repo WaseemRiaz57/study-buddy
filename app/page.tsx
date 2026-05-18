@@ -462,15 +462,15 @@ const PricingCard = memo(function PricingCard({
 });
 
 // ============================================================================
-// TESTIMONIALS MARQUEE
+// TESTIMONIALS CAROUSEL
 // ============================================================================
 const TestimonialsMarquee = memo(function TestimonialsMarquee({
-  isMobile,
   testimonials,
 }: {
-  isMobile: boolean;
   testimonials: PublicReview[];
 }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
   if (testimonials.length === 0) {
     return (
       <div className="mx-auto max-w-xl px-6 py-8 text-center">
@@ -481,48 +481,129 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
     );
   }
 
-  const tripled = [...testimonials, ...testimonials, ...testimonials];
+  const activeReview = testimonials[activeIndex % testimonials.length];
+
+  const move = (direction: number) => {
+    setActiveIndex((current) =>
+      (current + direction + testimonials.length) % testimonials.length
+    );
+  };
+
   return (
-    <div className="relative flex w-full overflow-hidden py-8">
-      <motion.div
-        className="flex gap-6"
-        animate={isMobile ? {} : { x: ["0%", "-33.333%"] }}
-        transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
-      >
-        {tripled.map((t, i) => (
-          <motion.div
-            key={i}
-            whileHover={{ y: -6, scale: 1.02 }}
-            transition={{ duration: 0.3, ease }}
-            className="w-[380px] shrink-0 rounded-2xl border border-border bg-card/50 p-7 flex flex-col justify-between hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/[0.06] transition-all duration-300"
-          >
-            <div>
-              <div className="mb-4 flex gap-1 text-yellow-400">
-                {Array.from({ length: Math.max(1, Math.min(5, t.rating)) }).map((_, j) => (
-                  <Star key={j} size={15} fill="currentColor" />
-                ))}
-              </div>
-              <p className="mb-8 text-sm italic leading-relaxed text-muted-foreground">&ldquo;{t.comment}&rdquo;</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-xs font-bold text-white">
-                {t.user.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={t.user.image} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  t.user.initials
-                )}
-              </div>
+    <div className="relative mx-auto flex min-h-[430px] w-full max-w-5xl items-center justify-center overflow-hidden px-4 py-10">
+      <div className="absolute inset-x-0 top-1/2 mx-auto h-px max-w-3xl bg-[#7C3AED]/20" />
+      <AnimatePresence mode="popLayout">
+        {testimonials.map((review, index) => {
+          const offset =
+            (index - activeIndex + testimonials.length) % testimonials.length;
+          const normalizedOffset =
+            offset > testimonials.length / 2 ? offset - testimonials.length : offset;
+          const isActive = normalizedOffset === 0;
+          const isVisible = Math.abs(normalizedOffset) <= 2;
+
+          if (!isVisible) return null;
+
+          return (
+            <motion.article
+              key={review.id}
+              drag={isActive ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.x < -80) move(1);
+                if (info.offset.x > 80) move(-1);
+              }}
+              initial={{ opacity: 0, scale: 0.88, x: normalizedOffset * 120 }}
+              animate={{
+                opacity: isActive ? 1 : 0.55,
+                scale: isActive ? 1 : 0.88,
+                x: normalizedOffset * 150,
+                y: Math.abs(normalizedOffset) * 18,
+                rotateY: normalizedOffset * -12,
+                zIndex: 20 - Math.abs(normalizedOffset),
+              }}
+              exit={{ opacity: 0, scale: 0.84 }}
+              transition={{ type: "spring", stiffness: 260, damping: 28 }}
+              className={`absolute flex h-[350px] w-[min(88vw,420px)] flex-col justify-between rounded-3xl border p-7 shadow-2xl ${
+                isActive
+                  ? "border-violet-400/40 bg-violet-700 text-white shadow-violet-700/30"
+                  : "border-border bg-card/70 text-foreground shadow-black/5 backdrop-blur-xl"
+              }`}
+              aria-label={`Review from ${review.user.name}`}
+            >
               <div>
-                <div className="text-sm font-bold text-foreground">{t.user.name}</div>
-                <div className="text-xs text-muted-foreground">{t.user.role}</div>
+                <div className="mb-5 flex gap-1 text-yellow-300">
+                  {Array.from({ length: Math.max(1, Math.min(5, review.rating)) }).map((_, j) => (
+                    <Star key={j} size={16} fill="currentColor" />
+                  ))}
+                </div>
+                <p
+                  className={`text-base italic leading-relaxed ${
+                    isActive ? "text-white/90" : "text-muted-foreground"
+                  }`}
+                >
+                  &ldquo;{review.comment}&rdquo;
+                </p>
               </div>
-            </div>
-          </motion.div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-xs font-bold text-white ring-2 ring-white/20">
+                  {review.user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={review.user.image} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    review.user.initials
+                  )}
+                </div>
+                <div>
+                  <div className={isActive ? "text-sm font-bold text-white" : "text-sm font-bold text-foreground"}>
+                    {review.user.name}
+                  </div>
+                  <div className={isActive ? "text-xs text-white/70" : "text-xs text-muted-foreground"}>
+                    {review.user.role}
+                  </div>
+                </div>
+              </div>
+            </motion.article>
+          );
+        })}
+      </AnimatePresence>
+
+      <motion.div
+        key={`active-${activeReview.id}`}
+        className="absolute bottom-2 flex items-center gap-2"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        {testimonials.map((review, index) => (
+          <button
+            key={review.id}
+            type="button"
+            onClick={() => setActiveIndex(index)}
+            className={`h-2 rounded-full transition-all ${
+              index === activeIndex ? "w-8 bg-[#7C3AED]" : "w-2 bg-muted-foreground/30"
+            }`}
+            aria-label={`Show review ${index + 1}`}
+            aria-current={index === activeIndex}
+          />
         ))}
       </motion.div>
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-background to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-background to-transparent" />
+
+      <button
+        type="button"
+        onClick={() => move(-1)}
+        className="absolute left-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 font-bold text-[#7C3AED] shadow-lg backdrop-blur transition-colors hover:bg-[#7C3AED] hover:text-white md:flex"
+        aria-label="Previous testimonial"
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        onClick={() => move(1)}
+        className="absolute right-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 font-bold text-[#7C3AED] shadow-lg backdrop-blur transition-colors hover:bg-[#7C3AED] hover:text-white md:flex"
+        aria-label="Next testimonial"
+      >
+        ›
+      </button>
     </div>
   );
 });
@@ -919,7 +1000,7 @@ export default function Home() {
             <SectionHeading>Loved by Students and Teachers</SectionHeading>
           </div>
         </div>
-        <TestimonialsMarquee isMobile={isMobile} testimonials={testimonials} />
+        <TestimonialsMarquee testimonials={testimonials} />
       </section>
 
       <AnimatedDivider />

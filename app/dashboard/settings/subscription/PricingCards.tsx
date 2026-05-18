@@ -1,8 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, Crown, Users, Zap, type LucideIcon } from "lucide-react";
-import { pricingPlans, type SubscriptionPlanId } from "@/lib/pricingConfig";
+import { useSession } from "next-auth/react";
+import {
+  pricingPlans as fallbackPricingPlans,
+  type PricingPlanConfig,
+  type SubscriptionPlanId,
+} from "@/lib/pricingConfig";
 
 const planIconMap: Record<SubscriptionPlanId, LucideIcon> = {
   free: Users,
@@ -25,6 +31,40 @@ const cardVariants = {
 } as const;
 
 export default function PricingCards() {
+  const { data: session } = useSession();
+  const [plans, setPlans] = useState<PricingPlanConfig[]>(fallbackPricingPlans);
+  const [isLoading, setIsLoading] = useState(true);
+  const role = String(session?.user?.role || "student").toLowerCase();
+  const roleFeature =
+    role === "teacher" || role === "mentor"
+      ? "Teacher tools for quizzes, sessions, and resource selling"
+      : "Student tools for notes, focus rooms, and peer study";
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchPlans() {
+      try {
+        const response = await fetch("/api/subscription-plans", {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => null);
+
+        if (active && response.ok && Array.isArray(data?.plans)) {
+          setPlans(data.plans);
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    }
+
+    void fetchPlans();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <motion.section
       aria-label="Subscription pricing cards"
@@ -33,7 +73,7 @@ export default function PricingCards() {
       initial="hidden"
       animate="visible"
     >
-      {pricingPlans.map((plan) => {
+      {plans.map((plan) => {
         const Icon = planIconMap[plan.id];
 
         return (
@@ -50,6 +90,9 @@ export default function PricingCards() {
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-[#7C3AED] px-4 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-lg">
                 Most Popular
               </div>
+            )}
+            {isLoading && (
+              <div className="absolute right-4 top-4 h-2 w-2 animate-pulse rounded-full bg-[#7C3AED]" />
             )}
 
             <div className="mb-1 flex items-center gap-3">
@@ -84,7 +127,7 @@ export default function PricingCards() {
             </div>
 
             <ul className="mb-8 flex-1 space-y-3">
-              {plan.features.map((feature) => (
+              {[...plan.features, roleFeature].map((feature) => (
                 <li key={feature} className="flex items-start gap-2.5">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#7C3AED]" />
                   <span className="text-sm text-slate-700 dark:text-slate-300">

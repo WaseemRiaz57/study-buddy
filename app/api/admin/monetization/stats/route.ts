@@ -2,12 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { getSubscriptionPlans } from "@/lib/subscriptionPlans";
 import User from "@/models/User";
 
 export const dynamic = "force-dynamic";
-
-const PRO_PRICE = 9.99;
-const ELITE_PRICE = 24.99;
 
 function isAdminRole(role: unknown) {
   return String(role ?? "").toLowerCase() === "admin";
@@ -27,13 +25,23 @@ export async function GET() {
 
     await connectMongoDB();
 
-    const [freeCount, proCount, eliteCount] = await Promise.all([
-      User.countDocuments({ $or: [{ plan: "Free" }, { plan: { $exists: false } }] }),
-      User.countDocuments({ plan: "Pro" }),
-      User.countDocuments({ plan: "Elite" }),
+    const [freeCount, proCount, eliteCount, plans] = await Promise.all([
+      User.countDocuments({
+        $or: [
+          { subscriptionPlan: "free" },
+          { plan: "Free" },
+          { plan: "free" },
+          { subscriptionPlan: { $exists: false } },
+        ],
+      }),
+      User.countDocuments({ $or: [{ subscriptionPlan: "pro" }, { plan: "Pro" }, { plan: "pro" }] }),
+      User.countDocuments({ $or: [{ subscriptionPlan: "elite" }, { plan: "Elite" }, { plan: "elite" }] }),
+      getSubscriptionPlans(),
     ]);
+    const proPrice = plans.find((plan) => plan.id === "pro")?.price || 0;
+    const elitePrice = plans.find((plan) => plan.id === "elite")?.price || 0;
 
-    const monthlyRecurringRevenue = proCount * PRO_PRICE + eliteCount * ELITE_PRICE;
+    const monthlyRecurringRevenue = proCount * proPrice + eliteCount * elitePrice;
 
     return NextResponse.json({
       freeCount,
@@ -42,8 +50,8 @@ export async function GET() {
       activePaidSubscriptions: proCount + eliteCount,
       monthlyRecurringRevenue,
       prices: {
-        pro: PRO_PRICE,
-        elite: ELITE_PRICE,
+        pro: proPrice,
+        elite: elitePrice,
       },
     });
   } catch (error) {

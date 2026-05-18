@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, Globe, Lock, X, Check, Copy, ArrowRight, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -24,6 +25,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
   const [copied, setCopied] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
+  const [upgradeMessage, setUpgradeMessage] = useState("");
 
   const handleIgnite = async () => {
     if (!topic.trim() || !description.trim()) return;
@@ -59,6 +61,10 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
 
       if (!response.ok) {
         const message = data?.message || "Failed to create room.";
+        if (response.status === 403 && data?.upgradeRequired) {
+          setUpgradeMessage(message);
+          return;
+        }
         setError(message);
         alert(message);
         return;
@@ -300,6 +306,40 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
               </AnimatePresence>
             </div>
           </motion.div>
+          {upgradeMessage && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+              <section
+                className="w-full max-w-sm rounded-3xl border border-[#7C3AED]/25 bg-white p-6 text-center shadow-2xl shadow-purple-500/20 dark:bg-[#120d1f]"
+                aria-label="Upgrade required"
+              >
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#7C3AED] text-white">
+                  <Lock size={20} />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                  Upgrade to Pro
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-300">
+                  {upgradeMessage}
+                </p>
+                <div className="mt-5 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setUpgradeMessage("")}
+                    className="min-h-[44px] flex-1 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+                  >
+                    Not now
+                  </button>
+                  <Link
+                    href="/dashboard/settings/subscription"
+                    prefetch={true}
+                    className="min-h-[44px] flex-1 rounded-xl bg-[#7C3AED] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+                  >
+                    View Plans
+                  </Link>
+                </div>
+              </section>
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

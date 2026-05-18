@@ -11,7 +11,8 @@ export type GamificationActionType =
   | "CREATED_POST"
   | "CREATED_COMMENT"
   | "DAILY_LOGIN"
-  | "CHALLENGE_COMPLETED";
+  | "CHALLENGE_COMPLETED"
+  | "ACTIVE_TIME_30_MIN";
 
 type RewardDefinition = {
   xp: number;
@@ -24,6 +25,7 @@ export const REWARD_DICTIONARY: Record<GamificationActionType, RewardDefinition>
   CREATED_COMMENT: { xp: 5, coins: 1 },
   DAILY_LOGIN: { xp: 5, coins: 5 },
   CHALLENGE_COMPLETED: { xp: 0, coins: 0 },
+  ACTIVE_TIME_30_MIN: { xp: 20, coins: 0 },
 };
 
 export const STREAK_FREEZE_COST = 200;

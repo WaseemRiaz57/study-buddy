@@ -198,6 +198,11 @@ export default function MonetizationPage() {
     const [isLoadingStats, setIsLoadingStats] = useState(true);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
+    const [dbPlans, setDbPlans] = useState<PricingPlan[]>([]);
+    const [editTitle, setEditTitle] = useState("");
+    const [editPrice, setEditPrice] = useState("");
+    const [editFeatures, setEditFeatures] = useState<string[]>([]);
+    const [isSavingPlan, setIsSavingPlan] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -286,19 +291,63 @@ export default function MonetizationPage() {
             }
         }
 
+        async function fetchPlans() {
+            try {
+                const response = await fetch("/api/admin/subscription-plans", {
+                    cache: "no-store",
+                });
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(data?.message || "Failed to load subscription plans.");
+                }
+
+                if (active && Array.isArray(data?.plans)) {
+                    setDbPlans(
+                        data.plans.map((plan: any) => ({
+                            tier: plan.id,
+                            title: plan.name,
+                            price: plan.displayPrice,
+                            period: "/month",
+                            activeUsers: 0,
+                            features: Array.isArray(plan.features) ? plan.features : [],
+                            highlight: Boolean(plan.featured),
+                        }))
+                    );
+                }
+            } catch (error) {
+                if (active) {
+                    toast.error(
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to load subscription plans."
+                    );
+                }
+            }
+        }
+
         void fetchStats();
         void fetchTransactions();
+        void fetchPlans();
 
         return () => {
             active = false;
         };
     }, []);
 
+    useEffect(() => {
+        if (!editModal) return;
+        setEditTitle(editModal.title);
+        setEditPrice(editModal.price.replace(/[^0-9.]/g, ""));
+        setEditFeatures(editModal.features);
+    }, [editModal]);
+
     if (!mounted) {
         return <div className="min-h-[60vh]" />;
     }
 
-    const plans = PLANS.map((plan) => {
+    const planSource = dbPlans.length > 0 ? dbPlans : PLANS;
+    const plans = planSource.map((plan) => {
         if (plan.tier === "free") {
             return { ...plan, activeUsers: stats.freeCount };
         }
@@ -317,6 +366,52 @@ export default function MonetizationPage() {
             activeUsers: stats.eliteCount,
         };
     });
+
+    const savePlan = async () => {
+        if (!editModal) return;
+
+        try {
+            setIsSavingPlan(true);
+            const response = await fetch("/api/admin/subscription-plans", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    tier: editModal.tier,
+                    price: Number(editPrice || 0),
+                    features: editFeatures,
+                }),
+            });
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(data?.message || "Failed to save subscription plan.");
+            }
+
+            setDbPlans((current) =>
+                current.map((plan) =>
+                    plan.tier === editModal.tier
+                        ? {
+                              ...plan,
+                              title: data?.plan?.name || editTitle,
+                              price: data?.plan?.displayPrice || formatCurrency(Number(editPrice || 0)),
+                              features: data?.plan?.features || editFeatures,
+                              highlight: Boolean(data?.plan?.featured),
+                          }
+                        : plan
+                )
+            );
+            toast.success("Subscription plan updated.");
+            setEditModal(null);
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to save subscription plan."
+            );
+        } finally {
+            setIsSavingPlan(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -685,7 +780,8 @@ export default function MonetizationPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    defaultValue={editModal.title}
+                                    value={editTitle}
+                                    onChange={(event) => setEditTitle(event.target.value)}
                                     className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors"
                                 />
                             </div>
@@ -699,8 +795,11 @@ export default function MonetizationPage() {
                                     </span>
                                 </label>
                                 <input
-                                    type="text"
-                                    defaultValue={editModal.price}
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    value={editPrice}
+                                    onChange={(event) => setEditPrice(event.target.value)}
                                     className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors"
                                 />
                             </div>
@@ -711,14 +810,21 @@ export default function MonetizationPage() {
                                     Top Features
                                 </label>
                                 <div className="space-y-2">
-                                    {editModal.features.map((f, i) => (
+                                    {editFeatures.map((f, i) => (
                                         <div key={i} className="flex items-center gap-2">
                                             <span className="text-[11px] font-bold text-slate-300 dark:text-slate-600 w-4 shrink-0">
                                                 {i + 1}.
                                             </span>
                                             <input
                                                 type="text"
-                                                defaultValue={f}
+                                                value={f}
+                                                onChange={(event) =>
+                                                    setEditFeatures((current) =>
+                                                        current.map((feature, index) =>
+                                                            index === i ? event.target.value : feature
+                                                        )
+                                                    )
+                                                }
                                                 className="flex-1 px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 dark:focus:border-purple-400 transition-colors"
                                             />
                                         </div>
@@ -745,10 +851,11 @@ export default function MonetizationPage() {
                                 Cancel
                             </button>
                             <button
-                                onClick={() => setEditModal(null)}
+                                onClick={() => void savePlan()}
+                                disabled={isSavingPlan}
                                 className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-xl bg-[#7C3AED] text-white shadow-md shadow-purple-500/30 hover:opacity-90 transition-all"
                             >
-                                <Check size={14} /> Save Changes
+                                <Check size={14} /> {isSavingPlan ? "Saving..." : "Save Changes"}
                             </button>
                         </div>
                     </div>

@@ -23,24 +23,7 @@ import { toast } from "sonner";
 import { markStudyBuddyOffline } from "@/hooks/useOfflinePresence";
 import { useUserStore } from "@/store/useUserStore";
 import { NotificationBell } from "./NotificationBell";
-
-interface GamificationStats {
-  xp: number;
-  coins: number;
-  streak: number;
-  streakFreezes: number;
-  level: number;
-  nextLevelXp: number;
-}
-
-const EMPTY_STATS: GamificationStats = {
-  xp: 0,
-  coins: 0,
-  streak: 0,
-  streakFreezes: 0,
-  level: 1,
-  nextLevelXp: 1000,
-};
+import { useGamificationStore } from "@/store/useGamificationStore";
 
 export function DashboardTopbar({
   onOpenSidebar,
@@ -58,8 +41,9 @@ export function DashboardTopbar({
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isBuyingFreeze, setIsBuyingFreeze] = useState(false);
-  const [gamificationStats, setGamificationStats] =
-    useState<GamificationStats>(EMPTY_STATS);
+  const gamificationStats = useGamificationStore((state) => state.stats);
+  const setGamificationStats = useGamificationStore((state) => state.setStats);
+  const refreshGamificationStats = useGamificationStore((state) => state.refresh);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const fullName = session?.user?.name || "User";
@@ -93,18 +77,8 @@ export function DashboardTopbar({
   const fetchGamificationStats = useCallback(async () => {
     if (status !== "authenticated") return;
 
-    const response = await fetch("/api/user/gamification-stats", {
-      cache: "no-store",
-    });
-    const data = await response.json().catch(() => null);
-
-    if (response.ok && data?.stats) {
-      setGamificationStats({
-        ...EMPTY_STATS,
-        ...data.stats,
-      });
-    }
-  }, [status]);
+    await refreshGamificationStats();
+  }, [refreshGamificationStats, status]);
 
   useEffect(() => {
     void fetchGamificationStats();
@@ -423,10 +397,7 @@ export function DashboardTopbar({
                       throw new Error(data?.message || "Failed to buy freeze.");
                     }
 
-                    setGamificationStats((current) => ({
-                      ...current,
-                      ...data.stats,
-                    }));
+                    setGamificationStats(data.stats || {});
                     window.dispatchEvent(new Event("gamification-stats-updated"));
                     toast.success(data?.message || "Streak Freeze purchased.");
                   } catch (error) {

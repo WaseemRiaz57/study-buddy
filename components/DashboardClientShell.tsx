@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
 import { Sidebar } from "@/components/sidebar";
+import { useActiveTimeReward } from "@/hooks/useActiveTimeReward";
 import { useOfflinePresence } from "@/hooks/useOfflinePresence";
+import { useGamificationStore } from "@/store/useGamificationStore";
 import { type Plan, type Role, useUserStore } from "@/store/useUserStore";
 
 interface DashboardClientShellProps {
@@ -19,9 +21,11 @@ export function DashboardClientShell({
 }: DashboardClientShellProps) {
   const setRole = useUserStore((state) => state.setRole);
   const setPlan = useUserStore((state) => state.setPlan);
+  const setGamificationStats = useGamificationStore((state) => state.setStats);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useOfflinePresence();
+  useActiveTimeReward();
 
   useEffect(() => {
     setRole(initialRole);
@@ -35,12 +39,16 @@ export function DashboardClientShell({
       });
 
       if (response.ok) {
+        const data = await response.json().catch(() => null);
+        if (data?.stats) {
+          setGamificationStats(data.stats);
+        }
         window.dispatchEvent(new Event("gamification-stats-updated"));
       }
     };
 
     void awardDailyLogin();
-  }, []);
+  }, [setGamificationStats]);
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">
