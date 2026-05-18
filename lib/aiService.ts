@@ -40,8 +40,8 @@ type GeneratedContentResult =
   | { type: "notes" | "summarizer"; text: string }
   | { type: "quiz"; questions: QuizQuestion[]; rawText: string };
 
-const DEFAULT_MODEL_NAME = "gemini-2.5-flash";
-const FALLBACK_MODEL_NAMES = ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.0-flash-lite"];
+const PRIMARY_MODEL_NAME = "gemini-1.5-flash";
+const FALLBACK_MODEL_NAMES = ["gemini-1.5-flash-8b", "gemini-1.5-pro"];
 const MAX_SOURCE_CHARS = 50000;
 
 function getGenAI() {
@@ -56,9 +56,8 @@ function getGenAI() {
 
 async function generateWithGemini(prompt: string) {
   const genAI = getGenAI();
-  const configuredModel = process.env.GEMINI_MODEL?.trim();
   const modelNames = Array.from(
-    new Set([configuredModel, DEFAULT_MODEL_NAME, ...FALLBACK_MODEL_NAMES].filter(Boolean))
+    new Set([PRIMARY_MODEL_NAME, ...FALLBACK_MODEL_NAMES])
   ) as string[];
   const errors: string[] = [];
 
