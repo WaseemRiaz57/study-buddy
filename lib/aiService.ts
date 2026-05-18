@@ -40,8 +40,8 @@ type GeneratedContentResult =
   | { type: "notes" | "summarizer"; text: string }
   | { type: "quiz"; questions: QuizQuestion[]; rawText: string };
 
-const PRIMARY_MODEL_NAME = "gemini-1.5-flash-latest";
-const FALLBACK_MODEL_NAME = "gemini-1.5-pro-latest";
+const DEFAULT_MODEL_NAME = "gemini-2.5-flash";
+const FALLBACK_MODEL_NAMES = ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.0-flash-lite"];
 const MAX_SOURCE_CHARS = 50000;
 
 function getGenAI() {
@@ -56,27 +56,30 @@ function getGenAI() {
 
 async function generateWithGemini(prompt: string) {
   const genAI = getGenAI();
+  const configuredModel = process.env.GEMINI_MODEL?.trim();
+  const modelNames = Array.from(
+    new Set([configuredModel, DEFAULT_MODEL_NAME, ...FALLBACK_MODEL_NAMES].filter(Boolean))
+  ) as string[];
+  const errors: string[] = [];
 
-  try {
-    return await genAI
-      .getGenerativeModel({ model: PRIMARY_MODEL_NAME })
-      .generateContent(prompt);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    const shouldFallback =
-      PRIMARY_MODEL_NAME !== FALLBACK_MODEL_NAME &&
-      (message.includes("404") ||
-        message.toLowerCase().includes("not found") ||
-        message.toLowerCase().includes("model"));
-
-    if (!shouldFallback) {
-      throw error;
+  for (const modelName of modelNames) {
+    try {
+      return await genAI
+        .getGenerativeModel({ model: modelName })
+        .generateContent(prompt);
+    } catch (error) {
+      errors.push(
+        `${modelName}: ${error instanceof Error ? error.message : "Unknown Gemini error"}`
+      );
     }
-
-    return genAI
-      .getGenerativeModel({ model: FALLBACK_MODEL_NAME })
-      .generateContent(prompt);
   }
+
+  const lastError = errors[errors.length - 1];
+  if (lastError) {
+    throw new Error(`Gemini generation failed for all configured models. ${lastError}`);
+  }
+
+  throw new Error("Gemini generation failed because no model candidates were configured.");
 }
 
 function trimSource(value: string) {
