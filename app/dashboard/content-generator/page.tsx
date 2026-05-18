@@ -21,6 +21,8 @@ import {
   PenLine,
   UploadCloud,
   X,
+  Sparkles as SparklesIcon,
+  Coins,
   type LucideIcon,
 } from "lucide-react";
 
@@ -51,6 +53,7 @@ const TABS = [
 ];
 
 const MAX_UPLOADED_TEXT_CHARS = 25000;
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 const historyTypeStyles: Record<TabId, { bg: string; text: string; Icon: LucideIcon }> = {
   notes: { bg: "bg-emerald-100 dark:bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400", Icon: PenLine },
@@ -257,7 +260,36 @@ export default function ContentGeneratorPage() {
       await fetchRecentCreations();
       window.dispatchEvent(new Event("ai-notes-updated"));
       window.dispatchEvent(new Event("gamification-stats-updated"));
-      toast.success("AI content generated.");
+      toast.custom(
+        (id) => (
+          <motion.div
+            initial={{ opacity: 0, x: 40, scale: 0.96 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 40, scale: 0.96 }}
+            className="flex w-[340px] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl border border-[#7C3AED]/30 bg-slate-950/95 p-4 text-white shadow-2xl shadow-purple-500/50 backdrop-blur-xl"
+          >
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#7C3AED]/20 text-[#C4B5FD]">
+              <SparklesIcon size={22} className="animate-pulse" />
+              <Coins size={14} className="absolute -right-1 -top-1 animate-bounce text-yellow-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black">Generation Successful! 🎉</p>
+              <p className="mt-0.5 text-xs font-semibold text-purple-100">
+                +10 XP | +5 Coins added.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => toast.dismiss(id)}
+              className="rounded-lg p-1 text-purple-100/70 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="Dismiss reward notification"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        ),
+        { duration: 4500 }
+      );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
 
@@ -313,7 +345,7 @@ export default function ContentGeneratorPage() {
             <span className="text-[#7C3AED]">AI Studio</span>
           </h1>
           <p className="mx-auto max-w-2xl text-base text-text-muted dark:text-slate-400 md:text-lg">
-            Generate polished notes, source-aware summaries, and teacher-ready MCQ quizzes with Groq.
+            Generate polished notes, source-aware summaries, and teacher-ready MCQ quizzes.
           </p>
         </motion.header>
 
@@ -956,22 +988,44 @@ function FileDropZone({
 
   const handleFile = async (candidate?: File) => {
     if (!candidate) return;
+    if (candidate.size > MAX_UPLOAD_BYTES) {
+      toast.error("File is too large. Please upload a file under 5MB to respect processing limits.");
+      return;
+    }
 
     const name = candidate.name.toLowerCase();
     const supported =
       name.endsWith(".txt") ||
       name.endsWith(".md") ||
       name.endsWith(".markdown") ||
+      name.endsWith(".pdf") ||
+      name.endsWith(".doc") ||
+      name.endsWith(".docx") ||
+      name.endsWith(".xls") ||
+      name.endsWith(".xlsx") ||
+      name.endsWith(".csv") ||
       candidate.type.startsWith("text/") ||
       candidate.type === "text/markdown";
 
     if (!supported) {
-      toast.error("Upload TXT or Markdown files so AI Studio can extract text in-browser.");
+      toast.error("Upload PDF, DOC, DOCX, TXT, XLS, XLSX, or CSV files.");
       return;
     }
 
     try {
       setIsReading(true);
+      const canReadAsPlainText =
+        name.endsWith(".txt") ||
+        name.endsWith(".md") ||
+        name.endsWith(".markdown") ||
+        name.endsWith(".csv") ||
+        candidate.type.startsWith("text/");
+
+      if (!canReadAsPlainText) {
+        toast.error("Preview extraction is available for TXT, Markdown, and CSV files. Convert this file to text before uploading.");
+        return;
+      }
+
       const text = (await candidate.text()).trim().slice(0, MAX_UPLOADED_TEXT_CHARS);
 
       if (!text) {
@@ -1047,10 +1101,10 @@ function FileDropZone({
         <span className="text-sm text-text-muted dark:text-slate-400">
           <span className="font-semibold text-[#7C3AED]">Click to upload</span> or drag and drop
         </span>
-        <span className="text-xs text-slate-400">TXT or Markdown, capped at 25,000 characters</span>
+        <span className="text-xs text-slate-400">PDF, DOC, DOCX, TXT, XLS, XLSX, CSV under 5MB</span>
         <input
           type="file"
-          accept=".txt,.md,.markdown,text/plain,text/markdown"
+          accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.csv,text/plain,text/markdown,text/csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="sr-only"
           onChange={(event) => void handleFile(event.target.files?.[0])}
         />

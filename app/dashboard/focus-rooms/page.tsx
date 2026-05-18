@@ -377,9 +377,9 @@ export default function FocusRoomsPage() {
   };
 
   const priorityStyles: Record<string, string> = {
-    High: "bg-red-100 text-red-500 dark:bg-red-500/20 dark:text-red-400",
-    Med: "bg-blue-100 text-blue-500 dark:bg-blue-500/20 dark:text-blue-400",
-    Low: "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400",
+    High: "bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/20 dark:text-rose-300",
+    Med: "bg-purple-500/10 text-purple-500 ring-1 ring-purple-500/20 dark:text-purple-300",
+    Low: "bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20 dark:text-emerald-300",
   };
 
   return (
@@ -578,15 +578,24 @@ export default function FocusRoomsPage() {
                 placeholder="Add a task..."
                 className="flex-1 bg-white/40 dark:bg-white/[0.04] border border-white/60 dark:border-white/[0.08] rounded-xl px-3 py-2 text-sm text-text-main dark:text-white placeholder:text-text-muted dark:placeholder:text-slate-500 outline-none focus:border-primary/40 dark:focus:border-purple-500/40 transition-all"
               />
-              <select
-                value={newTaskPriority}
-                onChange={(e) => setNewTaskPriority(e.target.value as "High" | "Med" | "Low")}
-                className="bg-white/60 dark:bg-white/[0.04] border border-white/60 dark:border-white/[0.08] rounded-xl px-2 py-2 text-sm font-medium text-text-main dark:text-white outline-none focus:border-primary/40 transition-all cursor-pointer"
-              >
-                <option value="High" className="text-red-500 font-bold">High</option>
-                <option value="Med" className="text-blue-500 font-bold">Med</option>
-                <option value="Low" className="text-green-600 font-bold">Low</option>
-              </select>
+              <div className="relative shrink-0">
+                <select
+                  value={newTaskPriority}
+                  onChange={(e) => setNewTaskPriority(e.target.value as "High" | "Med" | "Low")}
+                  className={`min-h-[40px] appearance-none rounded-xl border px-3 py-2 pr-8 text-sm font-bold outline-none backdrop-blur-md transition-all cursor-pointer focus:border-[#7C3AED]/60 focus:ring-2 focus:ring-[#7C3AED]/20 dark:bg-gray-800/80 ${
+                    newTaskPriority === "High"
+                      ? "border-rose-500/30 bg-rose-500/10 text-rose-500 dark:text-rose-300"
+                      : newTaskPriority === "Low"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500 dark:text-emerald-300"
+                        : "border-purple-500/30 bg-purple-500/10 text-purple-500 dark:text-purple-300"
+                  }`}
+                >
+                  <option value="High" className="bg-white text-rose-500 dark:bg-gray-900">High</option>
+                  <option value="Med" className="bg-white text-purple-500 dark:bg-gray-900">Med</option>
+                  <option value="Low" className="bg-white text-emerald-500 dark:bg-gray-900">Low</option>
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rotate-45 border-b-2 border-r-2 border-current opacity-70" />
+              </div>
             </form>
           </div>
 
