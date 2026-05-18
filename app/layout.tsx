@@ -11,11 +11,11 @@ export const metadata: Metadata = {
   description: "Obsidian Zen study companion.",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "256x256", type: "image/x-icon" },
-      { url: "/logo.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.ico?v=3", sizes: "256x256", type: "image/x-icon" },
+      { url: "/logo.png?v=3", sizes: "192x192", type: "image/png" },
     ],
-    shortcut: [{ url: "/favicon.ico", sizes: "256x256" }],
-    apple: [{ url: "/logo.png", sizes: "180x180", type: "image/png" }],
+    shortcut: [{ url: "/favicon.ico?v=3", sizes: "256x256" }],
+    apple: [{ url: "/logo.png?v=3", sizes: "180x180", type: "image/png" }],
   },
 };
 

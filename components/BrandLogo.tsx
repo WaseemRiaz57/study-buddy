@@ -29,7 +29,7 @@ export function BrandLogo({
         width={dimensions.width}
         height={dimensions.height}
         priority
-        className="h-full w-full scale-[2.35] object-contain"
+        className="h-full w-full object-contain"
         sizes={dimensions.sizes}
       />
     </span>

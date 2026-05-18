@@ -40,8 +40,6 @@ type GeneratedContentResult =
   | { type: "notes" | "summarizer"; text: string }
   | { type: "quiz"; questions: QuizQuestion[]; rawText: string };
 
-const PRIMARY_MODEL_NAME = "gemini-1.5-flash";
-const FALLBACK_MODEL_NAMES = ["gemini-1.5-flash-8b", "gemini-1.5-pro"];
 const MAX_SOURCE_CHARS = 50000;
 
 function getGenAI() {
@@ -56,29 +54,9 @@ function getGenAI() {
 
 async function generateWithGemini(prompt: string) {
   const genAI = getGenAI();
-  const modelNames = Array.from(
-    new Set([PRIMARY_MODEL_NAME, ...FALLBACK_MODEL_NAMES])
-  ) as string[];
-  const errors: string[] = [];
-
-  for (const modelName of modelNames) {
-    try {
-      return await genAI
-        .getGenerativeModel({ model: modelName })
-        .generateContent(prompt);
-    } catch (error) {
-      errors.push(
-        `${modelName}: ${error instanceof Error ? error.message : "Unknown Gemini error"}`
-      );
-    }
-  }
-
-  const lastError = errors[errors.length - 1];
-  if (lastError) {
-    throw new Error(`Gemini generation failed for all configured models. ${lastError}`);
-  }
-
-  throw new Error("Gemini generation failed because no model candidates were configured.");
+  return genAI
+    .getGenerativeModel({ model: "gemini-1.5-flash" })
+    .generateContent(prompt);
 }
 
 function trimSource(value: string) {
