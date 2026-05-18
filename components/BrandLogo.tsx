@@ -22,7 +22,7 @@ export function BrandLogo({
   const dimensions = imageDimensions[size];
 
   return (
-    <span className={`${sizeClasses[size]} inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl ${className}`}>
+    <span className={`${sizeClasses[size]} inline-flex shrink-0 items-center justify-center ${className}`}>
       <Image
         src="/logo.png"
         alt="StudyBuddy"
