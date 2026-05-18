@@ -130,7 +130,7 @@ export function Sidebar({
       }`}
     >
       <div
-        className={`flex h-16 items-center border-b border-border px-4 dark:border-white/[0.06] ${
+        className={`flex h-20 items-center border-b border-border px-4 dark:border-white/[0.06] ${
           mobile || !isCollapsed ? "justify-between" : "justify-center"
         }`}
       >
@@ -145,14 +145,14 @@ export function Sidebar({
 
             onNavigate?.();
           }}
-          className={`flex min-w-0 items-center gap-1 ${
+          className={`flex min-w-0 items-center gap-0.5 ${
             !mobile && isCollapsed ? "justify-center" : ""
           }`}
           aria-label={!mobile && isCollapsed ? "Expand sidebar" : "Dashboard"}
         >
           <BrandLogo size={!mobile && isCollapsed ? "mark" : "lockup"} />
           {(mobile || !isCollapsed) && (
-            <span className="whitespace-nowrap text-2xl font-bold tracking-tight text-[#7C3AED]">
+            <span className="whitespace-nowrap text-[28px] font-extrabold leading-none tracking-tight text-[#7C3AED]">
               StudyBuddy
             </span>
           )}
