@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@types/nodemailer": "^8.0.0",
+    "@upstash/redis": "^1.38.0",
     "cloudinary": "^2.9.0",
     "framer-motion": "^12.34.0",
     "groq-sdk": "^1.2.0",
