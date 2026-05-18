@@ -41,7 +41,9 @@ export function DashboardTopbar({
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isBuyingFreeze, setIsBuyingFreeze] = useState(false);
-  const gamificationStats = useGamificationStore((state) => state.stats);
+  const { xp, coins, streak, streakFreezes, level } = useGamificationStore(
+    (state) => state.stats
+  );
   const setGamificationStats = useGamificationStore((state) => state.setStats);
   const refreshGamificationStats = useGamificationStore((state) => state.refresh);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
@@ -71,7 +73,7 @@ export function DashboardTopbar({
   const paidPlanLabel =
     subscriptionPlan === "elite" ? "ELITE" : subscriptionPlan === "pro" ? "PRO" : "";
 
-  const xpForCurrentLevel = gamificationStats.xp % 1000;
+  const xpForCurrentLevel = xp % 1000;
   const xpProgress = Math.min(100, Math.round((xpForCurrentLevel / 1000) * 100));
 
   const fetchGamificationStats = useCallback(async () => {
@@ -171,7 +173,7 @@ export function DashboardTopbar({
         </div>
         {role === "STUDENT" && (
           <div className="absolute -bottom-1 -right-1 rounded-md border border-background bg-yellow-400 px-1.5 py-0.5 text-[9px] font-black text-black shadow-sm">
-            {gamificationStats.level}
+            {level}
           </div>
         )}
       </div>
@@ -230,7 +232,7 @@ export function DashboardTopbar({
           >
             <Flame className="text-orange-500" size={16} />
             <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
-              {gamificationStats.streak}
+              {streak}
             </span>
           </button>
 
@@ -241,7 +243,7 @@ export function DashboardTopbar({
           >
             <Coins className="text-yellow-600 dark:text-yellow-400" size={16} />
             <span className="text-sm font-bold text-yellow-700 dark:text-yellow-400">
-              {gamificationStats.coins.toLocaleString()}
+              {coins.toLocaleString()}
             </span>
           </button>
 
@@ -273,7 +275,7 @@ export function DashboardTopbar({
                   {status === "loading" ? "Loading..." : `Welcome ${firstName}`}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {userEmail || `Level ${gamificationStats.level}`}
+                  {userEmail || `Level ${level}`}
                 </p>
               </div>
               {avatarButton}
@@ -374,7 +376,7 @@ export function DashboardTopbar({
               <div className="text-right">
                 <p className="text-xs font-semibold text-muted-foreground">Owned</p>
                 <p className="text-lg font-black text-[#7C3AED]">
-                  {gamificationStats.streakFreezes}
+                  {streakFreezes}
                 </p>
               </div>
             </div>
@@ -410,7 +412,7 @@ export function DashboardTopbar({
                     setIsBuyingFreeze(false);
                   }
                 }}
-                disabled={isBuyingFreeze || gamificationStats.coins < 200}
+                disabled={isBuyingFreeze || coins < 200}
                 className="inline-flex items-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isBuyingFreeze ? (

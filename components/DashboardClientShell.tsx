@@ -21,7 +21,9 @@ export function DashboardClientShell({
 }: DashboardClientShellProps) {
   const setRole = useUserStore((state) => state.setRole);
   const setPlan = useUserStore((state) => state.setPlan);
-  const setGamificationStats = useGamificationStore((state) => state.setStats);
+  const setInitialGamificationData = useGamificationStore(
+    (state) => state.setInitialData
+  );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useOfflinePresence();
@@ -41,14 +43,18 @@ export function DashboardClientShell({
       if (response.ok) {
         const data = await response.json().catch(() => null);
         if (data?.stats) {
-          setGamificationStats(data.stats);
+          setInitialGamificationData(
+            Number(data.stats.xp || 0),
+            Number(data.stats.coins || 0),
+            data.stats
+          );
         }
         window.dispatchEvent(new Event("gamification-stats-updated"));
       }
     };
 
     void awardDailyLogin();
-  }, [setGamificationStats]);
+  }, [setInitialGamificationData]);
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">

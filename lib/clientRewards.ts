@@ -14,6 +14,7 @@ const clientRewardMap: Record<ClientRewardAction, { xp: number; coins: number; t
 export async function syncGamificationReward(action: ClientRewardAction) {
   const reward = clientRewardMap[action];
 
+  useGamificationStore.getState().addReward(reward.xp, reward.coins);
   await useGamificationStore.getState().refresh();
   showRewardToast(reward);
   window.dispatchEvent(new Event("gamification-stats-updated"));

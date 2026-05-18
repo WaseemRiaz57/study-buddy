@@ -1,85 +1,52 @@
-import { createClient, RedisClientType } from "redis";
+import { Redis } from "@upstash/redis";
 import {
   ROOM_AUTO_CLOSE_GRACE_SECONDS,
   ROOM_STATE_TTL_SECONDS,
 } from "@/lib/study-room-constants";
 
-let redisClient: RedisClientType | null = null;
-let connectionFailed = false;
+let redisClient: Redis | null = null;
 
 /**
- * Returns a connected Redis client.
- * If Redis is unavailable, returns null so callers can fall back to MongoDB.
+ * Returns an HTTP-based Redis client.
+ * If Upstash is not configured, returns null so callers can fall back to MongoDB.
  */
-export async function getRedisClient(): Promise<RedisClientType | null> {
-  if (connectionFailed) return null;
+export async function getRedisClient(): Promise<Redis | null> {
+  if (redisClient) return redisClient;
 
-  if (redisClient && redisClient.isOpen) {
-    return redisClient;
-  }
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-  const url = process.env.REDIS_URL || "redis://localhost:6379";
+  if (!url || !token) return null;
 
-  try {
-    redisClient = createClient({ url }) as RedisClientType;
-
-    redisClient.on("error", (err: Error) => {
-      console.error("Redis Client Error:", err.message);
-    });
-
-    await redisClient.connect();
-    console.log("Redis connected successfully");
-    return redisClient;
-  } catch {
-    console.warn(
-      "Redis unavailable — falling back to MongoDB for online status."
-    );
-    connectionFailed = true;
-    redisClient = null;
-    return null;
-  }
+  redisClient = new Redis({ url, token });
+  return redisClient;
 }
-
-// ── Online-status helpers ──────────────────────────────────────────
 
 const ONLINE_SET_KEY = "study-buddy:online-students";
-const ONLINE_TTL = 300; // 5 minutes — student must heartbeat to stay online
+const ONLINE_TTL = 300;
 
-/**
- * Mark a student as online in Redis.
- */
 export async function setStudentOnline(studentId: string): Promise<void> {
   const client = await getRedisClient();
-  if (client) {
-    await client.sAdd(ONLINE_SET_KEY, studentId);
-    // Per-student key with TTL for auto-expiry
-    await client.set(`online:${studentId}`, "1", { EX: ONLINE_TTL });
-  }
+  if (!client) return;
+
+  await client.sadd(ONLINE_SET_KEY, studentId);
+  await client.set(`online:${studentId}`, "1", { ex: ONLINE_TTL });
 }
 
-/**
- * Mark a student as offline in Redis.
- */
 export async function setStudentOffline(studentId: string): Promise<void> {
   const client = await getRedisClient();
-  if (client) {
-    await client.sRem(ONLINE_SET_KEY, studentId);
-    await client.del(`online:${studentId}`);
-  }
+  if (!client) return;
+
+  await client.srem(ONLINE_SET_KEY, studentId);
+  await client.del(`online:${studentId}`);
 }
 
-/**
- * Returns all currently online student IDs from Redis.
- * Returns null when Redis is unavailable (caller should fall back to MongoDB).
- */
 export async function getOnlineStudentIds(): Promise<string[] | null> {
   const client = await getRedisClient();
   if (!client) return null;
 
-  return client.sMembers(ONLINE_SET_KEY);
+  return client.smembers<string[]>(ONLINE_SET_KEY);
 }
-
-// ── Study-room runtime helpers ─────────────────────────────────────
 
 export interface StudyRoomRuntimeState {
   roomId: string;
@@ -106,22 +73,15 @@ function uniqueUserIds(userIds: string[]): string[] {
 }
 
 function clampRoomStateTtlSeconds(ttlSeconds?: number): number {
-  if (!ttlSeconds || ttlSeconds <= 0) {
-    return ROOM_STATE_TTL_SECONDS;
-  }
-
+  if (!ttlSeconds || ttlSeconds <= 0) return ROOM_STATE_TTL_SECONDS;
   return Math.min(ttlSeconds, ROOM_STATE_TTL_SECONDS);
 }
 
 function normalizeIsoDate(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
+  if (typeof value !== "string") return null;
 
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
+  if (Number.isNaN(parsed.getTime())) return null;
 
   return parsed.toISOString();
 }
@@ -144,10 +104,13 @@ function createStudyRoomRuntimeState(
 
 function parseStudyRoomRuntimeState(
   roomId: string,
-  rawState: string
+  rawState: unknown
 ): StudyRoomRuntimeState | null {
   try {
-    const parsed = JSON.parse(rawState) as Partial<StudyRoomRuntimeState>;
+    const parsed =
+      typeof rawState === "string"
+        ? (JSON.parse(rawState) as Partial<StudyRoomRuntimeState>)
+        : (rawState as Partial<StudyRoomRuntimeState>);
     const normalizedRoomId = normalizeRoomId(roomId);
 
     return createStudyRoomRuntimeState(
@@ -195,7 +158,7 @@ export async function setStudyRoomState(
   );
 
   await client.set(getStudyRoomStateKey(normalizedRoomId), JSON.stringify(nextState), {
-    EX: clampRoomStateTtlSeconds(ttlSeconds),
+    ex: clampRoomStateTtlSeconds(ttlSeconds),
   });
 }
 
@@ -291,7 +254,7 @@ export async function markStudyRoomParticipantDisconnected(
       await client.set(
         getStudyRoomEmptyMarkerKey(normalizedRoomId),
         nextState.lastEmptyAt || new Date().toISOString(),
-        { EX: ROOM_AUTO_CLOSE_GRACE_SECONDS }
+        { ex: ROOM_AUTO_CLOSE_GRACE_SECONDS }
       );
     } else {
       await client.del(getStudyRoomEmptyMarkerKey(normalizedRoomId));
@@ -328,18 +291,11 @@ export async function isStudyRoomAutoCloseDue(
   if (client) {
     const ttl = await client.ttl(getStudyRoomEmptyMarkerKey(normalizedRoomId));
 
-    if (ttl === -2) {
-      return true;
-    }
-
-    if (ttl >= 0) {
-      return false;
-    }
+    if (ttl === -2) return true;
+    if (ttl >= 0) return false;
   }
 
-  if (!runtimeState.lastEmptyAt) {
-    return false;
-  }
+  if (!runtimeState.lastEmptyAt) return false;
 
   const elapsedMs = Date.now() - new Date(runtimeState.lastEmptyAt).getTime();
   return elapsedMs >= ROOM_AUTO_CLOSE_GRACE_SECONDS * 1000;
@@ -349,9 +305,8 @@ export async function clearStudyRoomRuntimeState(roomId: string): Promise<void> 
   const client = await getRedisClient();
   if (!client) return;
 
-  await client.del([
+  await client.del(
     getStudyRoomStateKey(roomId),
-    getStudyRoomEmptyMarkerKey(roomId),
-  ]);
+    getStudyRoomEmptyMarkerKey(roomId)
+  );
 }
-

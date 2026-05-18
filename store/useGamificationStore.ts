@@ -22,6 +22,8 @@ interface GamificationState {
   stats: GamificationStats;
   isLoaded: boolean;
   setStats: (stats: Partial<GamificationStats>) => void;
+  setInitialData: (xp: number, coins: number, stats?: Partial<GamificationStats>) => void;
+  addReward: (xp: number, coins: number) => void;
   refresh: () => Promise<void>;
 }
 
@@ -33,6 +35,25 @@ export const useGamificationStore = create<GamificationState>((set) => ({
       stats: {
         ...state.stats,
         ...stats,
+      },
+      isLoaded: true,
+    })),
+  setInitialData: (xp, coins, stats = {}) =>
+    set((state) => ({
+      stats: {
+        ...state.stats,
+        ...stats,
+        xp: Math.max(0, Number(xp || 0)),
+        coins: Math.max(0, Number(coins || 0)),
+      },
+      isLoaded: true,
+    })),
+  addReward: (xp, coins) =>
+    set((state) => ({
+      stats: {
+        ...state.stats,
+        xp: Math.max(0, state.stats.xp + Number(xp || 0)),
+        coins: Math.max(0, state.stats.coins + Number(coins || 0)),
       },
       isLoaded: true,
     })),

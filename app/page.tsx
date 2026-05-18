@@ -109,7 +109,7 @@ const stats = [
   { value: "4.9/5", label: "User Rating",     icon: Star   },
 ];
 
-const pricingPlans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
+const fallbackPricingPlans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
   title: `${plan.name} Plan`,
   monthlyPrice: plan.displayPrice,
   yearlyPrice: plan.price === 0 ? "$0" : `$${Math.round(plan.price * 10) / 10}`,
@@ -363,7 +363,7 @@ const PricingCard = memo(function PricingCard({
   const isActive = hovered || plan.highlight;
 
   return (
-    <motion.div
+    <motion.article
       initial={{ opacity: 0, y: 50 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
@@ -423,9 +423,9 @@ const PricingCard = memo(function PricingCard({
         <p className="mt-5 text-sm text-muted-foreground border-b border-border pb-6">{plan.desc}</p>
       </div>
 
-      <div className="flex-1 space-y-3.5 mb-8">
+      <ul className="flex-1 space-y-3.5 mb-8">
         {plan.features.map((feat, i) => (
-          <motion.div
+          <motion.li
             key={feat}
             initial={{ opacity: 0, x: -10 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -437,18 +437,19 @@ const PricingCard = memo(function PricingCard({
               <Check className="h-3 w-3 text-emerald-400" />
             </div>
             <span className={`text-sm transition-colors duration-300 ${isActive ? "text-foreground" : "text-foreground/80"}`}>{feat}</span>
-          </motion.div>
+          </motion.li>
         ))}
         {plan.excluded?.map((feat) => (
-          <div key={feat} className="flex items-start gap-3 opacity-40">
+          <li key={feat} className="flex items-start gap-3 opacity-40">
             <X className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
             <span className="text-sm text-muted-foreground line-through">{feat}</span>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <Link
         href="/register"
+        prefetch={true}
         className={`block w-full rounded-xl py-3.5 text-center text-sm font-bold transition-all duration-300 ${
           isActive
             ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25 hover:bg-purple-700 hover:shadow-xl"
@@ -457,7 +458,7 @@ const PricingCard = memo(function PricingCard({
       >
         {plan.ctaText}
       </Link>
-    </motion.div>
+    </motion.article>
   );
 });
 
@@ -615,6 +616,7 @@ export default function Home() {
   const prefersReducedMotion = useReducedMotion();
   const isMobile = useIsMobile();
   const [isYearly, setIsYearly] = useState(false);
+  const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>(fallbackPricingPlans);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [testimonials, setTestimonials] = useState<PublicReview[]>([]);
 
@@ -631,6 +633,43 @@ export default function Home() {
     }
 
     void fetchReviews();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchPricingPlans() {
+      const response = await fetch("/api/subscription-plans", { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+
+      if (!active || !response.ok || !Array.isArray(data?.plans)) return;
+
+      setPricingPlans(
+        data.plans.map((plan: any) => ({
+          title: `${plan.name} Plan`,
+          monthlyPrice: plan.displayPrice,
+          yearlyPrice:
+            Number(plan.price || 0) === 0
+              ? "$0"
+              : `$${Math.round(Number(plan.price || 0) * 10) / 10}`,
+          monthlyPkr: Number(plan.price || 0) === 0 ? "Free Forever" : "Billed monthly",
+          yearlyPkr:
+            Number(plan.price || 0) === 0
+              ? "Free Forever"
+              : "Annual billing available",
+          desc: String(plan.description || ""),
+          highlight: Boolean(plan.featured),
+          ctaText: String(plan.cta || "Join Free"),
+          features: Array.isArray(plan.features) ? plan.features.map(String) : [],
+        }))
+      );
+    }
+
+    void fetchPricingPlans();
 
     return () => {
       active = false;

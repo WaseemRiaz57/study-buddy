@@ -147,6 +147,7 @@ function serializeQuiz(questions: QuizQuestion[]) {
 export default function ContentGeneratorPage() {
   const { data: session, status } = useSession();
   const refreshGamificationStats = useGamificationStore((state) => state.refresh);
+  const addGamificationReward = useGamificationStore((state) => state.addReward);
   const isTeacher = isTeacherRole(session?.user?.role);
   const availableTabs = useMemo(
     () => TABS.filter((tab) => tab.id !== "quiz" || isTeacher),
@@ -330,6 +331,7 @@ export default function ContentGeneratorPage() {
 
       await fetchRecentCreations();
       window.dispatchEvent(new Event("ai-notes-updated"));
+      addGamificationReward(10, 5);
       await refreshGamificationStats();
       window.dispatchEvent(new Event("gamification-stats-updated"));
       showRewardToast({

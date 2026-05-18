@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Github, Twitter, MessageCircle } from "lucide-react";
+import { Github, Twitter, MessageCircle } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const productLinks = [
   { label: "Focus Room", href: "#focus-room" },
@@ -36,9 +37,7 @@ export function Footer() {
         <div className="grid gap-12 md:grid-cols-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#7C3AED]">
-                <BookOpen className="h-5 w-5 text-white" />
-              </span>
+              <BrandLogo size="mark" className="h-10 w-10" />
               <span className="text-lg font-bold text-[#7C3AED]">StudyBuddy</span>
             </div>
             <p className="mt-4 text-sm text-slate-600 dark:text-gray-400">
@@ -53,6 +52,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
+                    prefetch={true}
                     className="text-sm text-slate-600 transition hover:text-primary dark:text-gray-400 dark:hover:text-primary"
                   >
                     {link.label}
@@ -69,6 +69,7 @@ export function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
+                    prefetch={true}
                     className="text-sm text-slate-600 transition hover:text-primary dark:text-gray-400 dark:hover:text-primary"
                   >
                     {link.label}

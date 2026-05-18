@@ -8,6 +8,7 @@ const ACTIVE_REWARD_MS = 30 * 60 * 1000;
 
 export function useActiveTimeReward() {
   const setStats = useGamificationStore((state) => state.setStats);
+  const addReward = useGamificationStore((state) => state.addReward);
   const activeMsRef = useRef(0);
   const lastTickRef = useRef<number | null>(null);
   const pendingRef = useRef(false);
@@ -34,6 +35,10 @@ export function useActiveTimeReward() {
         const data = await response.json().catch(() => null);
 
         if (response.ok && data?.awarded) {
+          addReward(
+            Number(data.reward?.xpAwarded || 20),
+            Number(data.reward?.coinsAwarded || 0)
+          );
           setStats(data.stats || data.reward?.profile || {});
           showRewardToast({
             title: "Active Study Reward!",
@@ -63,5 +68,5 @@ export function useActiveTimeReward() {
       window.removeEventListener("focus", resetTick);
       document.removeEventListener("visibilitychange", resetTick);
     };
-  }, [setStats]);
+  }, [addReward, setStats]);
 }
