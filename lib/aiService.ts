@@ -41,7 +41,7 @@ type GeneratedContentResult =
   | { type: "quiz"; questions: QuizQuestion[]; rawText: string };
 
 const PRIMARY_MODEL_NAME = "gemini-1.5-flash-latest";
-const FALLBACK_MODEL_NAME = "gemini-1.0-pro";
+const FALLBACK_MODEL_NAME = "gemini-1.5-pro-latest";
 const MAX_SOURCE_CHARS = 50000;
 
 function getGenAI() {
