@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Clock, FileText, Sparkles, Zap, Target, CheckSquare, Brain, Timer, Star, BookMarked, Lock, ArrowRight, Users, ClipboardList } from "lucide-react";
@@ -59,6 +60,39 @@ interface PendingAssignment {
   };
 }
 
+interface GamificationStats {
+  xp: number;
+  level: number;
+  nextLevelXp: number;
+  coins: number;
+  streak: number;
+}
+
+interface ResumeItem {
+  id: string;
+  title: string;
+  type: "notes" | "summarizer" | "study-room";
+  href: string;
+  createdAt: string;
+}
+
+interface DashboardChallenge {
+  id: string;
+  title: string;
+  description: string;
+  type: "daily" | "weekly" | "global" | "elite";
+  targetMetric: number;
+  xpReward: number;
+  isLocked: boolean;
+  progress: {
+    currentValue: number;
+    targetMetric: number;
+    percentage: number;
+    isCompleted: boolean;
+    isClaimed: boolean;
+  };
+}
+
 function getMentor(session: StudentMentorSession): PopulatedMentor {
   return typeof session.mentorId === "object" && session.mentorId !== null
     ? session.mentorId
@@ -104,6 +138,16 @@ function isPastReviewCandidate(session: StudentMentorSession) {
 }
 
 export function StudentDashboard() {
+  const [gamificationStats, setGamificationStats] = useState<GamificationStats>({
+    xp: 0,
+    level: 1,
+    nextLevelXp: 1000,
+    coins: 0,
+    streak: 0,
+  });
+  const [resumeItem, setResumeItem] = useState<ResumeItem | null>(null);
+  const [dashboardChallenges, setDashboardChallenges] = useState<DashboardChallenge[]>([]);
+  const [claimingChallengeId, setClaimingChallengeId] = useState<string | null>(null);
   const [recentNotes, setRecentNotes] = useState<RecentAINote[]>([]);
   const [mentorSessions, setMentorSessions] = useState<StudentMentorSession[]>([]);
   const [pendingAssignments, setPendingAssignments] = useState<PendingAssignment[]>([]);
@@ -133,6 +177,78 @@ export function StudentDashboard() {
     } catch {
     }
   }, []);
+
+  const fetchGamificationStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/gamification-stats", { cache: "no-store" });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const stats = data?.stats || {};
+
+      setGamificationStats({
+        xp: Number(stats.xp || 0),
+        level: Math.max(1, Number(stats.level || 1)),
+        nextLevelXp: Math.max(1000, Number(stats.nextLevelXp || 1000)),
+        coins: Number(stats.coins || 0),
+        streak: Number(stats.streak || 0),
+      });
+    } catch {
+    }
+  }, []);
+
+  const fetchResumeItem = useCallback(async () => {
+    try {
+      const res = await fetch("/api/dashboard/resume", { cache: "no-store" });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      setResumeItem(data?.resume || null);
+    } catch {
+    }
+  }, []);
+
+  const fetchDashboardChallenges = useCallback(async () => {
+    try {
+      const res = await fetch("/api/challenges", { cache: "no-store" });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const challenges = Array.isArray(data?.challenges)
+        ? data.challenges.filter((challenge: DashboardChallenge) =>
+            challenge.type === "daily" || challenge.type === "weekly"
+          )
+        : [];
+
+      setDashboardChallenges(challenges.slice(0, 3));
+    } catch {
+    }
+  }, []);
+
+  const handleClaimChallenge = useCallback(
+    async (challenge: DashboardChallenge) => {
+      try {
+        setClaimingChallengeId(challenge.id);
+        const res = await fetch(`/api/challenges/${challenge.id}/claim`, {
+          method: "POST",
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data?.message || "Unable to claim this reward.");
+        }
+
+        toast.success("Reward claimed!");
+        await Promise.all([fetchDashboardChallenges(), fetchGamificationStats()]);
+        window.dispatchEvent(new Event("gamification-stats-updated"));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Unable to claim this reward.");
+      } finally {
+        setClaimingChallengeId(null);
+      }
+    },
+    [fetchDashboardChallenges, fetchGamificationStats]
+  );
 
   const fetchMentorSessions = useCallback(async () => {
     try {
@@ -165,19 +281,35 @@ export function StudentDashboard() {
   }, []);
 
   useEffect(() => {
+    fetchGamificationStats();
+    fetchResumeItem();
+    fetchDashboardChallenges();
     fetchRecentNotes();
     fetchMentorSessions();
     fetchAssignments();
 
     const onNotesUpdated = () => {
       fetchRecentNotes();
+      fetchResumeItem();
+    };
+    const onGamificationUpdated = () => {
+      fetchGamificationStats();
     };
 
     window.addEventListener("ai-notes-updated", onNotesUpdated);
+    window.addEventListener("gamification-stats-updated", onGamificationUpdated);
     return () => {
       window.removeEventListener("ai-notes-updated", onNotesUpdated);
+      window.removeEventListener("gamification-stats-updated", onGamificationUpdated);
     };
-  }, [fetchAssignments, fetchRecentNotes, fetchMentorSessions]);
+  }, [
+    fetchAssignments,
+    fetchDashboardChallenges,
+    fetchGamificationStats,
+    fetchRecentNotes,
+    fetchResumeItem,
+    fetchMentorSessions,
+  ]);
 
   const noteTypeMeta: Record<AINoteType, { gradient: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string }> = {
     notes: { gradient: " ", icon: Brain, label: "Smart Notes" },
@@ -207,6 +339,29 @@ export function StudentDashboard() {
       (a, b) =>
         new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
     )[0];
+  const currentLevelStartXp = Math.max(0, (gamificationStats.level - 1) * 1000);
+  const nextLevelXp = Math.max(
+    gamificationStats.nextLevelXp || gamificationStats.level * 1000,
+    currentLevelStartXp + 1000
+  );
+  const levelProgressPct = Math.min(
+    100,
+    Math.max(
+      0,
+      ((gamificationStats.xp - currentLevelStartXp) /
+        Math.max(1, nextLevelXp - currentLevelStartXp)) *
+        100
+    )
+  );
+  const levelCircleCircumference = 2 * Math.PI * 70;
+  const levelDashOffset =
+    levelCircleCircumference * (1 - levelProgressPct / 100);
+  const visibleChallenges = dashboardChallenges;
+  const resumeButtonLabel = resumeItem
+    ? resumeItem.type === "study-room"
+      ? "Resume Study Room"
+      : "Resume Latest Notes"
+    : "Start AI Studio";
 
   function handleReviewSubmitted() {
     const reviewedSessionId = selectedReviewSession?._id;
@@ -229,7 +384,7 @@ export function StudentDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       {/* MAIN CONTENT */}
-      <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
+      <main className="max-w-7xl mx-auto p-6 md:p-8 space-y-8" aria-label="Student dashboard">
         
         {/* HERO SECTION */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -243,14 +398,32 @@ export function StudentDashboard() {
                 <span className="inline-block text-primary font-bold text-xs uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full mb-4">
                   Progress Milestone
                 </span>
-                <h2 className="text-3xl md:text-4xl font-black mb-3 text-foreground tracking-tight">Level 15 is within reach!</h2>
+                <h2 className="text-3xl md:text-4xl font-black mb-3 text-foreground tracking-tight">
+                  Level {gamificationStats.level} is in motion!
+                </h2>
                 <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-                  You've completed <span className="text-foreground font-bold">85%</span> of your weekly goals. Finish 2 more sessions to ascend to the next tier.
+                  You have earned{" "}
+                  <span className="text-foreground font-bold">
+                    {gamificationStats.xp.toLocaleString()} XP
+                  </span>
+                  . You are{" "}
+                  <span className="text-foreground font-bold">
+                    {Math.round(levelProgressPct)}%
+                  </span>{" "}
+                  toward Level {gamificationStats.level + 1}.
                 </p>
-                <button className="mt-8 inline-flex items-center gap-2 bg-primary text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-1 transition-all">
-                  <span>Continue Journey</span>
+                <Link
+                  href={resumeItem?.href || "/dashboard/content-generator"}
+                  className="mt-8 inline-flex items-center gap-2 bg-primary text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/30 hover:bg-purple-700 hover:shadow-primary/40 hover:-translate-y-1 transition-all"
+                  aria-label={
+                    resumeItem
+                      ? `Resume ${resumeItem.title}`
+                      : "Start a new AI generation"
+                  }
+                >
+                  <span>{resumeButtonLabel}</span>
                   <ArrowRight size={18} />
-                </button>
+                </Link>
               </div>
 
               {/* Circular Progress */}
@@ -258,8 +431,8 @@ export function StudentDashboard() {
                 <svg className="w-full h-full transform -rotate-90">
                   <circle className="text-muted-foreground/10" cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="10" />
                   <motion.circle 
-                    initial={{ strokeDashoffset: 439.8 }}
-                    animate={{ strokeDashoffset: 65.97 }}
+                    initial={{ strokeDashoffset: levelCircleCircumference }}
+                    animate={{ strokeDashoffset: levelDashOffset }}
                     transition={{ duration: 1.5, delay: 0.3 }}
                     className="text-primary" 
                     cx="80" 
@@ -268,12 +441,14 @@ export function StudentDashboard() {
                     fill="transparent" 
                     stroke="currentColor" 
                     strokeWidth="10"
-                    strokeDasharray="439.8"
+                    strokeDasharray={levelCircleCircumference}
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-5xl font-black text-foreground tracking-tighter">14</span>
+                  <span className="text-5xl font-black text-foreground tracking-tighter">
+                    {gamificationStats.level}
+                  </span>
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Level</span>
                 </div>
               </div>
@@ -340,7 +515,13 @@ export function StudentDashboard() {
               <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
                  Daily Quests <Target className="text-primary" size={20} />
               </h2>
-              <button className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">Refresh</button>
+              <button
+                onClick={fetchDashboardChallenges}
+                className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
+                aria-label="Refresh daily quests"
+              >
+                Refresh
+              </button>
             </div>
 
             <div className="space-y-3">
@@ -378,53 +559,81 @@ export function StudentDashboard() {
                 </div>
               )}
 
-              {/* Quest 1 - Completed */}
-              <div className="flex items-center justify-between p-4 glass-panel rounded-2xl hover:border-primary/50 transition-all cursor-pointer group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Timer className="text-emerald-500" size={20} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-foreground">Complete 1 Pomodoro</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">+50 XP • +10 Coins</p>
-                  </div>
-                </div>
-                <button className="bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 transition-transform">
-                  Claim
-                </button>
-              </div>
+              {visibleChallenges.map((challenge) => {
+                const Icon = challenge.type === "weekly" ? BookMarked : Timer;
+                const progressPct = Math.min(
+                  100,
+                  Math.max(0, Number(challenge.progress.percentage || 0))
+                );
+                const canClaim =
+                  challenge.progress.isCompleted &&
+                  !challenge.progress.isClaimed &&
+                  !challenge.isLocked;
 
-              {/* Quest 2 - In Progress */}
-              <div className="flex items-center justify-between p-4 glass-panel rounded-2xl hover:border-primary/50 transition-all cursor-pointer group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <BookMarked className="text-purple-500" size={20} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-foreground">Review AI Flashcards</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">15/20 Reviewed</p>
-                  </div>
-                </div>
-                <button className="bg-primary/10 text-primary px-4 py-1.5 rounded-lg text-xs font-bold group-hover:bg-primary group-hover:text-white transition-all">
-                  Resume
-                </button>
-              </div>
+                return (
+                  <article
+                    key={challenge.id}
+                    className="p-4 glass-panel rounded-2xl hover:border-primary/50 transition-all group"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Icon className="text-[#7C3AED]" size={20} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-bold text-sm text-foreground">
+                            {challenge.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {Number(challenge.progress.currentValue || 0).toLocaleString()} /{" "}
+                            {Number(challenge.targetMetric || 0).toLocaleString()} · +
+                            {Number(challenge.xpReward || 0).toLocaleString()} XP
+                          </p>
+                        </div>
+                      </div>
 
-              {/* Quest 3 - Locked */}
-              <div className="flex items-center justify-between p-4 glass-panel rounded-2xl opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-not-allowed">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-                    <Users className="text-muted-foreground" size={20} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-foreground">Join a Peer Session</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">+100 XP • Reward Case</p>
-                  </div>
+                      {challenge.isLocked ? (
+                        <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground bg-muted px-3 py-1.5 rounded-lg">
+                          <Lock size={12} /> Locked
+                        </div>
+                      ) : challenge.progress.isClaimed ? (
+                        <span className="rounded-lg bg-emerald-500/10 px-4 py-1.5 text-xs font-bold text-emerald-500">
+                          Claimed
+                        </span>
+                      ) : canClaim ? (
+                        <button
+                          onClick={() => void handleClaimChallenge(challenge)}
+                          disabled={claimingChallengeId === challenge.id}
+                          className="bg-[#7C3AED] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-lg shadow-purple-500/20 hover:bg-purple-700 disabled:opacity-60 transition-colors"
+                          aria-label={`Claim reward for ${challenge.title}`}
+                        >
+                          {claimingChallengeId === challenge.id ? "Claiming" : "Claim"}
+                        </button>
+                      ) : (
+                        <Link
+                          href="/dashboard/challenges"
+                          className="bg-primary/10 text-primary px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-primary hover:text-white transition-all"
+                          aria-label={`Continue ${challenge.title}`}
+                        >
+                          Resume
+                        </Link>
+                      )}
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-[#7C3AED] transition-all"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </article>
+                );
+              })}
+
+              {visibleChallenges.length === 0 && pendingAssignments.length === 0 && (
+                <div className="glass-panel rounded-2xl p-5 text-sm text-muted-foreground">
+                  Your active quests and assignments will appear here.
                 </div>
-                <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground bg-muted px-3 py-1.5 rounded-lg">
-                   <Lock size={12} /> Locked
-                </div>
-              </div>
+              )}
             </div>
           </motion.div>
 
@@ -565,7 +774,7 @@ export function StudentDashboard() {
             </div>
           )}
         </motion.div>
-      </div>
+      </main>
 
       {selectedReviewSession && (
         <ReviewModal

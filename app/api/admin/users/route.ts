@@ -15,19 +15,25 @@ function escapeRegex(value: string) {
 }
 
 function serializeUser(user: any) {
+  const normalizedStatus = String(user.status || user.accountStatus || "active").toLowerCase();
+
   return {
     id: String(user._id),
     name: user.name || "Unnamed User",
     email: user.email || "",
-    image: user.image || "",
+    image: user.image || user.profileImage || "",
     role: user.role || "student",
+    isVerified: Boolean(user.isVerified || false),
     subscriptionPlan:
       String(user.subscriptionPlan || user.plan || "free").toLowerCase() === "elite"
         ? "elite"
         : String(user.subscriptionPlan || user.plan || "free").toLowerCase() === "pro"
           ? "pro"
           : "free",
-    status: user.status || "active",
+    status:
+      normalizedStatus === "suspended" || normalizedStatus === "banned"
+        ? "suspended"
+        : "active",
     createdAt: user.createdAt || null,
     updatedAt: user.updatedAt || null,
     lastActive: user.lastActive || null,
@@ -58,11 +64,23 @@ export async function GET(request: Request) {
         }
       : {};
     const planQuery =
-      plan === "free" || plan === "pro" || plan === "elite"
+      plan === "free"
+        ? {
+            $or: [
+              { subscriptionPlan: "free" },
+              { plan: "Free" },
+              { plan: "free" },
+              { subscriptionPlan: { $exists: false } },
+              { subscriptionPlan: null },
+              { subscriptionPlan: "" },
+            ],
+          }
+        : plan === "pro" || plan === "elite"
         ? {
             $or: [
               { subscriptionPlan: plan },
               { plan: plan.charAt(0).toUpperCase() + plan.slice(1) },
+              { plan },
             ],
           }
         : {};
@@ -85,10 +103,29 @@ export async function GET(request: Request) {
     ] = await Promise.all([
       User.countDocuments({}),
       User.countDocuments({ lastActive: { $gt: activeTodayCutoff } }),
-      User.countDocuments({ status: "suspended" }),
-      User.countDocuments({ $or: [{ subscriptionPlan: "free" }, { plan: "Free" }, { subscriptionPlan: { $exists: false } }] }),
-      User.countDocuments({ $or: [{ subscriptionPlan: "pro" }, { plan: "Pro" }] }),
-      User.countDocuments({ $or: [{ subscriptionPlan: "elite" }, { plan: "Elite" }] }),
+      User.countDocuments({
+        $or: [
+          { status: "suspended" },
+          { accountStatus: "suspended" },
+          { accountStatus: "banned" },
+        ],
+      }),
+      User.countDocuments({
+        $or: [
+          { subscriptionPlan: "free" },
+          { plan: "Free" },
+          { plan: "free" },
+          { subscriptionPlan: { $exists: false } },
+          { subscriptionPlan: null },
+          { subscriptionPlan: "" },
+        ],
+      }),
+      User.countDocuments({
+        $or: [{ subscriptionPlan: "pro" }, { plan: "Pro" }, { plan: "pro" }],
+      }),
+      User.countDocuments({
+        $or: [{ subscriptionPlan: "elite" }, { plan: "Elite" }, { plan: "elite" }],
+      }),
       User.find(userQuery)
         .select("-password")
         .sort({ createdAt: -1 })

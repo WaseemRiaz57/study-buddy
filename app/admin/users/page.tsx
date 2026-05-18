@@ -23,6 +23,7 @@ interface AdminUser {
   email: string;
   image: string;
   role: string;
+  isVerified: boolean;
   subscriptionPlan: "free" | "pro" | "elite";
   status: "active" | "suspended";
   createdAt: string | null;
@@ -452,15 +453,16 @@ export default function UserManagementPage() {
                         </button>
                       )}
                       <button
-                        className="p-2 rounded hover:bg-slate-100 dark:hover:bg-white/[0.04] disabled:opacity-50"
+                        className="p-2 rounded hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-50"
                         disabled={Boolean(actionKey)}
                         onClick={() => void handleDeleteUser(user)}
                         title="Delete user"
+                        aria-label={`Delete ${user.name}`}
                       >
                         {actionKey === `${user.id}-delete` ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                          <Loader2 className="w-4 h-4 animate-spin text-red-500" />
                         ) : (
-                          <Trash2 className="w-4 h-4 text-slate-500" />
+                          <Trash2 className="w-4 h-4 text-red-500" />
                         )}
                       </button>
                       <button className="p-2 rounded hover:bg-slate-100 dark:hover:bg-white/[0.04]" onClick={() => openModal(user, "more") }><MoreVertical className="w-4 h-4 text-slate-400" /></button>

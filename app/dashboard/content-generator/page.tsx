@@ -55,6 +55,65 @@ const TABS = [
 const MAX_UPLOADED_TEXT_CHARS = 25000;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
+async function extractPdfText(file: File) {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/legacy/build/pdf.worker.mjs",
+    import.meta.url
+  ).toString();
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+  const pageTexts: string[] = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item) => ("str" in item ? item.str : ""))
+      .join(" ");
+
+    pageTexts.push(pageText);
+  }
+
+  return pageTexts.join("\n\n").trim();
+}
+
+async function extractDocxText(file: File) {
+  const mammoth = await import("mammoth");
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+
+  return String(result.value || "").trim();
+}
+
+async function extractUploadText(file: File) {
+  const name = file.name.toLowerCase();
+
+  if (name.endsWith(".pdf") || file.type === "application/pdf") {
+    return extractPdfText(file);
+  }
+
+  if (
+    name.endsWith(".docx") ||
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return extractDocxText(file);
+  }
+
+  if (
+    name.endsWith(".txt") ||
+    name.endsWith(".md") ||
+    name.endsWith(".markdown") ||
+    name.endsWith(".csv") ||
+    file.type.startsWith("text/")
+  ) {
+    return file.text();
+  }
+
+  throw new Error("unsupported-extraction");
+}
+
 const historyTypeStyles: Record<TabId, { bg: string; text: string; Icon: LucideIcon }> = {
   notes: { bg: "bg-emerald-100 dark:bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400", Icon: PenLine },
   summarizer: { bg: "bg-blue-100 dark:bg-blue-500/20", text: "text-blue-600 dark:text-blue-400", Icon: AlignLeft },
@@ -1014,19 +1073,7 @@ function FileDropZone({
 
     try {
       setIsReading(true);
-      const canReadAsPlainText =
-        name.endsWith(".txt") ||
-        name.endsWith(".md") ||
-        name.endsWith(".markdown") ||
-        name.endsWith(".csv") ||
-        candidate.type.startsWith("text/");
-
-      if (!canReadAsPlainText) {
-        toast.error("Preview extraction is available for TXT, Markdown, and CSV files. Convert this file to text before uploading.");
-        return;
-      }
-
-      const text = (await candidate.text()).trim().slice(0, MAX_UPLOADED_TEXT_CHARS);
+      const text = (await extractUploadText(candidate)).trim().slice(0, MAX_UPLOADED_TEXT_CHARS);
 
       if (!text) {
         toast.error("No readable text found in this file.");
@@ -1039,7 +1086,7 @@ function FileDropZone({
 
       onFile(candidate, text);
     } catch {
-      toast.error("Could not read this file.");
+      toast.error("Could not extract text from this format. Please paste the text directly.");
     } finally {
       setIsReading(false);
     }

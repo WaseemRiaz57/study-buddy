@@ -16,6 +16,7 @@ import {
 import { signIn } from "next-auth/react";
 import { type ElementType, type FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { BrandLogo } from "@/components/BrandLogo";
 
 interface RoleCardProps {
   role: "student" | "teacher";
@@ -259,14 +260,20 @@ export default function RegisterPage() {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="glass-panel mx-auto w-full max-w-2xl rounded-[2rem] p-5 sm:p-8 md:p-12 shadow-2xl relative overflow-hidden bg-card/80 backdrop-blur-xl"
       >
-        <div className="text-center mb-8">
+        <header className="mb-8 text-center">
+          <div className="mb-5 inline-flex items-center gap-1.5 rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 backdrop-blur-xl">
+            <BrandLogo size="lockup" />
+            <span className="text-2xl font-black tracking-tight text-[#7C3AED]">
+              StudyBuddy
+            </span>
+          </div>
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-bold mb-3">
             {step === 1 ? "Choose Your Path" : "Verify Your Email"}
           </p>
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-foreground">
             {step === 1 ? "Join StudyBuddy as..." : "Enter your code"}
           </h1>
-        </div>
+        </header>
 
         <form onSubmit={handleRegister} className="space-y-8 min-h-[620px]">
           {step === 1 ? (

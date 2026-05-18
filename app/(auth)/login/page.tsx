@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getSession, signIn } from "next-auth/react";
 import { ArrowLeft, Mail, Lock, BookOpen, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -123,8 +124,7 @@ export default function LoginPage() {
         className="w-full max-w-md px-4 sm:px-0"
       >
         {/* Header Section */}
-        <motion.div variants={fadeInUp} className="mb-8 text-center">
-          {/* Animated Icon */}
+        <motion.header variants={fadeInUp} className="mb-8 text-center">
           <motion.div variants={scaleIn} className="mb-6 inline-flex">
             <motion.div
               className="relative"
@@ -135,11 +135,11 @@ export default function LoginPage() {
               transition={{ duration: 0.5 }}
             >
               <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
-              <div className="relative flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 p-5 backdrop-blur-xl">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7C3AED]">
-                  <BookOpen className="h-5 w-5 text-white" strokeWidth={2} />
-                </div>
-                <span className="text-xl font-bold text-[#7C3AED]">StudyBuddy</span>
+              <div className="relative flex items-center gap-1.5 rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 backdrop-blur-xl">
+                <BrandLogo size="lockup" />
+                <span className="text-2xl font-black tracking-tight text-[#7C3AED]">
+                  StudyBuddy
+                </span>
               </div>
             </motion.div>
           </motion.div>
@@ -167,7 +167,7 @@ export default function LoginPage() {
           >
             Resume your learning journey and reconnect with your study community
           </motion.p>
-        </motion.div>
+        </motion.header>
 
         {/* Form Card */}
         <motion.div
