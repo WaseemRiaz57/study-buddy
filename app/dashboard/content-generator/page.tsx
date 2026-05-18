@@ -28,10 +28,13 @@ type TabId = "notes" | "summarizer" | "quiz";
 
 type QuizQuestion = {
   question: string;
-  options: string[];
-  correctOption: string;
+  options?: string[];
+  correctOption?: string;
+  suggestedAnswer?: string;
   explanation: string;
 };
+
+type QuizQuestionType = "mcq" | "short" | "long";
 
 type RecentCreationItem = {
   _id: string;
@@ -46,6 +49,8 @@ const TABS = [
   { id: "summarizer" as const, label: "Summarizer", icon: AlignLeft, generateLabel: "Generate Summary" },
   { id: "quiz" as const, label: "Quiz Builder", icon: BrainCircuit, generateLabel: "Generate Quiz" },
 ];
+
+const MAX_UPLOADED_TEXT_CHARS = 25000;
 
 const historyTypeStyles: Record<TabId, { bg: string; text: string; Icon: LucideIcon }> = {
   notes: { bg: "bg-emerald-100 dark:bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400", Icon: PenLine },
@@ -99,11 +104,12 @@ export default function ContentGeneratorPage() {
 
   const [summarizerText, setSummarizerText] = useState("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedText, setUploadedText] = useState("");
 
   const [quizTopic, setQuizTopic] = useState("");
   const [quizDifficulty, setQuizDifficulty] = useState("medium");
   const [quizCount, setQuizCount] = useState(5);
-  const [quizType, setQuizType] = useState("mcq");
+  const [quizType, setQuizType] = useState<QuizQuestionType>("mcq");
 
   const currentTab = availableTabs.find((tab) => tab.id === activeTab) || availableTabs[0];
   const CurrentGenerateIcon = currentTab?.icon || PenLine;
@@ -138,6 +144,19 @@ export default function ContentGeneratorPage() {
     setCopied(false);
   };
 
+  const resetGeneration = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsGenerating(false);
+    setNotesTopic("");
+    setNotesContext("");
+    setSummarizerText("");
+    setQuizTopic("");
+    setUploadedFile(null);
+    setUploadedText("");
+    resetResult();
+  };
+
   const handleTabChange = (tab: TabId) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -148,36 +167,38 @@ export default function ContentGeneratorPage() {
     setResultType(tab);
     setIsGenerating(false);
     setUploadedFile(null);
+    setUploadedText("");
     resetResult();
   };
 
   const buildRequestBody = () => {
-    const formData = new FormData();
-    formData.append("type", activeTab);
+    const payload: Record<string, string | number> = {
+      type: activeTab,
+    };
 
     if (activeTab === "notes") {
-      formData.append("topic", notesTopic.trim());
-      formData.append("detailLevel", notesDetail);
-      formData.append("additionalContext", notesContext.trim());
-      formData.append("outputFormat", notesFormat);
+      payload.topic = notesTopic.trim();
+      payload.detailLevel = notesDetail;
+      payload.additionalContext = notesContext.trim();
+      payload.outputFormat = notesFormat;
     }
 
     if (activeTab === "summarizer") {
-      formData.append("pastedText", summarizerText.trim());
+      payload.pastedText = summarizerText.trim().slice(0, MAX_UPLOADED_TEXT_CHARS);
     }
 
     if (activeTab === "quiz") {
-      formData.append("topic", quizTopic.trim());
-      formData.append("difficulty", quizDifficulty);
-      formData.append("questionType", quizType);
-      formData.append("numberOfQuestions", String(quizCount));
+      payload.topic = quizTopic.trim();
+      payload.difficulty = quizDifficulty;
+      payload.questionType = quizType;
+      payload.numberOfQuestions = quizCount;
     }
 
-    if (uploadedFile) {
-      formData.append("file", uploadedFile);
+    if (uploadedText) {
+      payload.uploadedText = uploadedText.slice(0, MAX_UPLOADED_TEXT_CHARS);
     }
 
-    return formData;
+    return payload;
   };
 
   const validateActiveForm = () => {
@@ -217,7 +238,8 @@ export default function ContentGeneratorPage() {
 
       const response = await fetch("/api/ai/generate", {
         method: "POST",
-        body: buildRequestBody(),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildRequestBody()),
         signal: controller.signal,
       });
       const data = await response.json().catch(() => null);
@@ -359,7 +381,17 @@ export default function ContentGeneratorPage() {
                         onChange={setNotesContext}
                         rows={3}
                       />
-                      <FileDropZone file={uploadedFile} onFile={setUploadedFile} onRemove={() => setUploadedFile(null)} />
+                      <FileDropZone
+                        file={uploadedFile}
+                        onFile={(file, text) => {
+                          setUploadedFile(file);
+                          setUploadedText(text);
+                        }}
+                        onRemove={() => {
+                          setUploadedFile(null);
+                          setUploadedText("");
+                        }}
+                      />
                       <FormatSelector value={notesFormat} onChange={setNotesFormat} />
                     </>
                   )}
@@ -375,7 +407,17 @@ export default function ContentGeneratorPage() {
                         rows={10}
                         disabled={Boolean(uploadedFile)}
                       />
-                      <FileDropZone file={uploadedFile} onFile={setUploadedFile} onRemove={() => setUploadedFile(null)} />
+                      <FileDropZone
+                        file={uploadedFile}
+                        onFile={(file, text) => {
+                          setUploadedFile(file);
+                          setUploadedText(text);
+                        }}
+                        onRemove={() => {
+                          setUploadedFile(null);
+                          setUploadedText("");
+                        }}
+                      />
                     </>
                   )}
 
@@ -405,8 +447,12 @@ export default function ContentGeneratorPage() {
                           id="quiz-type"
                           label="Question Type"
                           value={quizType}
-                          onChange={setQuizType}
-                          options={[{ value: "mcq", label: "MCQs" }]}
+                          onChange={(value) => setQuizType(value as QuizQuestionType)}
+                          options={[
+                            { value: "mcq", label: "MCQs" },
+                            { value: "short", label: "Short Questions" },
+                            { value: "long", label: "Long/Subjective Questions" },
+                          ]}
                         />
                       </div>
                       <div>
@@ -423,7 +469,17 @@ export default function ContentGeneratorPage() {
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-text-main outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#7C3AED] dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
                         />
                       </div>
-                      <FileDropZone file={uploadedFile} onFile={setUploadedFile} onRemove={() => setUploadedFile(null)} />
+                      <FileDropZone
+                        file={uploadedFile}
+                        onFile={(file, text) => {
+                          setUploadedFile(file);
+                          setUploadedText(text);
+                        }}
+                        onRemove={() => {
+                          setUploadedFile(null);
+                          setUploadedText("");
+                        }}
+                      />
                     </>
                   )}
                 </div>
@@ -463,6 +519,7 @@ export default function ContentGeneratorPage() {
               onCopy={() => void handleCopy()}
               onDownload={handleDownload}
               onMaximize={() => setIsPreviewMaximized(true)}
+              onReset={resetGeneration}
             />
           </section>
         </div>
@@ -510,6 +567,7 @@ function ResultPreview({
   onCopy,
   onDownload,
   onMaximize,
+  onReset,
 }: {
   isLoading: boolean;
   hasResult: boolean;
@@ -520,6 +578,7 @@ function ResultPreview({
   onCopy: () => void;
   onDownload: () => void;
   onMaximize: () => void;
+  onReset: () => void;
 }) {
   return (
     <motion.div
@@ -556,6 +615,17 @@ function ResultPreview({
           quizQuestions={quizQuestions}
         />
       </div>
+      {hasResult && (
+        <div className="border-t border-slate-200 p-4 dark:border-white/[0.06]">
+          <button
+            type="button"
+            onClick={onReset}
+            className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+          >
+            Start New Chat / Generation
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -643,8 +713,9 @@ function QuizPreview({ questions }: { questions: QuizQuestion[] }) {
               {question.question}
             </h4>
           </div>
-          <div className="space-y-2">
-            {question.options.map((option) => {
+          {question.options?.length ? (
+            <div className="space-y-2">
+              {question.options.map((option) => {
               const isCorrect = option === question.correctOption;
 
               return (
@@ -660,8 +731,14 @@ function QuizPreview({ questions }: { questions: QuizQuestion[] }) {
                   <span>{option}</span>
                 </div>
               );
-            })}
-          </div>
+              })}
+            </div>
+          ) : question.suggestedAnswer ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 text-text-muted dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300">
+              <strong className="text-[#7C3AED]">Suggested answer:</strong>{" "}
+              {question.suggestedAnswer}
+            </div>
+          ) : null}
           {question.explanation && (
             <p className="mt-3 rounded-xl bg-[#7C3AED]/5 p-3 text-xs leading-5 text-text-muted dark:text-slate-300">
               <strong className="text-[#7C3AED]">Explanation:</strong> {question.explanation}
@@ -871,12 +948,13 @@ function FileDropZone({
   onRemove,
 }: {
   file: File | null;
-  onFile: (file: File) => void;
+  onFile: (file: File, text: string) => void;
   onRemove: () => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isReading, setIsReading] = useState(false);
 
-  const handleFile = (candidate?: File) => {
+  const handleFile = async (candidate?: File) => {
     if (!candidate) return;
 
     const name = candidate.name.toLowerCase();
@@ -884,18 +962,33 @@ function FileDropZone({
       name.endsWith(".txt") ||
       name.endsWith(".md") ||
       name.endsWith(".markdown") ||
-      name.endsWith(".pdf") ||
-      name.endsWith(".docx") ||
       candidate.type.startsWith("text/") ||
-      candidate.type === "application/pdf" ||
-      candidate.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      candidate.type === "text/markdown";
 
     if (!supported) {
-      toast.error("Upload TXT, Markdown, PDF, or DOCX files.");
+      toast.error("Upload TXT or Markdown files so AI Studio can extract text in-browser.");
       return;
     }
 
-    onFile(candidate);
+    try {
+      setIsReading(true);
+      const text = (await candidate.text()).trim().slice(0, MAX_UPLOADED_TEXT_CHARS);
+
+      if (!text) {
+        toast.error("No readable text found in this file.");
+        return;
+      }
+
+      if (text.length >= MAX_UPLOADED_TEXT_CHARS) {
+        toast.info("File text was trimmed to 25,000 characters for AI token safety.");
+      }
+
+      onFile(candidate, text);
+    } catch {
+      toast.error("Could not read this file.");
+    } finally {
+      setIsReading(false);
+    }
   };
 
   if (file) {
@@ -909,7 +1002,7 @@ function FileDropZone({
             {file.name}
           </p>
           <p className="text-xs text-text-muted dark:text-slate-400">
-            {(file.size / 1024).toFixed(1)} KB
+            Ready - extracted text is capped at 25,000 characters
           </p>
         </div>
         <button
@@ -938,7 +1031,7 @@ function FileDropZone({
         onDrop={(event) => {
           event.preventDefault();
           setIsDragging(false);
-          handleFile(event.dataTransfer.files?.[0]);
+          void handleFile(event.dataTransfer.files?.[0]);
         }}
         className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
           isDragging
@@ -946,16 +1039,20 @@ function FileDropZone({
             : "border-slate-300 bg-white/5 hover:border-[#7C3AED]/50 hover:bg-[#7C3AED]/5 dark:border-white/15"
         }`}
       >
-        <UploadCloud className={isDragging ? "text-[#7C3AED]" : "text-slate-400"} size={28} />
+        {isReading ? (
+          <Loader2 className="animate-spin text-[#7C3AED]" size={28} />
+        ) : (
+          <UploadCloud className={isDragging ? "text-[#7C3AED]" : "text-slate-400"} size={28} />
+        )}
         <span className="text-sm text-text-muted dark:text-slate-400">
           <span className="font-semibold text-[#7C3AED]">Click to upload</span> or drag and drop
         </span>
-        <span className="text-xs text-slate-400">TXT, Markdown, PDF, DOCX</span>
+        <span className="text-xs text-slate-400">TXT or Markdown, capped at 25,000 characters</span>
         <input
           type="file"
-          accept=".txt,.md,.markdown,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          accept=".txt,.md,.markdown,text/plain,text/markdown"
           className="sr-only"
-          onChange={(event) => handleFile(event.target.files?.[0])}
+          onChange={(event) => void handleFile(event.target.files?.[0])}
         />
       </label>
     </div>

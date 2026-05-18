@@ -4,12 +4,13 @@ export type AIGenerationType = "notes" | "summarizer" | "quiz";
 export type NotesDetailLevel = "brief" | "standard" | "comprehensive";
 export type NotesOutputFormat = "bullets" | "paragraphs";
 export type QuizDifficulty = "easy" | "medium" | "hard";
-export type QuizQuestionType = "mcq";
+export type QuizQuestionType = "mcq" | "short" | "long";
 
 export type QuizQuestion = {
   question: string;
-  options: string[];
-  correctOption: string;
+  options?: string[];
+  correctOption?: string;
+  suggestedAnswer?: string;
   explanation: string;
 };
 
@@ -45,11 +46,12 @@ type GenerateAIContentOptions = {
   outputFormat?: NotesOutputFormat;
   additionalContext?: string;
   numberOfQuestions?: number;
+  questionType?: QuizQuestionType;
   topic?: string;
 };
 
 const GROQ_MODEL = "llama-3.3-70b-versatile";
-const MAX_SOURCE_CHARS = 50000;
+const MAX_SOURCE_CHARS = 25000;
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -72,13 +74,45 @@ function buildNotesSystemPrompt() {
   ].join(" ");
 }
 
-function buildQuizSystemPrompt(expectedCount: number) {
+function getQuestionTypeInstruction(questionType: QuizQuestionType) {
+  if (questionType === "short") {
+    return {
+      label: "short-answer questions",
+      schema:
+        '{"questions":[{"question":"...","suggestedAnswer":"...","explanation":"..."}]}',
+      instruction:
+        "Do not include options or correctOption. Each suggestedAnswer must be concise and suitable for quick grading.",
+    };
+  }
+
+  if (questionType === "long") {
+    return {
+      label: "long-form subjective questions",
+      schema:
+        '{"questions":[{"question":"...","suggestedAnswer":"...","explanation":"..."}]}',
+      instruction:
+        "Do not include options or correctOption. Each suggestedAnswer must be a structured model answer with the key points expected in a strong response.",
+    };
+  }
+
+  return {
+    label: "multiple-choice questions",
+    schema:
+      '{"questions":[{"question":"...","options":["...","...","...","..."],"correctOption":"...","explanation":"..."}]}',
+    instruction: "Each correctOption must exactly match one value from options.",
+  };
+}
+
+function buildQuizSystemPrompt(expectedCount: number, questionType: QuizQuestionType) {
+  const typeInstruction = getQuestionTypeInstruction(questionType);
+
   return [
     "You are StudyBuddy AI Studio, an expert quiz generator for teachers.",
     "Return only a valid JSON object with this exact shape:",
-    '{"questions":[{"question":"...","options":["...","...","...","..."],"correctOption":"...","explanation":"..."}]}',
+    typeInstruction.schema,
     `The questions array must contain exactly ${expectedCount} items.`,
-    "Each correctOption must exactly match one value from options.",
+    `Generate ${typeInstruction.label}.`,
+    typeInstruction.instruction,
     "Do not include markdown fences, prose, comments, or any extra keys.",
   ].join(" ");
 }
@@ -135,19 +169,23 @@ export function parseQuizQuestions(rawText: string, expectedCount?: number): Qui
       ? item.options.map((option: unknown) => String(option || "").trim()).filter(Boolean)
       : [];
     const correctOption = String(item?.correctOption || "").trim();
+    const suggestedAnswer = String(item?.suggestedAnswer || "").trim();
 
-    if (!String(item?.question || "").trim() || options.length < 2 || !correctOption) {
+    if (!String(item?.question || "").trim()) {
       throw new Error(`Quiz question ${index + 1} is incomplete.`);
     }
 
-    if (!options.includes(correctOption)) {
+    if (options.length > 0 && (!correctOption || !options.includes(correctOption))) {
       throw new Error(`Quiz question ${index + 1} has a correctOption that is not in options.`);
+    }
+
+    if (options.length === 0 && !suggestedAnswer) {
+      throw new Error(`Quiz question ${index + 1} is missing a suggested answer.`);
     }
 
     return {
       question: String(item.question).trim(),
-      options,
-      correctOption,
+      ...(options.length > 0 ? { options, correctOption } : { suggestedAnswer }),
       explanation: String(item?.explanation || "").trim(),
     };
   });
@@ -162,19 +200,20 @@ export async function generateAIContent(
   assertGroqConfigured();
 
   const isQuiz = type === "quiz";
+  const questionType = options.questionType || "mcq";
   const numberOfQuestions = Math.min(
     20,
     Math.max(1, Math.floor(Number(options.numberOfQuestions || 5)))
   );
 
   const systemPrompt = isQuiz
-    ? buildQuizSystemPrompt(numberOfQuestions)
+    ? buildQuizSystemPrompt(numberOfQuestions, questionType)
     : buildNotesSystemPrompt();
   const userPrompt = isQuiz
     ? [
         content,
         difficulty ? `Difficulty: ${difficulty}.` : "",
-        `Generate exactly ${numberOfQuestions} multiple-choice questions.`,
+        `Generate exactly ${numberOfQuestions} ${getQuestionTypeInstruction(questionType).label}.`,
       ]
         .filter(Boolean)
         .join("\n\n")
@@ -220,6 +259,7 @@ export async function generateContent(
       : params.type === "quiz"
         ? {
             numberOfQuestions: params.numberOfQuestions,
+            questionType: params.questionType,
             topic: params.topic,
           }
         : {}

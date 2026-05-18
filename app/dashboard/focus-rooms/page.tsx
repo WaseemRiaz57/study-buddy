@@ -1,5 +1,6 @@
 "use client";
 import { toast } from "sonner";
+import Link from "next/link";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Pause, RotateCcw, Settings, CloudRain, Coffee, Radio, Plus, Trash2,
@@ -26,6 +27,14 @@ interface Task {
   source?: "task" | "assignment";
   dueDate?: string | null;
   mentorName?: string;
+}
+
+interface RecentAINote {
+  id: string;
+  title: string;
+  type: "notes" | "summarizer";
+  snippet: string;
+  createdAt: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -68,6 +77,8 @@ export default function FocusRoomsPage() {
 
   /* ---- Tasks ---- */
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [recentNotes, setRecentNotes] = useState<RecentAINote[]>([]);
+  const [isLoadingRecentNotes, setIsLoadingRecentNotes] = useState(true);
   const [newTask, setNewTask] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<"High" | "Med" | "Low">("Med"); 
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
@@ -96,6 +107,43 @@ export default function FocusRoomsPage() {
       audioRefs.current = {};
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchRecentNotes() {
+      try {
+        setIsLoadingRecentNotes(true);
+        const response = await fetch("/api/ai/recent-notes?limit=2", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        if (isActive) {
+          setRecentNotes(Array.isArray(data?.notes) ? data.notes : []);
+        }
+      } catch {
+        if (isActive) {
+          setRecentNotes([]);
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingRecentNotes(false);
+        }
+      }
+    }
+
+    void fetchRecentNotes();
+    window.addEventListener("ai-notes-updated", fetchRecentNotes);
+
+    return () => {
+      isActive = false;
+      window.removeEventListener("ai-notes-updated", fetchRecentNotes);
+    };
   }, []);
 
   useEffect(() => {
@@ -415,18 +463,38 @@ export default function FocusRoomsPage() {
               <Sparkles size={28} className="text-primary dark:text-purple-400" />
             </div>
             <h3 className="text-xl font-bold text-text-main dark:text-white mb-1">Recent AI Notes</h3>
-            <p className="text-xs text-text-muted dark:text-slate-500 mb-6 uppercase tracking-wider">Generated 2h ago</p>
+            <p className="text-xs text-text-muted dark:text-slate-500 mb-6 uppercase tracking-wider">Latest saved generations</p>
 
             <div className="space-y-4">
-              <div className="bg-white/40 dark:bg-white/[0.04] p-4 rounded-xl border border-white/60 dark:border-white/[0.08] hover:bg-white/60 dark:hover:bg-white/[0.07] transition-colors cursor-pointer">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-bold text-sm text-primary dark:text-purple-400">Integration by Parts</span>
-                  <span className="text-[10px] bg-primary/10 text-primary dark:bg-purple-500/20 dark:text-purple-300 px-2 py-0.5 rounded-full">Summary</span>
+              {isLoadingRecentNotes ? (
+                <div className="text-sm text-text-muted dark:text-slate-400">
+                  Loading recent notes...
                 </div>
-                <p className="text-sm text-text-muted dark:text-slate-400 leading-relaxed line-clamp-2">
-                  The formula for integration by parts is derived from the product rule of differentiation...
-                </p>
-              </div>
+              ) : recentNotes.length === 0 ? (
+                <div className="rounded-xl border border-white/60 bg-white/40 p-4 text-sm text-text-muted dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-slate-400">
+                  Your latest AI notes and summaries will appear here.
+                </div>
+              ) : (
+                recentNotes.map((note) => (
+                  <Link
+                    key={note.id}
+                    href="/dashboard/content-generator"
+                    className="block rounded-xl border border-white/60 bg-white/40 p-4 transition-colors hover:bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
+                  >
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <span className="line-clamp-1 text-sm font-bold text-primary dark:text-purple-400">
+                        {note.title}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary dark:bg-purple-500/20 dark:text-purple-300">
+                        {note.type === "summarizer" ? "Summary" : "Notes"}
+                      </span>
+                    </div>
+                    <p className="line-clamp-2 text-sm leading-relaxed text-text-muted dark:text-slate-400">
+                      {note.snippet}
+                    </p>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
 

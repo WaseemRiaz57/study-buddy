@@ -27,8 +27,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
-const MAX_TEXT_CHARS = 60000;
+const MAX_TEXT_CHARS = 25000;
 const VALID_TYPES = new Set<AIGenerationType>(["notes", "summarizer", "quiz"]);
+const VALID_QUESTION_TYPES = new Set<QuizQuestionType>(["mcq", "short", "long"]);
 
 type GenerateRequestPayload = {
   type: AIGenerationType;
@@ -104,7 +105,7 @@ async function parsePayload(request: Request): Promise<GenerateRequestPayload> {
       outputFormat: String(body?.outputFormat || "bullets") as NotesOutputFormat,
       pastedText: String(body?.pastedText || "").trim(),
       difficulty: String(body?.difficulty || "medium") as QuizDifficulty,
-      questionType: "mcq",
+      questionType: String(body?.questionType || "mcq") as QuizQuestionType,
       numberOfQuestions: Number(body?.numberOfQuestions || 5),
       uploadedText: String(body?.uploadedText || "").trim().slice(0, MAX_TEXT_CHARS),
     };
@@ -123,7 +124,7 @@ async function parsePayload(request: Request): Promise<GenerateRequestPayload> {
     outputFormat: String(formData.get("outputFormat") || "bullets") as NotesOutputFormat,
     pastedText: String(formData.get("pastedText") || "").trim(),
     difficulty: String(formData.get("difficulty") || "medium") as QuizDifficulty,
-    questionType: "mcq",
+    questionType: String(formData.get("questionType") || "mcq") as QuizQuestionType,
     numberOfQuestions: Number(formData.get("numberOfQuestions") || 5),
     uploadedText: uploadedText.slice(0, MAX_TEXT_CHARS),
   };
@@ -151,6 +152,9 @@ function validatePayload(payload: GenerateRequestPayload) {
       20,
       Math.max(1, Math.floor(Number(payload.numberOfQuestions || 5)))
     );
+    payload.questionType = VALID_QUESTION_TYPES.has(payload.questionType || "mcq")
+      ? payload.questionType
+      : "mcq";
   }
 }
 
@@ -217,7 +221,7 @@ export async function POST(request: Request) {
               type: "quiz",
               topic: payload.topic || "",
               difficulty: payload.difficulty || "medium",
-              questionType: "mcq",
+              questionType: payload.questionType || "mcq",
               numberOfQuestions: payload.numberOfQuestions || 5,
               uploadedText: payload.uploadedText || "",
             };
@@ -239,6 +243,7 @@ export async function POST(request: Request) {
           : generationParams.type === "quiz"
             ? {
                 numberOfQuestions: generationParams.numberOfQuestions,
+                questionType: generationParams.questionType,
                 topic: generationParams.topic,
               }
             : {}
@@ -268,6 +273,8 @@ export async function POST(request: Request) {
         userId: userObjectId,
         title: subject,
         subject,
+        difficulty: generationParams.difficulty,
+        questionType: generationParams.questionType,
         questions,
       });
 

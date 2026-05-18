@@ -125,6 +125,15 @@ interface MentorRequest {
 
 type RequestAction = "accepted" | "declined";
 
+interface RecentQuizGeneration {
+  id: string;
+  title: string;
+  difficulty: "easy" | "medium" | "hard";
+  questionType: "mcq" | "short" | "long";
+  questionCount: number;
+  createdAt: string;
+}
+
 const fadeIn = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
@@ -221,6 +230,8 @@ export function MentorDashboard() {
   const [respondingActionKey, setRespondingActionKey] = useState("");
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<StudentRequestData | null>(null);
+  const [recentQuizzes, setRecentQuizzes] = useState<RecentQuizGeneration[]>([]);
+  const [isRecentQuizzesLoading, setIsRecentQuizzesLoading] = useState(true);
 
   // 👇 FUNCTION TO HANDLE CLICK
   useEffect(() => {
@@ -262,6 +273,43 @@ export function MentorDashboard() {
 
     return () => {
       isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchRecentQuizzes() {
+      try {
+        setIsRecentQuizzesLoading(true);
+        const response = await fetch("/api/ai/recent-quizzes?limit=3", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        if (isActive) {
+          setRecentQuizzes(Array.isArray(data?.quizzes) ? data.quizzes : []);
+        }
+      } catch {
+        if (isActive) {
+          setRecentQuizzes([]);
+        }
+      } finally {
+        if (isActive) {
+          setIsRecentQuizzesLoading(false);
+        }
+      }
+    }
+
+    void fetchRecentQuizzes();
+    window.addEventListener("ai-notes-updated", fetchRecentQuizzes);
+
+    return () => {
+      isActive = false;
+      window.removeEventListener("ai-notes-updated", fetchRecentQuizzes);
     };
   }, []);
 
@@ -713,6 +761,50 @@ export function MentorDashboard() {
                   <FileText className="text-purple-500 group-hover:scale-110 transition-transform" size={20} />
                   <span className="text-xs font-bold text-foreground">Create Task</span>
                 </button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Recent Quiz Generations
+              </h4>
+              <div className="glass-panel rounded-2xl p-4">
+                {isRecentQuizzesLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 size={14} className="animate-spin text-[#7C3AED]" />
+                    Loading quizzes...
+                  </div>
+                ) : recentQuizzes.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">
+                    Generated quizzes will appear here after you use AI Studio.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recentQuizzes.map((quiz) => (
+                      <Link
+                        key={quiz.id}
+                        href="/dashboard/content-generator"
+                        className="block rounded-xl border border-border/50 bg-background/50 p-3 transition-colors hover:border-[#7C3AED]/40 hover:bg-[#7C3AED]/5"
+                      >
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <p className="line-clamp-1 text-sm font-bold text-foreground">
+                            {quiz.title}
+                          </p>
+                          <span className="rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-[10px] font-bold uppercase text-[#7C3AED]">
+                            {quiz.questionType === "mcq"
+                              ? "MCQ"
+                              : quiz.questionType === "short"
+                                ? "Short"
+                                : "Long"}
+                          </span>
+                        </div>
+                        <p className="text-xs capitalize text-muted-foreground">
+                          {quiz.difficulty} - {quiz.questionCount} questions
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
