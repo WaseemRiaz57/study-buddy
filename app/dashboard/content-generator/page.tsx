@@ -291,7 +291,7 @@ export default function ContentGeneratorPage() {
             <span className="text-[#7C3AED]">AI Studio</span>
           </h1>
           <p className="mx-auto max-w-2xl text-base text-text-muted dark:text-slate-400 md:text-lg">
-            Generate polished notes, source-aware summaries, and teacher-ready MCQ quizzes with Gemini.
+            Generate polished notes, source-aware summaries, and teacher-ready MCQ quizzes with Groq.
           </p>
         </motion.header>
 

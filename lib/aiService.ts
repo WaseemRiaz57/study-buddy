@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 
 export type AIGenerationType = "notes" | "summarizer" | "quiz";
 export type NotesDetailLevel = "brief" | "standard" | "comprehensive";
@@ -13,7 +13,7 @@ export type QuizQuestion = {
   explanation: string;
 };
 
-type GenerateContentParams =
+export type GenerateContentParams =
   | {
       type: "notes";
       topic: string;
@@ -36,74 +36,79 @@ type GenerateContentParams =
       uploadedText?: string;
     };
 
-type GeneratedContentResult =
+export type GeneratedContentResult =
   | { type: "notes" | "summarizer"; text: string }
   | { type: "quiz"; questions: QuizQuestion[]; rawText: string };
 
+type GenerateAIContentOptions = {
+  detailLevel?: NotesDetailLevel;
+  outputFormat?: NotesOutputFormat;
+  additionalContext?: string;
+  numberOfQuestions?: number;
+  topic?: string;
+};
+
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 const MAX_SOURCE_CHARS = 50000;
 
-function getGenAI() {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured.");
-  }
-
-  return new GoogleGenerativeAI(apiKey);
-}
-
-async function generateWithGemini(prompt: string) {
-  const genAI = getGenAI();
-  return genAI
-    .getGenerativeModel({ model: "gemini-1.5-flash" })
-    .generateContent(prompt);
-}
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 function trimSource(value: string) {
   return value.trim().slice(0, MAX_SOURCE_CHARS);
 }
 
-function buildPrompt(params: GenerateContentParams) {
+function assertGroqConfigured() {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is not configured.");
+  }
+}
+
+function buildNotesSystemPrompt() {
+  return [
+    "You are StudyBuddy AI Studio, an expert academic tutor and curriculum designer.",
+    "Return highly structured, SEO/AEO optimized Markdown only.",
+    "Use clear heading hierarchy, concise bullet points, bold emphasis for key terms, and practical examples where useful.",
+    "Do not include markdown code fences unless the user explicitly asks for code.",
+  ].join(" ");
+}
+
+function buildQuizSystemPrompt(expectedCount: number) {
+  return [
+    "You are StudyBuddy AI Studio, an expert quiz generator for teachers.",
+    "Return only a valid JSON object with this exact shape:",
+    '{"questions":[{"question":"...","options":["...","...","...","..."],"correctOption":"...","explanation":"..."}]}',
+    `The questions array must contain exactly ${expectedCount} items.`,
+    "Each correctOption must exactly match one value from options.",
+    "Do not include markdown fences, prose, comments, or any extra keys.",
+  ].join(" ");
+}
+
+function buildContentFromParams(params: GenerateContentParams) {
   if (params.type === "notes") {
-    const sourceText = trimSource(params.uploadedText || "");
     return [
-      "You are StudyBuddy AI Studio, a professional education assistant.",
-      "Create beautifully formatted Markdown study notes.",
-      "Use clear headings, bold key terms, and well-structured lists where appropriate.",
-      params.outputFormat === "paragraphs"
-        ? "Use paragraph-first prose. Avoid long bullet lists unless a short list improves clarity."
-        : "Use concise bullet points with nested structure where helpful.",
-      `Detail level: ${params.detailLevel}.`,
       params.topic ? `Topic: ${params.topic}` : "",
+      `Detail level: ${params.detailLevel}.`,
+      `Output format: ${params.outputFormat}.`,
       params.additionalContext ? `Additional context: ${params.additionalContext}` : "",
-      sourceText ? `Uploaded source text:\n${sourceText}` : "",
-      "Return Markdown only.",
+      params.uploadedText ? `Source material:\n${trimSource(params.uploadedText)}` : "",
     ]
       .filter(Boolean)
       .join("\n\n");
   }
 
   if (params.type === "summarizer") {
-    const sourceText = trimSource(params.uploadedText || params.pastedText);
     return [
-      "You are StudyBuddy AI Studio, a professional education assistant.",
-      "Summarize the supplied content as beautifully formatted Markdown.",
-      "Use headers, bold terms, short lists, and a compact key-takeaways section.",
-      "Do not invent facts outside the supplied text.",
-      `Source text:\n${sourceText}`,
-      "Return Markdown only.",
+      "Summarize this source material.",
+      `Source material:\n${trimSource(params.uploadedText || params.pastedText)}`,
     ].join("\n\n");
   }
 
-  const sourceText = trimSource(params.uploadedText || "");
   return [
-    "You are StudyBuddy AI Studio, a professional quiz generator for teachers.",
-    `Create exactly ${params.numberOfQuestions} ${params.difficulty} multiple-choice questions.`,
-    params.topic ? `Subject/topic: ${params.topic}` : "",
-    sourceText ? `Uploaded source text:\n${sourceText}` : "",
-    "Return a raw JSON array only. Do not wrap it in markdown code blocks. Do not include prose before or after the JSON.",
-    'Each item must match this schema: {"question":"string","options":["string","string","string","string"],"correctOption":"string","explanation":"string"}.',
-    "The correctOption value must exactly match one of the options.",
+    params.topic ? `Topic: ${params.topic}` : "",
+    `Difficulty: ${params.difficulty}.`,
+    `Question type: ${params.questionType}.`,
+    `Number of questions: ${params.numberOfQuestions}.`,
+    params.uploadedText ? `Source material:\n${trimSource(params.uploadedText)}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -117,14 +122,15 @@ function stripJsonFences(value: string) {
     .trim();
 }
 
-function parseQuiz(rawText: string, expectedCount: number): QuizQuestion[] {
+export function parseQuizQuestions(rawText: string, expectedCount?: number): QuizQuestion[] {
   const parsed = JSON.parse(stripJsonFences(rawText));
+  const questions = Array.isArray(parsed) ? parsed : parsed?.questions;
 
-  if (!Array.isArray(parsed)) {
-    throw new Error("Gemini returned an invalid quiz format.");
+  if (!Array.isArray(questions)) {
+    throw new Error("Groq returned an invalid quiz format.");
   }
 
-  return parsed.slice(0, expectedCount).map((item, index) => {
+  return questions.slice(0, expectedCount).map((item, index) => {
     const options = Array.isArray(item?.options)
       ? item.options.map((option: unknown) => String(option || "").trim()).filter(Boolean)
       : [];
@@ -132,6 +138,10 @@ function parseQuiz(rawText: string, expectedCount: number): QuizQuestion[] {
 
     if (!String(item?.question || "").trim() || options.length < 2 || !correctOption) {
       throw new Error(`Quiz question ${index + 1} is incomplete.`);
+    }
+
+    if (!options.includes(correctOption)) {
+      throw new Error(`Quiz question ${index + 1} has a correctOption that is not in options.`);
     }
 
     return {
@@ -143,24 +153,89 @@ function parseQuiz(rawText: string, expectedCount: number): QuizQuestion[] {
   });
 }
 
+export async function generateAIContent(
+  content: string,
+  type: AIGenerationType,
+  difficulty?: QuizDifficulty,
+  options: GenerateAIContentOptions = {}
+) {
+  assertGroqConfigured();
+
+  const isQuiz = type === "quiz";
+  const numberOfQuestions = Math.min(
+    20,
+    Math.max(1, Math.floor(Number(options.numberOfQuestions || 5)))
+  );
+
+  const systemPrompt = isQuiz
+    ? buildQuizSystemPrompt(numberOfQuestions)
+    : buildNotesSystemPrompt();
+  const userPrompt = isQuiz
+    ? [
+        content,
+        difficulty ? `Difficulty: ${difficulty}.` : "",
+        `Generate exactly ${numberOfQuestions} multiple-choice questions.`,
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    : content;
+
+  const completion = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: isQuiz ? 0.2 : 0.4,
+    response_format: isQuiz ? { type: "json_object" } : undefined,
+  });
+
+  const output = completion.choices[0]?.message?.content?.trim();
+
+  if (!output) {
+    throw new Error("Groq returned an empty response.");
+  }
+
+  if (isQuiz) {
+    return JSON.stringify({ questions: parseQuizQuestions(output, numberOfQuestions) });
+  }
+
+  return output;
+}
+
 export async function generateContent(
   params: GenerateContentParams
 ): Promise<GeneratedContentResult> {
-  const prompt = buildPrompt(params);
-  const result = await generateWithGemini(prompt);
-  const text = result.response.text().trim();
-
-  if (!text) {
-    throw new Error("Gemini returned an empty response.");
-  }
+  const rawContent = await generateAIContent(
+    buildContentFromParams(params),
+    params.type,
+    params.type === "quiz" ? params.difficulty : undefined,
+    params.type === "notes"
+      ? {
+          detailLevel: params.detailLevel,
+          outputFormat: params.outputFormat,
+          additionalContext: params.additionalContext,
+          topic: params.topic,
+        }
+      : params.type === "quiz"
+        ? {
+            numberOfQuestions: params.numberOfQuestions,
+            topic: params.topic,
+          }
+        : {}
+  );
 
   if (params.type === "quiz") {
     return {
       type: "quiz",
-      questions: parseQuiz(text, params.numberOfQuestions),
-      rawText: text,
+      questions: parseQuizQuestions(rawContent, params.numberOfQuestions),
+      rawText: rawContent,
     };
   }
 
-  return { type: params.type, text };
+  return { type: params.type, text: rawContent };
+}
+
+export function buildAIContentPrompt(params: GenerateContentParams) {
+  return buildContentFromParams(params);
 }

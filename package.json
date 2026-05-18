@@ -10,10 +10,10 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@types/nodemailer": "^8.0.0",
     "cloudinary": "^2.9.0",
     "framer-motion": "^12.34.0",
+    "groq-sdk": "^1.2.0",
     "livekit-client": "^2.18.9",
     "livekit-server-sdk": "^2.15.2",
     "lucide-react": "^0.564.0",

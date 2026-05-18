@@ -3,8 +3,11 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import {
-  generateContent,
+  buildAIContentPrompt,
+  generateAIContent,
+  parseQuizQuestions,
   type AIGenerationType,
+  type GenerateContentParams,
   type NotesDetailLevel,
   type NotesOutputFormat,
   type QuizDifficulty,
@@ -194,7 +197,7 @@ export async function POST(request: Request) {
     }
 
     const userObjectId = new mongoose.Types.ObjectId(session.user.id);
-    const result = await generateContent(
+    const generationParams: GenerateContentParams =
       payload.type === "notes"
         ? {
             type: "notes",
@@ -217,8 +220,33 @@ export async function POST(request: Request) {
               questionType: "mcq",
               numberOfQuestions: payload.numberOfQuestions || 5,
               uploadedText: payload.uploadedText || "",
+            };
+
+    let generatedContent: string;
+
+    try {
+      generatedContent = await generateAIContent(
+        buildAIContentPrompt(generationParams),
+        generationParams.type,
+        generationParams.type === "quiz" ? generationParams.difficulty : undefined,
+        generationParams.type === "notes"
+          ? {
+              detailLevel: generationParams.detailLevel,
+              outputFormat: generationParams.outputFormat,
+              additionalContext: generationParams.additionalContext,
+              topic: generationParams.topic,
             }
-    );
+          : generationParams.type === "quiz"
+            ? {
+                numberOfQuestions: generationParams.numberOfQuestions,
+                topic: generationParams.topic,
+              }
+            : {}
+      );
+    } catch (error) {
+      console.error("Groq AI generation error:", error);
+      throw error;
+    }
 
     await UsageCounter.findOneAndUpdate(
       {
@@ -230,19 +258,23 @@ export async function POST(request: Request) {
       { upsert: true, setDefaultsOnInsert: true }
     );
 
-    if (result.type === "quiz") {
+    if (generationParams.type === "quiz") {
+      const questions = parseQuizQuestions(
+        generatedContent,
+        generationParams.numberOfQuestions
+      );
       const subject = payload.topic || "Generated Quiz";
       const quiz = await Quiz.create({
         userId: userObjectId,
         title: subject,
         subject,
-        questions: result.questions,
+        questions,
       });
 
       await AINote.create({
         userId: session.user.email || session.user.id,
         title: subject,
-        content: JSON.stringify(result.questions, null, 2),
+        content: JSON.stringify(questions, null, 2),
         type: "quiz",
       });
 
@@ -251,7 +283,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         type: "quiz",
         quizId: String(quiz._id),
-        questions: result.questions,
+        questions,
       });
     }
 
@@ -262,29 +294,29 @@ export async function POST(request: Request) {
     const savedContent = await AIContent.create({
       userId: userObjectId,
       prompt: String(prompt).slice(0, 12000),
-      generatedText: result.text,
-      type: result.type,
+      generatedText: generatedContent,
+      type: generationParams.type,
     });
 
     await AINote.create({
       userId: session.user.email || session.user.id,
       title: titleFromText(
-        result.text,
+        generatedContent,
         payload.type === "notes" ? payload.topic || "Generated Notes" : "Generated Summary"
       ),
-      content: result.text,
+      content: generatedContent,
       type: payload.type,
     });
 
     await trackProgress(session.user.id, "ai_generations", 1);
 
     return NextResponse.json({
-      type: result.type,
+      type: generationParams.type,
       contentId: String(savedContent._id),
-      text: result.text,
+      text: generatedContent,
     });
   } catch (error) {
-    console.error("Gemini AI generation error:", error);
+    console.error("AI generation route error:", error);
     return NextResponse.json(
       {
         message:
