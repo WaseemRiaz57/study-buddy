@@ -36,10 +36,8 @@ export function DashboardClientShell({
 
   const isMentorRole = initialRole === "TEACHER" || initialRole === "MENTOR";
   const isMentorRestricted = isMentorRole && mentorAccessStatus !== "approved";
-  const isMentorshipSetupPage =
-    pathname === "/dashboard/settings/mentorship" ||
-    pathname.startsWith("/dashboard/settings/mentorship/");
-  const shouldBlockContent = isMentorRestricted && !isMentorshipSetupPage;
+  const isSettingsRoute = pathname.startsWith("/dashboard/settings");
+  const shouldBlockContent = isMentorRestricted && !isSettingsRoute;
 
   useEffect(() => {
     setRole(initialRole);

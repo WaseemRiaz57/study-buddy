@@ -60,7 +60,7 @@ const emptyMentorProfile = {
   totalEarnings: 0,
   rating: 0,
   availability: [],
-  status: "pending",
+  status: "unsubmitted",
   isPublic: false,
 };
 
@@ -350,7 +350,7 @@ function serializeMentorProfile(profile: Record<string, any> | null) {
     certificates: Array.isArray(profile.certificates)
       ? profile.certificates
       : [],
-    status: profile.status ?? "pending",
+    status: profile.status ?? "unsubmitted",
     isPublic: Boolean(profile.isPublic && profile.status === "approved"),
   };
 }

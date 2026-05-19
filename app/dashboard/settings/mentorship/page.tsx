@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
@@ -52,7 +53,12 @@ const STEPS = [
   "Final Review",
 ];
 
-type MentorStatus = "pending" | "approved" | "rejected" | "suspended";
+type MentorStatus =
+  | "unsubmitted"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "suspended";
 
 type AvailabilityDay = {
   day: string;
@@ -145,6 +151,7 @@ function isUploadedCertificate(certificate: string) {
 
 export default function MentorshipSetupPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -154,7 +161,7 @@ export default function MentorshipSetupPage() {
   const [submitted, setSubmitted] = useState(false);
   const [hasExistingProfile, setHasExistingProfile] = useState(false);
   const [role, setRole] = useState("");
-  const [status, setStatus] = useState<MentorStatus>("pending");
+  const [status, setStatus] = useState<MentorStatus>("unsubmitted");
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -206,7 +213,7 @@ export default function MentorshipSetupPage() {
 
         setRole(data?.role ?? "");
         setHasExistingProfile(Boolean(profile?._id));
-        setStatus(profile?.status ?? "pending");
+        setStatus(profile?.status ?? "unsubmitted");
         setHeadline(profile?.headline ?? "");
         setBio(profile?.bio ?? "");
         setHourlyRate(Number(profile?.hourlyRate ?? 50));
@@ -404,6 +411,7 @@ export default function MentorshipSetupPage() {
       setIsEditing(false);
       setSubmitted(true);
       toast.success("Mentor application submitted for review!");
+      router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error

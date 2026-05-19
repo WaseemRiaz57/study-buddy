@@ -46,12 +46,15 @@ export default async function DashboardLayout({
       .lean();
     const status = String(mentorProfile?.status || "").toLowerCase();
 
-    mentorAccessStatus =
-      status === "approved"
-        ? "approved"
-        : status === "pending"
-          ? "pending"
-          : "not_submitted";
+    if (!mentorProfile || !status || status === "unsubmitted") {
+      mentorAccessStatus = "not_submitted";
+    } else if (status === "approved") {
+      mentorAccessStatus = "approved";
+    } else if (status === "pending") {
+      mentorAccessStatus = "pending";
+    } else {
+      mentorAccessStatus = "not_submitted";
+    }
   }
 
   return (
