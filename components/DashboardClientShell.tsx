@@ -104,7 +104,7 @@ export function DashboardClientShell({
                 <p className="font-semibold text-foreground">
                   {mentorAccessStatus === "pending"
                     ? "⏳ Your mentor application is currently pending admin approval. Features are locked."
-                    : "⚠️ Your account is restricted. Please submit your mentor application to unlock platform features."}
+                    : "⚠️ Your account is restricted. Please complete your mentorship configuration to unlock features."}
                 </p>
                 {mentorAccessStatus === "not_submitted" && (
                   <Link
@@ -112,7 +112,7 @@ export function DashboardClientShell({
                     prefetch
                     className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-purple-700"
                   >
-                    Submit Application
+                    Complete Configuration
                   </Link>
                 )}
               </div>
@@ -137,7 +137,7 @@ export function DashboardClientShell({
                     prefetch
                     className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-700"
                   >
-                    Submit Application
+                    Complete Configuration
                   </Link>
                 )}
               </div>

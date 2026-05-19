@@ -49,7 +49,7 @@ export default function UploadResourceModal({
 }: UploadResourceModalProps) {
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
-  const [subjectSearch, setSubjectSearch] = useState("");
+  const [searchValue, setSearchValue] = useState("");
   const [subjectOpen, setSubjectOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("0");
@@ -60,17 +60,17 @@ export default function UploadResourceModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredSubjects = useMemo(() => {
-    const query = subjectSearch.trim().toLowerCase();
+    const query = searchValue.trim().toLowerCase();
 
     if (!query) return SUBJECTS;
 
     return SUBJECTS.filter((item) => item.toLowerCase().includes(query));
-  }, [subjectSearch]);
+  }, [searchValue]);
 
   const canCreateSubject =
-    subjectSearch.trim().length > 0 &&
+    searchValue.trim().length > 0 &&
     !SUBJECTS.some(
-      (item) => item.toLowerCase() === subjectSearch.trim().toLowerCase()
+      (item) => item.toLowerCase() === searchValue.trim().toLowerCase()
     );
 
   const handleDragOver = (event: DragEvent) => {
@@ -95,7 +95,7 @@ export default function UploadResourceModal({
   const selectSubject = (value: string) => {
     const nextSubject = value.trim();
     setSubject(nextSubject);
-    setSubjectSearch(nextSubject);
+    setSearchValue(nextSubject);
     setSubjectOpen(false);
   };
 
@@ -123,7 +123,7 @@ export default function UploadResourceModal({
   const resetForm = () => {
     setTitle("");
     setSubject("");
-    setSubjectSearch("");
+    setSearchValue("");
     setSubjectOpen(false);
     setDescription("");
     setPrice("0");
@@ -267,7 +267,7 @@ export default function UploadResourceModal({
                       aria-label="Choose or create subject"
                       onClick={() => {
                         setSubjectOpen((current) => !current);
-                        setSubjectSearch(subject);
+                        setSearchValue(subject);
                       }}
                       className="flex min-h-[48px] w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-left text-sm text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/40 dark:border-white/10 dark:bg-white/5 dark:text-white"
                     >
@@ -293,8 +293,14 @@ export default function UploadResourceModal({
                           />
                           <input
                             type="text"
-                            value={subjectSearch}
-                            onChange={(event) => setSubjectSearch(event.target.value)}
+                            value={searchValue}
+                            onChange={(event) => setSearchValue(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" && canCreateSubject) {
+                                event.preventDefault();
+                                selectSubject(searchValue);
+                              }
+                            }}
                             placeholder="Type a subject..."
                             aria-label="Search subjects"
                             className="w-full bg-transparent py-3 pl-9 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
@@ -327,10 +333,10 @@ export default function UploadResourceModal({
                               type="button"
                               role="option"
                               aria-selected={false}
-                              onClick={() => selectSubject(subjectSearch)}
+                              onClick={() => selectSubject(searchValue)}
                               className="flex min-h-[44px] w-full items-center rounded-lg px-3 py-2 text-left text-sm font-bold text-[#7C3AED] transition-colors hover:bg-[#7C3AED]/10"
                             >
-                              Create &quot;{subjectSearch.trim()}&quot;
+                              Create &quot;{searchValue.trim()}&quot;
                             </button>
                           )}
 

@@ -213,7 +213,13 @@ export default function MentorshipSetupPage() {
 
         setRole(data?.role ?? "");
         setHasExistingProfile(Boolean(profile?._id));
-        setStatus(profile?.status ?? "unsubmitted");
+        const nextStatus = profile?.status ?? "unsubmitted";
+        setStatus(nextStatus);
+        if (!profile?._id || nextStatus === "unsubmitted") {
+          setStep(1);
+          setSubmitted(false);
+          setIsEditing(false);
+        }
         setHeadline(profile?.headline ?? "");
         setBio(profile?.bio ?? "");
         setHourlyRate(Number(profile?.hourlyRate ?? 50));
