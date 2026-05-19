@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Clock, FileText, Sparkles, Zap, Target, CheckSquare, Brain, Timer, Star, BookMarked, Lock, ArrowRight, Users, ClipboardList } from "lucide-react";
+import { MinimalTodoList } from "@/components/focus/MinimalTodoList";
 import ReviewModal from "@/components/mentorship/ReviewModal";
 
 const fadeIn = {
@@ -639,6 +640,8 @@ export function StudentDashboard() {
 
           {/* AI Notes Carousel - SCROLLBAR HIDDEN */}
           <motion.div {...fadeIn} transition={{ delay: 0.3 }} className="xl:col-span-2 space-y-6">
+            <MinimalTodoList compact />
+
             <div className="flex items-center justify-between px-1">
               <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 Recent AI Notes <Sparkles className="text-primary" size={20} />

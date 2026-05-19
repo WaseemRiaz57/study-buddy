@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/authOptions";
 import { awardUser } from "@/lib/gamificationEngine";
 import { trackProgress } from "@/lib/challengeTracker";
 import { connectMongoDB } from "@/lib/mongodb";
+import FocusSession from "@/models/FocusSession";
 import UserProgress from "@/models/UserProgress";
 
 // 1. User ka data (XP, Level) GET karna
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-    const { minutes } = await req.json(); // Kitne minute focus kiya (e.g., 25)
+    const { minutes, taskId, taskTitle } = await req.json(); // Kitne minute focus kiya (e.g., 25)
     const focusMinutes = Number(minutes);
 
     if (!Number.isInteger(focusMinutes) || focusMinutes < 1 || focusMinutes > 240) {
@@ -71,6 +72,15 @@ export async function POST(req: Request) {
     progress.level = newLevel;
 
     await progress.save();
+    if (session.user.id) {
+      await FocusSession.create({
+        userId: session.user.id,
+        minutes: focusMinutes,
+        taskId: String(taskId || "").slice(0, 100),
+        taskTitle: String(taskTitle || "").slice(0, 180),
+        completedAt: new Date(),
+      });
+    }
     const [challengeProgress, reward] = session.user.id
       ? await Promise.all([
           Promise.all([

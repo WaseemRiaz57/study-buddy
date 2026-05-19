@@ -1,12 +1,21 @@
 "use client";
 import { toast } from "sonner";
-import Link from "next/link";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Pause, RotateCcw, Settings, CloudRain, Coffee, Radio, Plus, Trash2,
   Music, CheckCircle2, Circle, Sparkles, Flame, Check, BarChart3, X // 👈 X import add kiya
 } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { MinimalTodoList } from "@/components/focus/MinimalTodoList";
 import { useGamificationStore } from "@/store/useGamificationStore";
+import { useFocusTodoStore } from "@/store/useFocusTodoStore";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
@@ -30,23 +39,25 @@ interface Task {
   mentorName?: string;
 }
 
-interface RecentAINote {
-  id: string;
-  title: string;
-  type: "notes" | "summarizer";
-  snippet: string;
-  createdAt: string;
+interface WeeklyFocusDay {
+  day: string;
+  label: string;
+  minutes: number;
+  hours: number;
+  pct: number;
 }
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                          */
 /* ------------------------------------------------------------------ */
-const WEEKLY_DATA = [
-  { day: "M", hours: 2, pct: 40 },
-  { day: "T", hours: 3, pct: 60 },
-  { day: "W", hours: 5.5, pct: 85 },
-  { day: "T", hours: 2.5, pct: 50 },
-  { day: "F", hours: 0, pct: 10 },
+const DEFAULT_WEEKLY_DATA: WeeklyFocusDay[] = [
+  { day: "M", label: "Monday", minutes: 0, hours: 0, pct: 0 },
+  { day: "T", label: "Tuesday", minutes: 0, hours: 0, pct: 0 },
+  { day: "W", label: "Wednesday", minutes: 0, hours: 0, pct: 0 },
+  { day: "T", label: "Thursday", minutes: 0, hours: 0, pct: 0 },
+  { day: "F", label: "Friday", minutes: 0, hours: 0, pct: 0 },
+  { day: "S", label: "Saturday", minutes: 0, hours: 0, pct: 0 },
+  { day: "S", label: "Sunday", minutes: 0, hours: 0, pct: 0 },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -66,6 +77,12 @@ export default function FocusRoomsPage() {
   const [userLevel, setUserLevel] = useState(1);
   const [userXp, setUserXp] = useState(0);
   const addReward = useGamificationStore((state) => state.addReward);
+  const focusTodoTasks = useFocusTodoStore((state) => state.tasks);
+  const [selectedFocusTaskId, setSelectedFocusTaskId] = useState("");
+  const selectedFocusTaskRef = useRef<{ id: string; text: string } | null>(null);
+  const [weeklyFocusData, setWeeklyFocusData] =
+    useState<WeeklyFocusDay[]>(DEFAULT_WEEKLY_DATA);
+  const [isLoadingWeeklyFocus, setIsLoadingWeeklyFocus] = useState(true);
 
   /* ---- 🎵 Audio Engine Refs 🎵 ---- */
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
@@ -79,8 +96,6 @@ export default function FocusRoomsPage() {
 
   /* ---- Tasks ---- */
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [recentNotes, setRecentNotes] = useState<RecentAINote[]>([]);
-  const [isLoadingRecentNotes, setIsLoadingRecentNotes] = useState(true);
   const [newTask, setNewTask] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<"High" | "Med" | "Low">("Med"); 
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
@@ -112,43 +127,6 @@ export default function FocusRoomsPage() {
   }, []);
 
   useEffect(() => {
-    let isActive = true;
-
-    async function fetchRecentNotes() {
-      try {
-        setIsLoadingRecentNotes(true);
-        const response = await fetch("/api/ai/recent-notes?limit=2", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) return;
-
-        const data = await response.json();
-
-        if (isActive) {
-          setRecentNotes(Array.isArray(data?.notes) ? data.notes : []);
-        }
-      } catch {
-        if (isActive) {
-          setRecentNotes([]);
-        }
-      } finally {
-        if (isActive) {
-          setIsLoadingRecentNotes(false);
-        }
-      }
-    }
-
-    void fetchRecentNotes();
-    window.addEventListener("ai-notes-updated", fetchRecentNotes);
-
-    return () => {
-      isActive = false;
-      window.removeEventListener("ai-notes-updated", fetchRecentNotes);
-    };
-  }, []);
-
-  useEffect(() => {
     sounds.forEach((s) => {
       const audio = audioRefs.current[s.id];
       if (audio) {
@@ -161,6 +139,30 @@ export default function FocusRoomsPage() {
       }
     });
   }, [sounds]);
+
+  const fetchWeeklyFocusStats = useCallback(async () => {
+    try {
+      setIsLoadingWeeklyFocus(true);
+      const response = await fetch("/api/user/focus-stats", {
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && Array.isArray(data?.data)) {
+        setWeeklyFocusData(data.data);
+      } else {
+        setWeeklyFocusData(DEFAULT_WEEKLY_DATA);
+      }
+    } catch {
+      setWeeklyFocusData(DEFAULT_WEEKLY_DATA);
+    } finally {
+      setIsLoadingWeeklyFocus(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchWeeklyFocusStats();
+  }, [fetchWeeklyFocusStats]);
 
   /* ---- DB SE TASKS AUR PROGRESS MANGWANA ---- */
   useEffect(() => {
@@ -235,7 +237,11 @@ export default function FocusRoomsPage() {
       const res = await fetch("/api/focus", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ minutes: minutesFocused }),
+        body: JSON.stringify({
+          minutes: minutesFocused,
+          taskId: selectedFocusTaskRef.current?.id || "",
+          taskTitle: selectedFocusTaskRef.current?.text || "",
+        }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -244,6 +250,7 @@ export default function FocusRoomsPage() {
         const xpAwarded = Number(data?.reward?.xpAwarded || 10);
         const coinsAwarded = Number(data?.reward?.coinsAwarded || 0);
         addReward(xpAwarded, coinsAwarded);
+        await fetchWeeklyFocusStats();
         window.dispatchEvent(new Event("gamification-stats-updated"));
         /*
         toast.success(`Focus Session Complete! You earned ${data.earnedXp} XP!`, {
@@ -276,6 +283,15 @@ export default function FocusRoomsPage() {
     }
   }, [timeLeft, isRunning, clearTimer, handleSessionComplete]);
 
+  useEffect(() => {
+    if (
+      selectedFocusTaskId &&
+      !focusTodoTasks.some((task) => task.id === selectedFocusTaskId)
+    ) {
+      setSelectedFocusTaskId("");
+    }
+  }, [focusTodoTasks, selectedFocusTaskId]);
+
   const toggleTimer = () => {
     if (timeLeft === 0) return;
     setIsRunning((r) => !r);
@@ -297,6 +313,12 @@ export default function FocusRoomsPage() {
   const circumference = 2 * Math.PI * 46;
   const currentLevelXp = userXp % 1000;
   const xpProgressPct = (currentLevelXp / 1000) * 100;
+  const openFocusTasks = focusTodoTasks.filter((task) => !task.completed);
+  const selectedFocusTask =
+    focusTodoTasks.find((task) => task.id === selectedFocusTaskId) || null;
+  selectedFocusTaskRef.current = selectedFocusTask
+    ? { id: selectedFocusTask.id, text: selectedFocusTask.text }
+    : null;
 
   /* ---- Sound helpers ---- */
   const toggleSound = (id: string) =>
@@ -402,10 +424,27 @@ export default function FocusRoomsPage() {
           <h1 className="text-3xl md:text-5xl font-bold text-text-main dark:text-white mb-2 text-center tracking-tight">
             Current Focus
           </h1>
-          <p className="text-text-muted dark:text-slate-400 mb-12 flex items-center gap-2 bg-white/40 dark:bg-white/[0.06] px-4 py-1.5 rounded-full border border-white/50 dark:border-white/10 text-sm">
-            <span className="w-2 h-2 rounded-full bg-primary" />
-            Advanced Calculus: Integration Techniques
-          </p>
+          <div className="mb-10 flex w-full max-w-md flex-col items-center gap-2">
+            <label
+              htmlFor="active-focus-task"
+              className="text-xs font-bold uppercase tracking-[0.18em] text-[#7C3AED]"
+            >
+              Working on
+            </label>
+            <select
+              id="active-focus-task"
+              value={selectedFocusTaskId}
+              onChange={(event) => setSelectedFocusTaskId(event.target.value)}
+              className="min-h-[44px] w-full rounded-2xl border border-white/60 bg-white/70 px-4 py-2 text-center text-sm font-semibold text-text-main outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+            >
+              <option value="">Select a task from To-Do</option>
+              {openFocusTasks.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.text}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center mb-12">
             <div
@@ -466,45 +505,7 @@ export default function FocusRoomsPage() {
 
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           
-          <div className="glass-panel bg-white/60 dark:bg-white/[0.03] rounded-2xl p-6 hover-tilt relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
-              <Sparkles size={28} className="text-primary dark:text-purple-400" />
-            </div>
-            <h3 className="text-xl font-bold text-text-main dark:text-white mb-1">Recent AI Notes</h3>
-            <p className="text-xs text-text-muted dark:text-slate-500 mb-6 uppercase tracking-wider">Latest saved generations</p>
-
-            <div className="space-y-4">
-              {isLoadingRecentNotes ? (
-                <div className="text-sm text-text-muted dark:text-slate-400">
-                  Loading recent notes...
-                </div>
-              ) : recentNotes.length === 0 ? (
-                <div className="rounded-xl border border-white/60 bg-white/40 p-4 text-sm text-text-muted dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-slate-400">
-                  Your latest AI notes and summaries will appear here.
-                </div>
-              ) : (
-                recentNotes.map((note) => (
-                  <Link
-                    key={note.id}
-                    href="/dashboard/content-generator"
-                    className="block rounded-xl border border-white/60 bg-white/40 p-4 transition-colors hover:bg-white/60 dark:border-white/[0.08] dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
-                  >
-                    <div className="mb-2 flex items-start justify-between gap-3">
-                      <span className="line-clamp-1 text-sm font-bold text-primary dark:text-purple-400">
-                        {note.title}
-                      </span>
-                      <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-primary dark:bg-purple-500/20 dark:text-purple-300">
-                        {note.type === "summarizer" ? "Summary" : "Notes"}
-                      </span>
-                    </div>
-                    <p className="line-clamp-2 text-sm leading-relaxed text-text-muted dark:text-slate-400">
-                      {note.snippet}
-                    </p>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
+          <MinimalTodoList />
 
           <div className="glass-panel bg-white/60 dark:bg-white/[0.03] rounded-2xl p-6 hover-tilt flex flex-col">
             <div className="flex justify-between items-center mb-6">
@@ -643,25 +644,52 @@ export default function FocusRoomsPage() {
                 <h3 className="font-bold text-text-main dark:text-white">Weekly Focus</h3>
               </div>
 
-              <div className="flex items-end gap-2 h-24 mb-2">
-                {WEEKLY_DATA.map((d, i) => {
-                  const isToday = i === 2;
-                  return (
-                    <div key={i} className="w-1/5 relative group">
+              {isLoadingWeeklyFocus ? (
+                <div className="flex h-32 items-end gap-2" aria-label="Loading weekly focus chart">
+                  {DEFAULT_WEEKLY_DATA.map((day, index) => (
+                    <div key={`${day.label}-${index}`} className="flex-1">
                       <div
-                        className={`rounded-t-lg transition-colors cursor-pointer ${isToday ? "bg-primary shadow-lg shadow-primary/20" : d.pct > 10 ? "bg-primary/20 dark:bg-purple-500/20 hover:bg-primary/40 dark:hover:bg-purple-500/30" : "bg-gray-200 dark:bg-white/[0.06] hover:bg-gray-300 dark:hover:bg-white/10"}`}
-                        style={{ height: `${d.pct}%` }}
+                        className="animate-pulse rounded-t-lg bg-[#7C3AED]/15"
+                        style={{ height: `${24 + index * 8}px` }}
                       />
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-text-main dark:bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                        {d.hours}h
-                      </div>
                     </div>
-                  );
-                })}
-              </div>
-              <div className="flex justify-between text-xs text-text-muted dark:text-slate-500 px-1">
-                {WEEKLY_DATA.map((d, i) => (<span key={i}>{d.day}</span>))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-32" aria-label="Weekly focus minutes chart">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={weeklyFocusData} margin={{ top: 8, right: 0, left: -28, bottom: 0 }}>
+                      <XAxis
+                        dataKey="day"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fontSize: 11, fill: "currentColor" }}
+                      />
+                      <YAxis hide domain={[0, "dataMax + 15"]} />
+                      <Tooltip
+                        cursor={{ fill: "rgba(124,58,237,0.08)" }}
+                        formatter={(value) => [`${Number(value)} min`, "Focus"]}
+                        labelFormatter={(_, payload) =>
+                          payload?.[0]?.payload?.label || "Focus"
+                        }
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "1px solid rgba(124,58,237,0.18)",
+                        }}
+                      />
+                      <Bar
+                        dataKey="minutes"
+                        fill="#7C3AED"
+                        radius={[8, 8, 0, 0]}
+                        maxBarSize={34}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              <p className="mt-2 text-xs text-text-muted dark:text-slate-500">
+                {weeklyFocusData.reduce((total, day) => total + day.minutes, 0)} minutes focused this week.
+              </p>
             </div>
           </div>
         </section>
