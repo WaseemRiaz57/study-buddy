@@ -8,6 +8,10 @@ import UserProgress from "@/models/UserProgress";
 
 export type GamificationActionType =
   | "COMPLETED_SESSION"
+  | "RESOURCE_UPLOAD"
+  | "FOCUS_ROOM_COMPLETE"
+  | "STUDY_BUDDY_COMPLETE"
+  | "MENTOR_SESSION_COMPLETE"
   | "CREATED_POST"
   | "CREATED_COMMENT"
   | "DAILY_LOGIN"
@@ -21,11 +25,15 @@ type RewardDefinition = {
 
 export const REWARD_DICTIONARY: Record<GamificationActionType, RewardDefinition> = {
   COMPLETED_SESSION: { xp: 100, coins: 20 },
+  RESOURCE_UPLOAD: { xp: 15, coins: 5 },
+  FOCUS_ROOM_COMPLETE: { xp: 10, coins: 0 },
+  STUDY_BUDDY_COMPLETE: { xp: 20, coins: 10 },
+  MENTOR_SESSION_COMPLETE: { xp: 50, coins: 20 },
   CREATED_POST: { xp: 10, coins: 2 },
   CREATED_COMMENT: { xp: 5, coins: 1 },
   DAILY_LOGIN: { xp: 5, coins: 5 },
   CHALLENGE_COMPLETED: { xp: 0, coins: 0 },
-  ACTIVE_TIME_30_MIN: { xp: 20, coins: 0 },
+  ACTIVE_TIME_30_MIN: { xp: 10, coins: 0 },
 };
 
 export const STREAK_FREEZE_COST = 200;
@@ -73,6 +81,13 @@ function applyStreakMultiplier(reward: RewardDefinition, nextStreak: number) {
     coins: Math.round(reward.coins * multiplier),
     multiplier,
   };
+}
+
+function getProfileModelForRole(role: unknown) {
+  const normalizedRole = String(role || "student").toLowerCase();
+  return normalizedRole === "teacher" || normalizedRole === "mentor"
+    ? MentorProfile
+    : StudentProfile;
 }
 
 async function syncUserProgress({
@@ -130,8 +145,7 @@ export async function awardUser(
     throw new Error("User not found for gamification award.");
   }
 
-  const normalizedRole = String(user.role || "student").toLowerCase();
-  const ProfileModel = normalizedRole === "teacher" ? MentorProfile : StudentProfile;
+  const ProfileModel = getProfileModelForRole(user.role);
   const today = new Date();
   const userObjectId = new mongoose.Types.ObjectId(userId);
   const currentProfile = await ProfileModel.findOne({ userId: userObjectId })
@@ -228,8 +242,7 @@ export async function purchaseStreakFreeze(userId: string) {
     throw new Error("User not found.");
   }
 
-  const normalizedRole = String(user.role || "student").toLowerCase();
-  const ProfileModel = normalizedRole === "teacher" ? MentorProfile : StudentProfile;
+  const ProfileModel = getProfileModelForRole(user.role);
   const userObjectId = new mongoose.Types.ObjectId(userId);
   const profile = await ProfileModel.findOneAndUpdate(
     {
@@ -279,7 +292,7 @@ export async function getGamificationStats(userId: string) {
 
   const user = await User.findById(userId).select("role").lean();
   const normalizedRole = String(user?.role || "student").toLowerCase();
-  const ProfileModel = normalizedRole === "teacher" ? MentorProfile : StudentProfile;
+  const ProfileModel = getProfileModelForRole(user?.role);
   const profile = await ProfileModel.findOne({
     userId: new mongoose.Types.ObjectId(userId),
   })

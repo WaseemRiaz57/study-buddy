@@ -97,7 +97,7 @@ export async function PATCH(
       .lean();
     const mentorName = mentorUser?.name || "your mentor";
 
-    const [updatedMentorProfile, studentReward, teacherSessionProgress] = await Promise.all([
+    const [updatedMentorProfile, studentReward, mentorReward, teacherSessionProgress] = await Promise.all([
       MentorProfile.findOneAndUpdate(
         { userId: mentorSession.mentorId },
         {
@@ -107,6 +107,7 @@ export async function PATCH(
         { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
       ),
       awardUser(String(mentorSession.studentId), "COMPLETED_SESSION"),
+      awardUser(String(mentorSession.mentorId), "MENTOR_SESSION_COMPLETE"),
       Promise.all([
         trackProgress(String(mentorSession.studentId), "teacher_session", 1),
         trackProgress(String(mentorSession.studentId), "completed_session", 1),
@@ -137,6 +138,11 @@ export async function PATCH(
       rewards: {
         mentorEarningsAdded: sessionEarnings,
         mentorTotalEarnings: updatedMentorProfile?.totalEarnings ?? 0,
+        mentorXpAdded: mentorReward.xpAwarded,
+        mentorCoinsAdded: mentorReward.coinsAwarded,
+        mentorXp: mentorReward.profile.xp,
+        mentorCoins: mentorReward.profile.coins,
+        mentorStreak: mentorReward.profile.streak,
         studentXpAdded: studentReward.xpAwarded,
         studentCoinsAdded: studentReward.coinsAwarded,
         studentXp: studentReward.profile.xp,
@@ -144,6 +150,7 @@ export async function PATCH(
         studentStreak: studentReward.profile.streak,
         challengeProgress: teacherSessionProgress,
       },
+      reward: mentorReward,
     });
   } catch (error) {
     console.error("Complete mentor session error:", error);

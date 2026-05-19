@@ -16,7 +16,9 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import { showRewardToast } from "@/components/gamification/RewardToast";
 import ReviewModal from "@/components/mentorship/ReviewModal";
+import { useGamificationStore } from "@/store/useGamificationStore";
 
 type SessionStatus =
   | "pending"
@@ -545,6 +547,7 @@ function ReceiptModal({
 
 export default function SessionsPage() {
   const { data: authSession, status: authStatus } = useSession();
+  const addReward = useGamificationStore((state) => state.addReward);
   const userRole = String(authSession?.user?.role ?? "").toLowerCase();
   const [sessions, setSessions] = useState<DashboardSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -749,6 +752,22 @@ export default function SessionsPage() {
       }
 
       updateSession(result.session as DashboardSession);
+      const xpAwarded = Number(
+        result?.reward?.xpAwarded || result?.rewards?.mentorXpAdded || 0
+      );
+      const coinsAwarded = Number(
+        result?.reward?.coinsAwarded || result?.rewards?.mentorCoinsAdded || 0
+      );
+
+      if (xpAwarded || coinsAwarded) {
+        addReward(xpAwarded, coinsAwarded);
+        showRewardToast({
+          title: "Mentor Session Complete!",
+          xp: xpAwarded,
+          coins: coinsAwarded,
+        });
+        window.dispatchEvent(new Event("gamification-stats-updated"));
+      }
       toast.success("Session completed.");
     } catch (error) {
       toast.error(

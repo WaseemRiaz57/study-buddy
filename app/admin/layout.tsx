@@ -36,6 +36,10 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import {
+  useSidebarBadges,
+  type SidebarBadgeKey,
+} from "@/store/useSidebarBadges";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
@@ -45,6 +49,7 @@ interface NavItem {
   label: string;
   href: string;
   badge?: string;
+  badgeKey?: SidebarBadgeKey;
   badgeColor?: string;
 }
 
@@ -67,7 +72,7 @@ const navGroups: NavGroup[] = [
     title: "Content Management",
     items: [
       { icon: MessageSquare, label: "Community Posts", href: "/admin/content/posts" },
-      { icon: Library, label: "Resources Library", href: "/admin/content/resources", badge: "12", badgeColor: "bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400" },
+      { icon: Library, label: "Resources Library", href: "/admin/content/resources", badgeKey: "resources", badgeColor: "bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400" },
       { icon: Bot, label: "AI Content Review", href: "/admin/content/ai-review" },
       { icon: Pin, label: "Featured Content", href: "/admin/content/featured" },
       { icon: Star, label: "Platform Reviews", href: "/admin/reviews" },
@@ -76,7 +81,7 @@ const navGroups: NavGroup[] = [
   {
     title: "Reports & Moderation",
     items: [
-      { icon: Flag, label: "Reports Queue", href: "/admin/moderation/reports", badge: "5", badgeColor: "bg-red-500 text-white" },
+      { icon: Flag, label: "Reports Queue", href: "/admin/moderation/reports", badgeKey: "reports", badgeColor: "bg-red-500 text-white" },
       { icon: AlertTriangle, label: "Strikes & Warnings", href: "/admin/moderation/strikes" },
       { icon: Scale, label: "Appeals", href: "/admin/moderation/appeals" },
       { icon: ShieldCheck, label: "Auto-Mod Settings", href: "/admin/moderation/settings" },
@@ -86,7 +91,7 @@ const navGroups: NavGroup[] = [
     title: "Users & Teachers",
     items: [
       { icon: Users, label: "User Management", href: "/admin/users" },
-      { icon: GraduationCap, label: "Mentor Management", href: "/admin/mentors", badge: "3", badgeColor: "bg-orange-500 text-white" },
+      { icon: GraduationCap, label: "Mentor Management", href: "/admin/mentors", badgeKey: "pendingMentors", badgeColor: "bg-orange-500 text-white" },
     ],
   },
   {
@@ -215,6 +220,18 @@ function SidebarBody({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const badgeCounts = useSidebarBadges((state) => state.counts);
+
+  function withDynamicBadge(item: NavItem): NavItem {
+    if (!item.badgeKey) return item;
+
+    const count = badgeCounts[item.badgeKey] || 0;
+    return {
+      ...item,
+      badge: count > 0 ? String(count) : undefined,
+    };
+  }
+
   return (
     <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-4 custom-scrollbar">
       {navGroups.map((group) => (
@@ -228,15 +245,19 @@ function SidebarBody({
           {collapsed && <div className="mx-auto mb-1.5 w-6 border-t border-slate-200 dark:border-white/[0.06]" />}
 
           <div className="space-y-0.5">
-            {group.items.map((item) => (
+            {group.items.map((item) => {
+              const itemWithBadge = withDynamicBadge(item);
+
+              return (
               <NavLink
                 key={item.href}
-                item={item}
+                item={itemWithBadge}
                 active={checkActive(pathname, item.href)}
                 collapsed={collapsed}
                 onNavigate={onNavigate}
               />
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}
@@ -259,6 +280,8 @@ export default function AdminLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const clearBadge = useSidebarBadges((state) => state.clearBadge);
+  const setBadges = useSidebarBadges((state) => state.setBadges);
   
   // Mounted state for hydration fix
   const [mounted, setMounted] = useState(false);
@@ -272,6 +295,84 @@ export default function AdminLayout({
       router.replace("/login");
     }
   }, [router, status]);
+
+  useEffect(() => {
+    if (
+      pathname.startsWith("/admin/mentors") ||
+      pathname.startsWith("/admin/mentor-management")
+    ) {
+      clearBadge("pendingMentors");
+    }
+
+    if (pathname.startsWith("/admin/moderation/reports")) {
+      clearBadge("reports");
+    }
+
+    if (pathname.startsWith("/admin/content/resources")) {
+      clearBadge("resources");
+    }
+  }, [clearBadge, pathname]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (String(session?.user?.role || "").toLowerCase() !== "admin") return;
+
+    let isActive = true;
+
+    async function hydrateBadges() {
+      const [reportsResponse, resourcesResponse, mentorsResponse] =
+        await Promise.allSettled([
+          fetch("/api/admin/moderation/reports", { cache: "no-store" }),
+          fetch("/api/admin/resources", { cache: "no-store" }),
+          fetch("/api/admin/mentors", { cache: "no-store" }),
+        ]);
+
+      const nextBadges: Partial<Record<SidebarBadgeKey, number>> = {};
+
+      if (reportsResponse.status === "fulfilled" && reportsResponse.value.ok) {
+        const data = await reportsResponse.value.json().catch(() => null);
+        nextBadges.reports = Number(data?.stats?.pendingCount || 0);
+      }
+
+      if (resourcesResponse.status === "fulfilled" && resourcesResponse.value.ok) {
+        const data = await resourcesResponse.value.json().catch(() => null);
+        nextBadges.resources = Number(data?.stats?.pendingCount || 0);
+      }
+
+      if (mentorsResponse.status === "fulfilled" && mentorsResponse.value.ok) {
+        const data = await mentorsResponse.value.json().catch(() => null);
+        const mentors = Array.isArray(data?.mentors) ? data.mentors : [];
+        nextBadges.pendingMentors = mentors.filter(
+          (mentor: { status?: string }) => mentor.status === "pending"
+        ).length;
+      }
+
+      if (
+        pathname.startsWith("/admin/mentors") ||
+        pathname.startsWith("/admin/mentor-management")
+      ) {
+        nextBadges.pendingMentors = 0;
+      }
+
+      if (pathname.startsWith("/admin/moderation/reports")) {
+        nextBadges.reports = 0;
+      }
+
+      if (pathname.startsWith("/admin/content/resources")) {
+        nextBadges.resources = 0;
+      }
+
+      if (isActive) {
+        setBadges(nextBadges);
+      }
+    }
+
+    void hydrateBadges();
+
+    return () => {
+      isActive = false;
+    };
+  }, [pathname, session?.user?.role, setBadges, status]);
 
   if (!mounted || status === "loading") {
     return <div className="min-h-screen bg-slate-50 dark:bg-[#0f0a16]" />;

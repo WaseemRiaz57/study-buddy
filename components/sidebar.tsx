@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { useSidebarBadges } from "@/store/useSidebarBadges";
 import { useUserStore, type Plan, type Role } from "@/store/useUserStore";
 
 interface NavItem {
@@ -73,7 +74,9 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const unreadMessagesCount = useSidebarBadges((state) => state.counts.messages);
+  const setBadge = useSidebarBadges((state) => state.setBadge);
+  const clearBadge = useSidebarBadges((state) => state.clearBadge);
   const storeRole = useUserStore((state) => state.role);
   const storePlan = useUserStore((state) => state.plan);
   const role = initialRole || storeRole;
@@ -105,11 +108,11 @@ export function Sidebar({
         const data = await response.json().catch(() => null);
 
         if (!cancelled && response.ok) {
-          setUnreadMessagesCount(Number(data?.unreadConversations || 0));
+          setBadge("messages", Number(data?.unreadConversations || 0));
         }
       } catch {
         if (!cancelled) {
-          setUnreadMessagesCount(0);
+          setBadge("messages", 0);
         }
       }
     };
@@ -121,7 +124,13 @@ export function Sidebar({
       cancelled = true;
       window.removeEventListener("messages:unread-updated", fetchUnreadCount);
     };
-  }, []);
+  }, [setBadge]);
+
+  useEffect(() => {
+    if (pathname.startsWith("/dashboard/messages")) {
+      clearBadge("messages");
+    }
+  }, [clearBadge, pathname]);
 
   return (
     <aside

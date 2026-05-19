@@ -134,6 +134,18 @@ interface RecentQuizGeneration {
   createdAt: string;
 }
 
+interface MentorAnalyticsPoint {
+  label: string;
+  value: number;
+}
+
+interface MentorAnalytics {
+  hasData: boolean;
+  avgStudentScore: number;
+  delta: number;
+  points: MentorAnalyticsPoint[];
+}
+
 const fadeIn = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
@@ -208,6 +220,27 @@ function toModalStudentData(request: MentorRequest): StudentRequestData {
   };
 }
 
+function buildPerformancePath(points: MentorAnalyticsPoint[]) {
+  const values = points.length ? points : Array.from({ length: 7 }, (_, index) => ({
+    label: String(index + 1),
+    value: 0,
+  }));
+  const maxIndex = Math.max(values.length - 1, 1);
+
+  return values
+    .map((point, index) => {
+      const x = (index / maxIndex) * 100;
+      const y = 95 - (Math.max(0, Math.min(100, point.value)) / 100) * 85;
+      return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function buildPerformanceArea(points: MentorAnalyticsPoint[]) {
+  const path = buildPerformancePath(points);
+  return `${path} L100,100 L0,100 Z`;
+}
+
 export function MentorDashboard() {
   const { data: session, status } = useSession();
   const { profile, earnings } = MENTOR_DATA;
@@ -232,8 +265,73 @@ export function MentorDashboard() {
   const [selectedRequest, setSelectedRequest] = useState<StudentRequestData | null>(null);
   const [recentQuizzes, setRecentQuizzes] = useState<RecentQuizGeneration[]>([]);
   const [isRecentQuizzesLoading, setIsRecentQuizzesLoading] = useState(true);
+  const [analytics, setAnalytics] = useState<MentorAnalytics>({
+    hasData: false,
+    avgStudentScore: 0,
+    delta: 0,
+    points: Array.from({ length: 7 }, (_, index) => ({
+      label: ["M", "T", "W", "T", "F", "S", "S"][index],
+      value: 0,
+    })),
+  });
+  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(true);
 
   // 👇 FUNCTION TO HANDLE CLICK
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchAnalytics() {
+      try {
+        setIsAnalyticsLoading(true);
+        const response = await fetch("/api/mentor/analytics", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load mentor analytics.");
+        }
+
+        const data = (await response.json()) as MentorAnalytics;
+
+        if (isActive) {
+          setAnalytics({
+            hasData: Boolean(data.hasData),
+            avgStudentScore: Number(data.avgStudentScore || 0),
+            delta: Number(data.delta || 0),
+            points: Array.isArray(data.points) && data.points.length
+              ? data.points.map((point) => ({
+                  label: point.label || "",
+                  value: Number(point.value || 0),
+                }))
+              : Array.from({ length: 7 }, (_, index) => ({
+                  label: ["M", "T", "W", "T", "F", "S", "S"][index],
+                  value: 0,
+                })),
+          });
+        }
+      } catch {
+        if (isActive) {
+          setAnalytics((current) => ({
+            ...current,
+            hasData: false,
+            avgStudentScore: 0,
+            delta: 0,
+          }));
+        }
+      } finally {
+        if (isActive) {
+          setIsAnalyticsLoading(false);
+        }
+      }
+    }
+
+    void fetchAnalytics();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   useEffect(() => {
     let isActive = true;
 
@@ -657,7 +755,19 @@ export function MentorDashboard() {
                 <div>
                   <p className="text-sm text-muted-foreground">Avg. Student Score</p>
                   <p className="text-2xl font-bold text-foreground">
-                    88.4% <span className="text-xs font-medium text-emerald-500 ml-1">+2.1%</span>
+                    {isAnalyticsLoading
+                      ? "..."
+                      : `${analytics.avgStudentScore.toFixed(1)}%`}
+                    {!isAnalyticsLoading && analytics.hasData && (
+                      <span
+                        className={`ml-1 text-xs font-medium ${
+                          analytics.delta >= 0 ? "text-emerald-500" : "text-rose-500"
+                        }`}
+                      >
+                        {analytics.delta >= 0 ? "+" : ""}
+                        {analytics.delta.toFixed(1)}%
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="flex gap-4">
@@ -679,26 +789,42 @@ export function MentorDashboard() {
                     <div key={i} className="w-full border-t border-border/30"></div>
                   ))}
                 </div>
+
+                {!isAnalyticsLoading && !analytics.hasData && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center">
+                    <p className="rounded-full border border-border bg-background/80 px-4 py-2 text-xs font-semibold text-muted-foreground backdrop-blur">
+                      Not enough data yet
+                    </p>
+                  </div>
+                )}
                 
                 {/* SVG Chart */}
                 <div className="w-full h-full relative z-10">
                   <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
                     <defs>
                       <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="currentColor" className="text-blue-500" stopOpacity="0.2" />
-                        <stop offset="100%" stopColor="currentColor" className="text-blue-500" stopOpacity="0" />
+                        <stop offset="0%" stopColor="currentColor" className="text-[#7C3AED]" stopOpacity="0.14" />
+                        <stop offset="100%" stopColor="currentColor" className="text-[#7C3AED]" stopOpacity="0" />
                       </linearGradient>
                     </defs>
-                    <path d="M0,80 Q20,70 40,75 T80,40 T100,50 L100,100 L0,100 Z" fill="url(#chartGradient)" />
-                    <path d="M0,80 Q20,70 40,75 T80,40 T100,50" fill="none" stroke="currentColor" className="text-blue-500" strokeWidth="2" />
+                    <path d={buildPerformanceArea(analytics.points)} fill="url(#chartGradient)" />
+                    <path
+                      d={buildPerformancePath(analytics.points)}
+                      fill="none"
+                      stroke="currentColor"
+                      className="text-[#7C3AED]"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </div>
               </div>
 
               {/* Day Labels */}
               <div className="flex justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2">
-                {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
-                  <span key={i}>{day}</span>
+                {analytics.points.map((point, i) => (
+                  <span key={`${point.label}-${i}`}>{point.label}</span>
                 ))}
               </div>
             </motion.div>

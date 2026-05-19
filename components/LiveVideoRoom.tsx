@@ -26,6 +26,8 @@ import {
   setParticipantMicrophoneMutedAction,
   setRoomMicrophonesMutedAction,
 } from "@/app/actions/livekit-moderation";
+import { showRewardToast } from "@/components/gamification/RewardToast";
+import { useGamificationStore } from "@/store/useGamificationStore";
 
 type LiveVideoRoomProps = {
   roomId: string;
@@ -157,6 +159,7 @@ export default function LiveVideoRoom({
   renderAction,
 }: LiveVideoRoomProps) {
   const router = useRouter();
+  const addReward = useGamificationStore((state) => state.addReward);
   const [stableGuestId] = useState(() => {
     try {
       const existingId = sessionStorage.getItem("studyBuddyId");
@@ -944,11 +947,27 @@ export default function LiveVideoRoom({
     setIsLeaving(true);
 
     try {
-      await fetch("/api/buddies/requests/end", {
+      const response = await fetch("/api/buddies/requests/end", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ connectionId: roomId }),
       });
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.reward) {
+        const xpAwarded = Number(data.reward.xpAwarded || 0);
+        const coinsAwarded = Number(data.reward.coinsAwarded || 0);
+
+        if (xpAwarded || coinsAwarded) {
+          addReward(xpAwarded, coinsAwarded);
+          showRewardToast({
+            title: "Study Buddy Session Complete!",
+            xp: xpAwarded,
+            coins: coinsAwarded,
+          });
+          window.dispatchEvent(new Event("gamification-stats-updated"));
+        }
+      }
 
       if (isHost) {
         setIsEndingSession(true);
@@ -970,7 +989,7 @@ export default function LiveVideoRoom({
       await resetWaitingRoomStatus();
       router.push(DASHBOARD_REDIRECT_PATH);
     }
-  }, [isHost, isLeaving, publishRoomControlMessage, resetWaitingRoomStatus, roomId, router, updateRoomParticipantLifecycle, updateSessionDatabase]);
+  }, [addReward, isHost, isLeaving, publishRoomControlMessage, resetWaitingRoomStatus, roomId, router, updateRoomParticipantLifecycle, updateSessionDatabase]);
 
   const handleCancelPreJoin = useCallback(() => {
     previewStreamRef.current?.getTracks().forEach((track) => track.stop());

@@ -24,6 +24,8 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { showRewardToast } from "@/components/gamification/RewardToast";
+import { useGamificationStore } from "@/store/useGamificationStore";
 
 interface UploadResourceModalProps {
   isOpen: boolean;
@@ -58,6 +60,7 @@ export default function UploadResourceModal({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addReward = useGamificationStore((state) => state.addReward);
 
   const filteredSubjects = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
@@ -149,10 +152,23 @@ export default function UploadResourceModal({
         method: "POST",
         body: formData,
       });
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
         throw new Error(data?.message || "Upload failed.");
+      }
+
+      const xpAwarded = Number(data?.reward?.xpAwarded || 0);
+      const coinsAwarded = Number(data?.reward?.coinsAwarded || 0);
+
+      if (xpAwarded || coinsAwarded) {
+        addReward(xpAwarded, coinsAwarded);
+        showRewardToast({
+          title: "Resource Uploaded!",
+          xp: xpAwarded,
+          coins: coinsAwarded,
+        });
+        window.dispatchEvent(new Event("gamification-stats-updated"));
       }
 
       toast.success(

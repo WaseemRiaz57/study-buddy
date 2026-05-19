@@ -29,20 +29,20 @@ export function useActiveTimeReward() {
       activeMsRef.current = 0;
 
       try {
-        const response = await fetch("/api/user/active-time-reward", {
-          method: "POST",
+        const response = await fetch("/api/gamification/time-reward", {
+          method: "PATCH",
         });
         const data = await response.json().catch(() => null);
 
         if (response.ok && data?.awarded) {
           addReward(
-            Number(data.reward?.xpAwarded || 20),
+            Number(data.reward?.xpAwarded || 10),
             Number(data.reward?.coinsAwarded || 0)
           );
           setStats(data.stats || data.reward?.profile || {});
           showRewardToast({
             title: "Active Study Reward!",
-            xp: Number(data.reward?.xpAwarded || 20),
+            xp: Number(data.reward?.xpAwarded || 10),
             coins: Number(data.reward?.coinsAwarded || 0),
           });
           window.dispatchEvent(new Event("gamification-stats-updated"));

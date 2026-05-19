@@ -10,6 +10,7 @@ import {
   isAllowedUploadType,
 } from "@/lib/study-room-constants";
 import Resource from "@/models/Resource";
+import { awardUser } from "@/lib/gamificationEngine";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -192,8 +193,16 @@ export async function POST(request: Request) {
       price,
       status: "pending",
     });
+    const reward = await awardUser(session.user.id, "RESOURCE_UPLOAD");
 
-    return NextResponse.json(resource, { status: 201 });
+    return NextResponse.json(
+      {
+        resource,
+        reward,
+        stats: reward.profile,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Resource upload error:", error);
     return NextResponse.json({ message: "Failed to upload resource" }, { status: 500 });

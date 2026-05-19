@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { awardUser } from "@/lib/gamificationEngine";
 import BuddyConnection from "@/models/BuddyConnection";
 import mongoose from "mongoose";
 
@@ -63,14 +64,20 @@ export async function PATCH(req: Request) {
       );
     }
 
+    const wasCompleted = connection.status === "completed";
     connection.status = "completed";
     await connection.save();
+    const reward = wasCompleted
+      ? null
+      : await awardUser(currentUserId, "STUDY_BUDDY_COMPLETE");
 
     return NextResponse.json(
       {
         ok: true,
         message: "Session marked as completed successfully.",
         connection,
+        reward,
+        stats: reward?.profile || null,
       },
       { status: 200 }
     );

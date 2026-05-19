@@ -6,6 +6,8 @@ import {
   Play, Pause, RotateCcw, Settings, CloudRain, Coffee, Radio, Plus, Trash2,
   Music, CheckCircle2, Circle, Sparkles, Flame, Check, BarChart3, X // 👈 X import add kiya
 } from "lucide-react";
+import { showRewardToast } from "@/components/gamification/RewardToast";
+import { useGamificationStore } from "@/store/useGamificationStore";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
@@ -64,6 +66,7 @@ export default function FocusRoomsPage() {
   /* ---- XP & Progress State ---- */
   const [userLevel, setUserLevel] = useState(1);
   const [userXp, setUserXp] = useState(0);
+  const addReward = useGamificationStore((state) => state.addReward);
 
   /* ---- 🎵 Audio Engine Refs 🎵 ---- */
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
@@ -239,10 +242,21 @@ export default function FocusRoomsPage() {
         const data = await res.json();
         setUserLevel(data.progress.level);
         setUserXp(data.progress.xp);
+        const xpAwarded = Number(data?.reward?.xpAwarded || 10);
+        const coinsAwarded = Number(data?.reward?.coinsAwarded || 0);
+        addReward(xpAwarded, coinsAwarded);
+        showRewardToast({
+          title: "Focus Session Complete!",
+          xp: xpAwarded,
+          coins: coinsAwarded,
+        });
+        window.dispatchEvent(new Event("gamification-stats-updated"));
+        /*
         toast.success(`Focus Session Complete! You earned ${data.earnedXp} XP!`, {
           icon: '🎉',
           duration: 4000,
         });
+        */
       } else {
         toast.error("Failed to save focus session.");
       }
