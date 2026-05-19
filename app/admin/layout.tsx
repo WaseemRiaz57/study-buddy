@@ -605,15 +605,6 @@ export default function AdminLayout({
 
           {/* Right side actions */}
           <div className="flex items-center gap-2">
-            {/* Notification bell */}
-            <button
-              className="relative p-2.5 rounded-full text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
-              aria-label="Notifications"
-            >
-              <Bell size={19} />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#0f0a16]" />
-            </button>
-
             {/* Theme switcher */}
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}

@@ -26,7 +26,6 @@ import {
   setParticipantMicrophoneMutedAction,
   setRoomMicrophonesMutedAction,
 } from "@/app/actions/livekit-moderation";
-import { showRewardToast } from "@/components/gamification/RewardToast";
 import { useGamificationStore } from "@/store/useGamificationStore";
 
 type LiveVideoRoomProps = {
@@ -960,11 +959,6 @@ export default function LiveVideoRoom({
 
         if (xpAwarded || coinsAwarded) {
           addReward(xpAwarded, coinsAwarded);
-          showRewardToast({
-            title: "Study Buddy Session Complete!",
-            xp: xpAwarded,
-            coins: coinsAwarded,
-          });
           window.dispatchEvent(new Event("gamification-stats-updated"));
         }
       }

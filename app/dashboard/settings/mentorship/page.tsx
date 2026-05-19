@@ -165,6 +165,7 @@ export default function MentorshipSetupPage() {
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [subjectDraft, setSubjectDraft] = useState("");
   const [certificates, setCertificates] = useState<string[]>([]);
   const [certificateDraft, setCertificateDraft] = useState("");
   const [hourlyRate, setHourlyRate] = useState(50);
@@ -262,11 +263,24 @@ export default function MentorshipSetupPage() {
     };
   }, []);
 
-  const toggleSubject = (subject: string) => {
+  const addSubject = (value = subjectDraft) => {
+    const nextSubject = value.trim().replace(/,$/, "");
+
+    if (!nextSubject) return;
+
+    setSelectedSubjects((current) => {
+      const alreadyExists = current.some(
+        (item) => item.toLowerCase() === nextSubject.toLowerCase()
+      );
+
+      return alreadyExists ? current : [...current, nextSubject];
+    });
+    setSubjectDraft("");
+  };
+
+  const removeSubject = (subject: string) => {
     setSelectedSubjects((current) =>
-      current.includes(subject)
-        ? current.filter((item) => item !== subject)
-        : [...current, subject]
+      current.filter((item) => item.toLowerCase() !== subject.toLowerCase())
     );
   };
 
@@ -697,30 +711,50 @@ export default function MentorshipSetupPage() {
                 </label>
 
                 <div>
-                  <p className="mb-3 text-sm font-bold text-slate-700 dark:text-slate-300">
+                  <label
+                    htmlFor="mentor-subjects"
+                    className="mb-3 block text-sm font-bold text-slate-700 dark:text-slate-300"
+                  >
                     Subject Expertise
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                    {SUBJECT_OPTIONS.map((subject) => {
-                      const selected = selectedSubjects.includes(subject);
-                      return (
+                  </label>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="flex min-h-[48px] flex-wrap items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 focus-within:border-[#7C3AED] focus-within:ring-2 focus-within:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-slate-950">
+                      {selectedSubjects.map((subject) => (
                         <button
                           key={subject}
                           type="button"
-                          aria-pressed={selected}
-                          aria-label={`${selected ? "Remove" : "Add"} ${subject} expertise`}
-                          onClick={() => toggleSubject(subject)}
-                          className={`flex h-12 items-center justify-center gap-2 rounded-xl border-2 px-3 text-sm font-bold transition-colors ${
-                            selected
-                              ? "border-[#7C3AED] bg-[#7C3AED] text-white"
-                              : "border-slate-200 bg-slate-50 text-slate-600 hover:border-[#7C3AED] dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
-                          }`}
+                          onClick={() => removeSubject(subject)}
+                          aria-label={`Remove ${subject} expertise`}
+                          className="inline-flex min-h-[34px] items-center gap-2 rounded-full bg-[#7C3AED] px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-purple-700"
                         >
-                          {selected && <Check size={16} aria-hidden="true" />}
-                          {subject}
+                          <span>{subject}</span>
+                          <X size={13} aria-hidden="true" />
                         </button>
-                      );
-                    })}
+                      ))}
+                      <input
+                        id="mentor-subjects"
+                        type="text"
+                        value={subjectDraft}
+                        onChange={(event) => setSubjectDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === ",") {
+                            event.preventDefault();
+                            addSubject();
+                          }
+                        }}
+                        onBlur={() => addSubject()}
+                        aria-label="Add subject expertise"
+                        placeholder={
+                          selectedSubjects.length
+                            ? "Add another subject..."
+                            : "Type a subject and press Enter or comma"
+                        }
+                        className="min-h-[34px] min-w-[180px] flex-1 bg-transparent px-1 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      Add any subject you teach. Press Enter or comma to create each tag.
+                    </p>
                   </div>
                 </div>
 

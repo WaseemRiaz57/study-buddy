@@ -6,7 +6,6 @@ import {
   Play, Pause, RotateCcw, Settings, CloudRain, Coffee, Radio, Plus, Trash2,
   Music, CheckCircle2, Circle, Sparkles, Flame, Check, BarChart3, X // 👈 X import add kiya
 } from "lucide-react";
-import { showRewardToast } from "@/components/gamification/RewardToast";
 import { useGamificationStore } from "@/store/useGamificationStore";
 
 /* ------------------------------------------------------------------ */
@@ -245,11 +244,6 @@ export default function FocusRoomsPage() {
         const xpAwarded = Number(data?.reward?.xpAwarded || 10);
         const coinsAwarded = Number(data?.reward?.coinsAwarded || 0);
         addReward(xpAwarded, coinsAwarded);
-        showRewardToast({
-          title: "Focus Session Complete!",
-          xp: xpAwarded,
-          coins: coinsAwarded,
-        });
         window.dispatchEvent(new Event("gamification-stats-updated"));
         /*
         toast.success(`Focus Session Complete! You earned ${data.earnedXp} XP!`, {

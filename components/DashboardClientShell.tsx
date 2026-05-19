@@ -45,6 +45,31 @@ export function DashboardClientShell({
   }, [initialPlan, initialRole, setPlan, setRole]);
 
   useEffect(() => {
+    let isActive = true;
+
+    const hydrateGamificationTotals = async () => {
+      const response = await fetch("/api/user/gamification-stats", {
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (isActive && response.ok && data?.stats) {
+        setInitialGamificationData(
+          Number(data.stats.xp || 0),
+          Number(data.stats.coins || 0),
+          data.stats
+        );
+      }
+    };
+
+    void hydrateGamificationTotals();
+
+    return () => {
+      isActive = false;
+    };
+  }, [setInitialGamificationData]);
+
+  useEffect(() => {
     const awardDailyLogin = async () => {
       const response = await fetch("/api/user/gamification-stats", {
         method: "POST",

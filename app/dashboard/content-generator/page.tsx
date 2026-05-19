@@ -22,11 +22,8 @@ import {
   PenLine,
   UploadCloud,
   X,
-  Sparkles as SparklesIcon,
-  Coins,
   type LucideIcon,
 } from "lucide-react";
-import { showRewardToast } from "@/components/gamification/RewardToast";
 import { useGamificationStore } from "@/store/useGamificationStore";
 
 type TabId = "notes" | "summarizer" | "quiz";
@@ -334,41 +331,6 @@ export default function ContentGeneratorPage() {
       addGamificationReward(10, 5);
       await refreshGamificationStats();
       window.dispatchEvent(new Event("gamification-stats-updated"));
-      showRewardToast({
-        title: "Generation Successful!",
-        xp: 10,
-        coins: 5,
-      });
-      false && toast.custom(
-        (id) => (
-          <motion.div
-            initial={{ opacity: 0, x: 40, scale: 0.96 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 40, scale: 0.96 }}
-            className="flex w-[340px] max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl border border-[#7C3AED]/30 bg-slate-950/95 p-4 text-white shadow-2xl shadow-purple-500/50 backdrop-blur-xl"
-          >
-            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#7C3AED]/20 text-[#C4B5FD]">
-              <SparklesIcon size={22} className="animate-pulse" />
-              <Coins size={14} className="absolute -right-1 -top-1 animate-bounce text-yellow-300" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-black">Generation Successful! 🎉</p>
-              <p className="mt-0.5 text-xs font-semibold text-purple-100">
-                +10 XP | +5 Coins added.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => toast.dismiss(id)}
-              className="rounded-lg p-1 text-purple-100/70 transition-colors hover:bg-white/10 hover:text-white"
-              aria-label="Dismiss reward notification"
-            >
-              <X size={16} />
-            </button>
-          </motion.div>
-        ),
-        { duration: 4500 }
-      );
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
 

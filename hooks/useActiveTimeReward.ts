@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { showRewardToast } from "@/components/gamification/RewardToast";
 import { useGamificationStore } from "@/store/useGamificationStore";
 
 const ACTIVE_REWARD_MS = 30 * 60 * 1000;
@@ -40,11 +39,6 @@ export function useActiveTimeReward() {
             Number(data.reward?.coinsAwarded || 0)
           );
           setStats(data.stats || data.reward?.profile || {});
-          showRewardToast({
-            title: "Active Study Reward!",
-            xp: Number(data.reward?.xpAwarded || 10),
-            coins: Number(data.reward?.coinsAwarded || 0),
-          });
           window.dispatchEvent(new Event("gamification-stats-updated"));
         }
       } finally {

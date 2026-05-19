@@ -16,7 +16,6 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { showRewardToast } from "@/components/gamification/RewardToast";
 import ReviewModal from "@/components/mentorship/ReviewModal";
 import { useGamificationStore } from "@/store/useGamificationStore";
 
@@ -761,11 +760,6 @@ export default function SessionsPage() {
 
       if (xpAwarded || coinsAwarded) {
         addReward(xpAwarded, coinsAwarded);
-        showRewardToast({
-          title: "Mentor Session Complete!",
-          xp: xpAwarded,
-          coins: coinsAwarded,
-        });
         window.dispatchEvent(new Event("gamification-stats-updated"));
       }
       toast.success("Session completed.");

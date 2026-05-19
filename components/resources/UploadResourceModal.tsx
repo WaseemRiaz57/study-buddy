@@ -24,7 +24,6 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { showRewardToast } from "@/components/gamification/RewardToast";
 import { useGamificationStore } from "@/store/useGamificationStore";
 
 interface UploadResourceModalProps {
@@ -163,11 +162,6 @@ export default function UploadResourceModal({
 
       if (xpAwarded || coinsAwarded) {
         addReward(xpAwarded, coinsAwarded);
-        showRewardToast({
-          title: "Resource Uploaded!",
-          xp: xpAwarded,
-          coins: coinsAwarded,
-        });
         window.dispatchEvent(new Event("gamification-stats-updated"));
       }
 

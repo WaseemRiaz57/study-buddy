@@ -1,4 +1,7 @@
+"use client";
+
 import { create } from "zustand";
+import { showRewardToast } from "@/components/gamification/RewardToast";
 
 export interface GamificationStats {
   xp: number;
@@ -62,13 +65,23 @@ export const useGamificationStore = create<GamificationState>((set) => ({
     })),
   addReward: (xp, coins) =>
     set((state) => {
-      const nextXp = Math.max(0, state.stats.xp + Number(xp || 0));
+      const xpEarned = Math.max(0, Number(xp || 0));
+      const coinsEarned = Math.max(0, Number(coins || 0));
+      const nextXp = Math.max(0, state.stats.xp + xpEarned);
+
+      if (typeof window !== "undefined" && (xpEarned || coinsEarned)) {
+        showRewardToast({
+          title: "Reward Added!",
+          xp: xpEarned,
+          coins: coinsEarned,
+        });
+      }
 
       return {
         stats: {
           ...state.stats,
           ...deriveLevelStats(nextXp),
-          coins: Math.max(0, state.stats.coins + Number(coins || 0)),
+          coins: Math.max(0, state.stats.coins + coinsEarned),
         },
         isLoaded: true,
       };

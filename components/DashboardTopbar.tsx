@@ -73,6 +73,8 @@ export function DashboardTopbar({
       : "Scholar";
   const paidPlanLabel =
     subscriptionPlan === "elite" ? "ELITE" : subscriptionPlan === "pro" ? "PRO" : "";
+  const normalizedSessionRole = String(session?.user?.role || role || "").toLowerCase();
+  const isAdminUser = normalizedSessionRole === "admin";
 
   const xpForCurrentLevel = xp % 1000;
   const xpProgress = Math.min(100, Math.round((xpForCurrentLevel / 1000) * 100));
@@ -267,7 +269,7 @@ export function DashboardTopbar({
             )}
           </button>
 
-          <NotificationBell />
+          {!isAdminUser && <NotificationBell />}
 
           <div ref={userMenuRef} className="relative shrink-0">
             {role === "STUDENT" ? (
