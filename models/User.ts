@@ -87,6 +87,8 @@ const userSchema = new Schema(
   { timestamps: true } // Yeh automatically createdAt aur updatedAt fields bana dega
 );
 
+userSchema.index({ name: 1 });
+
 // Next.js mein models ko cache se check karna zaroori hai taake re-compilation error na aaye
 const User = models.User || mongoose.model("User", userSchema);
 

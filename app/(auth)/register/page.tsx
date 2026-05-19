@@ -5,6 +5,8 @@ import Link from "next/link";
 import {
   ArrowLeft,
   CheckCircle,
+  Eye,
+  EyeOff,
   GraduationCap,
   Loader2,
   Lock,
@@ -36,6 +38,9 @@ export default function RegisterPage() {
   const [role, setRole] = useState<"student" | "teacher">("student");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
   const [otp, setOtp] = useState("");
   const [resendTimer, setResendTimer] = useState(60);
@@ -44,6 +49,7 @@ export default function RegisterPage() {
     lastName: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
 
   const roleConfig = {
@@ -84,6 +90,14 @@ export default function RegisterPage() {
   }, [step, resendTimer]);
 
   const handleSendOtp = async () => {
+    if (formData.password !== formData.confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    setPasswordError("");
+
     const response = await fetch("/api/auth/send-otp", {
       method: "POST",
       headers: {
@@ -149,6 +163,7 @@ export default function RegisterPage() {
         name: `${formData.firstName} ${formData.lastName}`,
         email: formData.email,
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
         role,
         otp,
       }),
@@ -166,6 +181,12 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
+    if (step === 1 && formData.password !== formData.confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      toast.error("Passwords do not match.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -340,17 +361,79 @@ export default function RegisterPage() {
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-focus-within:text-primary" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Create Password"
                     aria-label="Create password"
                     required
                     value={formData.password}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
+                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                    onChange={(e) => {
+                      const password = e.target.value;
+                      setFormData({ ...formData, password });
+                      setPasswordError(
+                        formData.confirmPassword && password !== formData.confirmPassword
+                          ? "Passwords do not match."
+                          : ""
+                      );
+                    }}
                   />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    onClick={() => setShowPassword((current) => !current)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </button>
                 </div>
+
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-focus-within:text-primary" />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm Password"
+                    aria-label="Confirm password"
+                    required
+                    value={formData.confirmPassword}
+                    aria-invalid={Boolean(passwordError)}
+                    aria-describedby={passwordError ? "confirm-password-error" : undefined}
+                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                    onChange={(e) => {
+                      const confirmPassword = e.target.value;
+                      setFormData({ ...formData, confirmPassword });
+                      setPasswordError(
+                        formData.password && formData.password !== confirmPassword
+                          ? "Passwords do not match."
+                          : ""
+                      );
+                    }}
+                  />
+                  <button
+                    type="button"
+                    aria-label={
+                      showConfirmPassword
+                        ? "Hide confirm password"
+                        : "Show confirm password"
+                    }
+                    onClick={() => setShowConfirmPassword((current) => !current)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+                {passwordError && (
+                  <p id="confirm-password-error" className="text-sm font-semibold text-red-500">
+                    {passwordError}
+                  </p>
+                )}
               </div>
             </>
           ) : (

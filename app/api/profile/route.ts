@@ -65,7 +65,8 @@ const emptyMentorProfile = {
 };
 
 function normalizeRole(role: unknown) {
-  return String(role ?? "").toLowerCase();
+  const normalized = String(role ?? "").toLowerCase();
+  return normalized === "teacher" || normalized === "mentor" ? "mentor" : normalized;
 }
 
 function normalizeString(value: unknown, maxLength?: number) {

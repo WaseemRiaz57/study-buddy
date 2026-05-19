@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { io, type Socket } from "socket.io-client";
 import {
   CalendarPlus,
@@ -126,11 +127,14 @@ function mergeMessage(list: ChatMessage[], message: ChatMessage) {
 
 export default function MessagesPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const currentUserId = String(session?.user?.id || "");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState<ChatUser[]>([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [typingUserName, setTypingUserName] = useState("");
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
@@ -232,6 +236,48 @@ export default function MessagesPage() {
       mounted = false;
     };
   }, [ensureConversation, loadConversations, status]);
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+
+    if (query.length < 2 || status !== "authenticated") {
+      setUserSearchResults([]);
+      setIsSearchingUsers(false);
+      return;
+    }
+
+    let active = true;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        setIsSearchingUsers(true);
+        const response = await fetch(
+          `/api/users/search?q=${encodeURIComponent(query)}`,
+          { cache: "no-store" }
+        );
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Unable to search users.");
+        }
+
+        if (active) {
+          setUserSearchResults(Array.isArray(data?.users) ? data.users : []);
+        }
+      } catch (error) {
+        if (active) {
+          console.error(error);
+          setUserSearchResults([]);
+        }
+      } finally {
+        if (active) setIsSearchingUsers(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchQuery, status]);
 
   useEffect(() => {
     activeConversationRef.current = activeConversationId;
@@ -431,6 +477,13 @@ export default function MessagesPage() {
     setShowSidebar(false);
   };
 
+  const openUserConversation = (userId: string) => {
+    setSearchQuery("");
+    setUserSearchResults([]);
+    setShowSidebar(false);
+    router.push(`/dashboard/messages/${userId}`);
+  };
+
   const emitStopTyping = useCallback(() => {
     if (!activeConversationId || !currentUserId) return;
 
@@ -581,9 +634,52 @@ export default function MessagesPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search conversations..."
+                placeholder="Search people or conversations..."
+                aria-label="Search people or conversations"
                 className="w-full rounded-xl border border-border bg-white py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/50 dark:bg-white/5"
               />
+              {searchQuery.trim().length >= 2 && (
+                <div
+                  role="listbox"
+                  aria-label="User search results"
+                  className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-border bg-white shadow-2xl dark:border-white/10 dark:bg-[#21172b]"
+                >
+                  {isSearchingUsers ? (
+                    <div className="flex min-h-[64px] items-center justify-center">
+                      <Loader2
+                        size={18}
+                        className="animate-spin text-[#7C3AED]"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  ) : userSearchResults.length === 0 ? (
+                    <p className="px-4 py-4 text-sm text-muted-foreground">
+                      No matching users found.
+                    </p>
+                  ) : (
+                    userSearchResults.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        role="option"
+                        aria-selected={false}
+                        onClick={() => openUserConversation(user.id)}
+                        className="flex min-h-[56px] w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-[#7C3AED]/10"
+                      >
+                        {renderAvatar(user, "h-9 w-9")}
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-foreground">
+                            {user.name}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            {normalizeRole(user.role)}
+                          </span>
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

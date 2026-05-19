@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSession, signIn } from "next-auth/react";
-import { ArrowLeft, Mail, Lock, BookOpen, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -238,6 +238,7 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
@@ -320,12 +321,6 @@ export default function LoginPage() {
                 className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors group"
               >
                 Create a free account
-                <motion.div
-                  animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
-                >
-                  <BookOpen className="h-4 w-4" strokeWidth={2} />
-                </motion.div>
               </Link>
             </motion.div>
           </form>

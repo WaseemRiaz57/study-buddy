@@ -8,17 +8,18 @@ function normalizeEmail(email: unknown): string {
   return String(email || "").trim().toLowerCase();
 }
 
-function normalizeRole(role: unknown): "student" | "teacher" {
+function normalizeRole(role: unknown): "student" | "mentor" {
   const normalized = String(role).toLowerCase();
-  return normalized === "teacher" || normalized === "mentor" ? "teacher" : "student";
+  return normalized === "teacher" || normalized === "mentor" ? "mentor" : "student";
 }
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, role, otp } = await req.json();
+    const { name, email, password, confirmPassword, role, otp } = await req.json();
     const normalizedName = String(name || "").trim();
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = String(password || "");
+    const normalizedConfirmPassword = String(confirmPassword || "");
     const normalizedRole = normalizeRole(role);
     const normalizedOtp = String(otp || "").trim();
 
@@ -36,6 +37,13 @@ export async function POST(req: Request) {
     if (normalizedPassword.length < 8 || normalizedPassword.length > 128) {
       return NextResponse.json(
         { message: "Password must be between 8 and 128 characters." },
+        { status: 400 }
+      );
+    }
+
+    if (normalizedPassword !== normalizedConfirmPassword) {
+      return NextResponse.json(
+        { message: "Passwords do not match." },
         { status: 400 }
       );
     }
