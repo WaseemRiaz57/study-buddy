@@ -46,6 +46,7 @@ export function DashboardTopbar({
   );
   const setGamificationStats = useGamificationStore((state) => state.setStats);
   const refreshGamificationStats = useGamificationStore((state) => state.refresh);
+  const resetGamificationStats = useGamificationStore((state) => state.reset);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const fullName = session?.user?.name || "User";
@@ -114,7 +115,8 @@ export function DashboardTopbar({
 
   const handleLogout = async () => {
     markStudyBuddyOffline();
-    await signOut({ callbackUrl: "/" });
+    resetGamificationStats();
+    await signOut({ callbackUrl: "/", redirect: true });
   };
 
   const handleSubmitReview = async () => {

@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { DashboardClientShell } from "@/components/DashboardClientShell";
 import { authOptions } from "@/lib/authOptions";
+import { connectMongoDB } from "@/lib/mongodb";
 import { normalizeSubscriptionPlan } from "@/lib/pricingConfig";
+import MentorProfile from "@/models/MentorProfile";
 import { type Plan, type Role } from "@/store/useUserStore";
 
 function normalizeRole(role: unknown): Role {
@@ -30,10 +32,33 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const initialRole = normalizeRole(session.user.role);
+  const initialPlan = normalizePlan(session.user.subscriptionPlan);
+  let mentorAccessStatus: "approved" | "pending" | "not_submitted" = "approved";
+
+  if (initialRole === "TEACHER" || initialRole === "MENTOR") {
+    await connectMongoDB();
+
+    const mentorProfile = await MentorProfile.findOne({
+      userId: session.user.id,
+    })
+      .select("status")
+      .lean();
+    const status = String(mentorProfile?.status || "").toLowerCase();
+
+    mentorAccessStatus =
+      status === "approved"
+        ? "approved"
+        : status === "pending"
+          ? "pending"
+          : "not_submitted";
+  }
+
   return (
     <DashboardClientShell
-      initialRole={normalizeRole(session.user.role)}
-      initialPlan={normalizePlan(session.user.subscriptionPlan)}
+      initialRole={initialRole}
+      initialPlan={initialPlan}
+      mentorAccessStatus={mentorAccessStatus}
     >
       {children}
     </DashboardClientShell>

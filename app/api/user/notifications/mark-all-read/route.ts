@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import Notification from "@/models/Notification";
@@ -22,6 +23,7 @@ function getAudienceCandidates(user: any) {
     candidates.add(plan);
     candidates.add(plan.toLowerCase());
     candidates.add(`${plan} Users`);
+
     if (plan === "Pro" || plan === "Elite") {
       candidates.add("Pro");
       candidates.add("pro");
@@ -33,7 +35,7 @@ function getAudienceCandidates(user: any) {
   return Array.from(candidates);
 }
 
-export async function GET() {
+export async function PATCH() {
   try {
     const session = await getServerSession(authOptions);
 
@@ -51,53 +53,49 @@ export async function GET() {
       return NextResponse.json({ message: "User not found." }, { status: 404 });
     }
 
-    const conditions: Record<string, unknown>[] = [
-      { userId: session.user.id },
-      { recipientId: session.user.id },
+    if (!mongoose.Types.ObjectId.isValid(session.user.id)) {
+      return NextResponse.json({ message: "Invalid user session." }, { status: 400 });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+    const audienceCandidates = getAudienceCandidates(user);
+    const sharedConditions: Record<string, unknown>[] = [
       { isGlobal: true },
       { audience: "All Users" },
     ];
-    const audienceCandidates = getAudienceCandidates(user);
 
     if (audienceCandidates.length > 0) {
-      conditions.push({ audience: { $in: audienceCandidates } });
+      sharedConditions.push({ audience: { $in: audienceCandidates } });
     }
 
-    const notifications = await Notification.find({
-      $or: conditions,
-    })
-      .populate("senderId", "name image")
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean();
-
-    const userId = String(session.user.id);
-    const normalizedNotifications = notifications.map((notification: any) => {
-      const readBy = Array.isArray(notification.readBy)
-        ? notification.readBy.map((id: unknown) => String(id))
-        : [];
-
-      return {
-        ...notification,
-        read: Boolean(notification.read) || readBy.includes(userId),
-      };
-    });
-
-    const unreadCount = normalizedNotifications.filter(
-      (notification) => !notification.read
-    ).length;
+    await Promise.all([
+      Notification.updateMany(
+        {
+          $or: [
+            { userId: session.user.id },
+            { recipientId: session.user.id },
+          ],
+        },
+        { $set: { read: true } }
+      ),
+      Notification.updateMany(
+        {
+          $or: sharedConditions,
+        },
+        { $addToSet: { readBy: userObjectId } }
+      ),
+    ]);
 
     return NextResponse.json({
-      notifications: normalizedNotifications,
-      unreadCount,
+      success: true,
+      unreadCount: 0,
+      message: "Notifications marked as read.",
     });
   } catch (error) {
-    console.error("User notifications error:", error);
+    console.error("Mark notifications read error:", error);
     return NextResponse.json(
-      { message: "Failed to fetch notifications." },
+      { message: "Failed to mark notifications as read." },
       { status: 500 }
     );
   }
 }
-
-

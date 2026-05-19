@@ -14,6 +14,7 @@ import {
   Coins,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -95,6 +96,9 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
         throw new Error(data?.message || "Upload failed.");
       }
 
+      toast.success(
+        "Resource uploaded successfully! It will be visible to students after admin approval."
+      );
       resetForm();
       onUploadSuccess?.();
       onClose();
@@ -135,7 +139,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-4xl bg-white dark:bg-[#191121] rounded-2xl flex overflow-hidden shadow-2xl border border-slate-200 dark:border-white/10"
+            className="flex max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#191121]"
           >
             {/* ---- Left decorative panel ---- */}
             <div className="w-1/3 bg-purple-50 dark:bg-purple-900/10 p-8 hidden md:flex flex-col justify-between">
@@ -172,7 +176,7 @@ export default function UploadResourceModal({ isOpen, onClose, onUploadSuccess }
             </div>
 
             {/* ---- Right form panel ---- */}
-            <div className="flex-1 p-8 overflow-y-auto">
+            <div className="max-h-[85vh] flex-1 overflow-y-auto p-8 pb-20">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">

@@ -102,7 +102,7 @@ export default function RegisterPage() {
 
     setStep(2);
     setResendTimer(60);
-    toast.success("Verification code sent!");
+    toast.success("Verification code sent! Please also check your spam/junk folder.");
   };
 
   const handleResend = async () => {

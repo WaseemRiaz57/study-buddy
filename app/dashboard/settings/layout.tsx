@@ -22,6 +22,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { useUserStore } from "@/store/useUserStore";
+import { useGamificationStore } from "@/store/useGamificationStore";
 import MobileBackButton from "@/components/MobileBackButton";
 
 /* ------------------------------------------------------------------ */
@@ -125,6 +126,7 @@ export default function SettingsLayout({
   const { role } = useUserStore();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const resetGamificationStats = useGamificationStore((state) => state.reset);
   const normalizedRole = (role?.toLowerCase() || "student") as "student" | "mentor";
   const navGroups = getNavGroups(normalizedRole);
 
@@ -148,7 +150,8 @@ export default function SettingsLayout({
       toast.success(
         "Your account has been deleted successfully. We are sorry to see you go!"
       );
-      await signOut({ callbackUrl: "/" });
+      resetGamificationStats();
+      await signOut({ callbackUrl: "/", redirect: true });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to delete account."

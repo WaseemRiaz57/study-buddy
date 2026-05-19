@@ -34,6 +34,7 @@ export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -101,8 +102,28 @@ export function NotificationBell() {
     };
   }, []);
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    if (isMarkingAllRead || unreadCount === 0) return;
+
+    try {
+      setIsMarkingAllRead(true);
+      const response = await fetch("/api/user/notifications/mark-all-read", {
+        method: "PATCH",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to mark notifications read.");
+      }
+
+      setNotifications((current) =>
+        current.map((notification) => ({ ...notification, read: true }))
+      );
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsMarkingAllRead(false);
+    }
   };
 
   const markAsRead = (id: string) => {
@@ -133,10 +154,11 @@ export function NotificationBell() {
             </h3>
             {unreadCount > 0 && (
               <button
-                onClick={markAllAsRead}
-                className="flex min-h-[44px] items-center gap-1 text-xs font-medium text-[#7C3AED] transition-colors hover:opacity-80"
+                onClick={() => void markAllAsRead()}
+                disabled={isMarkingAllRead}
+                className="flex min-h-[44px] items-center gap-1 text-xs font-medium text-[#7C3AED] transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Check size={14} /> Mark all as read
+                <Check size={14} /> {isMarkingAllRead ? "Clearing..." : "Mark all as read"}
               </button>
             )}
           </div>

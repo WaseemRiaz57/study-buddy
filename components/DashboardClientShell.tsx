@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
 import { Sidebar } from "@/components/sidebar";
 import { useActiveTimeReward } from "@/hooks/useActiveTimeReward";
@@ -12,13 +14,16 @@ interface DashboardClientShellProps {
   children: React.ReactNode;
   initialRole: Role;
   initialPlan: Plan;
+  mentorAccessStatus?: "approved" | "pending" | "not_submitted";
 }
 
 export function DashboardClientShell({
   children,
   initialRole,
   initialPlan,
+  mentorAccessStatus = "approved",
 }: DashboardClientShellProps) {
+  const pathname = usePathname();
   const setRole = useUserStore((state) => state.setRole);
   const setPlan = useUserStore((state) => state.setPlan);
   const setInitialGamificationData = useGamificationStore(
@@ -28,6 +33,13 @@ export function DashboardClientShell({
 
   useOfflinePresence();
   useActiveTimeReward();
+
+  const isMentorRole = initialRole === "TEACHER" || initialRole === "MENTOR";
+  const isMentorRestricted = isMentorRole && mentorAccessStatus !== "approved";
+  const isMentorshipSetupPage =
+    pathname === "/dashboard/settings/mentorship" ||
+    pathname.startsWith("/dashboard/settings/mentorship/");
+  const shouldBlockContent = isMentorRestricted && !isMentorshipSetupPage;
 
   useEffect(() => {
     setRole(initialRole);
@@ -84,8 +96,57 @@ export function DashboardClientShell({
 
       <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto transition-all duration-300">
         <DashboardTopbar onOpenSidebar={() => setMobileSidebarOpen(true)} />
-        <div className="mx-auto w-full max-w-screen-2xl">
-          {children}
+        <div className="mx-auto w-full max-w-screen-2xl pb-20">
+          {isMentorRestricted && (
+            <section
+              aria-label="Mentor account access status"
+              className="mx-4 mt-4 rounded-2xl border border-[#7C3AED]/25 bg-[#7C3AED]/10 p-4 text-sm shadow-sm sm:mx-6 lg:mx-8"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-semibold text-foreground">
+                  {mentorAccessStatus === "pending"
+                    ? "⏳ Your mentor application is currently pending admin approval. Features are locked."
+                    : "⚠️ Your account is restricted. Please submit your mentor application to unlock platform features."}
+                </p>
+                {mentorAccessStatus === "not_submitted" && (
+                  <Link
+                    href="/dashboard/settings/mentorship"
+                    prefetch
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+                  >
+                    Submit Application
+                  </Link>
+                )}
+              </div>
+            </section>
+          )}
+
+          {shouldBlockContent ? (
+            <section className="mx-auto flex min-h-[50vh] max-w-2xl flex-col items-center justify-center px-4 text-center">
+              <div className="rounded-3xl border border-border bg-card p-6 shadow-xl sm:p-8">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
+                  Access Locked
+                </p>
+                <h1 className="mt-3 text-2xl font-extrabold text-foreground">
+                  Mentor approval required
+                </h1>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  Your dashboard tools will unlock after your mentor application is approved by an admin.
+                </p>
+                {mentorAccessStatus === "not_submitted" && (
+                  <Link
+                    href="/dashboard/settings/mentorship"
+                    prefetch
+                    className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+                  >
+                    Submit Application
+                  </Link>
+                )}
+              </div>
+            </section>
+          ) : (
+            children
+          )}
         </div>
       </main>
     </div>
