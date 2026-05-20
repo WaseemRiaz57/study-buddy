@@ -20,7 +20,7 @@ export async function GET() {
 
     if (userRole !== "teacher" && userRole !== "mentor") {
       return NextResponse.json(
-        { message: "Forbidden. This feature is only available to teachers." },
+        { message: "Forbidden. This feature is only available to mentors." },
         { status: 403 }
       );
     }
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
     if (userRole !== "teacher" && userRole !== "mentor") {
       return NextResponse.json(
-        { message: "Forbidden. This feature is only available to teachers." },
+        { message: "Forbidden. This feature is only available to mentors." },
         { status: 403 }
       );
     }

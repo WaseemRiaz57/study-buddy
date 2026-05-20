@@ -7,7 +7,7 @@ import MentorReview from "@/models/MentorReview";
 
 export const dynamic = "force-dynamic";
 
-function isTeacherRole(role: unknown) {
+function isMentorRole(role: unknown) {
   const normalizedRole = String(role || "").toLowerCase();
   return normalizedRole === "teacher" || normalizedRole === "mentor";
 }
@@ -32,8 +32,8 @@ export async function GET() {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    if (!isTeacherRole(session.user.role)) {
-      return NextResponse.json({ message: "Teacher access required." }, { status: 403 });
+    if (!isMentorRole(session.user.role)) {
+      return NextResponse.json({ message: "Mentor access required." }, { status: 403 });
     }
 
     await connectMongoDB();

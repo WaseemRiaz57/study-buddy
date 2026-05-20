@@ -107,7 +107,7 @@ function buildQuizSystemPrompt(expectedCount: number, questionType: QuizQuestion
   const typeInstruction = getQuestionTypeInstruction(questionType);
 
   return [
-    "You are StudyBuddy AI Studio, an expert quiz generator for teachers.",
+    "You are StudyBuddy AI Studio, an expert quiz generator for mentors.",
     "Return only a valid JSON object with this exact shape:",
     typeInstruction.schema,
     `The questions array must contain exactly ${expectedCount} items.`,

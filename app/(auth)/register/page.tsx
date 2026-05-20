@@ -65,7 +65,7 @@ export default function RegisterPage() {
       checkColor: "text-primary",
     },
     teacher: {
-      title: "Teacher",
+      title: "Mentor",
       description: "I want to guide others, host sessions, and earn.",
       icon: Sparkles,
       primaryColor: "border-[#7C3AED] bg-[#7C3AED]/5",

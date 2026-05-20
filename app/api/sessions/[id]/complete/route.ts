@@ -32,7 +32,7 @@ export async function PATCH(
 
     if (!isAllowedRole(session.user.role)) {
       return NextResponse.json(
-        { message: "Forbidden. Only teachers or admins can complete sessions." },
+        { message: "Forbidden. Only mentors or admins can complete sessions." },
         { status: 403 }
       );
     }

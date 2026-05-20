@@ -66,10 +66,10 @@ export function DashboardTopbar({
   const roleLabel = session?.user?.role
     ? String(session.user.role).toLowerCase() === "teacher" ||
       String(session.user.role).toLowerCase() === "mentor"
-      ? "Teacher"
+      ? "Mentor"
       : `${session.user.role.charAt(0).toUpperCase()}${session.user.role.slice(1).toLowerCase()}`
     : role === "TEACHER" || role === "MENTOR"
-      ? "Teacher"
+      ? "Mentor"
       : "Scholar";
   const paidPlanLabel =
     subscriptionPlan === "elite" ? "ELITE" : subscriptionPlan === "pro" ? "PRO" : "";
@@ -208,7 +208,7 @@ export function DashboardTopbar({
               <div className="mb-1 flex justify-between text-[10px] font-bold uppercase tracking-wider text-[#7C3AED]">
                 <span>
                   {role === "TEACHER" || role === "MENTOR"
-                    ? "Teacher Rank"
+                    ? "Mentor Rank"
                     : "Scholar Rank"}
                 </span>
                 <span>

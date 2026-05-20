@@ -335,7 +335,7 @@ export default function LeaderboardControlPage() {
               className="appearance-none rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-8 text-sm font-medium text-slate-900 transition-colors focus:border-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
             >
               <option value="students">Students</option>
-              <option value="teachers">Teachers</option>
+              <option value="teachers">Mentors</option>
             </select>
             <ChevronDown
               size={13}

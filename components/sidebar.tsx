@@ -81,13 +81,13 @@ export function Sidebar({
   const storePlan = useUserStore((state) => state.plan);
   const role = initialRole || storeRole;
   const plan = initialPlan || storePlan;
-  const isTeacher = role === "TEACHER" || role === "MENTOR";
+  const isMentorRole = role === "TEACHER" || role === "MENTOR";
 
   const navItems = buildNavItems(plan === "FREE" || plan === "COMMUNITY").filter((item) => {
     if (!item.roles.includes(role)) return false;
 
     if (
-      isTeacher &&
+      isMentorRole &&
       (item.href === "/dashboard/focus-rooms" ||
         item.href === "/dashboard/study-buddy")
     ) {

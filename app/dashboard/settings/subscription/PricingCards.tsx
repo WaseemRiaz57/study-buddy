@@ -37,7 +37,7 @@ export default function PricingCards() {
   const role = String(session?.user?.role || "student").toLowerCase();
   const roleFeature =
     role === "teacher" || role === "mentor"
-      ? "Teacher tools for quizzes, sessions, and resource selling"
+      ? "Mentor tools for quizzes, sessions, and resource selling"
       : "Student tools for notes, focus rooms, and peer study";
 
   useEffect(() => {

@@ -69,6 +69,20 @@ interface PublicReview {
   };
 }
 
+function cleanReviewComment(comment: string) {
+  return String(comment || "").trim().replace(/^["']|["']$/g, "");
+}
+
+function getReviewRoleMeta(role: string) {
+  const normalizedRole = String(role || "student").toLowerCase();
+  const isMentor = normalizedRole === "teacher" || normalizedRole === "mentor";
+
+  return {
+    label: isMentor ? "Mentor" : "Student",
+    className: isMentor ? "text-violet-300" : "text-gray-400",
+  };
+}
+
 // ============================================================================
 // DATA
 // ============================================================================
@@ -88,11 +102,11 @@ const features: Feature[] = [
   { icon: Brain,        title: "AI Content Generator",  description: "Generate comprehensive notes, summaries, and quizzes from any topic in seconds.", glow: "purple", badge: "Most Used", badgeColor: "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30" },
   { icon: Trophy,       title: "Gamified Challenges",   description: "Earn XP, badges, and climb leaderboards through interactive quizzes and streaks.", glow: "yellow", badge: "Popular", badgeColor: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30" },
   { icon: Users,        title: "Live Study Rooms",      description: "Join virtual rooms to collaborate with peers in real-time with video and chat.", glow: "blue" },
-  { icon: Store,        title: "Teacher Marketplace",   description: "Find expert tutors or sell your own high-quality study materials.", glow: "emerald", badge: "New", badgeColor: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  { icon: Store,        title: "Mentor Marketplace",   description: "Find expert tutors or sell your own high-quality study materials.", glow: "emerald", badge: "New", badgeColor: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
   { icon: Clock,        title: "Focus Room",            description: "Distraction-free environment with Pomodoro timer, ambient sounds, and deep-work tracking.", glow: "pink" },
   { icon: MessageSquare,title: "Community Forums",      description: "Ask questions, share insights, and engage with thousands of motivated learners.", glow: "violet" },
   { icon: BookOpen,     title: "Resource Hub",          description: "A shared digital library of notes, PDFs, and guides rated by the community.", glow: "sky" },
-  { icon: GraduationCap,title: "Teacher Network",   description: "Connect with experienced teachers who guide you through tough subjects one-on-one.", glow: "amber" },
+  { icon: GraduationCap,title: "Mentor Network",   description: "Connect with experienced mentors who guide you through tough subjects one-on-one.", glow: "amber" },
   { icon: Zap,          title: "Smart Analytics",       description: "Track your study hours, weak areas, and progress with AI-powered dashboards.", glow: "teal" },
 ];
 
@@ -501,6 +515,8 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
             offset > testimonials.length / 2 ? offset - testimonials.length : offset;
           const isActive = normalizedOffset === 0;
           const isVisible = Math.abs(normalizedOffset) <= 2;
+          const roleMeta = getReviewRoleMeta(review.user.role);
+          const cleanedComment = cleanReviewComment(review.comment);
 
           if (!isVisible) return null;
 
@@ -542,7 +558,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
                     isActive ? "text-white/90" : "text-muted-foreground"
                   }`}
                 >
-                  &ldquo;{review.comment}&rdquo;
+                  {cleanedComment}
                 </p>
               </div>
 
@@ -559,8 +575,16 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
                   <div className={isActive ? "text-sm font-bold text-white" : "text-sm font-bold text-foreground"}>
                     {review.user.name}
                   </div>
-                  <div className={isActive ? "text-xs text-white/70" : "text-xs text-muted-foreground"}>
-                    {review.user.role}
+                  <div
+                    className={`text-xs ${
+                      isActive
+                        ? roleMeta.className
+                        : roleMeta.label === "Mentor"
+                          ? "text-[#7C3AED]"
+                          : "text-gray-500 dark:text-gray-400"
+                    }`}
+                  >
+                    {roleMeta.label}
                   </div>
                 </div>
               </div>
@@ -755,7 +779,7 @@ export default function Home() {
             variants={fadeUp}
             className="mx-auto mb-12 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed"
           >
-            Where learning meets innovation. Build knowledge, connect with teachers, and achieve your goals in a community that never stops growing.
+            Where learning meets innovation. Build knowledge, connect with mentors, and achieve your goals in a community that never stops growing.
           </motion.p>
 
           <motion.div variants={fadeUp} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -1036,7 +1060,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-12 text-center">
             <SectionBadge color="border-yellow-500/30 bg-yellow-500/10 text-yellow-400" icon={Star} label="Reviews" />
-            <SectionHeading>Loved by Students and Teachers</SectionHeading>
+            <SectionHeading>Loved by Students and Mentors</SectionHeading>
           </div>
         </div>
         <TestimonialsMarquee testimonials={testimonials} />

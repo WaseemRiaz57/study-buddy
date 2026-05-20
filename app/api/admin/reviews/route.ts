@@ -30,7 +30,7 @@ async function requireAdmin() {
 
 function formatRole(role: unknown) {
   const normalized = String(role || "student").toLowerCase();
-  if (normalized === "teacher") return "Teacher";
+  if (normalized === "teacher" || normalized === "mentor") return "Mentor";
   if (normalized === "admin") return "Admin";
   return "Student";
 }

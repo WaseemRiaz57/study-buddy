@@ -4,11 +4,14 @@ import Review from "@/models/Review";
 
 export const dynamic = "force-dynamic";
 
-function formatRole(role: unknown) {
+function normalizePublicRole(role: unknown) {
   const normalized = String(role || "student").toLowerCase();
-  if (normalized === "teacher") return "Teacher";
-  if (normalized === "admin") return "Admin";
-  return "Student";
+  if (normalized === "teacher" || normalized === "mentor") return "mentor";
+  return "student";
+}
+
+function cleanComment(comment: unknown) {
+  return String(comment || "").trim().replace(/^["']|["']$/g, "");
 }
 
 function initials(name: string) {
@@ -29,12 +32,12 @@ function serializeReview(review: any) {
   return {
     id: String(review._id),
     rating: review.rating || 5,
-    comment: review.comment || "",
+    comment: cleanComment(review.comment),
     createdAt: review.createdAt || null,
     user: {
       id: user._id ? String(user._id) : "",
       name,
-      role: formatRole(user.role),
+      role: normalizePublicRole(user.role),
       image: user.image || user.profileImage || "",
       initials: initials(name),
     },

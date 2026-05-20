@@ -48,7 +48,7 @@ function normalizeRole(role: unknown) {
   return String(role || "student").trim().toLowerCase();
 }
 
-function isTeacherRole(role: unknown) {
+function isMentorRole(role: unknown) {
   const normalized = normalizeRole(role);
   return normalized === "teacher" || normalized === "mentor";
 }
@@ -171,9 +171,9 @@ export async function POST(request: Request) {
     const payload = await parsePayload(request);
     validatePayload(payload);
 
-    if (payload.type === "quiz" && !isTeacherRole(session.user.role)) {
+    if (payload.type === "quiz" && !isMentorRole(session.user.role)) {
       return NextResponse.json(
-        { message: "Quiz Builder is available to teacher accounts only." },
+        { message: "Quiz Builder is available to mentor accounts only." },
         { status: 403 }
       );
     }

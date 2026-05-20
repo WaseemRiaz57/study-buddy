@@ -68,7 +68,7 @@ export const PRICING_PLANS: PricingPlanConfig[] = [
     name: "Elite",
     price: 24,
     displayPrice: "$24",
-    description: "Full platform access for power learners and teachers.",
+    description: "Full platform access for power learners and mentors.",
     cta: "Go Elite",
     limits: {
       aiGenerationsPerDay: null,

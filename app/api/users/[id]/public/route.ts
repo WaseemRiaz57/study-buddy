@@ -64,7 +64,7 @@ export async function GET(
     const badges = [
       (profile as any)?.subscriptionTier,
       (profile as any)?.academicLevel,
-      normalizedRole === "teacher" ? "Teacher" : null,
+      normalizedRole === "teacher" ? "Mentor" : null,
       (profile as any)?.status === "approved" ? "Verified" : null,
     ]
       .map((badge) => String(badge || "").trim())

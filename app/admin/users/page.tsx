@@ -90,7 +90,7 @@ function getInitials(name: string) {
 function roleLabel(role: string) {
   const normalized = role.toLowerCase();
   if (normalized === "admin") return "Admin";
-  if (normalized === "teacher" || normalized === "mentor") return "Teacher";
+  if (normalized === "teacher" || normalized === "mentor") return "Mentor";
   return "Student";
 }
 
@@ -319,7 +319,7 @@ export default function UserManagementPage() {
             >
               <option value="all">All Roles</option>
               <option value="student">Student</option>
-              <option value="teacher">Teacher</option>
+              <option value="teacher">Mentor</option>
               <option value="admin">Admin</option>
             </select>
           </div>
@@ -403,7 +403,7 @@ export default function UserManagementPage() {
                       {user.role === "admin" ? (
                         <span className="inline-block px-2 py-1 rounded bg-purple-100 dark:bg-purple-950/30 text-[#7C3AED] text-xs font-bold border border-purple-200 dark:border-purple-800/50 shadow-sm">Admin</span>
                       ) : user.role === "teacher" || user.role === "mentor" ? (
-                        <span className="inline-block px-2 py-1 rounded bg-purple-100 dark:bg-purple-950/20 text-[#7C3AED] text-xs font-semibold">Teacher</span>
+                        <span className="inline-block px-2 py-1 rounded bg-purple-100 dark:bg-purple-950/20 text-[#7C3AED] text-xs font-semibold">Mentor</span>
                       ) : (
                         <span className="inline-block px-2 py-1 rounded bg-slate-100 dark:bg-slate-950/20 text-slate-700 dark:text-slate-300 text-xs font-semibold">{roleLabel(user.role)}</span>
                       )}

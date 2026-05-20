@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -88,7 +88,7 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: "Users & Teachers",
+    title: "Users & Mentors",
     items: [
       { icon: Users, label: "User Management", href: "/admin/users" },
       { icon: GraduationCap, label: "Mentor Management", href: "/admin/mentors", badgeKey: "pendingMentors", badgeColor: "bg-orange-500 text-white" },
@@ -290,6 +290,10 @@ export default function AdminLayout({
     setMounted(true);
   }, []);
 
+  const handleAdminLogout = () => {
+    void signOut({ callbackUrl: "/", redirect: true });
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login");
@@ -463,7 +467,12 @@ export default function AdminLayout({
               <p className="text-sm font-semibold text-foreground dark:text-white truncate">Admin</p>
               <p className="text-[11px] text-muted-foreground truncate">admin@studybuddy.com</p>
             </div>
-            <button className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+            <button
+              type="button"
+              onClick={handleAdminLogout}
+              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+              aria-label="Logout"
+            >
               <LogOut size={16} />
             </button>
           </div>
@@ -567,8 +576,11 @@ export default function AdminLayout({
                   </p>
                 </div>
                 <button
+                  type="button"
+                  onClick={handleAdminLogout}
                   className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                   title="Logout"
+                  aria-label="Logout"
                 >
                   <LogOut size={16} />
                 </button>
@@ -678,7 +690,11 @@ export default function AdminLayout({
                       </Link>
                     </div>
                     <div className="border-t border-slate-100 dark:border-white/[0.06] pt-1">
-                      <button className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                      <button
+                        type="button"
+                        onClick={handleAdminLogout}
+                        className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                      >
                         <LogOut size={15} />
                         Logout
                       </button>

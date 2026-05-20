@@ -120,7 +120,7 @@ const historyTypeStyles: Record<TabId, { bg: string; text: string; Icon: LucideI
   quiz: { bg: "bg-purple-100 dark:bg-purple-500/20", text: "text-[#7C3AED]", Icon: BrainCircuit },
 };
 
-function isTeacherRole(role: unknown) {
+function isMentorRole(role: unknown) {
   const normalized = String(role || "").toLowerCase();
   return normalized === "teacher" || normalized === "mentor";
 }
@@ -145,10 +145,10 @@ export default function ContentGeneratorPage() {
   const { data: session, status } = useSession();
   const refreshGamificationStats = useGamificationStore((state) => state.refresh);
   const addGamificationReward = useGamificationStore((state) => state.addReward);
-  const isTeacher = isTeacherRole(session?.user?.role);
+  const isMentor = isMentorRole(session?.user?.role);
   const availableTabs = useMemo(
-    () => TABS.filter((tab) => tab.id !== "quiz" || isTeacher),
-    [isTeacher]
+    () => TABS.filter((tab) => tab.id !== "quiz" || isMentor),
+    [isMentor]
   );
 
   const [activeTab, setActiveTab] = useState<TabId>("notes");
@@ -196,12 +196,12 @@ export default function ContentGeneratorPage() {
   }, [fetchRecentCreations]);
 
   useEffect(() => {
-    if (!isTeacher && activeTab === "quiz") {
+    if (!isMentor && activeTab === "quiz") {
       setActiveTab("notes");
       setQuizQuestions([]);
       setMarkdownResult("");
     }
-  }, [activeTab, isTeacher]);
+  }, [activeTab, isMentor]);
 
   const resetResult = () => {
     setMarkdownResult("");
@@ -289,8 +289,8 @@ export default function ContentGeneratorPage() {
       return;
     }
 
-    if (activeTab === "quiz" && !isTeacher) {
-      toast.error("Quiz Builder is available to teacher accounts only.");
+    if (activeTab === "quiz" && !isMentor) {
+      toast.error("Quiz Builder is available to mentor accounts only.");
       return;
     }
 
@@ -386,7 +386,7 @@ export default function ContentGeneratorPage() {
             <span className="text-[#7C3AED]">AI Studio</span>
           </h1>
           <p className="mx-auto max-w-2xl text-base text-text-muted dark:text-slate-400 md:text-lg">
-            Generate polished notes, source-aware summaries, and teacher-ready MCQ quizzes.
+            Generate polished notes, source-aware summaries, and mentor-ready MCQ quizzes.
           </p>
         </motion.header>
 

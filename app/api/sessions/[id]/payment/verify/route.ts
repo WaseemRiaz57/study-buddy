@@ -19,7 +19,7 @@ export async function PATCH(
     const userRole = String(session.user.role ?? "").toLowerCase();
     if (userRole !== "teacher" && userRole !== "mentor") {
       return NextResponse.json(
-        { message: "Forbidden. Only teachers can verify payments." },
+        { message: "Forbidden. Only mentors can verify payments." },
         { status: 403 }
       );
     }
