@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSession, signIn } from "next-auth/react";
@@ -72,7 +73,20 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="auth-page relative min-h-screen bg-background text-foreground flex items-center justify-center px-6 py-16 overflow-hidden">
+    <main className="auth-page min-h-screen w-full flex bg-background text-foreground lg:grid lg:grid-cols-2">
+      <div className="relative hidden h-full w-full bg-muted lg:block">
+        <Image
+          src="/login.png"
+          alt="Login Focus"
+          fill
+          className="object-cover"
+          priority
+          sizes="50vw"
+        />
+        <div className="absolute inset-0 bg-white/10 dark:bg-slate-950/20" />
+      </div>
+
+      <section className="relative flex w-full items-center justify-center overflow-hidden bg-background p-4 sm:p-8 lg:p-12">
       
       {/* Animated Background Glows */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -106,7 +120,7 @@ export default function LoginPage() {
       {/* Back Button */}
       <Link 
         href="/" 
-        className="absolute top-8 left-8 flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors group"
+        className="absolute left-4 top-4 z-20 flex items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary sm:left-8 sm:top-8 group"
       >
         <motion.div
           whileHover={{ x: -4 }}
@@ -121,7 +135,7 @@ export default function LoginPage() {
         initial="initial"
         animate="animate"
         variants={staggerContainer}
-        className="w-full max-w-md px-4 sm:px-0"
+        className="w-full max-w-md"
       >
         {/* Header Section */}
         <motion.header variants={fadeInUp} className="mb-8 text-center">
@@ -341,6 +355,7 @@ export default function LoginPage() {
           </Link>
         </motion.p>
       </motion.div>
+      </section>
     </main>
   );
 }

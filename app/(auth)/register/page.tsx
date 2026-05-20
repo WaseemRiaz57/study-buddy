@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -262,7 +263,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="auth-page min-h-screen bg-background text-foreground px-4 py-12 flex flex-col items-center justify-center transition-colors duration-300 relative overflow-hidden">
+    <main className="auth-page min-h-screen w-full flex bg-background text-foreground transition-colors duration-300 lg:grid lg:grid-cols-2">
+      <div className="relative hidden h-full w-full bg-muted lg:block">
+        <Image
+          src="/register.png"
+          alt="Join Community"
+          fill
+          className="object-cover"
+          priority
+          sizes="50vw"
+        />
+        <div className="absolute inset-0 bg-white/10 dark:bg-slate-950/20" />
+      </div>
+
+      <section className="relative flex w-full items-center justify-center overflow-hidden bg-background p-4 sm:p-8 lg:p-12">
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent-mint/10 rounded-full blur-[120px]" />
@@ -270,7 +284,7 @@ export default function RegisterPage() {
 
       <Link
         href="/"
-        className="absolute top-8 left-8 flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors z-20"
+        className="absolute left-4 top-4 z-20 flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary sm:left-8 sm:top-8"
       >
         <ArrowLeft size={18} /> Back
       </Link>
@@ -569,6 +583,7 @@ export default function RegisterPage() {
           </div>
         </form>
       </motion.div>
+      </section>
     </main>
   );
 }

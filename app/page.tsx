@@ -739,12 +739,13 @@ export default function Home() {
       </div>
 
       {/* ══════════════ HERO ══════════════ */}
-      <section className="relative px-6 pb-20 pt-40 text-center">
-        <motion.div initial="hidden" animate="show" variants={stagger} className="mx-auto max-w-5xl">
+      <section className="relative flex min-h-[80vh] w-full flex-col justify-center bg-[url('/hero.png')] bg-cover bg-center bg-no-repeat px-4 py-24 text-center sm:px-6 lg:px-8">
+        <div className="absolute inset-0 bg-white/85 backdrop-blur-[2px] dark:bg-slate-950/85" />
+        <motion.div initial="hidden" animate="show" variants={stagger} className="relative z-10 mx-auto max-w-5xl">
 
           {/* Headline — 3D flip-in per word */}
           <motion.h1
-            className="mb-8 text-6xl md:text-8xl font-extrabold tracking-tight leading-[1.05]"
+            className="mb-8 text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-7xl"
             initial="hidden"
             animate="show"
             variants={stagger}
@@ -808,7 +809,7 @@ export default function Home() {
         </motion.div>
 
         {/* Scroll indicator */}
-        <motion.div className="mt-16 flex justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}>
+        <motion.div className="relative z-10 mt-16 flex justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}>
           <motion.div
             className="flex flex-col items-center gap-1"
             animate={{ y: [0, 8, 0] }}
