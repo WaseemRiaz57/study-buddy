@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   CheckCircle2,
+  ArrowLeft,
   Search,
   Star,
   SlidersHorizontal,
@@ -449,7 +450,16 @@ export default function MentorshipPage() {
         style={{ backgroundColor: "var(--background)" }}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 relative z-10">
+        <Link
+          href="/dashboard/mentorship"
+          prefetch
+          className="mb-8 inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-gray-200 bg-white/80 px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition-colors hover:border-[#7C3AED] hover:text-[#7C3AED] dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300"
+          aria-label="Back to Mentorship Home"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Mentorship Home
+        </Link>
         {/* ── Header & Search ── */}
         <div className="text-center mb-12 relative">
           <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight relative z-10 text-text-main dark:text-white">

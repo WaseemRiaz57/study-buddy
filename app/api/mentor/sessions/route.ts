@@ -36,7 +36,7 @@ export async function GET() {
 
     const sessions = await MentorSession.find({ mentorId: session.user.id })
       .select(
-        "studentId mentorId subject scheduledAt duration type status paymentStatus paymentReceipt roomId createdAt updatedAt"
+        "studentId mentorId subject scheduledAt duration type status paymentStatus paymentReceipt roomId mentorJoinedAt studentJoinedAt createdAt updatedAt"
       )
       .populate("studentId", "name profileImage")
       .sort({ scheduledAt: 1 })

@@ -92,6 +92,15 @@ export async function GET(
             { status: 403 }
           );
         }
+
+        if (!metadataOnly) {
+          await MentorSession.updateOne(
+            { _id: rawRoomId },
+            currentUserId === mentorId
+              ? { $set: { mentorJoinedAt: new Date() } }
+              : { $set: { studentJoinedAt: new Date() } }
+          );
+        }
       }
     }
 

@@ -2,11 +2,12 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IBuddyMatch extends Document {
   studentId: mongoose.Types.ObjectId;
-  matchedPeerId?: mongoose.Types.ObjectId; // 👈 Optional kar diya hai kyunke shuru mein peer nahi hoga
+  matchedPeerId?: mongoose.Types.ObjectId;
   subject: string;
-  topic?: string; // 👈 Naya field topic ke liye
-  status: "Searching" | "Pending" | "Connected" | "Rejected"; // 👈 Naye states
-  roomId?: mongoose.Types.ObjectId; // 👈 LiveKit StudyRoom se link karne ke liye
+  topic?: string;
+  status: "Searching" | "Pending" | "Connected" | "Rejected" | "Expired" | "Closed";
+  roomId?: mongoose.Types.ObjectId;
+  expiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,29 +22,36 @@ const BuddyMatchSchema = new Schema<IBuddyMatch>(
     matchedPeerId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      // required: true hata diya hai
     },
     subject: {
       type: String,
       required: true,
+      trim: true,
     },
     topic: {
       type: String,
+      trim: true,
+      default: "",
     },
     status: {
       type: String,
-      enum: ["Searching", "Pending", "Connected", "Rejected"],
+      enum: ["Searching", "Pending", "Connected", "Rejected", "Expired", "Closed"],
       default: "Searching",
+      index: true,
     },
     roomId: {
       type: Schema.Types.ObjectId,
       ref: "StudyRoom",
     },
+    expiresAt: {
+      type: Date,
+      default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
-// 👈 Naya Index: Ek user ek hi waqt mein same subject ke liye 2 dafa "Searching" na kar sake
 BuddyMatchSchema.index(
   { studentId: 1, subject: 1, status: 1 },
   { unique: true, partialFilterExpression: { status: "Searching" } }
@@ -51,6 +59,7 @@ BuddyMatchSchema.index(
 
 BuddyMatchSchema.index({ studentId: 1, status: 1 });
 BuddyMatchSchema.index({ matchedPeerId: 1, status: 1 });
+BuddyMatchSchema.index({ status: 1, expiresAt: 1, createdAt: 1 });
 
 export default mongoose.models.BuddyMatch ||
   mongoose.model<IBuddyMatch>("BuddyMatch", BuddyMatchSchema);

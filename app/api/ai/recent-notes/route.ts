@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { stripMarkdown } from "@/lib/stripMarkdown";
 import AIContent from "@/models/AIContent";
 
 export const runtime = "nodejs";
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
         id: String(note._id),
         title: String(note.prompt || "Generated AI Note").slice(0, 80),
         type: note.type,
-        snippet: String(note.generatedText || "").replace(/\s+/g, " ").slice(0, 180),
+        snippet: stripMarkdown(note.generatedText).slice(0, 180),
         createdAt: note.createdAt,
       })),
     });

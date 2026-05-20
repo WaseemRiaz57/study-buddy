@@ -5,6 +5,10 @@ import { authOptions } from "@/lib/authOptions";
 import { awardUser } from "@/lib/gamificationEngine";
 import { trackProgress } from "@/lib/challengeTracker";
 import { connectMongoDB } from "@/lib/mongodb";
+import {
+  emitSessionCompleted,
+  emitUserNotification,
+} from "@/lib/study-room-socket";
 import MentorProfile from "@/models/MentorProfile";
 import MentorSession from "@/models/MentorSession";
 import Notification from "@/models/Notification";
@@ -67,18 +71,28 @@ export async function PATCH(
       sessionQuery.mentorId = session.user.id;
     }
 
-    const mentorSession = await MentorSession.findOneAndUpdate(
-      sessionQuery,
-      { $set: { status: "completed" } },
-      { new: true, runValidators: true }
-    );
+    const existingSession = await MentorSession.findOne(sessionQuery);
 
-    if (!mentorSession) {
+    if (!existingSession) {
       return NextResponse.json(
         { message: "Verified session not found." },
         { status: 404 }
       );
     }
+
+    if (
+      (userRole === "teacher" || userRole === "mentor") &&
+      !existingSession.mentorJoinedAt
+    ) {
+      return NextResponse.json(
+        { message: "Join the session room before marking it completed." },
+        { status: 403 }
+      );
+    }
+
+    existingSession.status = "completed";
+    existingSession.completedAt = new Date();
+    const mentorSession = await existingSession.save();
 
     const rateSource =
       userRole === "teacher" || userRole === "mentor"
@@ -114,8 +128,7 @@ export async function PATCH(
       ]).then((results) => results.flat()),
     ]);
 
-    await Promise.all([
-      Notification.create({
+    const studentNotification = await Notification.create({
         recipientId: mentorSession.studentId,
         senderId: mentorSession.mentorId,
         type: "system",
@@ -128,8 +141,14 @@ export async function PATCH(
           coinsAwarded: studentReward.coinsAwarded,
           earningsAwarded: sessionEarnings,
         },
-      }),
-    ]);
+      });
+
+    emitUserNotification(String(mentorSession.studentId), studentNotification.toObject());
+    emitSessionCompleted(String(mentorSession.studentId), {
+      sessionId: String(mentorSession._id),
+      mentorName,
+      subject: mentorSession.subject,
+    });
 
     return NextResponse.json({
       success: true,

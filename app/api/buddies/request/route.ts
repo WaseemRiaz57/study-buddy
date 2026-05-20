@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-guard";
 import { connectMongoDB } from "@/lib/mongodb";
+import { closeExpiredStudyBuddyListings } from "@/lib/study-buddy-listings";
 import BuddyMatch from "@/models/BuddyMatch";
 import BuddyConnection from "@/models/BuddyConnection";
 import User from "@/models/User";
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
     const requesterId = session!.user.id;
 
     await connectMongoDB();
+    await closeExpiredStudyBuddyListings();
 
     if (listingId) {
       if (!mongoose.Types.ObjectId.isValid(listingId)) {
@@ -39,7 +41,13 @@ export async function POST(req: Request) {
         "_id role"
       );
 
-      if (!listing || listing.status !== "Searching") {
+      const expiresAt = listing?.expiresAt ? new Date(listing.expiresAt).getTime() : null;
+
+      if (
+        !listing ||
+        listing.status !== "Searching" ||
+        (expiresAt !== null && Number.isFinite(expiresAt) && expiresAt <= Date.now())
+      ) {
         return NextResponse.json(
           { message: "Listing is no longer available" },
           { status: 404 }

@@ -158,6 +158,8 @@ export async function closeStudyRoomAndPersistDuration(
     { _id: existingRoom._id, isLive: true },
     {
       isLive: false,
+      isActive: false,
+      status: "ended",
       closedAt,
       sessionDurationMinutes,
     },

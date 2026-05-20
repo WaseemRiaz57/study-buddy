@@ -47,7 +47,11 @@ type RoomControlAction =
   | "REQUEST_UNMUTE"
   | "UNMUTE_NOTIFY"
   | "REMOVE_NOTIFY"
-  | "SESSION_ENDED";
+  | "SESSION_ENDED"
+  | "EARLY_END_REQUEST"
+  | "EARLY_END_ACCEPTED"
+  | "EARLY_END_DECLINED"
+  | "SESSION_COMPLETED";
 
 type RoomControlMessage = {
   action: RoomControlAction;
@@ -110,6 +114,7 @@ export type LiveVideoRoomRenderState = {
 const ROOM_CONTROL_TOPIC = "room-control";
 const VAULT_FILE_TOPIC = "vault-file";
 const DASHBOARD_REDIRECT_PATH = "/dashboard";
+const MIN_CONFIRMED_SESSION_MS = 60 * 60 * 1000;
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -205,6 +210,11 @@ export default function LiveVideoRoom({
   const [isHostMuteAllMode, setIsHostMuteAllMode] = useState(false);
   const sessionEndRedirectTimerRef = useRef<number | null>(null);
   const hostMuteAllModeRef = useRef(false);
+  const joinedAtRef = useRef<number | null>(null);
+  const leaveRoomRef = useRef<() => Promise<void>>(async () => {});
+  const forceEndApprovedRef = useRef(false);
+  const [earlyEndRequest, setEarlyEndRequest] = useState<RoomControlMessage | null>(null);
+  const [isWaitingForEarlyEndApproval, setIsWaitingForEarlyEndApproval] = useState(false);
 
   useEffect(() => {
     hostMuteAllModeRef.current = isHostMuteAllMode;
@@ -267,7 +277,7 @@ export default function LiveVideoRoom({
       })
       .catch((error) => {
         console.error("Media error:", error);
-        alert("Please allow camera and microphone access.");
+        toast.error("Please allow camera and microphone access.");
         setIsJoining(false);
       });
 
@@ -349,6 +359,46 @@ export default function LiveVideoRoom({
         try {
           const parsed = JSON.parse(new TextDecoder().decode(payload)) as RoomControlMessage;
           const message = String(parsed.message || "").trim();
+
+          if (parsed.action === "EARLY_END_REQUEST") {
+            if (!isHost) {
+              setEarlyEndRequest(parsed);
+            }
+            return;
+          }
+
+          if (parsed.action === "EARLY_END_ACCEPTED") {
+            if (isHost) {
+              forceEndApprovedRef.current = true;
+              setIsWaitingForEarlyEndApproval(false);
+              toast.success(message || "Student approved ending this session early.");
+              window.setTimeout(() => {
+                void leaveRoomRef.current();
+              }, 0);
+            }
+            return;
+          }
+
+          if (parsed.action === "EARLY_END_DECLINED") {
+            if (isHost) {
+              setIsWaitingForEarlyEndApproval(false);
+              toast.info(message || "The student wants to continue the session.");
+            }
+            return;
+          }
+
+          if (parsed.action === "SESSION_COMPLETED") {
+            window.dispatchEvent(
+              new CustomEvent("mentor-session-completed", {
+                detail: {
+                  sessionId: roomId,
+                  subject: "",
+                },
+              })
+            );
+            toast.success(message || "Session completed. Please leave a review.");
+            return;
+          }
 
           if (parsed.action === "SESSION_ENDED") {
             setSessionEndedMessage(message || "This study session has ended.");
@@ -551,9 +601,10 @@ export default function LiveVideoRoom({
         subscribeToExistingPublications();
         syncRoomState(room);
         setIsConnected(true);
+        joinedAtRef.current = Date.now();
       } catch (error) {
         console.error("[LiveKit] Failed to connect:", error);
-        alert("Could not connect to the video room. Please check your LiveKit configuration.");
+        toast.error("Could not connect to the video room. Please check your LiveKit configuration.");
         setHasJoined(false);
       } finally {
         if (isActive) {
@@ -808,7 +859,7 @@ export default function LiveVideoRoom({
         }
       } catch (error) {
         console.error("[LiveKit] Moderation failed:", error);
-        alert(error instanceof Error ? error.message : "Failed to moderate participant.");
+        toast.error(error instanceof Error ? error.message : "Failed to moderate participant.");
       } finally {
         setModeratingParticipants((prev) => {
           const next = { ...prev };
@@ -877,7 +928,7 @@ export default function LiveVideoRoom({
         }
       } catch (error) {
         console.error("[LiveKit] Bulk moderation failed:", error);
-        alert(error instanceof Error ? error.message : "Failed to update participant microphones.");
+        toast.error(error instanceof Error ? error.message : "Failed to update participant microphones.");
       } finally {
         setIsModeratingAllParticipants(false);
       }
@@ -943,6 +994,25 @@ export default function LiveVideoRoom({
 
   const leaveRoom = useCallback(async () => {
     if (isLeaving) return;
+
+    const joinedAt = joinedAtRef.current || Date.now();
+    const elapsedMs = Date.now() - joinedAt;
+
+    if (
+      isHost &&
+      !forceEndApprovedRef.current &&
+      elapsedMs < MIN_CONFIRMED_SESSION_MS &&
+      remoteParticipants.length > 0
+    ) {
+      setIsWaitingForEarlyEndApproval(true);
+      await publishRoomControlMessage({
+        action: "EARLY_END_REQUEST",
+        message: "Your mentor wishes to end the session early. Do you agree?",
+      });
+      toast.info("Early end request sent to the student.");
+      return;
+    }
+
     setIsLeaving(true);
 
     try {
@@ -973,6 +1043,7 @@ export default function LiveVideoRoom({
         });
         await wait(2500);
         await updateSessionDatabase();
+        forceEndApprovedRef.current = false;
       }
     } catch (error) {
       console.error("Leave Room Error:", error);
@@ -983,7 +1054,28 @@ export default function LiveVideoRoom({
       await resetWaitingRoomStatus();
       router.push(DASHBOARD_REDIRECT_PATH);
     }
-  }, [addReward, isHost, isLeaving, publishRoomControlMessage, resetWaitingRoomStatus, roomId, router, updateRoomParticipantLifecycle, updateSessionDatabase]);
+  }, [addReward, isHost, isLeaving, publishRoomControlMessage, remoteParticipants.length, resetWaitingRoomStatus, roomId, router, updateRoomParticipantLifecycle, updateSessionDatabase]);
+
+  useEffect(() => {
+    leaveRoomRef.current = leaveRoom;
+  }, [leaveRoom]);
+
+  const respondToEarlyEndRequest = useCallback(
+    async (approved: boolean) => {
+      setEarlyEndRequest(null);
+      await publishRoomControlMessage({
+        action: approved ? "EARLY_END_ACCEPTED" : "EARLY_END_DECLINED",
+        message: approved
+          ? "Student approved ending the session early."
+          : "Student declined ending the session early.",
+      });
+
+      if (approved) {
+        setSessionEndedMessage("The mentor is ending this session.");
+      }
+    },
+    [publishRoomControlMessage]
+  );
 
   const handleCancelPreJoin = useCallback(() => {
     previewStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -1046,8 +1138,8 @@ export default function LiveVideoRoom({
     const isJoinDisabled = !localStream || isJoining || !token || !liveKitUrl;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-900 dark:bg-[#0f0c1d] dark:text-white p-4">
-        <div className="w-full max-w-4xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl dark:border-white/10 dark:bg-[#161027]">
+      <div className="fixed inset-0 z-50 flex max-h-screen items-center justify-center overflow-y-auto bg-slate-50 p-4 pb-20 text-slate-900 dark:bg-[#0f0c1d] dark:text-white">
+        <div className="my-auto w-full max-w-4xl rounded-3xl border border-slate-200 bg-white p-4 shadow-xl dark:border-white/10 dark:bg-[#161027] sm:p-6">
           <div className="mb-5">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Ready to join?</h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">Check your camera and microphone before entering the room.</p>
@@ -1111,7 +1203,94 @@ export default function LiveVideoRoom({
       {sessionEndedMessage ? (
         <SessionEndedModal message={sessionEndedMessage} />
       ) : null}
+      {earlyEndRequest ? (
+        <EarlyEndRequestModal
+          message={
+            earlyEndRequest.message ||
+            "Your mentor wishes to end the session early. Do you agree?"
+          }
+          onApprove={() => void respondToEarlyEndRequest(true)}
+          onDecline={() => void respondToEarlyEndRequest(false)}
+        />
+      ) : null}
+      {isWaitingForEarlyEndApproval ? (
+        <EarlyEndWaitingModal
+          onCancel={() => setIsWaitingForEarlyEndApproval(false)}
+        />
+      ) : null}
     </>
+  );
+}
+
+function EarlyEndRequestModal({
+  message,
+  onApprove,
+  onDecline,
+}: {
+  message: string;
+  onApprove: () => void;
+  onDecline: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl dark:border-white/10 dark:bg-[#161027]"
+      >
+        <h2 className="text-xl font-bold text-slate-950 dark:text-white">
+          End Session Early?
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-gray-300">
+          {message}
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+          <button
+            type="button"
+            onClick={onDecline}
+            className="min-h-[44px] rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/15 dark:text-slate-200 dark:hover:bg-white/10"
+          >
+            Keep Going
+          </button>
+          <button
+            type="button"
+            onClick={onApprove}
+            className="min-h-[44px] rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+          >
+            Yes, End Session
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function EarlyEndWaitingModal({ onCancel }: { onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl dark:border-white/10 dark:bg-[#161027]"
+      >
+        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-purple-100 border-t-[#7C3AED]" />
+        <h2 className="text-xl font-bold text-slate-950 dark:text-white">
+          Waiting for student approval
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-gray-300">
+          The session will end only if the student agrees.
+        </p>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-6 min-h-[44px] rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/15 dark:text-slate-200 dark:hover:bg-white/10"
+        >
+          Cancel Request
+        </button>
+      </motion.div>
+    </div>
   );
 }
 

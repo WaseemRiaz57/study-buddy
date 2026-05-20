@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
+import { closeStudyRoomAndPersistDuration } from "@/lib/study-room-lifecycle";
 import StudyRoom from "@/models/StudyRoom";
 
 export const dynamic = "force-dynamic";
@@ -55,16 +56,7 @@ async function handleLeave(
     : 0;
 
   if (participantCount === 0 && updatedRoom.status !== "ended") {
-    await StudyRoom.updateOne(
-      { _id: updatedRoom._id },
-      {
-        $set: {
-          status: "ended",
-          isActive: false,
-          isLive: false,
-        },
-      }
-    );
+    await closeStudyRoomAndPersistDuration(normalizedRoomId, "inactive-disconnect");
   }
 
   return NextResponse.json({

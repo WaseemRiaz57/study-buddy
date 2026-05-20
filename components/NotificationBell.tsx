@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
+import { io, type Socket } from "socket.io-client";
 import { Bell, Check, MailOpen } from "lucide-react";
 
 interface UserNotification {
@@ -31,11 +33,13 @@ function formatNotificationTime(value?: string) {
 }
 
 export function NotificationBell() {
+  const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -53,12 +57,9 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    let active = true;
-
-    async function fetchNotifications() {
+  const fetchNotifications = useCallback(async (showLoading = true) => {
       try {
-        setIsLoading(true);
+        if (showLoading) setIsLoading(true);
         const response = await fetch("/api/user/notifications", {
           cache: "no-store",
         });
@@ -67,8 +68,6 @@ export function NotificationBell() {
         if (!response.ok) {
           throw new Error(data?.message || "Failed to load notifications.");
         }
-
-        if (!active) return;
 
         const notificationArray = Array.isArray(data?.notifications)
           ? data.notifications
@@ -84,23 +83,71 @@ export function NotificationBell() {
           }))
         );
       } catch (error) {
-        if (active) {
-          console.error(error);
-          setNotifications([]);
-        }
+        console.error(error);
+        setNotifications([]);
       } finally {
-        if (active) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
-    }
+    }, []);
+
+  useEffect(() => {
+    let active = true;
 
     void fetchNotifications();
+    const interval = window.setInterval(() => {
+      if (active) void fetchNotifications(false);
+    }, 45000);
 
     return () => {
       active = false;
+      window.clearInterval(interval);
     };
-  }, []);
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    const currentUserId = String(session?.user?.id || "").trim();
+    if (!currentUserId) return;
+
+    const socket = io("/study-room", {
+      transports: ["websocket", "polling"],
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("study-buddy:identify", { userId: currentUserId });
+    });
+
+    socket.on("notification:new", (notification: any) => {
+      const nextNotification = {
+        id: String(notification?._id || notification?.id || Date.now()),
+        title: notification?.title || "Notification",
+        message: notification?.message || "",
+        time: formatNotificationTime(notification?.createdAt || new Date().toISOString()),
+        read: Boolean(notification?.read),
+      };
+
+      setNotifications((current) => [
+        nextNotification,
+        ...current.filter((item) => item.id !== nextNotification.id),
+      ].slice(0, 20));
+    });
+
+    socket.on("session_completed", (payload: any) => {
+      window.dispatchEvent(
+        new CustomEvent("mentor-session-completed", {
+          detail: payload,
+        })
+      );
+    });
+
+    return () => {
+      socket.off("notification:new");
+      socket.off("session_completed");
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [session?.user?.id]);
 
   const markAllAsRead = async () => {
     if (isMarkingAllRead || unreadCount === 0) return;

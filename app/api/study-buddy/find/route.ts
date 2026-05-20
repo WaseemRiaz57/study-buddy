@@ -4,6 +4,11 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
 import { createStudyBuddyMatchRoom } from "@/lib/study-buddy-match-room";
+import {
+  activeStudyBuddyListingFilter,
+  closeExpiredStudyBuddyListings,
+  getStudyBuddyListingExpiry,
+} from "@/lib/study-buddy-listings";
 import BuddyMatch from "@/models/BuddyMatch";
 import StudentProfile from "@/models/StudentProfile";
 import StudyProfile from "@/models/StudyProfile";
@@ -37,6 +42,7 @@ export async function POST(request: Request) {
     const topic = String(body?.topic || "").trim();
 
     await connectDB();
+    await closeExpiredStudyBuddyListings();
 
     const currentUserObjectId = new mongoose.Types.ObjectId(currentUserId);
 
@@ -48,10 +54,11 @@ export async function POST(request: Request) {
         );
       }
 
+      const activeFilter = activeStudyBuddyListingFilter();
       const matchedBuddy = await BuddyMatch.findOneAndUpdate(
         {
           _id: listingId,
-          status: "Searching",
+          ...activeFilter,
           studentId: { $ne: currentUserObjectId },
         },
         {
@@ -156,9 +163,10 @@ export async function POST(request: Request) {
       .filter((id) => mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id));
 
+    const activeFilter = activeStudyBuddyListingFilter();
     const matchedBuddy = await BuddyMatch.findOneAndUpdate(
       {
-        status: "Searching",
+        ...activeFilter,
         subject,
         studentId:
           interestedUserIds.length > 0
@@ -221,7 +229,7 @@ export async function POST(request: Request) {
     let waitingMatch = await BuddyMatch.findOne({
       studentId: currentUserObjectId,
       subject,
-      status: "Searching",
+      ...activeFilter,
     }).lean();
 
     if (!waitingMatch) {
@@ -230,6 +238,7 @@ export async function POST(request: Request) {
         subject,
         topic,
         status: "Searching",
+        expiresAt: getStudyBuddyListingExpiry(),
       }).then((match) => match.toObject());
     }
 

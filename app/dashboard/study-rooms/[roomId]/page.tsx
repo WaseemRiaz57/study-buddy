@@ -1023,11 +1023,11 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
 
 function RoomGateShell({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-[#0f0c1d] dark:text-white">
+    <div className="fixed inset-0 z-50 flex max-h-screen items-center justify-center overflow-y-auto bg-slate-50 p-4 pb-20 text-slate-900 dark:bg-[#0f0c1d] dark:text-white">
       <div className="absolute inset-0 pointer-events-none opacity-0 transition-opacity dark:opacity-100">
         <div className="absolute left-[-10%] top-[-20%] h-[560px] w-[560px] rounded-full bg-[#8c30e8]/10 blur-[120px]" />
       </div>
-      <div className="relative flex w-full max-w-md flex-col items-center rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl dark:border-white/10 dark:bg-[#161027]">
+      <div className="relative my-auto flex w-full max-w-md flex-col items-center rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-xl dark:border-white/10 dark:bg-[#161027] sm:p-8">
         {children}
       </div>
     </div>

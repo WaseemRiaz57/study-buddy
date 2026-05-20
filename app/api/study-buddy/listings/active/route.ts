@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
+import {
+  activeStudyBuddyListingFilter,
+  closeExpiredStudyBuddyListings,
+} from "@/lib/study-buddy-listings";
 import BuddyMatch from "@/models/BuddyMatch";
 
 export const dynamic = "force-dynamic";
@@ -46,15 +50,17 @@ export async function GET() {
     }
 
     await connectDB();
+    await closeExpiredStudyBuddyListings();
 
     const studentId = new mongoose.Types.ObjectId(currentUserId);
+    const activeFilter = activeStudyBuddyListingFilter();
     const [myListings, otherListings] = await Promise.all([
-      BuddyMatch.find({ studentId, status: "Searching" })
+      BuddyMatch.find({ studentId, ...activeFilter })
         .sort({ createdAt: -1 })
         .lean(),
       BuddyMatch.find({
         studentId: { $ne: studentId },
-        status: "Searching",
+        ...activeFilter,
       })
         .sort({ createdAt: -1 })
         .populate("studentId", "name image")

@@ -3,7 +3,9 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { emitUserNotification } from "@/lib/study-room-socket";
 import MentorSession from "@/models/MentorSession";
+import Notification from "@/models/Notification";
 import User from "@/models/User";
 
 const MIN_DURATION_MINUTES = 15;
@@ -114,6 +116,21 @@ export async function POST(request: Request) {
       status: "pending",
       paymentStatus: "unpaid",
     });
+
+    const notification = await Notification.create({
+      recipientId: mentorId,
+      senderId: session.user.id,
+      type: "system",
+      title: "New Session Request",
+      message: `${session.user.name || "A student"} requested a ${normalizedSubject} session.`,
+      read: false,
+      metadata: {
+        sessionId: String(bookedSession._id),
+        status: "pending",
+      },
+    });
+
+    emitUserNotification(String(mentorId), notification.toObject());
 
     return NextResponse.json(
       {

@@ -10,6 +10,7 @@ import {
   Clock,
   CreditCard,
   Eye,
+  AlertTriangle,
   Loader2,
   Upload,
   User,
@@ -59,6 +60,8 @@ type DashboardSession = {
   roomId?: string;
   paymentReceipt?: string;
   reviewSubmitted?: boolean;
+  mentorJoinedAt?: string;
+  studentJoinedAt?: string;
 };
 
 function getPopulatedUser(value?: PopulatedUser | string): PopulatedUser {
@@ -312,6 +315,8 @@ function MentorSessionCard({
   onRespond,
   onOpenReceipt,
   onComplete,
+  onJoinRoom,
+  hasJoinedRoom,
 }: {
   session: DashboardSession;
   respondingActionKey: string;
@@ -321,6 +326,8 @@ function MentorSessionCard({
   onRespond: (id: string, status: RequestAction) => void;
   onOpenReceipt: (session: DashboardSession) => void;
   onComplete: (id: string) => void;
+  onJoinRoom: (id: string) => void;
+  hasJoinedRoom: boolean;
 }) {
   const student = getPopulatedUser(session.student || session.studentId);
   const studentName = student.name || "Student";
@@ -433,6 +440,7 @@ function MentorSessionCard({
             {!expired && (
               <Link
                 href={`/dashboard/study-rooms/${session._id}`}
+                onClick={() => onJoinRoom(session._id)}
                 className="inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
               >
                 Join Room
@@ -441,16 +449,22 @@ function MentorSessionCard({
             <button
               type="button"
               onClick={() => onComplete(session._id)}
-              disabled={isCompleting}
+              disabled={isCompleting || !hasJoinedRoom}
               className={
                 expired
                   ? "inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
                   : "inline-flex items-center justify-center gap-2 rounded-xl bg-purple-100 px-4 py-2.5 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-purple-200 disabled:cursor-not-allowed disabled:opacity-60"
               }
+              title={!hasJoinedRoom ? "Join the session room before completing it." : undefined}
             >
               {isCompleting && <Loader2 className="h-4 w-4 animate-spin" />}
               Mark Completed
             </button>
+            {!hasJoinedRoom && (
+              <span className="text-xs font-semibold text-slate-500">
+                Join room first
+              </span>
+            )}
           </>
         )}
 
@@ -458,8 +472,9 @@ function MentorSessionCard({
           <button
             type="button"
             onClick={() => onComplete(session._id)}
-            disabled={isCompleting}
+            disabled={isCompleting || !hasJoinedRoom}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+            title={!hasJoinedRoom ? "Join the session room before completing it." : undefined}
           >
             {isCompleting && <Loader2 className="h-4 w-4 animate-spin" />}
             Mark Completed
@@ -544,6 +559,56 @@ function ReceiptModal({
   );
 }
 
+function CompleteSessionDialog({
+  session,
+  isCompleting,
+  onClose,
+  onConfirm,
+}: {
+  session: DashboardSession;
+  isCompleting: boolean;
+  onClose: () => void;
+  onConfirm: (sessionId: string) => void;
+}) {
+  const student = getPopulatedUser(session.student || session.studentId);
+  const studentName = student.name || "Student";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-surface-dark">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-100 text-[#7C3AED] dark:bg-purple-500/15">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <h2 className="text-center text-xl font-black text-slate-950 dark:text-white">
+          Complete this session?
+        </h2>
+        <p className="mt-2 text-center text-sm leading-6 text-slate-500">
+          This will mark your {session.subject} session with {studentName} as completed and notify the student to leave a review.
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isCompleting}
+            className="min-h-[44px] rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(session._id)}
+            disabled={isCompleting}
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isCompleting && <Loader2 className="h-4 w-4 animate-spin" />}
+            Mark Completed
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SessionsPage() {
   const { data: authSession, status: authStatus } = useSession();
   const addReward = useGamificationStore((state) => state.addReward);
@@ -556,9 +621,20 @@ export default function SessionsPage() {
   const [verifyingSessionId, setVerifyingSessionId] = useState("");
   const [completingSessionId, setCompletingSessionId] = useState("");
   const [receiptSession, setReceiptSession] = useState<DashboardSession | null>(null);
+  const [completeSession, setCompleteSession] = useState<DashboardSession | null>(null);
   const [reviewSession, setReviewSession] = useState<DashboardSession | null>(
     null
   );
+  const [joinedSessionIds, setJoinedSessionIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem("studybuddy:joined-mentor-sessions");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+    } catch {
+      return new Set();
+    }
+  });
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 60000);
@@ -653,6 +729,34 @@ export default function SessionsPage() {
     );
   }
 
+  function markSessionJoined(sessionId: string) {
+    setJoinedSessionIds((current) => {
+      const next = new Set(current);
+      next.add(sessionId);
+      try {
+        window.localStorage.setItem(
+          "studybuddy:joined-mentor-sessions",
+          JSON.stringify(Array.from(next))
+        );
+      } catch {
+      }
+      return next;
+    });
+  }
+
+  function requestCompleteSession(sessionId: string) {
+    const targetSession = sessions.find((session) => session._id === sessionId);
+
+    if (!targetSession) return;
+
+    if (!joinedSessionIds.has(sessionId)) {
+      toast.error("Join the session room before marking it completed.");
+      return;
+    }
+
+    setCompleteSession(targetSession);
+  }
+
   async function handleRespond(sessionId: string, nextStatus: RequestAction) {
     const nextActionKey = `${sessionId}-${nextStatus}`;
 
@@ -736,8 +840,6 @@ export default function SessionsPage() {
   }
 
   async function handleCompleteSession(sessionId: string) {
-    if (!window.confirm("Are you sure this session has concluded?")) return;
-
     try {
       setCompletingSessionId(sessionId);
 
@@ -763,6 +865,7 @@ export default function SessionsPage() {
         window.dispatchEvent(new Event("gamification-stats-updated"));
       }
       toast.success("Session completed.");
+      setCompleteSession(null);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to complete session."
@@ -863,7 +966,12 @@ export default function SessionsPage() {
                         currentTime={currentTime}
                         onRespond={handleRespond}
                         onOpenReceipt={setReceiptSession}
-                        onComplete={handleCompleteSession}
+                        onComplete={requestCompleteSession}
+                        onJoinRoom={markSessionJoined}
+                        hasJoinedRoom={
+                          joinedSessionIds.has(session._id) ||
+                          Boolean(session.mentorJoinedAt)
+                        }
                       />
                     )
                   )}
@@ -906,7 +1014,12 @@ export default function SessionsPage() {
                         currentTime={currentTime}
                         onRespond={handleRespond}
                         onOpenReceipt={setReceiptSession}
-                        onComplete={handleCompleteSession}
+                        onComplete={requestCompleteSession}
+                        onJoinRoom={markSessionJoined}
+                        hasJoinedRoom={
+                          joinedSessionIds.has(session._id) ||
+                          Boolean(session.mentorJoinedAt)
+                        }
                       />
                     )
                   )}
@@ -923,6 +1036,15 @@ export default function SessionsPage() {
           isVerifying={verifyingSessionId === receiptSession._id}
           onClose={() => setReceiptSession(null)}
           onVerify={handleVerifyPayment}
+        />
+      )}
+
+      {completeSession && (
+        <CompleteSessionDialog
+          session={completeSession}
+          isCompleting={completingSessionId === completeSession._id}
+          onClose={() => setCompleteSession(null)}
+          onConfirm={handleCompleteSession}
         />
       )}
 

@@ -3,6 +3,11 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
+import {
+  activeStudyBuddyListingFilter,
+  closeExpiredStudyBuddyListings,
+  getStudyBuddyListingExpiry,
+} from "@/lib/study-buddy-listings";
 import BuddyMatch from "@/models/BuddyMatch";
 
 export const dynamic = "force-dynamic";
@@ -57,11 +62,13 @@ export async function GET(request: Request) {
     }
 
     await connectDB();
+    await closeExpiredStudyBuddyListings();
 
     const studentId = new mongoose.Types.ObjectId(currentUserId);
+    const activeFilter = activeStudyBuddyListingFilter();
     const matchedListing = await BuddyMatch.findOne({
       subject,
-      status: "Searching",
+      ...activeFilter,
       studentId: { $ne: studentId },
     })
       .sort({ createdAt: 1 })
@@ -78,7 +85,7 @@ export async function GET(request: Request) {
     let listing = await BuddyMatch.findOne({
       studentId,
       subject,
-      status: "Searching",
+      ...activeFilter,
     }).lean();
 
     if (!listing) {
@@ -87,6 +94,7 @@ export async function GET(request: Request) {
         subject,
         topic,
         status: "Searching",
+        expiresAt: getStudyBuddyListingExpiry(),
       }).then((createdListing) => createdListing.toObject());
     }
 

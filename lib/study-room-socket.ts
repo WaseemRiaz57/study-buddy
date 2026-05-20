@@ -4,7 +4,10 @@ import {
   markStudyRoomParticipantConnected,
   markStudyRoomParticipantDisconnected,
 } from "@/lib/redis";
-import { maybeAutoCloseStudyRoom } from "@/lib/study-room-lifecycle";
+import {
+  closeStudyRoomAndPersistDuration,
+  maybeAutoCloseStudyRoom,
+} from "@/lib/study-room-lifecycle";
 import {
   ROOM_AUTO_CLOSE_GRACE_SECONDS,
   STUDY_ROOM_SOCKET_NAMESPACE,
@@ -14,6 +17,13 @@ import StudyRoom from "@/models/StudyRoom";
 type StudyRoomJoinPayload = {
   roomId?: string;
   userId?: string;
+};
+
+type MentorEndSessionPayload = {
+  roomId?: string;
+  mentorId?: string;
+  studentId?: string;
+  sessionId?: string;
 };
 
 type StudyBuddyIdentifyPayload = {
@@ -342,8 +352,13 @@ async function handleLeaveEvent(
   removeSocketMembership(socket, normalizedRoomId);
 
   if (isNonEmptyString(userId)) {
-    await markStudyRoomParticipantDisconnected(normalizedRoomId, userId);
-    scheduleAutoCloseTimer(normalizedRoomId);
+    const state = await markStudyRoomParticipantDisconnected(normalizedRoomId, userId);
+    if (state && state.connectedUserIds.length === 0) {
+      clearAutoCloseTimer(normalizedRoomId);
+      await closeStudyRoomAndPersistDuration(normalizedRoomId, "inactive-disconnect");
+    } else {
+      scheduleAutoCloseTimer(normalizedRoomId);
+    }
   }
 
   socket.emit("study-room:left", {
@@ -364,8 +379,13 @@ async function handleDisconnectingEvent(socket: Socket): Promise<void> {
   }
 
   for (const roomId of memberships) {
-    await markStudyRoomParticipantDisconnected(roomId, userId);
-    scheduleAutoCloseTimer(roomId);
+    const state = await markStudyRoomParticipantDisconnected(roomId, userId);
+    if (state && state.connectedUserIds.length === 0) {
+      clearAutoCloseTimer(roomId);
+      await closeStudyRoomAndPersistDuration(roomId, "inactive-disconnect");
+    } else {
+      scheduleAutoCloseTimer(roomId);
+    }
   }
 }
 
@@ -480,6 +500,42 @@ function handleTypingEvent(
   });
 }
 
+function handleMentorWantsToEndEvent(
+  socket: Socket,
+  payload: MentorEndSessionPayload
+): void {
+  if (!isNonEmptyString(payload.roomId) || !isNonEmptyString(payload.studentId)) {
+    socket.emit("study-room:error", {
+      message: "roomId and studentId are required for mentor_wants_to_end",
+    });
+    return;
+  }
+
+  socket.nsp.to(userChannel(payload.studentId.trim())).emit("mentor_wants_to_end", {
+    roomId: normalizeRoomId(payload.roomId),
+    mentorId: isNonEmptyString(payload.mentorId) ? payload.mentorId.trim() : "",
+    sessionId: isNonEmptyString(payload.sessionId) ? payload.sessionId.trim() : "",
+  });
+}
+
+function handleStudentEndSessionResponseEvent(
+  socket: Socket,
+  payload: MentorEndSessionPayload & { approved?: boolean }
+): void {
+  if (!isNonEmptyString(payload.roomId) || !isNonEmptyString(payload.mentorId)) {
+    socket.emit("study-room:error", {
+      message: "roomId and mentorId are required for student_end_session_response",
+    });
+    return;
+  }
+
+  socket.nsp.to(userChannel(payload.mentorId.trim())).emit("student_end_session_response", {
+    roomId: normalizeRoomId(payload.roomId),
+    sessionId: isNonEmptyString(payload.sessionId) ? payload.sessionId.trim() : "",
+    approved: Boolean(payload.approved),
+  });
+}
+
 async function handleKnockRoomEvent(
   socket: Socket,
   payload: KnockRoomPayload
@@ -576,6 +632,27 @@ export function emitBuddyRequestAccepted(
   return true;
 }
 
+export function emitUserNotification(userId: string, notification: unknown): boolean {
+  if (!studyRoomNamespace || !isNonEmptyString(userId)) {
+    return false;
+  }
+
+  studyRoomNamespace.to(userChannel(userId)).emit("notification:new", notification);
+  return true;
+}
+
+export function emitSessionCompleted(
+  studentId: string,
+  payload: { sessionId: string; mentorName?: string; subject?: string }
+): boolean {
+  if (!studyRoomNamespace || !isNonEmptyString(studentId)) {
+    return false;
+  }
+
+  studyRoomNamespace.to(userChannel(studentId)).emit("session_completed", payload);
+  return true;
+}
+
 /**
  * Registers the dedicated Socket.IO namespace for study rooms.
  * Namespace path is fixed to /study-room.
@@ -608,6 +685,17 @@ export function registerStudyRoomNamespace(io: Server): Namespace {
     socket.on("stop_typing", (payload: ConversationTypingPayload) => {
       handleTypingEvent(socket, payload, "stop_typing");
     });
+
+    socket.on("mentor_wants_to_end", (payload: MentorEndSessionPayload) => {
+      handleMentorWantsToEndEvent(socket, payload);
+    });
+
+    socket.on(
+      "student_end_session_response",
+      (payload: MentorEndSessionPayload & { approved?: boolean }) => {
+        handleStudentEndSessionResponseEvent(socket, payload);
+      }
+    );
 
     socket.on("study-room:join", async (payload: StudyRoomJoinPayload) => {
       await handleJoinEvent(socket, payload);

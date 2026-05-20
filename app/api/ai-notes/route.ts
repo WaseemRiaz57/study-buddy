@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { stripMarkdown } from "@/lib/stripMarkdown";
 import AINote from "@/models/AINote";
 
 const allowedNoteTypes = new Set(["notes", "summarizer", "quiz"]);
@@ -24,7 +25,12 @@ export async function GET(req: Request) {
       .limit(limit)
       .lean();
 
-    return NextResponse.json(notes);
+    return NextResponse.json(
+      notes.map((note) => ({
+        ...note,
+        preview: stripMarkdown(note.content).slice(0, 180),
+      }))
+    );
   } catch {
     return NextResponse.json({ message: "Error fetching AI notes" }, { status: 500 });
   }

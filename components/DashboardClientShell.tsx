@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
+import ReviewModal from "@/components/mentorship/ReviewModal";
 import { Sidebar } from "@/components/sidebar";
 import { useActiveTimeReward } from "@/hooks/useActiveTimeReward";
 import { useOfflinePresence } from "@/hooks/useOfflinePresence";
@@ -30,6 +31,11 @@ export function DashboardClientShell({
     (state) => state.setInitialData
   );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [completedReviewSession, setCompletedReviewSession] = useState<{
+    sessionId: string;
+    mentorName: string;
+    subject: string;
+  } | null>(null);
 
   useOfflinePresence();
   useActiveTimeReward();
@@ -68,6 +74,30 @@ export function DashboardClientShell({
       isActive = false;
     };
   }, [setInitialGamificationData]);
+
+  useEffect(() => {
+    function handleMentorSessionCompleted(event: Event) {
+      const detail = (event as CustomEvent<{
+        sessionId?: string;
+        mentorName?: string;
+        subject?: string;
+      }>).detail;
+      const sessionId = String(detail?.sessionId || "").trim();
+
+      if (!sessionId) return;
+
+      setCompletedReviewSession({
+        sessionId,
+        mentorName: String(detail?.mentorName || "Mentor"),
+        subject: String(detail?.subject || "Mentorship session"),
+      });
+    }
+
+    window.addEventListener("mentor-session-completed", handleMentorSessionCompleted);
+    return () => {
+      window.removeEventListener("mentor-session-completed", handleMentorSessionCompleted);
+    };
+  }, []);
 
   useEffect(() => {
     const awardDailyLogin = async () => {
@@ -172,6 +202,15 @@ export function DashboardClientShell({
           )}
         </div>
       </main>
+
+      <ReviewModal
+        isOpen={Boolean(completedReviewSession)}
+        sessionId={completedReviewSession?.sessionId || ""}
+        mentorName={completedReviewSession?.mentorName || "Mentor"}
+        subject={completedReviewSession?.subject || "Mentorship session"}
+        onClose={() => setCompletedReviewSession(null)}
+        onSubmitted={() => setCompletedReviewSession(null)}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
+import { closeStudyRoomAndPersistDuration } from "@/lib/study-room-lifecycle";
 import StudyRoom from "@/models/StudyRoom";
 
 function normalizeRoomId(roomId: string): string {
@@ -48,17 +49,13 @@ async function endSession(
       );
     }
 
-    room.isLive = false;
-    (room as any).isActive = false;
-    (room as any).status = "ended";
-
-    await room.save();
+    await closeStudyRoomAndPersistDuration(room.roomId, "manual");
 
     return NextResponse.json({
       message: "Session ended successfully. Room marked inactive.",
       roomId: room.roomId,
-      isLive: room.isLive,
-      updatedAt: room.updatedAt,
+      isLive: false,
+      updatedAt: new Date().toISOString(),
     });
   } catch (error) {
     console.error("End session error:", error);

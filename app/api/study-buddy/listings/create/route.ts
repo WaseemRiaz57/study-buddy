@@ -3,6 +3,11 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectDB } from "@/lib/connectDB";
+import {
+  activeStudyBuddyListingFilter,
+  closeExpiredStudyBuddyListings,
+  getStudyBuddyListingExpiry,
+} from "@/lib/study-buddy-listings";
 import BuddyMatch from "@/models/BuddyMatch";
 
 export async function POST(request: Request) {
@@ -33,12 +38,14 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
+    await closeExpiredStudyBuddyListings();
 
     const studentId = new mongoose.Types.ObjectId(currentUserId);
+    const activeFilter = activeStudyBuddyListingFilter();
     const existingListing = await BuddyMatch.findOne({
       studentId,
       subject,
-      status: "Searching",
+      ...activeFilter,
     }).lean();
 
     if (existingListing) {
@@ -53,6 +60,7 @@ export async function POST(request: Request) {
       subject,
       topic,
       status: "Searching",
+      expiresAt: getStudyBuddyListingExpiry(),
     });
 
     return NextResponse.json(

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { emitUserNotification } from "@/lib/study-room-socket";
 import MentorSession from "@/models/MentorSession";
 import Notification from "@/models/Notification";
 
@@ -90,7 +91,7 @@ export async function PATCH(
         ? `Your session with ${mentorName} has been accepted! Join the room now.`
         : `Sorry, your session request with ${mentorName} was declined.`;
 
-    await Notification.create({
+    const notification = await Notification.create({
       recipientId: mentorSession.studentId,
       senderId: new mongoose.Types.ObjectId(session.user.id),
       type: "system",
@@ -106,6 +107,7 @@ export async function PATCH(
         roomId: nextStatus === "accepted" ? String(mentorSession._id) : "",
       },
     });
+    emitUserNotification(String(mentorSession.studentId), notification.toObject());
 
     await mentorSession.populate("studentId", "name image email");
 
