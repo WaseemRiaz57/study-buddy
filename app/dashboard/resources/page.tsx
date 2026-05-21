@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import ResourceCard from "@/components/resources/ResourceCard";
 import type { Resource } from "@/components/resources/ResourceCard";
+import RateResourceModal from "@/components/resources/RateResourceModal";
 import UploadResourceModal from "@/components/resources/UploadResourceModal";
 
 const SUBJECTS = [
@@ -42,6 +43,8 @@ interface ApiResource {
   subject: string;
   fileType: string;
   rating: number;
+  averageRating?: number;
+  ratingCount?: number;
   downloadCount: number;
   createdAt: string;
   uploadedBy?: {
@@ -82,6 +85,7 @@ export default function ResourcesPage() {
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unlockingResourceId, setUnlockingResourceId] = useState<string | null>(null);
+  const [ratingTarget, setRatingTarget] = useState<Resource | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchResources = async () => {
@@ -111,7 +115,7 @@ export default function ResourcesPage() {
           title: item.title,
           subject: item.subject,
           fileType: normalizeFileType(item.fileType),
-          rating: item.rating ?? 4.5,
+          rating: Number(item.averageRating ?? item.rating ?? 0),
           author,
           authorAvatar: getInitials(author),
           downloads: item.downloadCount ?? 0,
@@ -157,6 +161,7 @@ export default function ResourcesPage() {
       );
       window.dispatchEvent(new Event("gamification-stats-updated"));
       toast.success(data?.message || "Resource unlocked.");
+      setRatingTarget(resource);
     } catch (unlockError) {
       toast.error(
         unlockError instanceof Error
@@ -320,6 +325,19 @@ export default function ResourcesPage() {
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         onUploadSuccess={fetchResources}
+      />
+      <RateResourceModal
+        resourceId={ratingTarget?.id || null}
+        resourceTitle={ratingTarget?.title}
+        onClose={() => setRatingTarget(null)}
+        onRated={(averageRating) => {
+          if (!ratingTarget) return;
+          setResources((current) =>
+            current.map((item) =>
+              item.id === ratingTarget.id ? { ...item, rating: averageRating } : item
+            )
+          );
+        }}
       />
     </div>
   );

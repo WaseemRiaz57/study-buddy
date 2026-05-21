@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { io, type Socket } from "socket.io-client";
-import { Bell, Check, MailOpen } from "lucide-react";
+import { Bell, Check, MailOpen, X } from "lucide-react";
 
 interface UserNotification {
   id: string;
   title: string;
   message: string;
   time: string;
+  createdAt?: string;
   read: boolean;
 }
 
@@ -38,6 +39,8 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
+  const [selectedNotification, setSelectedNotification] =
+    useState<UserNotification | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -79,6 +82,7 @@ export function NotificationBell() {
             title: notification.title || "Notification",
             message: notification.message || "",
             time: formatNotificationTime(notification.createdAt),
+            createdAt: notification.createdAt,
             read: Boolean(notification.read),
           }))
         );
@@ -119,11 +123,16 @@ export function NotificationBell() {
     });
 
     socket.on("notification:new", (notification: any) => {
+      const notificationSound = new Audio("/sounds/notification.mp3");
+      notificationSound.volume = 0.45;
+      notificationSound.play().catch(() => undefined);
+
       const nextNotification = {
         id: String(notification?._id || notification?.id || Date.now()),
         title: notification?.title || "Notification",
         message: notification?.message || "",
         time: formatNotificationTime(notification?.createdAt || new Date().toISOString()),
+        createdAt: notification?.createdAt || new Date().toISOString(),
         read: Boolean(notification?.read),
       };
 
@@ -150,7 +159,7 @@ export function NotificationBell() {
   }, [session?.user?.id]);
 
   const markAllAsRead = async () => {
-    if (isMarkingAllRead || unreadCount === 0) return;
+    if (isMarkingAllRead || notifications.length === 0) return;
 
     try {
       setIsMarkingAllRead(true);
@@ -160,12 +169,10 @@ export function NotificationBell() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(data?.message || "Failed to mark notifications read.");
+        throw new Error(data?.message || "Failed to clear notifications.");
       }
 
-      setNotifications((current) =>
-        current.map((notification) => ({ ...notification, read: true }))
-      );
+      setNotifications([]);
     } catch (error) {
       console.error(error);
     } finally {
@@ -173,10 +180,17 @@ export function NotificationBell() {
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const openAndRemoveNotification = async (notification: UserNotification) => {
+    setSelectedNotification(notification);
+    setNotifications((current) => current.filter((item) => item.id !== notification.id));
+
+    try {
+      await fetch(`/api/user/notifications/${notification.id}`, {
+        method: "DELETE",
+      });
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
@@ -199,13 +213,13 @@ export function NotificationBell() {
             <h3 className="font-semibold text-slate-900 dark:text-white">
               Notifications
             </h3>
-            {unreadCount > 0 && (
+            {notifications.length > 0 && (
               <button
                 onClick={() => void markAllAsRead()}
                 disabled={isMarkingAllRead}
                 className="flex min-h-[44px] items-center gap-1 text-xs font-medium text-[#7C3AED] transition-colors hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Check size={14} /> {isMarkingAllRead ? "Clearing..." : "Mark all as read"}
+                <Check size={14} /> {isMarkingAllRead ? "Clearing..." : "Clear All"}
               </button>
             )}
           </div>
@@ -223,10 +237,11 @@ export function NotificationBell() {
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-white/5">
                 {notifications.map((notif) => (
-                  <div
+                  <button
+                    type="button"
                     key={notif.id}
-                    onClick={() => markAsRead(notif.id)}
-                    className={`relative min-h-[44px] cursor-pointer px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.02] ${
+                    onClick={() => void openAndRemoveNotification(notif)}
+                    className={`relative block min-h-[44px] w-full cursor-pointer px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.02] ${
                       !notif.read ? "bg-purple-50/50 dark:bg-purple-900/10" : ""
                     }`}
                   >
@@ -250,7 +265,7 @@ export function NotificationBell() {
                     <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                       {notif.message}
                     </p>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -261,6 +276,51 @@ export function NotificationBell() {
               View all notifications
             </button>
           </div>
+        </div>
+      )}
+
+      {selectedNotification && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label={selectedNotification.title}
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-[#191121]"
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
+                  Notification
+                </p>
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">
+                  {selectedNotification.title}
+                </h2>
+                {selectedNotification.time && (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {selectedNotification.time}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedNotification(null)}
+                className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white"
+                aria-label="Close notification dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {selectedNotification.message}
+            </p>
+            <button
+              type="button"
+              onClick={() => setSelectedNotification(null)}
+              className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+            >
+              Done
+            </button>
+          </section>
         </div>
       )}
     </div>

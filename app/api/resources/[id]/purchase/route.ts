@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { emitUserNotification } from "@/lib/study-room-socket";
 import MentorProfile from "@/models/MentorProfile";
 import Notification from "@/models/Notification";
 import Resource from "@/models/Resource";
@@ -156,7 +157,7 @@ export async function POST(
       );
     });
 
-    await Notification.create({
+    const notification = await Notification.create({
       userId: uploaderId,
       recipientId: uploaderId,
       senderId: buyerId,
@@ -170,6 +171,7 @@ export async function POST(
         price,
       },
     });
+    emitUserNotification(String(uploaderId), notification.toObject());
 
     return NextResponse.json({
       success: true,

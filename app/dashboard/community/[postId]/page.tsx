@@ -16,9 +16,11 @@ import {
   Loader2,
   MessageSquare,
   Flag,
+  Edit3,
   Send,
   Share2,
   ThumbsUp,
+  Trash2,
 } from "lucide-react";
 import PublicProfileModal from "@/components/PublicProfileModal";
 import ReportModal, { type ReportTarget } from "@/components/modals/ReportModal";
@@ -41,6 +43,7 @@ interface CommunityPostDetail {
   author: Author;
   likes: number;
   likedByMe: boolean;
+  savedByMe?: boolean;
   comments: number;
   views: number;
   createdAt: string | null;
@@ -192,6 +195,7 @@ export default function PostDetailPage() {
     }
 
     setPost(data?.post || null);
+    setSaved(Boolean(data?.post?.savedByMe));
   }, [postId]);
 
   const fetchComments = useCallback(async () => {
@@ -350,6 +354,70 @@ export default function PostDetailPage() {
     }
   };
 
+  const sharePost = async () => {
+    if (!post) return;
+    const postUrl = `${window.location.origin}/dashboard/community/${post.id}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: post.title,
+          text: post.body.slice(0, 160),
+          url: postUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(postUrl);
+        toast.success("Post link copied.");
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast.error("Failed to share post.");
+    }
+  };
+
+  const toggleSave = async () => {
+    if (!post) return;
+    const previousSaved = saved;
+    setSaved((value) => !value);
+
+    try {
+      const response = await fetch(`/api/community/posts/${post.id}/save`, {
+        method: "PATCH",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update saved post.");
+      }
+
+      setSaved(Boolean(data?.saved));
+      toast.success(data?.message || (data?.saved ? "Post saved." : "Post removed from saved items."));
+    } catch (error) {
+      setSaved(previousSaved);
+      toast.error(error instanceof Error ? error.message : "Failed to update saved post.");
+    }
+  };
+
+  const deletePost = async () => {
+    if (!post || !window.confirm(`Delete "${post.title}"? This cannot be undone.`)) return;
+
+    try {
+      const response = await fetch(`/api/community/posts/${post.id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to delete post.");
+      }
+
+      toast.success(data?.message || "Post deleted.");
+      router.push("/dashboard/community");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete post.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0f0c13]">
@@ -469,7 +537,7 @@ export default function PostDetailPage() {
               <ThumbsUp size={16} className={post.likedByMe ? "fill-current" : ""} /> {post.likes}
             </button>
             <button
-              onClick={() => setSaved((value) => !value)}
+              onClick={() => void toggleSave()}
               className={`flex items-center gap-2 rounded-xl px-4 py-2.5 font-semibold transition-all ${
                 saved
                   ? "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
@@ -479,9 +547,28 @@ export default function PostDetailPage() {
               <Bookmark size={16} className={saved ? "fill-current" : ""} />{" "}
               {saved ? "Saved" : "Save"}
             </button>
-            <button className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 font-semibold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-gray-300">
+            <button
+              onClick={() => void sharePost()}
+              className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 font-semibold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-white/10 dark:text-gray-300"
+            >
               <Share2 size={16} /> Share
             </button>
+            {currentUser.id === post.author.id && (
+              <>
+                <button
+                  onClick={() => toast.info("Post editing will open here soon.")}
+                  className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 font-semibold text-slate-600 transition-colors hover:text-[#7C3AED] dark:bg-white/10 dark:text-gray-300"
+                >
+                  <Edit3 size={16} /> Edit
+                </button>
+                <button
+                  onClick={() => void deletePost()}
+                  className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 font-semibold text-red-600 transition-colors hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400"
+                >
+                  <Trash2 size={16} /> Delete
+                </button>
+              </>
+            )}
             <button
               onClick={() =>
                 setReportTarget({

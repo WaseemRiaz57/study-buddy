@@ -291,10 +291,10 @@ const StatCard = memo(function StatCard({
       >
         <Icon className="h-5 w-5 text-purple-400" />
       </motion.div>
-      <div className="mb-1 text-3xl md:text-4xl font-black text-foreground tabular-nums">
+      <div className="mb-1 text-3xl md:text-4xl font-black text-foreground tabular-nums drop-shadow-lg">
         {count}{suffix}
       </div>
-      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground drop-shadow-md">{label}</div>
     </motion.div>
   );
 });
@@ -604,7 +604,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
             key={review.id}
             type="button"
             onClick={() => setActiveIndex(index)}
-            className={`h-2 rounded-full transition-all ${
+            className={`h-2 rounded-md transition-all ${
               index === activeIndex ? "w-8 bg-[#7C3AED]" : "w-2 bg-muted-foreground/30"
             }`}
             aria-label={`Show review ${index + 1}`}
@@ -616,7 +616,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
       <button
         type="button"
         onClick={() => move(-1)}
-        className="absolute left-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 font-bold text-[#7C3AED] shadow-lg backdrop-blur transition-colors hover:bg-[#7C3AED] hover:text-white md:flex"
+        className="absolute left-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg border border-border bg-background/80 font-bold text-[#7C3AED] shadow-lg backdrop-blur transition-colors hover:bg-[#7C3AED] hover:text-white md:flex"
         aria-label="Previous testimonial"
       >
         ‹
@@ -624,7 +624,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
       <button
         type="button"
         onClick={() => move(1)}
-        className="absolute right-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 font-bold text-[#7C3AED] shadow-lg backdrop-blur transition-colors hover:bg-[#7C3AED] hover:text-white md:flex"
+        className="absolute right-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg border border-border bg-background/80 font-bold text-[#7C3AED] shadow-lg backdrop-blur transition-colors hover:bg-[#7C3AED] hover:text-white md:flex"
         aria-label="Next testimonial"
       >
         ›
@@ -740,12 +740,12 @@ export default function Home() {
 
       {/* ══════════════ HERO ══════════════ */}
       <section className="relative flex min-h-[80vh] w-full flex-col justify-center bg-[url('/hero.png')] bg-cover bg-center bg-no-repeat px-4 py-24 text-center sm:px-6 lg:px-8">
-        <div className="absolute inset-0 bg-white/85 backdrop-blur-[2px] dark:bg-slate-950/85" />
+        <div className="absolute inset-0 bg-white/55 backdrop-blur-[1px] dark:bg-slate-950/60" />
         <motion.div initial="hidden" animate="show" variants={stagger} className="relative z-10 mx-auto max-w-5xl">
 
           {/* Headline — 3D flip-in per word */}
           <motion.h1
-            className="mb-8 text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-7xl"
+            className="mb-8 text-4xl font-extrabold leading-[1.05] tracking-tight drop-shadow-lg sm:text-5xl lg:text-7xl"
             initial="hidden"
             animate="show"
             variants={stagger}
@@ -778,7 +778,7 @@ export default function Home() {
 
           <motion.p
             variants={fadeUp}
-            className="mx-auto mb-12 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed"
+            className="mx-auto mb-12 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed drop-shadow-md"
           >
             Where learning meets innovation. Build knowledge, connect with mentors, and achieve your goals in a community that never stops growing.
           </motion.p>
@@ -786,7 +786,7 @@ export default function Home() {
           <motion.div variants={fadeUp} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
               <Link href="/register"
-                className="group inline-flex items-center gap-2 rounded-full bg-purple-600 px-10 py-4 text-base font-bold text-white shadow-xl shadow-purple-600/25 transition-all hover:bg-purple-700 hover:shadow-2xl hover:shadow-purple-600/35"
+                className="group inline-flex items-center gap-2 rounded-lg bg-purple-600 px-10 py-4 text-base font-bold text-white shadow-xl shadow-purple-600/25 transition-all hover:bg-purple-700 hover:shadow-2xl hover:shadow-purple-600/35"
               >
                 Begin a session
                 <motion.span className="inline-flex" animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
@@ -796,7 +796,7 @@ export default function Home() {
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
               <Link href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-10 py-4 text-base font-bold text-foreground transition-all hover:bg-muted hover:border-foreground/20"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-10 py-4 text-base font-bold text-foreground transition-all hover:bg-muted hover:border-foreground/20"
               >
                 View dashboard
               </Link>
@@ -1087,10 +1087,10 @@ export default function Home() {
               <span className={!isYearly ? "text-foreground" : "text-muted-foreground"}>Monthly</span>
               <button
                 onClick={() => setIsYearly(v => !v)}
-                className="relative w-14 h-7 rounded-full bg-muted border border-border flex items-center p-1 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                className="relative w-14 h-7 rounded-lg bg-muted border border-border flex items-center p-1 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
               >
                 <motion.div
-                  className="w-5 h-5 rounded-full bg-purple-500 shadow-lg shadow-purple-500/30"
+                  className="w-5 h-5 rounded-md bg-purple-500 shadow-lg shadow-purple-500/30"
                   animate={{ x: isYearly ? 26 : 0 }}
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 />
@@ -1153,7 +1153,7 @@ export default function Home() {
           <motion.div variants={fadeUp}>
             <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.97 }} className="inline-block">
               <Link href="/register"
-                className="inline-flex items-center gap-3 rounded-full bg-foreground px-10 py-4 text-lg font-bold text-background shadow-[0_0_50px_rgba(0,0,0,0.12)] dark:shadow-[0_0_50px_rgba(255,255,255,0.12)] hover:shadow-2xl transition-shadow"
+                className="inline-flex items-center gap-3 rounded-lg bg-foreground px-10 py-4 text-lg font-bold text-background shadow-[0_0_50px_rgba(0,0,0,0.12)] dark:shadow-[0_0_50px_rgba(255,255,255,0.12)] hover:shadow-2xl transition-shadow"
               >
                 Create Free Account
                 <motion.span className="inline-flex" animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>

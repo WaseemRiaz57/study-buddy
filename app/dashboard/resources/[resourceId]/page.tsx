@@ -22,6 +22,7 @@ import {
   Loader2,
 } from "lucide-react";
 import FlagResourceModal from "@/components/resources/FlagResourceModal";
+import RateResourceModal from "@/components/resources/RateResourceModal";
 
 interface ApiResource {
   _id: string;
@@ -34,6 +35,8 @@ interface ApiResource {
   fileType: string;
   pageCount: number;
   rating: number;
+  averageRating?: number;
+  ratingCount?: number;
   downloadCount: number;
   price: number;
   isUnlocked: boolean;
@@ -93,6 +96,7 @@ export default function ResourceDetailPage() {
   const [resources, setResources] = useState<ApiResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [isRatingOpen, setIsRatingOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -142,6 +146,7 @@ export default function ResourceDetailPage() {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
+    setIsRatingOpen(true);
   };
 
   const handleUnlock = async () => {
@@ -175,6 +180,7 @@ export default function ResourceDetailPage() {
       );
       window.dispatchEvent(new Event("gamification-stats-updated"));
       toast.success(data?.message || "Resource unlocked.");
+      setIsRatingOpen(true);
     } catch (unlockError) {
       toast.error(
         unlockError instanceof Error
@@ -402,6 +408,20 @@ export default function ResourceDetailPage() {
         isOpen={isFlagOpen}
         onClose={() => setIsFlagOpen(false)}
         resourceTitle={resource.title}
+      />
+      <RateResourceModal
+        resourceId={isRatingOpen ? resource._id : null}
+        resourceTitle={resource.title}
+        onClose={() => setIsRatingOpen(false)}
+        onRated={(averageRating) => {
+          setResources((current) =>
+            current.map((item) =>
+              item._id === resource._id
+                ? { ...item, rating: averageRating, averageRating }
+                : item
+            )
+          );
+        }}
       />
     </div>
   );

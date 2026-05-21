@@ -66,13 +66,19 @@ function userHasAccess(resource: any, userId: string) {
 function serializeResource(resource: any, userId: string) {
   const isUnlocked = userHasAccess(resource, userId);
   const price = Math.max(0, Number(resource.price || 0));
+  const ratings = Array.isArray(resource.ratings) ? resource.ratings : [];
+  const averageRating = Number(resource.averageRating ?? resource.rating ?? 0);
 
   return {
     ...resource,
     price,
+    rating: averageRating,
+    averageRating,
+    ratingCount: ratings.length,
     isUnlocked,
     fileUrl: isUnlocked ? resource.fileUrl : "",
     allowedUsers: undefined,
+    ratings: undefined,
   };
 }
 

@@ -10,9 +10,11 @@ import {
   getStudyBuddyListingExpiry,
 } from "@/lib/study-buddy-listings";
 import BuddyMatch from "@/models/BuddyMatch";
+import Notification from "@/models/Notification";
 import StudentProfile from "@/models/StudentProfile";
 import StudyProfile from "@/models/StudyProfile";
 import User from "@/models/User";
+import { emitUserNotification } from "@/lib/study-room-socket";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +104,22 @@ export async function POST(request: Request) {
           { $set: { isLookingForMatch: false } }
         ),
       ]);
+
+      const notification = await Notification.create({
+        userId: peerId,
+        recipientId: peerId,
+        senderId: currentUserId,
+        type: "buddy_accepted",
+        title: "Study Buddy Match Found",
+        message: `${session?.user?.name || "A study buddy"} matched with you for ${matchedBuddy.subject}.`,
+        read: false,
+        metadata: {
+          matchId: String(matchedBuddy._id),
+          roomId: room.roomId,
+          subject: matchedBuddy.subject,
+        },
+      });
+      emitUserNotification(peerId, notification.toObject());
 
       return NextResponse.json(
         {
@@ -208,6 +226,22 @@ export async function POST(request: Request) {
           { $set: { isLookingForMatch: false } }
         ),
       ]);
+
+      const notification = await Notification.create({
+        userId: peerId,
+        recipientId: peerId,
+        senderId: currentUserId,
+        type: "buddy_accepted",
+        title: "Study Buddy Match Found",
+        message: `${session?.user?.name || "A study buddy"} matched with you for ${subject}.`,
+        read: false,
+        metadata: {
+          matchId: String(matchedBuddy._id),
+          roomId: room.roomId,
+          subject,
+        },
+      });
+      emitUserNotification(peerId, notification.toObject());
 
       return NextResponse.json(
         {

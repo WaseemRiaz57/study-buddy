@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 function getAudienceCandidates(user: any) {
   const role = String(user?.role || "").trim();
-  const plan = String(user?.plan || "").trim();
+  const plan = String(user?.plan || user?.subscriptionPlan || "").trim();
   const candidates = new Set<string>();
 
   if (role) {
@@ -44,27 +44,31 @@ export async function GET() {
     await connectMongoDB();
 
     const user = await User.findById(session.user.id)
-      .select("role plan")
+      .select("role plan subscriptionPlan createdAt")
       .lean();
 
     if (!user) {
       return NextResponse.json({ message: "User not found." }, { status: 404 });
     }
 
+    const userObjectId = session.user.id;
+    const userCreatedAt = user.createdAt || new Date(0);
+    const broadcastScope = { createdAt: { $gte: userCreatedAt } };
     const conditions: Record<string, unknown>[] = [
       { userId: session.user.id },
       { recipientId: session.user.id },
-      { isGlobal: true },
-      { audience: "All Users" },
+      { isGlobal: true, ...broadcastScope },
+      { audience: "All Users", ...broadcastScope },
     ];
     const audienceCandidates = getAudienceCandidates(user);
 
     if (audienceCandidates.length > 0) {
-      conditions.push({ audience: { $in: audienceCandidates } });
+      conditions.push({ audience: { $in: audienceCandidates }, ...broadcastScope });
     }
 
     const notifications = await Notification.find({
       $or: conditions,
+      hiddenBy: { $ne: userObjectId },
     })
       .populate("senderId", "name image")
       .sort({ createdAt: -1 })

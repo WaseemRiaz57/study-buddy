@@ -3,8 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import { createStudyBuddyMatchRoom } from "@/lib/study-buddy-match-room";
-import { emitBuddyRequestAccepted } from "@/lib/study-room-socket";
+import { emitBuddyRequestAccepted, emitUserNotification } from "@/lib/study-room-socket";
 import BuddyConnection from "@/models/BuddyConnection";
+import Notification from "@/models/Notification";
 import mongoose from "mongoose";
 
 interface RespondBody {
@@ -73,10 +74,26 @@ export async function PATCH(req: Request) {
       connection.roomId = room.roomId;
       await connection.save();
 
+      const notification = await Notification.create({
+        userId: requesterId,
+        recipientId: requesterId,
+        senderId: session.user.id,
+        type: "buddy_accepted",
+        title: "Study Buddy Request Accepted",
+        message: `${session.user.name || "Your study buddy"} accepted your request. Your room is ready.`,
+        read: false,
+        metadata: {
+          connectionId: String(connection._id),
+          roomId: room.roomId,
+          subject: connection.subject,
+        },
+      });
+
       emitBuddyRequestAccepted(requesterId, {
         roomId: room.roomId,
         requestId: String(connection._id),
       });
+      emitUserNotification(requesterId, notification.toObject());
 
       return NextResponse.json(
         {
@@ -90,7 +107,22 @@ export async function PATCH(req: Request) {
     }
 
     // Decline flow: remove pending request record to keep queue clean.
+    const requesterId = String(connection.requester);
     await BuddyConnection.findByIdAndDelete(connectionId);
+    const notification = await Notification.create({
+      userId: requesterId,
+      recipientId: requesterId,
+      senderId: session.user.id,
+      type: "system",
+      title: "Study Buddy Request Declined",
+      message: `${session.user.name || "Your study buddy"} declined your request.`,
+      read: false,
+      metadata: {
+        connectionId,
+        subject: connection.subject,
+      },
+    });
+    emitUserNotification(requesterId, notification.toObject());
 
     return NextResponse.json(
       {

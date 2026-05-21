@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { BookOpen, Filter, Loader2, MessageSquare, Plus, Search } from "lucide-react";
 import CreatePostModal from "@/components/community/CreatePostModal";
@@ -76,6 +77,7 @@ async function uploadCommunityAttachments(files: File[]) {
 }
 
 export default function CommunityFeedPage() {
+  const { data: session } = useSession();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeTopic, setActiveTopic] = useState("All");
@@ -90,6 +92,7 @@ export default function CommunityFeedPage() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const currentUserId = String(session?.user?.id || "");
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -244,6 +247,78 @@ export default function CommunityFeedPage() {
     }
   };
 
+  const deletePost = async (post: Post) => {
+    if (!window.confirm(`Delete "${post.title}"? This cannot be undone.`)) return;
+
+    try {
+      const response = await fetch(`/api/community/posts/${post.id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to delete post.");
+      }
+
+      setPosts((current) => current.filter((item) => item.id !== post.id));
+      toast.success(data?.message || "Post deleted.");
+      void fetchStats();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete post.");
+    }
+  };
+
+  const sharePost = async (post: Post) => {
+    const postUrl = `${window.location.origin}/dashboard/community/${post.id}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: post.title,
+          text: post.excerpt,
+          url: postUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(postUrl);
+        toast.success("Post link copied.");
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast.error("Failed to share post.");
+    }
+  };
+
+  const toggleSave = async (post: Post) => {
+    const previousPosts = posts;
+
+    setPosts((current) =>
+      current.map((item) =>
+        item.id === post.id ? { ...item, savedByMe: !item.savedByMe } : item
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/community/posts/${post.id}/save`, {
+        method: "PATCH",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update saved post.");
+      }
+
+      setPosts((current) =>
+        current.map((item) =>
+          item.id === post.id ? { ...item, savedByMe: Boolean(data?.saved) } : item
+        )
+      );
+      toast.success(data?.message || (data?.saved ? "Post saved." : "Post removed from saved items."));
+    } catch (error) {
+      setPosts(previousPosts);
+      toast.error(error instanceof Error ? error.message : "Failed to update saved post.");
+    }
+  };
+
   const totalActivePosts = useMemo(() => stats.activePosts, [stats.activePosts]);
 
   return (
@@ -331,6 +406,11 @@ export default function CommunityFeedPage() {
                   index={index}
                   onLike={toggleLike}
                   onAuthorClick={setPublicProfileUserId}
+                  currentUserId={currentUserId}
+                  onEdit={() => toast.info("Post editing will open here soon.")}
+                  onDelete={(postToDelete) => void deletePost(postToDelete)}
+                  onShare={(postToShare) => void sharePost(postToShare)}
+                  onSave={(postToSave) => void toggleSave(postToSave)}
                   onReport={(reportedPost) =>
                     setReportTarget({
                       targetType: "post",

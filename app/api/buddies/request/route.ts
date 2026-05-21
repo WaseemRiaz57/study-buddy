@@ -4,7 +4,9 @@ import { connectMongoDB } from "@/lib/mongodb";
 import { closeExpiredStudyBuddyListings } from "@/lib/study-buddy-listings";
 import BuddyMatch from "@/models/BuddyMatch";
 import BuddyConnection from "@/models/BuddyConnection";
+import Notification from "@/models/Notification";
 import User from "@/models/User";
+import { emitUserNotification } from "@/lib/study-room-socket";
 import mongoose from "mongoose";
 
 interface RequestBody {
@@ -121,6 +123,23 @@ export async function POST(req: Request) {
       subject,
       status: "pending",
     });
+
+    const requester = await User.findById(requesterId).select("name").lean();
+    const notification = await Notification.create({
+      userId: recipientId,
+      recipientId,
+      senderId: requesterId,
+      type: "buddy_request",
+      title: "New Study Buddy Ping",
+      message: `${requester?.name || "A student"} wants to connect for ${subject}.`,
+      read: false,
+      metadata: {
+        connectionId: String(createdConnection._id),
+        subject,
+      },
+    });
+
+    emitUserNotification(recipientId, notification.toObject());
 
     return NextResponse.json(
       {

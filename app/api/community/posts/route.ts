@@ -8,6 +8,7 @@ import { logActivity } from "@/lib/logActivity";
 import { connectMongoDB } from "@/lib/mongodb";
 import Comment from "@/models/Comment";
 import CommunityPost from "@/models/CommunityPost";
+import User from "@/models/User";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,12 @@ function serializeAuthor(author: any) {
   };
 }
 
-async function serializePost(post: any, commentCount = 0, currentUserId = "") {
+async function serializePost(
+  post: any,
+  commentCount = 0,
+  currentUserId = "",
+  savedPostIds: string[] = []
+) {
   const likes = Array.isArray(post.likes) ? post.likes : [];
 
   return {
@@ -56,6 +62,7 @@ async function serializePost(post: any, commentCount = 0, currentUserId = "") {
     author: serializeAuthor(post.authorId),
     likes: likes.length,
     likedByMe: Boolean(currentUserId && likes.some((id: unknown) => String(id) === currentUserId)),
+    savedByMe: savedPostIds.includes(String(post._id)),
     comments: commentCount,
     views: Number(post.views || 0),
     createdAt: post.createdAt || null,
@@ -112,16 +119,31 @@ export async function GET(request: Request) {
       .lean();
 
     const postIds = posts.map((post) => post._id);
-    const counts = postIds.length
-      ? await Comment.aggregate([
+    const [counts, currentUser] = await Promise.all([
+      postIds.length
+        ? Comment.aggregate([
           { $match: { postId: { $in: postIds } } },
           { $group: { _id: "$postId", count: { $sum: 1 } } },
         ])
-      : [];
+        : [],
+      currentUserId && mongoose.Types.ObjectId.isValid(currentUserId)
+        ? User.findById(currentUserId).select("savedPosts").lean()
+        : null,
+    ]);
     const countMap = new Map(counts.map((item) => [String(item._id), item.count]));
+    const savedPostIds = Array.isArray((currentUser as any)?.savedPosts)
+      ? (currentUser as any).savedPosts.map((id: unknown) => String(id))
+      : [];
 
     const serialized = await Promise.all(
-      posts.map((post) => serializePost(post, countMap.get(String(post._id)) || 0, currentUserId))
+      posts.map((post) =>
+        serializePost(
+          post,
+          countMap.get(String(post._id)) || 0,
+          currentUserId,
+          savedPostIds
+        )
+      )
     );
 
     if (sort.includes("hot") || sort.includes("like")) {

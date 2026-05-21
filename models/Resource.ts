@@ -12,6 +12,11 @@ export interface IResource extends Document {
   status: "pending" | "approved" | "rejected";
   pageCount: number;
   rating: number;
+  ratings: {
+    userId: mongoose.Types.ObjectId;
+    score: number;
+  }[];
+  averageRating: number;
   downloadCount: number;
   price: number;
   allowedUsers: mongoose.Types.ObjectId[];
@@ -68,7 +73,31 @@ const resourceSchema = new Schema<IResource>({
   },
   rating: {
     type: Number,
-    default: 4.5,
+    default: 0,
+  },
+  ratings: {
+    type: [
+      {
+        userId: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        score: {
+          type: Number,
+          required: true,
+          min: 1,
+          max: 5,
+        },
+      },
+    ],
+    default: [],
+  },
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5,
   },
   downloadCount: {
     type: Number,

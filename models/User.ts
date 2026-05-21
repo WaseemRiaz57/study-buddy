@@ -83,6 +83,13 @@ const userSchema = new Schema(
       default: false,
       index: true,
     },
+    savedPosts: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "CommunityPost",
+        index: true,
+      },
+    ],
   },
   { timestamps: true } // Yeh automatically createdAt aur updatedAt fields bana dega
 );

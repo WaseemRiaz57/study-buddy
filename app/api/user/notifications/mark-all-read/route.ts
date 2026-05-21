@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 function getAudienceCandidates(user: any) {
   const role = String(user?.role || "").trim();
-  const plan = String(user?.plan || "").trim();
+  const plan = String(user?.plan || user?.subscriptionPlan || "").trim();
   const candidates = new Set<string>();
 
   if (role) {
@@ -46,7 +46,7 @@ export async function PATCH() {
     await connectMongoDB();
 
     const user = await User.findById(session.user.id)
-      .select("role plan")
+      .select("role plan subscriptionPlan createdAt")
       .lean();
 
     if (!user) {
@@ -58,38 +58,41 @@ export async function PATCH() {
     }
 
     const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+    const userCreatedAt = user.createdAt || new Date(0);
     const audienceCandidates = getAudienceCandidates(user);
     const sharedConditions: Record<string, unknown>[] = [
-      { isGlobal: true },
-      { audience: "All Users" },
+      { isGlobal: true, createdAt: { $gte: userCreatedAt } },
+      { audience: "All Users", createdAt: { $gte: userCreatedAt } },
     ];
 
     if (audienceCandidates.length > 0) {
-      sharedConditions.push({ audience: { $in: audienceCandidates } });
+      sharedConditions.push({
+        audience: { $in: audienceCandidates },
+        createdAt: { $gte: userCreatedAt },
+      });
     }
 
     await Promise.all([
-      Notification.updateMany(
+      Notification.deleteMany(
         {
           $or: [
             { userId: session.user.id },
             { recipientId: session.user.id },
           ],
-        },
-        { $set: { read: true } }
+        }
       ),
       Notification.updateMany(
         {
           $or: sharedConditions,
         },
-        { $addToSet: { readBy: userObjectId } }
+        { $addToSet: { hiddenBy: userObjectId, readBy: userObjectId } }
       ),
     ]);
 
     return NextResponse.json({
       success: true,
       unreadCount: 0,
-      message: "Notifications marked as read.",
+      message: "Notifications cleared.",
     });
   } catch (error) {
     console.error("Mark notifications read error:", error);

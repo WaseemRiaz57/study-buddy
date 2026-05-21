@@ -6,6 +6,7 @@ import StudySession from "@/models/StudySession";
 import BuddyMatch from "@/models/BuddyMatch";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
+import { emitUserNotification } from "@/lib/study-room-socket";
 
 // PATCH /api/study-buddy/respond — User B accepts or rejects a pending session
 export async function PATCH(req: Request) {
@@ -76,8 +77,9 @@ export async function PATCH(req: Request) {
       );
 
       // ── Dispatch notification to requester (FR-12) ───────────────
-      await Notification.create({
+      const notification = await Notification.create({
         recipientId: studySession.requesterId,
+        userId: studySession.requesterId,
         senderId: currentUser._id,
         type: "buddy_accepted",
         title: "Buddy Request Accepted!",
@@ -89,6 +91,8 @@ export async function PATCH(req: Request) {
         },
       });
 
+      emitUserNotification(String(studySession.requesterId), notification.toObject());
+
       return NextResponse.json({
         message: "Session accepted!",
         sessionId: studySession._id.toString(),
@@ -98,6 +102,22 @@ export async function PATCH(req: Request) {
         },
       });
     }
+
+    const notification = await Notification.create({
+      recipientId: studySession.requesterId,
+      userId: studySession.requesterId,
+      senderId: currentUser._id,
+      type: "system",
+      title: "Study Buddy Request Declined",
+      message: `${currentUser.name || "Your study buddy"} declined your study request.`,
+      read: false,
+      metadata: {
+        sessionId: studySession._id.toString(),
+        subject: studySession.subject,
+      },
+    });
+
+    emitUserNotification(String(studySession.requesterId), notification.toObject());
 
     return NextResponse.json({ message: "Session rejected." });
   } catch (error) {

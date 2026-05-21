@@ -1,8 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Flag, ThumbsUp, MessageSquare, Eye, Flame } from "lucide-react";
+import {
+  Bookmark,
+  Edit3,
+  Flag,
+  Flame,
+  MoreVertical,
+  MessageSquare,
+  Share2,
+  ThumbsUp,
+  Trash2,
+  Eye,
+} from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -25,6 +37,7 @@ export interface Post {
   role: string;
   likes: number;
   likedByMe: boolean;
+  savedByMe?: boolean;
   comments: number;
   views: number;
   createdAt: string | null;
@@ -37,6 +50,11 @@ interface PostCardProps {
   onLike?: (postId: string) => void;
   onAuthorClick?: (userId: string) => void;
   onReport?: (post: Post) => void;
+  onDelete?: (post: Post) => void;
+  onEdit?: (post: Post) => void;
+  onShare?: (post: Post) => void;
+  onSave?: (post: Post) => void;
+  currentUserId?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -96,7 +114,15 @@ export default function PostCard({
   onLike,
   onAuthorClick,
   onReport,
+  onDelete,
+  onEdit,
+  onShare,
+  onSave,
+  currentUserId,
 }: PostCardProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const canManage = Boolean(currentUserId && currentUserId === post.author.id);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -151,6 +177,50 @@ export default function PostCard({
                     <Flame size={12} /> Hot
                   </span>
                 )}
+                {canManage && (
+                  <div className="relative ml-auto">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setMenuOpen((current) => !current);
+                      }}
+                      className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED]"
+                      aria-label={`Open controls for ${post.title}`}
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {menuOpen && (
+                      <div className="absolute right-0 top-full z-20 mt-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#191121]">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setMenuOpen(false);
+                            onEdit?.(post);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-[#7C3AED]/10 hover:text-[#7C3AED] dark:text-slate-300"
+                        >
+                          <Edit3 size={14} /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setMenuOpen(false);
+                            onDelete?.(post);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10"
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Title & excerpt */}
@@ -194,6 +264,31 @@ export default function PostCard({
                   className="flex items-center gap-1 transition-colors hover:text-red-500"
                 >
                   <Flag size={13} /> Report
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onShare?.(post);
+                  }}
+                  className="flex items-center gap-1 transition-colors hover:text-[#7C3AED]"
+                >
+                  <Share2 size={13} /> Share
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onSave?.(post);
+                  }}
+                  className={`flex items-center gap-1 transition-colors ${
+                    post.savedByMe ? "text-[#7C3AED]" : "hover:text-[#7C3AED]"
+                  }`}
+                >
+                  <Bookmark size={13} className={post.savedByMe ? "fill-current" : ""} />{" "}
+                  {post.savedByMe ? "Saved" : "Save"}
                 </button>
                 <span className="ml-auto px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#7C3AED]/10 text-[#7C3AED] dark:bg-[#7C3AED]/20">
                   {post.category}

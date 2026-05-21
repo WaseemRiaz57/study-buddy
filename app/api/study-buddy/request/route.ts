@@ -4,6 +4,8 @@ import { connectMongoDB } from "@/lib/mongodb";
 import StudySession from "@/models/StudySession";
 import BuddyMatch from "@/models/BuddyMatch";
 import User from "@/models/User";
+import Notification from "@/models/Notification";
+import { emitUserNotification } from "@/lib/study-room-socket";
 
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -109,6 +111,23 @@ export async function POST(req: Request) {
       subject: normalizedSubject,
       topic: normalizedTopic,
     });
+
+    const notification = await Notification.create({
+      userId: targetUser._id,
+      recipientId: targetUser._id,
+      senderId: currentUser._id,
+      type: "buddy_request",
+      title: "New Study Buddy Request",
+      message: `${currentUser.name || "A student"} wants to study ${normalizedSubject} with you.`,
+      read: false,
+      metadata: {
+        sessionId: newSession._id.toString(),
+        matchId: buddyMatch._id.toString(),
+        subject: normalizedSubject,
+      },
+    });
+
+    emitUserNotification(String(targetUser._id), notification.toObject());
 
     return NextResponse.json(
       {

@@ -16,6 +16,7 @@ export interface INotification extends Document {
   audience?: string;
   read: boolean;
   readBy?: mongoose.Types.ObjectId[];
+  hiddenBy?: mongoose.Types.ObjectId[];
   isGlobal: boolean;
   metadata: Record<string, unknown>;
 }
@@ -67,6 +68,12 @@ const NotificationSchema = new Schema<INotification>(
       default: false,
     },
     readBy: {
+      type: [Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
+      index: true,
+    },
+    hiddenBy: {
       type: [Schema.Types.ObjectId],
       ref: "User",
       default: [],
