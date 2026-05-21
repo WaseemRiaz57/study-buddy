@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import FlagResourceModal from "@/components/resources/FlagResourceModal";
 import RateResourceModal from "@/components/resources/RateResourceModal";
+import { useGamificationStore } from "@/store/useGamificationStore";
 
 interface ApiResource {
   _id: string;
@@ -98,6 +99,7 @@ export default function ResourceDetailPage() {
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isRatingOpen, setIsRatingOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const addReward = useGamificationStore((state) => state.addReward);
 
   useEffect(() => {
     const fetchResources = async () => {
@@ -146,6 +148,7 @@ export default function ResourceDetailPage() {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
+    addReward(10, 0);
     setIsRatingOpen(true);
   };
 

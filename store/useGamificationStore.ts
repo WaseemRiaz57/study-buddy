@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { showRewardToast } from "@/components/gamification/RewardToast";
+import { playNotificationSound } from "@/lib/playNotificationSound";
 
 export interface GamificationStats {
   xp: number;
@@ -70,6 +71,7 @@ export const useGamificationStore = create<GamificationState>((set) => ({
       const nextXp = Math.max(0, state.stats.xp + xpEarned);
 
       if (typeof window !== "undefined" && (xpEarned || coinsEarned)) {
+        playNotificationSound();
         showRewardToast({
           title: "Reward Added!",
           xp: xpEarned,

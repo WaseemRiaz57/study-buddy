@@ -25,11 +25,11 @@ type RewardDefinition = {
 
 export const REWARD_DICTIONARY: Record<GamificationActionType, RewardDefinition> = {
   COMPLETED_SESSION: { xp: 100, coins: 20 },
-  RESOURCE_UPLOAD: { xp: 15, coins: 5 },
+  RESOURCE_UPLOAD: { xp: 10, coins: 0 },
   FOCUS_ROOM_COMPLETE: { xp: 10, coins: 0 },
   STUDY_BUDDY_COMPLETE: { xp: 20, coins: 10 },
   MENTOR_SESSION_COMPLETE: { xp: 50, coins: 20 },
-  CREATED_POST: { xp: 10, coins: 2 },
+  CREATED_POST: { xp: 15, coins: 0 },
   CREATED_COMMENT: { xp: 5, coins: 1 },
   DAILY_LOGIN: { xp: 5, coins: 5 },
   CHALLENGE_COMPLETED: { xp: 0, coins: 0 },

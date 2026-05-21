@@ -6,15 +6,15 @@ import { Github, Twitter, MessageCircle } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 
 const productLinks = [
-  { label: "Focus Room", href: "#focus-room" },
-  { label: "AI Generator", href: "#ai-generator" },
-  { label: "Marketplace", href: "#marketplace" },
+  { label: "Focus Room", href: "/login" },
+  { label: "AI Generator", href: "/login" },
+  { label: "Marketplace", href: "/login" },
 ];
 
 const companyLinks = [
-  { label: "Community", href: "#community" },
-  { label: "About Us", href: "#about" },
-  { label: "Careers", href: "#careers" },
+  { label: "Community", href: "/login" },
+  { label: "About Us", href: "/about" },
+  { label: "Careers", href: "/careers" },
 ];
 
 const socialLinks = [

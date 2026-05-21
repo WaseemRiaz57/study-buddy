@@ -5,6 +5,7 @@ import { Search, SlidersHorizontal, Clock3, Radio, Plus, Users } from "lucide-re
 import { useRouter } from "next/navigation";
 import PublicProfileModal from "@/components/PublicProfileModal";
 import CreateRoomModal from "@/components/study-room/CreateRoomModal";
+import { useGamificationStore } from "@/store/useGamificationStore";
 
 type Room = {
   _id: string;
@@ -30,6 +31,7 @@ export default function StudyRoomsPage() {
   const [joinError, setJoinError] = useState("");
   const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
   const router = useRouter();
+  const addReward = useGamificationStore((state) => state.addReward);
 
   const loadRooms = async () => {
     setIsLoadingRooms(true);
@@ -104,6 +106,7 @@ export default function StudyRoomsPage() {
         return;
       }
 
+      addReward(20, 0);
       router.push(`/dashboard/study-rooms/${normalizedCode}`);
     } catch {
       setJoinError("Failed to join room.");

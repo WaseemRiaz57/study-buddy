@@ -854,16 +854,14 @@ export default function SessionsPage() {
 
       updateSession(result.session as DashboardSession);
       const xpAwarded = Number(
-        result?.reward?.xpAwarded || result?.rewards?.mentorXpAdded || 0
+        result?.reward?.xpAwarded || result?.rewards?.mentorXpAdded || 50
       );
       const coinsAwarded = Number(
-        result?.reward?.coinsAwarded || result?.rewards?.mentorCoinsAdded || 0
+        result?.reward?.coinsAwarded || result?.rewards?.mentorCoinsAdded || 20
       );
 
-      if (xpAwarded || coinsAwarded) {
-        addReward(xpAwarded, coinsAwarded);
-        window.dispatchEvent(new Event("gamification-stats-updated"));
-      }
+      addReward(xpAwarded, coinsAwarded);
+      window.dispatchEvent(new Event("gamification-stats-updated"));
       toast.success("Session completed.");
       setCompleteSession(null);
     } catch (error) {

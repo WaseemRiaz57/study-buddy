@@ -111,9 +111,45 @@ export async function POST(req: Request) {
     }).lean();
 
     if (existingConnection) {
+      const refreshedConnection = await BuddyConnection.findByIdAndUpdate(
+        existingConnection._id,
+        {
+          $set: {
+            subject,
+            status:
+              String(existingConnection.status) === "accepted"
+                ? existingConnection.status
+                : "pending",
+            updatedAt: new Date(),
+          },
+        },
+        { new: true }
+      );
+
+      const requester = await User.findById(requesterId).select("name").lean();
+      const notification = await Notification.create({
+        userId: recipientId,
+        recipientId,
+        senderId: requesterId,
+        type: "buddy_request",
+        title: "Study Buddy Ping",
+        message: `${requester?.name || "A student"} pinged you again for ${subject}.`,
+        read: false,
+        metadata: {
+          connectionId: String(existingConnection._id),
+          subject,
+          reping: true,
+        },
+      });
+
+      emitUserNotification(recipientId, notification.toObject());
+
       return NextResponse.json(
-        { message: "Request already exists" },
-        { status: 400 }
+        {
+          message: "Buddy ping refreshed successfully",
+          connection: refreshedConnection || existingConnection,
+        },
+        { status: 200 }
       );
     }
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { io, type Socket } from "socket.io-client";
 import { Bell, Check, MailOpen, X } from "lucide-react";
+import { playNotificationSound } from "@/lib/playNotificationSound";
 
 interface UserNotification {
   id: string;
@@ -123,9 +124,7 @@ export function NotificationBell() {
     });
 
     socket.on("notification:new", (notification: any) => {
-      const notificationSound = new Audio("/sounds/notification.mp3");
-      notificationSound.volume = 0.45;
-      notificationSound.play().catch(() => undefined);
+      playNotificationSound();
 
       const nextNotification = {
         id: String(notification?._id || notification?.id || Date.now()),

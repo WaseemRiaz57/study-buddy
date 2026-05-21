@@ -10,6 +10,7 @@ import PostCard, { type Post } from "@/components/community/PostCard";
 import CommunitySidebar from "@/components/community/CommunitySidebar";
 import PublicProfileModal from "@/components/PublicProfileModal";
 import ReportModal, { type ReportTarget } from "@/components/modals/ReportModal";
+import { useGamificationStore } from "@/store/useGamificationStore";
 
 const TOPIC_FILTERS = [
   "All",
@@ -78,6 +79,7 @@ async function uploadCommunityAttachments(files: File[]) {
 
 export default function CommunityFeedPage() {
   const { data: session } = useSession();
+  const addReward = useGamificationStore((state) => state.addReward);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeTopic, setActiveTopic] = useState("All");
@@ -193,6 +195,10 @@ export default function CommunityFeedPage() {
         ? `+${reward.xpAwarded} XP, +${reward.coinsAwarded} coins`
         : "reward added";
 
+      addReward(
+        Number(reward?.xpAwarded || 15),
+        Number(reward?.coinsAwarded || 0)
+      );
       toast.success(`Post published. ${rewardText}.`);
       window.dispatchEvent(new Event("gamification-stats-updated"));
       setModalOpen(false);

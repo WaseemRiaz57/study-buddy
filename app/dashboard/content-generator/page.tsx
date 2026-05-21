@@ -539,7 +539,7 @@ export default function ContentGeneratorPage() {
                           max={20}
                           value={quizCount}
                           onChange={(event) => setQuizCount(Math.min(20, Math.max(1, Number(event.target.value) || 1)))}
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-text-main outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#7C3AED] dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                          className="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                         />
                       </div>
                       <FileDropZone
@@ -969,7 +969,7 @@ function InputField({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-text-main outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+        className="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
       />
     </div>
   );
@@ -998,7 +998,7 @@ function SelectField({
           id={id}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-text-main outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#7C3AED] dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+          className="w-full appearance-none rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
@@ -1041,7 +1041,7 @@ function TextAreaField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-text-main outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+        className="w-full resize-none rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
       />
     </div>
   );
