@@ -17,6 +17,13 @@
 /.next/
 /out/
 
+# generated PWA service worker assets
+/public/sw.js
+/public/workbox-*.js
+/public/fallback-*.js
+/public/swe-worker-*.js
+/public/worker-*.js
+
 # production
 /build
 
