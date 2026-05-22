@@ -6,9 +6,73 @@ import AuthProvider from "@/components/auth-provider";
 import { Toaster } from "sonner"; // 👈 1. Sonner import kiya
 import "./globals.css";
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000");
+
+const title = "StudyBuddy | The Future of Social Learning";
+const description =
+  "StudyBuddy connects students through collaborative study rooms, AI-powered learning tools, mentorship, and shared academic resources so learners can study smarter together.";
+const heroImage = "/hero.png";
+
 export const metadata: Metadata = {
-  title: "StudyBuddy",
-  description: "Obsidian Zen study companion.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: title,
+    template: "%s | StudyBuddy",
+  },
+  description,
+  keywords: [
+    "StudyBuddy",
+    "EdTech",
+    "education technology",
+    "social learning",
+    "student collaboration",
+    "collaborative study rooms",
+    "AI study tools",
+    "online learning platform",
+    "peer learning",
+    "study groups",
+    "student mentorship",
+    "academic resources",
+    "Next.js education app",
+    "Next.js EdTech",
+  ],
+  applicationName: "StudyBuddy",
+  authors: [{ name: "StudyBuddy" }],
+  creator: "StudyBuddy",
+  publisher: "StudyBuddy",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title,
+    description,
+    url: "/",
+    siteName: "StudyBuddy",
+    images: [
+      {
+        url: heroImage,
+        width: 1200,
+        height: 630,
+        alt: "StudyBuddy social learning platform",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: [heroImage],
+    creator: "@studybuddy",
+    site: "@studybuddy",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico?v=3", sizes: "256x256", type: "image/x-icon" },
