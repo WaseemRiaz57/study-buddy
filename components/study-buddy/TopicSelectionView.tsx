@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Code, Calculator, Atom, Briefcase, BrainCircuit, BookOpen, Search } from "lucide-react";
+import { Code, Calculator, Atom, Briefcase, BrainCircuit, BookOpen, Search } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 
 interface TopicSelectionViewProps {
   onSearch: (data: { subject: string; topic: string }) => void;
@@ -44,14 +45,11 @@ export default function TopicSelectionView({ onSearch, onBack }: TopicSelectionV
       className="flex flex-col items-center justify-center min-h-[80vh] w-full px-4 font-sans relative"
     >
       
-      {/* Back Button */}
-      <button 
+      <BackButton
         onClick={onBack}
-        className="absolute top-0 left-4 md:left-8 flex items-center gap-2 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors py-2 px-4 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
-      >
-        <ArrowLeft size={20} /> 
-        <span className="font-medium">Back to Dashboard</span>
-      </button>
+        label="Back to dashboard"
+        className="absolute left-4 top-0 md:left-8"
+      />
 
       <div className="w-full max-w-2xl bg-white dark:bg-[#1a1524] border border-slate-200 dark:border-white/10 rounded-2xl p-6 md:p-10 shadow-xl shadow-slate-200/50 dark:shadow-none relative overflow-hidden">
         <div className="relative z-10">

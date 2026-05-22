@@ -7,7 +7,6 @@ import { useSession } from "next-auth/react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   Bookmark,
   Clock,
   Eye,
@@ -24,6 +23,7 @@ import {
 } from "lucide-react";
 import PublicProfileModal from "@/components/PublicProfileModal";
 import ReportModal, { type ReportTarget } from "@/components/modals/ReportModal";
+import BackButton from "@/components/ui/BackButton";
 
 interface Author {
   id: string;
@@ -434,12 +434,11 @@ export default function PostDetailPage() {
           <p className="font-semibold text-slate-900 dark:text-white">
             Discussion not found
           </p>
-          <button
-            onClick={() => router.push("/dashboard/community")}
-            className="mt-4 rounded-xl bg-[#7C3AED] px-4 py-2 text-sm font-bold text-white"
-          >
-            Back to Forum
-          </button>
+          <BackButton
+            href="/dashboard/community"
+            label="Back to forum"
+            className="mt-4 bg-[#7C3AED] text-white hover:bg-purple-700 dark:text-white dark:hover:bg-purple-700"
+          />
         </div>
       </div>
     );
@@ -448,14 +447,16 @@ export default function PostDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0f0c13] dark:text-white">
       <div className="mx-auto max-w-4xl p-4 pb-32 md:p-8">
-        <motion.button
+        <motion.div
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
-          onClick={() => router.push("/dashboard/community")}
-          className="mb-6 flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-gray-400 dark:hover:text-white"
         >
-          <ArrowLeft size={16} /> Back to Forum
-        </motion.button>
+          <BackButton
+            href="/dashboard/community"
+            label="Back to forum"
+            className="mb-6"
+          />
+        </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
           <div className="mb-3 flex flex-wrap items-center gap-2">

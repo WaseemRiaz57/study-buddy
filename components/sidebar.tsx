@@ -39,6 +39,11 @@ interface NavItem {
   locked?: boolean;
 }
 
+interface NavGroup {
+  category: string;
+  items: NavItem[];
+}
+
 const buildNavItems = (isCommunity: boolean): NavItem[] => [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", roles: ["STUDENT", "TEACHER", "MENTOR"] },
   { icon: FileText, label: "AI Studio", href: "/dashboard/content-generator", roles: ["STUDENT"], badge: "AI" },
@@ -58,6 +63,75 @@ const buildNavItems = (isCommunity: boolean): NavItem[] => [
   { icon: DollarSign, label: "Earnings", href: "/dashboard/earnings", roles: ["TEACHER", "MENTOR"], locked: isCommunity },
   { icon: Sparkles, label: "Upgrade to Pro", href: "/dashboard/upgrade", roles: ["STUDENT", "TEACHER", "MENTOR"], badge: "NEW" },
 ];
+
+function itemMatches(item: NavItem, href: string) {
+  return item.href === href;
+}
+
+function groupNavItems(items: NavItem[], isMentorRole: boolean): NavGroup[] {
+  const take = (hrefs: string[]) =>
+    hrefs
+      .map((href) => items.find((item) => itemMatches(item, href)))
+      .filter(Boolean) as NavItem[];
+
+  const groups = isMentorRole
+    ? [
+        {
+          category: "MAIN",
+          items: take(["/dashboard"]),
+        },
+        {
+          category: "MENTORSHIP CORE",
+          items: take(["/dashboard/sessions", "/dashboard/my-students", "/dashboard/earnings"]),
+        },
+        {
+          category: "WORKSPACE",
+          items: take([
+            "/dashboard/content-generator",
+            "/dashboard/resources",
+            "/dashboard/study-rooms",
+          ]),
+        },
+        {
+          category: "NETWORK",
+          items: take(["/dashboard/community", "/dashboard/messages"]),
+        },
+        {
+          category: "GAMIFICATION",
+          items: take(["/dashboard/leaderboard", "/dashboard/challenges", "/dashboard/badges"]),
+        },
+      ]
+    : [
+        {
+          category: "MAIN",
+          items: take(["/dashboard"]),
+        },
+        {
+          category: "STUDY SPACE",
+          items: take([
+            "/dashboard/content-generator",
+            "/dashboard/focus-rooms",
+            "/dashboard/resources",
+          ]),
+        },
+        {
+          category: "NETWORK & CONNECT",
+          items: take([
+            "/dashboard/study-rooms",
+            "/dashboard/study-buddy",
+            "/dashboard/mentorship",
+            "/dashboard/community",
+            "/dashboard/messages",
+          ]),
+        },
+        {
+          category: "GAMIFICATION",
+          items: take(["/dashboard/leaderboard", "/dashboard/challenges", "/dashboard/badges"]),
+        },
+      ];
+
+  return groups.filter((group) => group.items.length > 0);
+}
 
 export function Sidebar({
   initialRole,
@@ -83,7 +157,7 @@ export function Sidebar({
   const plan = initialPlan || storePlan;
   const isMentorRole = role === "TEACHER" || role === "MENTOR";
 
-  const navItems = buildNavItems(plan === "FREE" || plan === "COMMUNITY").filter((item) => {
+  const filteredNavItems = buildNavItems(plan === "FREE" || plan === "COMMUNITY").filter((item) => {
     if (!item.roles.includes(role)) return false;
 
     if (
@@ -96,6 +170,11 @@ export function Sidebar({
 
     return true;
   });
+  const upgradeItem = filteredNavItems.find((item) => item.href === "/dashboard/upgrade");
+  const navGroups = groupNavItems(
+    filteredNavItems.filter((item) => item.href !== "/dashboard/upgrade"),
+    isMentorRole
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -191,95 +270,138 @@ export function Sidebar({
         )}
       </div>
 
-      <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href;
+      <nav className="custom-scrollbar flex-1 overflow-y-auto px-3 py-4">
+        {navGroups.map((group, groupIndex) => (
+          <div key={group.category} className={groupIndex === 0 ? "" : "mt-6"}>
+            {(mobile || !isCollapsed) && (
+              <h4 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {group.category}
+              </h4>
+            )}
 
-          return (
-            <Link
-              key={item.href}
-              href={item.locked ? "#" : item.href}
-              onClick={(event) => {
-                if (item.locked) {
-                  event.preventDefault();
-                  return;
-                }
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const isActive = pathname === item.href;
 
-                onNavigate?.();
-              }}
-              aria-disabled={item.locked}
-            >
-              <div
-                className={`group relative flex items-center gap-3 overflow-hidden rounded-xl transition-all duration-200 ${
-                  !mobile && isCollapsed ? "min-h-[44px] justify-center px-0 py-3" : "min-h-[44px] px-4 py-3"
-                } ${
-                  isActive
-                    ? "bg-[#7C3AED]/10 text-[#7C3AED] dark:text-purple-400 dark:shadow-[inset_0_0_20px_rgba(140,48,232,0.08)]"
-                    : item.locked
-                      ? "cursor-not-allowed text-muted-foreground/50 dark:text-slate-600"
-                      : "text-muted-foreground hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white"
-                }`}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-[#7C3AED]" />
-                )}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.locked ? "#" : item.href}
+                    onClick={(event) => {
+                      if (item.locked) {
+                        event.preventDefault();
+                        return;
+                      }
 
-                <item.icon
-                  size={20}
-                  className={`shrink-0 ${
-                    isActive
-                      ? "text-[#7C3AED] dark:text-purple-400"
-                      : item.locked
-                        ? "text-muted-foreground/50 dark:text-slate-600"
-                        : "transition-colors group-hover:text-[#7C3AED]"
-                  }`}
-                />
+                      onNavigate?.();
+                    }}
+                    aria-disabled={item.locked}
+                  >
+                    <div
+                      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl transition-all duration-200 ${
+                        !mobile && isCollapsed ? "min-h-[44px] justify-center px-0 py-3" : "min-h-[44px] px-4 py-3"
+                      } ${
+                        isActive
+                          ? "bg-[#7C3AED]/10 text-[#7C3AED] dark:text-purple-400 dark:shadow-[inset_0_0_20px_rgba(140,48,232,0.08)]"
+                          : item.locked
+                            ? "cursor-not-allowed text-muted-foreground/50 dark:text-slate-600"
+                            : "text-muted-foreground hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-white"
+                      }`}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-[#7C3AED]" />
+                      )}
 
-                {(mobile || !isCollapsed) && (
-                  <span className="whitespace-nowrap text-sm font-medium">
-                    {item.label}
-                  </span>
-                )}
+                      <item.icon
+                        size={20}
+                        className={`shrink-0 ${
+                          isActive
+                            ? "text-[#7C3AED] dark:text-purple-400"
+                            : item.locked
+                              ? "text-muted-foreground/50 dark:text-slate-600"
+                              : "transition-colors group-hover:text-[#7C3AED]"
+                        }`}
+                      />
 
-                {(mobile || !isCollapsed) && item.badge && (
-                  <span className="ml-auto rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7C3AED] dark:bg-[#7C3AED]/15">
-                    {item.badge}
-                  </span>
-                )}
+                      {(mobile || !isCollapsed) && (
+                        <span className="whitespace-nowrap text-sm font-medium">
+                          {item.label}
+                        </span>
+                      )}
 
-                {(mobile || !isCollapsed) &&
-                  item.href === "/dashboard/messages" &&
-                  unreadMessagesCount > 0 && (
-                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                      {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
-                    </span>
-                  )}
+                      {(mobile || !isCollapsed) && item.badge && (
+                        <span className="ml-auto rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7C3AED] dark:bg-[#7C3AED]/15">
+                          {item.badge}
+                        </span>
+                      )}
 
-                {(mobile || !isCollapsed) && item.locked && (
-                  <Lock
-                    size={14}
-                    className="ml-auto text-muted-foreground/50 dark:text-slate-600"
-                  />
-                )}
+                      {(mobile || !isCollapsed) &&
+                        item.href === "/dashboard/messages" &&
+                        unreadMessagesCount > 0 && (
+                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                            {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+                          </span>
+                        )}
 
-                {!mobile &&
-                  isCollapsed &&
-                  item.href === "/dashboard/messages" &&
-                  unreadMessagesCount > 0 && (
-                    <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
-                  )}
+                      {(mobile || !isCollapsed) && item.locked && (
+                        <Lock
+                          size={14}
+                          className="ml-auto text-muted-foreground/50 dark:text-slate-600"
+                        />
+                      )}
 
-                {!mobile && isCollapsed && (
-                  <span className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg border border-border bg-slate-800 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-xl transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 dark:border-white/10 dark:bg-slate-900">
-                    {item.label}
-                    {item.locked && " Locked"}
-                  </span>
-                )}
-              </div>
-            </Link>
-          );
-        })}
+                      {!mobile &&
+                        isCollapsed &&
+                        item.href === "/dashboard/messages" &&
+                        unreadMessagesCount > 0 && (
+                          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
+                        )}
+
+                      {!mobile && isCollapsed && (
+                        <span className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg border border-border bg-slate-800 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-xl transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 dark:border-white/10 dark:bg-slate-900">
+                          {item.label}
+                          {item.locked && " Locked"}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
+
+      {upgradeItem && (
+        <div className="border-t border-border px-3 py-4 dark:border-white/[0.06]">
+          <Link
+            href={upgradeItem.href}
+            onClick={() => onNavigate?.()}
+            className={`group relative flex items-center gap-3 overflow-hidden rounded-xl bg-[#7C3AED] text-white shadow-lg shadow-purple-500/20 transition-colors hover:bg-purple-700 ${
+              !mobile && isCollapsed ? "min-h-[44px] justify-center px-0 py-3" : "min-h-[44px] px-4 py-3"
+            }`}
+          >
+            <upgradeItem.icon size={20} className="shrink-0" />
+            {(mobile || !isCollapsed) && (
+              <>
+                <span className="whitespace-nowrap text-sm font-bold">
+                  {upgradeItem.label}
+                </span>
+                {upgradeItem.badge && (
+                  <span className="ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                    {upgradeItem.badge}
+                  </span>
+                )}
+              </>
+            )}
+            {!mobile && isCollapsed && (
+              <span className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg border border-border bg-slate-800 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-xl transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 dark:border-white/10 dark:bg-slate-900">
+                {upgradeItem.label}
+              </span>
+            )}
+          </Link>
+        </div>
+      )}
     </aside>
   );
 }

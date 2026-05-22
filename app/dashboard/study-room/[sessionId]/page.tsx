@@ -17,9 +17,9 @@ import {
   Star,
   Sparkles,
   Award,
-  ChevronLeft,
   Gem,
 } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 
 // ════════════════════════════════════════════════════════════════════
 //  TYPES
@@ -818,13 +818,11 @@ function PostSessionReview({
           </div>
 
           {/* Back link */}
-          <button
+          <BackButton
             onClick={onDone}
-            className="flex items-center gap-2 text-sm text-slate-500 dark:text-white/40 hover:text-primary dark:hover:text-primary transition-colors"
-          >
-            <ChevronLeft size={16} />
-            Back to Study Buddy
-          </button>
+            label="Back to Study Buddy"
+            className="text-slate-500 dark:text-white/40 hover:text-primary dark:hover:text-primary"
+          />
         </aside>
 
         {/* ── Main review card ─────────────────────────────────── */}

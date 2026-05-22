@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -100,13 +100,11 @@ export default function ForgotPasswordPage() {
   return (
     <main className="min-h-screen bg-background px-4 py-12 text-foreground">
       <section className="mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-md flex-col justify-center">
-        <Link
+        <BackButton
           href="/login"
-          className="mb-8 inline-flex w-fit items-center gap-2 text-sm font-bold text-muted-foreground transition-colors hover:text-purple-600"
-        >
-          <ArrowLeft className="h-4 w-4" aria-label="Back to login icon" />
-          Back to login
-        </Link>
+          label="Return to login"
+          className="mb-8 hover:text-purple-600"
+        />
 
         <article className="rounded-3xl border border-purple-600/20 bg-card p-8 shadow-xl">
           <header className="mb-8 text-center">

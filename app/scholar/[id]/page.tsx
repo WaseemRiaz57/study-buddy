@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import mongoose from "mongoose";
-import { ArrowLeft, BookOpen, CalendarDays, GraduationCap, UserRound } from "lucide-react";
+import { BookOpen, CalendarDays, GraduationCap, UserRound } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 import { connectMongoDB } from "@/lib/mongodb";
 import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
@@ -151,14 +151,11 @@ export default async function ScholarProfilePage({ params }: ScholarPageProps) {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-950 dark:bg-slate-950 dark:text-white">
       <article className="mx-auto w-full max-w-4xl">
-        <Link
+        <BackButton
           href="/dashboard"
-          aria-label="Back to dashboard"
-          className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-purple-600 hover:text-purple-600 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200"
-        >
-          <ArrowLeft size={16} aria-hidden="true" />
-          Back
-        </Link>
+          label="Return to dashboard"
+          className="mb-6 border border-slate-200 bg-white text-slate-700 hover:border-purple-600 hover:text-purple-600 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200"
+        />
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 dark:border-white/10 dark:bg-slate-900 dark:shadow-black/20">
           <header className="flex flex-col gap-6 sm:flex-row sm:items-center">

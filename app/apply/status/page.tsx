@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Hourglass, Sparkles, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { Hourglass, Sparkles } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 
 /* ------------------------------------------------------------------ */
 /* Custom keyframes (injected via style tag for mesh gradients)        */
@@ -138,13 +138,11 @@ export default function ApplicationStatusPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9 }}
           >
-            <Link
+            <BackButton
               href="/dashboard"
-              className="inline-flex items-center gap-2 px-8 py-3.5 bg-primary text-white rounded-lg font-semibold shadow-lg hover:shadow-primary/40 transition-all hover:brightness-110"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back to Home
-            </Link>
+              label="Return to dashboard"
+              className="bg-primary text-white shadow-lg hover:bg-primary/90 hover:text-white dark:text-white dark:hover:bg-primary/90"
+            />
           </motion.div>
         </div>
       </main>

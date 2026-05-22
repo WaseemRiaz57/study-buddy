@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   Download,
   Coins,
   Star,
@@ -24,6 +23,7 @@ import {
 import FlagResourceModal from "@/components/resources/FlagResourceModal";
 import RateResourceModal from "@/components/resources/RateResourceModal";
 import { useGamificationStore } from "@/store/useGamificationStore";
+import BackButton from "@/components/ui/BackButton";
 
 interface ApiResource {
   _id: string;
@@ -89,7 +89,6 @@ function Stars({ rating }: { rating: number }) {
 /*  Page component                                                     */
 /* ------------------------------------------------------------------ */
 export default function ResourceDetailPage() {
-  const router = useRouter();
   const params = useParams();
   const resourceId = params.resourceId as string;
 
@@ -214,13 +213,11 @@ export default function ResourceDetailPage() {
   if (!resource) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#0f0c13] p-6 md:p-8">
-        <button
-          onClick={() => router.push("/dashboard/resources")}
-          className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-[#7C3AED] mb-6 transition-colors"
-        >
-          <ArrowLeft size={16} />
-          Back to Resource Hub
-        </button>
+        <BackButton
+          href="/dashboard/resources"
+          label="Back to resource hub"
+          className="mb-6"
+        />
         <p className="text-sm text-slate-500 dark:text-slate-400">Resource not found.</p>
       </div>
     );
@@ -228,14 +225,11 @@ export default function ResourceDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0f0c13] p-6 md:p-8">
-      {/* ---- Back button ---- */}
-      <button
-        onClick={() => router.push("/dashboard/resources")}
-        className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-[#7C3AED] mb-6 transition-colors"
-      >
-        <ArrowLeft size={16} />
-        Back to Resource Hub
-      </button>
+      <BackButton
+        href="/dashboard/resources"
+        label="Back to resource hub"
+        className="mb-6"
+      />
 
       {/* ---- Main card ---- */}
       <motion.div

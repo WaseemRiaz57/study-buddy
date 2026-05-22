@@ -7,7 +7,6 @@ import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   Award,
   Calendar,
   Check,
@@ -23,6 +22,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 
 const SUBJECT_OPTIONS = [
   "React",
@@ -529,14 +529,11 @@ export default function MentorshipSetupPage() {
                 <FileText size={16} aria-hidden="true" />
                 Edit Application
               </button>
-              <Link
+              <BackButton
                 href="/dashboard/settings"
-                aria-label="Back to settings"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-[#7C3AED] px-5 text-sm font-bold text-[#7C3AED] transition-colors hover:bg-[#7C3AED] hover:text-white"
-              >
-                <ArrowLeft size={16} aria-hidden="true" />
-                Back to Settings
-              </Link>
+                label="Back to settings"
+                className="h-12 w-12 border-2 border-[#7C3AED] text-[#7C3AED] hover:bg-[#7C3AED] hover:text-white dark:hover:bg-[#7C3AED]"
+              />
             </div>
           </article>
           <style>{`
@@ -591,13 +588,10 @@ export default function MentorshipSetupPage() {
           aria-labelledby="mentor-setup-heading"
         >
           <header className="space-y-4">
-            <Link
+            <BackButton
               href="/dashboard/settings"
-              className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 transition-colors hover:text-[#7C3AED] dark:text-slate-300"
-            >
-              <ArrowLeft size={16} aria-hidden="true" />
-              Back to Settings
-            </Link>
+              label="Back to settings"
+            />
             <div>
               <h1
                 id="mentor-setup-heading"

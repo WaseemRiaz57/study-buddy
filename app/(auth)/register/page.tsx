@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowLeft,
   CheckCircle,
   Eye,
   EyeOff,
@@ -20,6 +19,7 @@ import { signIn } from "next-auth/react";
 import { type ElementType, type FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BrandLogo } from "@/components/BrandLogo";
+import BackButton from "@/components/ui/BackButton";
 
 interface RoleCardProps {
   role: "student" | "teacher";
@@ -282,12 +282,11 @@ export default function RegisterPage() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent-mint/10 rounded-full blur-[120px]" />
       </div>
 
-      <Link
+      <BackButton
         href="/"
-        className="absolute left-4 top-4 z-20 flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary sm:left-8 sm:top-8"
-      >
-        <ArrowLeft size={18} /> Back
-      </Link>
+        label="Back to home"
+        className="absolute left-4 top-4 z-20 sm:left-8 sm:top-8"
+      />
 
       <motion.div
         initial={{ opacity: 0, y: 24 }}

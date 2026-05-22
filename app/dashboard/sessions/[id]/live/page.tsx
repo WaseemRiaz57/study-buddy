@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,7 +20,6 @@ import {
   Send,
   Sparkles,
   Award,
-  ChevronLeft,
   X,
   MessageSquare,
   Clock,
@@ -31,6 +29,7 @@ import {
   Share,
   CheckCircle,
 } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /* TYPES & MOCK DATA                                                */
@@ -291,13 +290,11 @@ export default function LiveClassroomPage() {
         />
 
         {/* ── Back link (small) ────────────────────────────────── */}
-        <Link
+        <BackButton
           href={`/dashboard/sessions/${sessionId}/prep`}
-          className="absolute top-4 left-4 z-30 flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-          Prep
-        </Link>
+          label="Back to session prep"
+          className="absolute left-4 top-4 z-30 h-9 min-h-9 w-9 min-w-9 rounded-lg border border-slate-200 bg-white/80 p-0 text-slate-500 backdrop-blur-sm hover:text-slate-900 dark:border-white/[0.08] dark:bg-slate-900/80 dark:text-slate-400 dark:hover:text-white"
+        />
 
         {/* ── Bottom Control Dock ─────────────────────────────── */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">

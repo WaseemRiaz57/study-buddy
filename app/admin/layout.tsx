@@ -455,7 +455,7 @@ export default function AdminLayout({
           <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.04] hover:text-slate-900 dark:hover:text-white transition-colors">
               <Sparkles size={19} className="shrink-0" />
-              <span className="text-[13px] font-medium">Back to App</span>
+              <span className="text-[13px] font-medium">Dashboard</span>
             </div>
           </Link>
 
@@ -534,7 +534,7 @@ export default function AdminLayout({
 
         {/* Desktop footer */}
         <div className="px-2.5 pb-3 border-t border-slate-200 dark:border-white/10 pt-3 space-y-0.5">
-          {/* Back to App */}
+          {/* Dashboard shortcut */}
           <Link href="/dashboard">
             <div
               className={`
@@ -546,11 +546,11 @@ export default function AdminLayout({
             >
               <Sparkles size={19} className="shrink-0 group-hover:text-primary transition-colors" />
               {!isCollapsed && (
-                <span className="text-[13px] font-medium">Back to App</span>
+                <span className="text-[13px] font-medium">Dashboard</span>
               )}
               {isCollapsed && (
                 <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg bg-slate-800 dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-xl border border-border dark:border-white/10 opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-[60]">
-                  Back to App
+                  Dashboard
                 </span>
               )}
             </div>

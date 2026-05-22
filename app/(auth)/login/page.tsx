@@ -8,6 +8,7 @@ import { getSession, signIn } from "next-auth/react";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import BackButton from "@/components/ui/BackButton";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -117,19 +118,11 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* Back Button */}
-      <Link 
-        href="/" 
-        className="absolute left-4 top-4 z-20 flex items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary sm:left-8 sm:top-8 group"
-      >
-        <motion.div
-          whileHover={{ x: -4 }}
-          transition={{ duration: 0.2 }}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </motion.div>
-        Back to Home
-      </Link>
+      <BackButton
+        href="/"
+        label="Back to home"
+        className="absolute left-4 top-4 z-20 sm:left-8 sm:top-8"
+      />
 
       <motion.div
         initial="initial"

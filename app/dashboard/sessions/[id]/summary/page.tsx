@@ -13,12 +13,12 @@ import {
   CheckCircle2,
   ExternalLink,
   Diamond,
-  ArrowLeft,
   Star,
   BookOpen,
   FileText,
   Award,
 } from "lucide-react";
+import BackButton from "@/components/ui/BackButton";
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /*  MOCK DATA                                                        */
@@ -244,13 +244,11 @@ export default function SessionSummaryPage() {
       {/* ── content ── */}
       <div className="relative z-10 mx-auto max-w-2xl px-4 py-8 sm:px-6">
         {/* back link */}
-        <Link
+        <BackButton
           href="/dashboard/sessions"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-white/40 transition hover:text-slate-700 dark:hover:text-white/70"
-        >
-          <ArrowLeft size={16} />
-          Back to Sessions
-        </Link>
+          label="Back to sessions"
+          className="mb-6"
+        />
 
         {/* ── hero: avatar + title ── */}
         <motion.div

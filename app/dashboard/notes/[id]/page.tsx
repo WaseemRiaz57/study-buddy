@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import ReactMarkdown from "react-markdown";
-import { ArrowLeft } from "lucide-react";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import AIContent from "@/models/AIContent";
+import BackButton from "@/components/ui/BackButton";
 
 export const dynamic = "force-dynamic";
 
@@ -44,14 +43,11 @@ export default async function DashboardNotePage({
     <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
       <article className="mx-auto max-w-4xl">
         <header className="mb-8">
-          <Link
+          <BackButton
             href="/dashboard"
-            className="mb-5 inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-bold text-muted-foreground transition-colors hover:border-[#7C3AED]/40 hover:text-[#7C3AED]"
-            aria-label="Back to dashboard"
-          >
-            <ArrowLeft size={16} />
-            Back to Dashboard
-          </Link>
+            label="Back to dashboard"
+            className="mb-5 border border-border"
+          />
           <p className="mb-3 inline-flex rounded-full bg-[#7C3AED]/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
             {note.type === "summarizer" ? "Summary" : "Notes"}
           </p>
