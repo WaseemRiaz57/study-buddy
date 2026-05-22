@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useUserStore } from "@/store/useUserStore";
+import { ProductTour } from "@/components/ProductTour";
 import { StudentDashboard } from "./student-view";
 import { MentorDashboard } from "./mentor-view";
+import DashboardLoading from "./loading";
 import { Megaphone, X } from "lucide-react";
 
 type DashboardAnnouncement = {
@@ -156,12 +158,13 @@ export default function DashboardPage() {
 
   // Loading state taake galat dashboard nazar na aaye
   if (status === "loading") {
-    return <div className="p-10 text-center">Loading StudyBuddy...</div>;
+    return <DashboardLoading />;
   }
 
   return (
     <main className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
+      <ProductTour />
+      <div className="tour-dashboard-overview max-w-7xl mx-auto">
         <DashboardAnnouncements />
         {/* Real-time role based rendering */}
         {role === "MENTOR" ? (

@@ -310,6 +310,11 @@ export default function ContentGeneratorPage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        if (response.status === 429) {
+          toast.error("Take a breath! You are generating too fast. Try again in a minute.");
+          return;
+        }
+
         if (response.status === 403 && data?.upgradeRequired) {
           setUpgradeModal({
             message: data?.message || "Upgrade to Pro to continue using this feature.",

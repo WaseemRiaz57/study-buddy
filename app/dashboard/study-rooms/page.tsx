@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import PublicProfileModal from "@/components/PublicProfileModal";
 import CreateRoomModal from "@/components/study-room/CreateRoomModal";
 import { useGamificationStore } from "@/store/useGamificationStore";
+import StudyRoomsLoading from "@/app/study-rooms/loading";
 
 type Room = {
   _id: string;
@@ -87,6 +88,10 @@ export default function StudyRoomsPage() {
   const activeRooms = rooms.filter(
     (room) => room.isActive === true || room.status === "active"
   );
+
+  if (isLoadingRooms && rooms.length === 0 && !roomsError) {
+    return <StudyRoomsLoading />;
+  }
 
   const handleJoinWithCode = async () => {
     const normalizedCode = joinCode.trim().toUpperCase();

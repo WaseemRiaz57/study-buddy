@@ -16,6 +16,7 @@ import ResourceCard from "@/components/resources/ResourceCard";
 import type { Resource } from "@/components/resources/ResourceCard";
 import RateResourceModal from "@/components/resources/RateResourceModal";
 import UploadResourceModal from "@/components/resources/UploadResourceModal";
+import ResourceHubLoading from "@/app/resource-hub/loading";
 
 const SUBJECTS = [
   "All Subjects",
@@ -185,6 +186,10 @@ export default function ResourcesPage() {
 
     return list;
   }, [resources, sort]);
+
+  if (isLoading && resources.length === 0 && !error) {
+    return <ResourceHubLoading />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0f0c13] p-6 md:p-8">

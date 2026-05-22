@@ -388,10 +388,10 @@ export function StudentDashboard() {
       <main className="max-w-7xl mx-auto p-6 md:p-8 space-y-8" aria-label="Student dashboard">
         
         {/* HERO SECTION */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="tour-dashboard-overview grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Level Progress Card */}
-          <motion.div {...fadeIn} className="md:col-span-2 relative overflow-hidden glass-panel rounded-[2rem] p-8 group">
+          <motion.div {...fadeIn} className="tour-gamification md:col-span-2 relative overflow-hidden glass-panel rounded-[2rem] p-8 group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full -mr-20 -mt-20 blur-[80px] group-hover:bg-primary/30 transition-all duration-700" />
             
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
@@ -639,8 +639,10 @@ export function StudentDashboard() {
           </motion.div>
 
           {/* AI Notes Carousel - SCROLLBAR HIDDEN */}
-          <motion.div {...fadeIn} transition={{ delay: 0.3 }} className="xl:col-span-2 space-y-6">
-            <MinimalTodoList compact />
+          <motion.div {...fadeIn} transition={{ delay: 0.3 }} className="tour-ai-studio xl:col-span-2 space-y-6">
+            <div className="tour-focus-room">
+              <MinimalTodoList compact />
+            </div>
 
             <div className="flex items-center justify-between px-1">
               <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">

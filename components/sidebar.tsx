@@ -133,6 +133,14 @@ function groupNavItems(items: NavItem[], isMentorRole: boolean): NavGroup[] {
   return groups.filter((group) => group.items.length > 0);
 }
 
+function getTourClassName(href: string) {
+  if (href === "/dashboard/content-generator") return "tour-ai-studio";
+  if (href === "/dashboard/focus-rooms") return "tour-focus-room";
+  if (href === "/dashboard/leaderboard") return "tour-gamification";
+
+  return "";
+}
+
 export function Sidebar({
   initialRole,
   initialPlan,
@@ -299,6 +307,8 @@ export function Sidebar({
                   >
                     <div
                       className={`group relative flex items-center gap-3 overflow-hidden rounded-xl transition-all duration-200 ${
+                        getTourClassName(item.href)
+                      } ${
                         !mobile && isCollapsed ? "min-h-[44px] justify-center px-0 py-3" : "min-h-[44px] px-4 py-3"
                       } ${
                         isActive

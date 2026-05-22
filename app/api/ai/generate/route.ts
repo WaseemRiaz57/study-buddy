@@ -14,6 +14,7 @@ import {
   type QuizQuestionType,
 } from "@/lib/aiService";
 import { connectMongoDB } from "@/lib/mongodb";
+import { checkAiGenerationRateLimit } from "@/lib/ratelimit";
 import { getUserSubscriptionPlan, todayUsageWindow, upgradeRequiredResponse } from "@/lib/subscriptionAccess";
 import { trackProgress } from "@/lib/challengeTracker";
 import AIContent from "@/models/AIContent";
@@ -164,6 +165,31 @@ export async function POST(request: Request) {
 
     if (!session?.user?.id || !mongoose.Types.ObjectId.isValid(session.user.id)) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimit = await checkAiGenerationRateLimit(request, session.user.id);
+    void rateLimit.pending.catch((error) => {
+      console.error("AI generation rate limit analytics error:", error);
+    });
+
+    if (!rateLimit.success) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((rateLimit.reset - Date.now()) / 1000)
+      );
+
+      return NextResponse.json(
+        { message: "Too many requests. Try again in a minute." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfterSeconds),
+            "X-RateLimit-Limit": String(rateLimit.limit),
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": String(rateLimit.reset),
+          },
+        }
+      );
     }
 
     await connectMongoDB();

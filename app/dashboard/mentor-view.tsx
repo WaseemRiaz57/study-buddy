@@ -529,7 +529,7 @@ export function MentorDashboard() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         
         {/* Welcome Section */}
-        <div className="mb-8">
+        <div className="tour-dashboard-overview mb-8">
           <div className="flex items-end justify-between mb-6">
             <div>
               <h2 className="text-3xl font-bold text-foreground mb-1">
@@ -890,7 +890,7 @@ export function MentorDashboard() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="tour-ai-studio space-y-4">
               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 Recent Quiz Generations
               </h4>
