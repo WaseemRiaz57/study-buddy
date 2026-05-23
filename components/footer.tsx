@@ -48,8 +48,8 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-widest">Product</h3>
             <ul className="mt-4 space-y-3">
-              {productLinks.map((link) => (
-                <li key={link.href}>
+              {productLinks.map((link, index) => (
+  <li key={index}>
                   <Link
                     href={link.href}
                     prefetch={true}
