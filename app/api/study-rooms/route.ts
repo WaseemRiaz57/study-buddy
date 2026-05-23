@@ -24,15 +24,50 @@ export async function GET() {
 
     await connectDB();
 
+    await StudyRoom.updateMany(
+      {
+        status: "active",
+        isLive: true,
+        $expr: {
+          $eq: [{ $size: { $ifNull: ["$participants", []] } }, 0],
+        },
+      },
+      {
+        $set: {
+          status: "ended",
+          isActive: false,
+          isLive: false,
+          closedAt: new Date(),
+        },
+      }
+    );
+
     const rooms = await StudyRoom.find({
       status: "active",
-      "participants.0": { $exists: true },
+      isActive: true,
+      isLive: true,
+      $expr: {
+        $gt: [{ $size: { $ifNull: ["$participants", []] } }, 0],
+      },
     })
       .populate("createdBy", "name image profileImage")
       .sort({ createdAt: -1 })
       .lean();
 
-    return NextResponse.json({ success: true, data: rooms });
+    return NextResponse.json({
+      success: true,
+      data: rooms.map((room) => {
+        const participantCount = Array.isArray(room.participants)
+          ? room.participants.length
+          : 0;
+
+        return {
+          ...room,
+          participantCount,
+          participantsCount: participantCount,
+        };
+      }),
+    });
   } catch (error) {
     console.error("Get study rooms error:", error);
     return NextResponse.json(

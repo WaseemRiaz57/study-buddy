@@ -903,7 +903,7 @@ export default function MessagesPage() {
                 <Paperclip size={18} className="text-muted-foreground" />
               </button>
 
-              <div className="flex flex-1 items-end gap-2 rounded-2xl border border-border bg-white px-4 py-2.5 transition-shadow focus-within:ring-2 focus-within:ring-[#7C3AED]/50 dark:bg-white/5">
+              <div className="flex flex-1 items-end gap-2 rounded-2xl border border-border bg-white px-4 py-2.5 transition-shadow focus-within:ring-2 focus-within:ring-[#7C3AED]/50 dark:border-slate-700 dark:bg-slate-900">
                 <textarea
                   value={messageInput}
                   onChange={(event) => handleMessageInputChange(event.target.value)}
@@ -915,7 +915,7 @@ export default function MessagesPage() {
                   }
                   rows={1}
                   disabled={!activeConversation}
-                  className="max-h-24 flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed"
+                  className="max-h-24 flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();

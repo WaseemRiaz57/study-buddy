@@ -42,7 +42,7 @@ export async function GET() {
 
     const groupedSessions = await FocusSession.aggregate<{
       _id: number;
-      minutes: number;
+      seconds: number;
     }>([
       {
         $match: {
@@ -53,13 +53,23 @@ export async function GET() {
       {
         $group: {
           _id: { $dayOfWeek: "$completedAt" },
-          minutes: { $sum: "$minutes" },
+          seconds: {
+            $sum: {
+              $ifNull: [
+                "$durationSeconds",
+                { $multiply: ["$minutes", 60] },
+              ],
+            },
+          },
         },
       },
     ]);
 
     const minutesByDay = new Map(
-      groupedSessions.map((entry) => [Number(entry._id), Number(entry.minutes || 0)])
+      groupedSessions.map((entry) => [
+        Number(entry._id),
+        Math.round((Number(entry.seconds || 0) / 60) * 10) / 10,
+      ])
     );
     const maxMinutes = Math.max(
       1,
@@ -80,7 +90,9 @@ export async function GET() {
     return NextResponse.json({
       weekStart: weekStart.toISOString(),
       weekEnd: weekEnd.toISOString(),
-      totalMinutes: data.reduce((total, day) => total + day.minutes, 0),
+      totalMinutes:
+        Math.round(data.reduce((total, day) => total + day.minutes, 0) * 10) /
+        10,
       data,
     });
   } catch (error) {

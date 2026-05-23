@@ -18,6 +18,8 @@ export interface IStudyRoom extends Document {
   isActive: boolean;
   status: string;
   isLive: boolean;
+  closedAt?: Date;
+  sessionDurationMinutes?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,6 +89,15 @@ const StudyRoomSchema = new Schema<IStudyRoom>(
     isLive: {
       type: Boolean,
       default: true,
+    },
+    closedAt: {
+      type: Date,
+      default: null,
+    },
+    sessionDurationMinutes: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
   },
   { timestamps: true }

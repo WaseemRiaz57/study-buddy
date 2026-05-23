@@ -14,6 +14,8 @@ import {
   LayoutDashboard,
   Library,
   Lock,
+  ChevronDown,
+  ChevronRight,
   MessageSquare,
   PanelLeftOpen,
   Send,
@@ -141,6 +143,10 @@ function getTourClassName(href: string) {
   return "";
 }
 
+function getGroupId(category: string) {
+  return `sidebar-group-${category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+}
+
 export function Sidebar({
   initialRole,
   initialPlan,
@@ -156,6 +162,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const unreadMessagesCount = useSidebarBadges((state) => state.counts.messages);
   const setBadge = useSidebarBadges((state) => state.setBadge);
   const clearBadge = useSidebarBadges((state) => state.clearBadge);
@@ -183,6 +190,13 @@ export function Sidebar({
     filteredNavItems.filter((item) => item.href !== "/dashboard/upgrade"),
     isMentorRole
   );
+  const isGroupOpen = (category: string) => openGroups[category] ?? true;
+  const toggleGroup = (category: string) => {
+    setOpenGroups((current) => ({
+      ...current,
+      [category]: !(current[category] ?? true),
+    }));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -279,15 +293,33 @@ export function Sidebar({
       </div>
 
       <nav className="custom-scrollbar flex-1 overflow-y-auto px-3 py-4">
-        {navGroups.map((group, groupIndex) => (
+        {navGroups.map((group, groupIndex) => {
+          const groupOpen = isGroupOpen(group.category);
+          const groupId = getGroupId(group.category);
+
+          return (
           <div key={group.category} className={groupIndex === 0 ? "" : "mt-6"}>
-            {(mobile || !isCollapsed) && (
-              <h4 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                {group.category}
-              </h4>
+            {(mobile || !isCollapsed) ? (
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.category)}
+                aria-expanded={groupOpen}
+                aria-controls={groupId}
+                className="mb-2 flex min-h-[36px] w-full items-center justify-between rounded-lg px-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/[0.04] dark:hover:text-slate-100"
+              >
+                <span>{group.category}</span>
+                {groupOpen ? (
+                  <ChevronDown size={14} aria-hidden="true" />
+                ) : (
+                  <ChevronRight size={14} aria-hidden="true" />
+                )}
+              </button>
+            ) : (
+              <div className="mx-auto mb-2 w-6 border-t border-slate-200 dark:border-white/[0.08]" />
             )}
 
-            <div className="space-y-1">
+            {(groupOpen || (!mobile && isCollapsed)) && (
+            <div id={groupId} className="space-y-1">
               {group.items.map((item) => {
                 const isActive = pathname === item.href;
 
@@ -379,8 +411,10 @@ export function Sidebar({
                 );
               })}
             </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {upgradeItem && (

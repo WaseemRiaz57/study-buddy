@@ -225,30 +225,30 @@ export default function ResourcesPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="bg-white dark:bg-white/5 p-2 rounded-2xl flex flex-col sm:flex-row gap-3 mb-8 border border-slate-200 dark:border-white/10"
+        className="mb-8 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900 sm:flex-row"
       >
         {/* Search */}
-        <div className="flex items-center gap-2 flex-1 px-3">
+        <div className="flex min-h-[44px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
           <Search size={18} className="text-slate-400 dark:text-slate-500 shrink-0" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-transparent border-none text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none py-2 text-sm"
+            className="flex-1 border-none bg-transparent py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
             placeholder="Search resources by title, subject, or author…"
           />
         </div>
 
         <div className="flex items-center gap-2">
           {/* Subject filter */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
             <SlidersHorizontal size={14} className="text-slate-400 dark:text-slate-500" />
             <select
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="bg-transparent text-sm text-slate-600 dark:text-slate-400 focus:outline-none cursor-pointer"
+              className="cursor-pointer bg-transparent text-sm text-slate-600 focus:outline-none dark:bg-slate-900 dark:text-slate-100"
             >
               {SUBJECTS.map((s) => (
-                <option key={s} value={s}>
+                <option key={s} value={s} className="dark:bg-slate-900 dark:text-slate-100">
                   {s}
                 </option>
               ))}
@@ -256,14 +256,14 @@ export default function ResourcesPage() {
           </div>
 
           {/* Sort */}
-          <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="bg-transparent text-sm text-slate-600 dark:text-slate-400 focus:outline-none cursor-pointer"
+              className="cursor-pointer bg-transparent text-sm text-slate-600 focus:outline-none dark:bg-slate-900 dark:text-slate-100"
             >
               {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
+                <option key={o.value} value={o.value} className="dark:bg-slate-900 dark:text-slate-100">
                   {o.label}
                 </option>
               ))}

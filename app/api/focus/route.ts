@@ -46,15 +46,25 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-    const { minutes, taskId, taskTitle } = await req.json(); // Kitne minute focus kiya (e.g., 25)
-    const focusMinutes = Number(minutes);
+    const { completed, minutes, seconds, taskId, taskTitle } = await req.json();
+    const durationSeconds =
+      Number(seconds) > 0
+        ? Math.round(Number(seconds))
+        : Math.round(Number(minutes) * 60);
 
-    if (!Number.isInteger(focusMinutes) || focusMinutes < 1 || focusMinutes > 240) {
+    if (
+      !Number.isInteger(durationSeconds) ||
+      durationSeconds < 1 ||
+      durationSeconds > 240 * 60
+    ) {
       return NextResponse.json(
-        { message: "minutes must be an integer between 1 and 240." },
+        { message: "seconds must be between 1 second and 240 minutes." },
         { status: 400 }
       );
     }
+
+    const focusMinutes = Math.round((durationSeconds / 60) * 100) / 100;
+    const completedSession = Boolean(completed);
 
     await connectMongoDB();
 
@@ -62,7 +72,7 @@ export async function POST(req: Request) {
     if (!progress) return NextResponse.json({ message: "Progress not found" }, { status: 404 });
 
     // XP calculate karein (1 minute = 10 XP)
-    const earnedXp = focusMinutes * 10;
+    const earnedXp = Math.max(1, Math.round(focusMinutes * 10));
     progress.xp += earnedXp;
     progress.todayMinutes += focusMinutes;
     progress.lastActiveDate = new Date();
@@ -76,23 +86,29 @@ export async function POST(req: Request) {
       await FocusSession.create({
         userId: session.user.id,
         minutes: focusMinutes,
+        durationSeconds,
         taskId: String(taskId || "").slice(0, 100),
         taskTitle: String(taskTitle || "").slice(0, 180),
         completedAt: new Date(),
       });
     }
-    const [challengeProgress, reward] = session.user.id
+    const challengeProgress = session.user.id
       ? await Promise.all([
-          Promise.all([
-            trackProgress(session.user.id, "focus_room", 1),
-            trackProgress(session.user.id, "focus_minutes", focusMinutes),
-          ]).then((results) => results.flat()),
-          awardUser(session.user.id, "FOCUS_ROOM_COMPLETE"),
-        ])
-      : [[], null];
+          completedSession
+            ? trackProgress(session.user.id, "focus_room", 1)
+            : Promise.resolve([]),
+          trackProgress(session.user.id, "focus_minutes", focusMinutes),
+        ]).then((results) => results.flat())
+      : [];
+    const reward =
+      session.user.id && completedSession
+        ? await awardUser(session.user.id, "FOCUS_ROOM_COMPLETE")
+        : null;
 
     return NextResponse.json({
       progress,
+      minutes: focusMinutes,
+      seconds: durationSeconds,
       earnedXp,
       challengeProgress,
       reward,

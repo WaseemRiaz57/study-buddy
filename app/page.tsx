@@ -258,8 +258,12 @@ const StatCard = memo(function StatCard({
   const [count, setCount] = useState(0);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
-  const target = parseFloat(value.replace(/[^0-9.]/g, ""));
-  const suffix = value.replace(/[0-9.]/g, "");
+  const isFractionStat = value.includes("/");
+  const [fractionValue, fractionSuffix] = isFractionStat ? value.split("/") : ["", ""];
+  const target = isFractionStat
+    ? parseFloat(fractionValue)
+    : parseFloat(value.replace(/[^0-9.]/g, ""));
+  const suffix = isFractionStat ? `/${fractionSuffix}` : value.replace(/[0-9.]/g, "");
 
   useEffect(() => {
     if (!isInView) return;
@@ -426,7 +430,7 @@ const PricingCard = memo(function PricingCard({
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease }}
-            className={`text-5xl font-black transition-colors duration-300 ${isActive ? "text-fuchsia-600 dark:text-fuchsia-400" : "text-foreground/90"}`}
+            className={`text-5xl font-black transition-colors duration-300 ${isActive ? "text-violet-600 dark:text-violet-400" : "text-foreground/90"}`}
           >
             {price}
           </motion.span>
@@ -753,12 +757,12 @@ export default function Home() {
           className="object-cover"
           sizes="100vw"
         />
-        <div className="absolute inset-0 bg-white/55 backdrop-blur-[1px] dark:bg-slate-950/60" />
+        <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] dark:bg-slate-950/60" />
         <motion.div initial="hidden" animate="show" variants={stagger} className="relative z-10 mx-auto max-w-5xl">
 
           {/* Headline — 3D flip-in per word */}
           <motion.h1
-            className="mb-8 text-4xl font-extrabold leading-[1.05] tracking-tight drop-shadow-lg sm:text-5xl lg:text-7xl"
+            className="mb-8 text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-900 drop-shadow-lg dark:text-white sm:text-5xl lg:text-7xl"
             initial="hidden"
             animate="show"
             variants={stagger}
@@ -791,7 +795,7 @@ export default function Home() {
 
           <motion.p
             variants={fadeUp}
-            className="mx-auto mb-12 max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed drop-shadow-md"
+            className="mx-auto mb-12 max-w-2xl text-lg leading-relaxed text-slate-700 drop-shadow-md dark:text-slate-300 md:text-xl"
           >
             Where learning meets innovation. Build knowledge, connect with mentors, and achieve your goals in a community that never stops growing.
           </motion.p>
@@ -809,14 +813,14 @@ export default function Home() {
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
               <Link href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/60 px-10 py-4 text-base font-bold text-foreground transition-all hover:bg-muted hover:border-foreground/20"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/70 px-10 py-4 text-base font-bold text-slate-900 transition-all hover:border-foreground/20 hover:bg-muted dark:text-foreground"
               >
                 View dashboard
               </Link>
             </motion.div>
           </motion.div>
 
-          <motion.p variants={fadeUp} className="mt-8 text-sm text-muted-foreground font-medium">
+          <motion.p variants={fadeUp} className="mt-8 text-sm font-semibold text-slate-700 dark:text-slate-300">
             No credit card required&nbsp;&bull;&nbsp;Free forever plan
           </motion.p>
         </motion.div>

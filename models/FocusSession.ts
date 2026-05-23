@@ -11,6 +11,11 @@ const FocusSessionSchema = new Schema(
     minutes: {
       type: Number,
       required: true,
+      min: 0,
+    },
+    durationSeconds: {
+      type: Number,
+      required: true,
       min: 1,
     },
     taskId: {

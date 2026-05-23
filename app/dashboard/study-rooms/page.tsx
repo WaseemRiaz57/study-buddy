@@ -60,6 +60,8 @@ export default function StudyRoomsPage() {
             participantsCount:
               typeof room.participantsCount === "number"
                 ? room.participantsCount
+                : typeof room.participantCount === "number"
+                  ? room.participantCount
                 : Array.isArray(room.participants)
                   ? room.participants.length
                   : 0,
@@ -70,7 +72,7 @@ export default function StudyRoomsPage() {
             isLive: Boolean(room?.isActive === true || room?.status === "active" || room?.isLive === true),
             isActive: room?.isActive === true,
             status: String(room?.status || ""),
-          }));
+          })).filter((room: Room) => room.participantsCount > 0);
 
       setRooms(normalizedRooms);
     } catch (error) {

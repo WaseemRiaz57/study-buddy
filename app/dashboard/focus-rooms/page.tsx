@@ -60,6 +60,10 @@ const DEFAULT_WEEKLY_DATA: WeeklyFocusDay[] = [
   { day: "S", label: "Sunday", minutes: 0, hours: 0, pct: 0 },
 ];
 
+function formatFocusMinutes(minutes: number) {
+  return Number.isInteger(minutes) ? String(minutes) : minutes.toFixed(1);
+}
+
 /* ------------------------------------------------------------------ */
 /* Page                                                               */
 /* ------------------------------------------------------------------ */
@@ -68,10 +72,14 @@ export default function FocusRoomsPage() {
   const [focusDuration, setFocusDuration] = useState(25); // 👈 Default 25 mins
   const [showSettings, setShowSettings] = useState(false); // 👈 Modal dikhane ke liye
 
+  const [draftFocusDuration, setDraftFocusDuration] = useState(25);
+
   /* ---- Timer ---- */
   const [timeLeft, setTimeLeft] = useState(focusDuration * 60);
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const persistedFocusSecondsRef = useRef(0);
+  const activeTimerSecondsRef = useRef(focusDuration * 60);
 
   /* ---- XP & Progress State ---- */
   const [userLevel, setUserLevel] = useState(1);
@@ -230,42 +238,71 @@ export default function FocusRoomsPage() {
     }
   }, []);
 
-  const handleSessionComplete = useCallback(async () => {
-    const minutesFocused = focusDuration; // 👈 Dynamic minutes update
+  const saveElapsedFocus = useCallback(
+    async ({
+      completed = false,
+      elapsedSeconds,
+    }: {
+      completed?: boolean;
+      elapsedSeconds?: number;
+    } = {}) => {
+      const totalElapsedSeconds =
+        typeof elapsedSeconds === "number"
+          ? elapsedSeconds
+          : activeTimerSecondsRef.current - timeLeft;
+      const secondsToSave = Math.max(
+        0,
+        Math.floor(totalElapsedSeconds - persistedFocusSecondsRef.current)
+      );
 
-    try {
-      const res = await fetch("/api/focus", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          minutes: minutesFocused,
-          taskId: selectedFocusTaskRef.current?.id || "",
-          taskTitle: selectedFocusTaskRef.current?.text || "",
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUserLevel(data.progress.level);
-        setUserXp(data.progress.xp);
-        const xpAwarded = Number(data?.reward?.xpAwarded || 10);
-        const coinsAwarded = Number(data?.reward?.coinsAwarded || 0);
-        addReward(xpAwarded, coinsAwarded);
-        await fetchWeeklyFocusStats();
-        window.dispatchEvent(new Event("gamification-stats-updated"));
-        /*
-        toast.success(`Focus Session Complete! You earned ${data.earnedXp} XP!`, {
-          icon: '🎉',
-          duration: 4000,
-        });
-        */
-      } else {
-        toast.error("Failed to save focus session.");
+      if (secondsToSave <= 0) {
+        return;
       }
-    } catch (error) {
-      console.error("Error saving session:", error);
-      toast.error("Network error while saving session.");
-    }
-  }, [focusDuration]); // 👈 Dependency add ki
+
+      try {
+        const res = await fetch("/api/focus", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            completed,
+            seconds: secondsToSave,
+            taskId: selectedFocusTaskRef.current?.id || "",
+            taskTitle: selectedFocusTaskRef.current?.text || "",
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          persistedFocusSecondsRef.current += secondsToSave;
+          setUserLevel(data.progress.level);
+          setUserXp(data.progress.xp);
+
+          if (data?.reward) {
+            const xpAwarded = Number(data.reward.xpAwarded || 10);
+            const coinsAwarded = Number(data.reward.coinsAwarded || 0);
+            addReward(xpAwarded, coinsAwarded);
+          }
+
+          await fetchWeeklyFocusStats();
+          window.dispatchEvent(new Event("gamification-stats-updated"));
+        } else {
+          toast.error("Failed to save focus time.");
+        }
+      } catch (error) {
+        console.error("Error saving session:", error);
+        toast.error("Network error while saving focus time.");
+      }
+    },
+    [addReward, fetchWeeklyFocusStats, timeLeft]
+  );
+
+  const handleSessionComplete = useCallback(async () => {
+    await saveElapsedFocus({
+      completed: true,
+      elapsedSeconds: activeTimerSecondsRef.current,
+    });
+    persistedFocusSecondsRef.current = 0;
+  }, [saveElapsedFocus]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -294,11 +331,20 @@ export default function FocusRoomsPage() {
 
   const toggleTimer = () => {
     if (timeLeft === 0) return;
+    if (isRunning) {
+      void saveElapsedFocus();
+    }
     setIsRunning((r) => !r);
   };
   const resetTimer = () => {
+    const elapsedSeconds =
+      timeLeft > 0 ? activeTimerSecondsRef.current - timeLeft : 0;
     clearTimer();
     setIsRunning(false);
+    void saveElapsedFocus({ elapsedSeconds }).finally(() => {
+      persistedFocusSecondsRef.current = 0;
+    });
+    activeTimerSecondsRef.current = focusDuration * 60;
     setTimeLeft(focusDuration * 60); // 👈 Dynamic reset
   };
 
@@ -495,7 +541,10 @@ export default function FocusRoomsPage() {
 
             {/* 👇 Settings Button Functionality Attached */}
             <button 
-              onClick={() => setShowSettings(true)}
+              onClick={() => {
+                setDraftFocusDuration(focusDuration);
+                setShowSettings(true);
+              }}
               className="w-14 h-14 rounded-full bg-white/60 dark:bg-white/[0.06] hover:bg-white dark:hover:bg-white/10 text-text-muted dark:text-slate-400 hover:text-primary flex items-center justify-center transition-all shadow-[0_8px_32px_rgba(140,48,232,0.1)] border border-white/50 dark:border-white/10"
             >
               <Settings size={20} />
@@ -668,7 +717,10 @@ export default function FocusRoomsPage() {
                       <YAxis hide domain={[0, "dataMax + 15"]} />
                       <Tooltip
                         cursor={{ fill: "rgba(124,58,237,0.08)" }}
-                        formatter={(value) => [`${Number(value)} min`, "Focus"]}
+                        formatter={(value) => [
+                          `${formatFocusMinutes(Number(value))} min`,
+                          "Focus",
+                        ]}
                         labelFormatter={(_, payload) =>
                           payload?.[0]?.payload?.label || "Focus"
                         }
@@ -688,7 +740,9 @@ export default function FocusRoomsPage() {
                 </div>
               )}
               <p className="mt-2 text-xs text-text-muted dark:text-slate-500">
-                {weeklyFocusData.reduce((total, day) => total + day.minutes, 0)} minutes focused this week.
+                {formatFocusMinutes(
+                  weeklyFocusData.reduce((total, day) => total + day.minutes, 0)
+                )} minutes focused this week.
               </p>
             </div>
           </div>
@@ -736,15 +790,26 @@ export default function FocusRoomsPage() {
                 type="number" 
                 min="1" 
                 max="120" 
-                value={focusDuration} 
-                onChange={(e) => setFocusDuration(Number(e.target.value))} 
+                value={draftFocusDuration} 
+                onChange={(e) => setDraftFocusDuration(Number(e.target.value))} 
                 className="w-full bg-white/50 dark:bg-slate-800/50 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-text-main dark:text-white outline-none focus:border-primary/50 transition-all" 
               />
             </div>
             
             <button 
               onClick={() => { 
-                setTimeLeft(focusDuration * 60); 
+                const nextDuration = Math.min(
+                  120,
+                  Math.max(1, Number(draftFocusDuration) || 25)
+                );
+                const elapsedSeconds =
+                  timeLeft > 0 ? activeTimerSecondsRef.current - timeLeft : 0;
+                void saveElapsedFocus({ elapsedSeconds }).finally(() => {
+                  persistedFocusSecondsRef.current = 0;
+                });
+                setFocusDuration(nextDuration);
+                activeTimerSecondsRef.current = nextDuration * 60;
+                setTimeLeft(nextDuration * 60); 
                 setShowSettings(false); 
                 setIsRunning(false); 
                 if (intervalRef.current) clearInterval(intervalRef.current);

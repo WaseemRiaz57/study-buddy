@@ -297,6 +297,40 @@ async function getStudyRoomHostId(roomId: string): Promise<string> {
   return resolveRoomHostId(room);
 }
 
+async function removeStudyRoomParticipant(
+  roomId: string,
+  userId: string
+): Promise<number | null> {
+  const normalizedRoomId = normalizeRoomId(roomId);
+  const normalizedUserId = userId.trim();
+
+  if (!/^[a-f\d]{24}$/i.test(normalizedUserId)) {
+    return null;
+  }
+
+  await connectDB();
+
+  const updatedRoom = await StudyRoom.findOneAndUpdate(
+    {
+      roomId: { $regex: `^${escapeRegex(normalizedRoomId)}$`, $options: "i" },
+    },
+    {
+      $pull: { participants: normalizedUserId },
+    },
+    { new: true }
+  )
+    .select("participants")
+    .lean();
+
+  if (!updatedRoom) {
+    return null;
+  }
+
+  return Array.isArray(updatedRoom.participants)
+    ? updatedRoom.participants.length
+    : 0;
+}
+
 async function handleJoinEvent(
   socket: Socket,
   payload: StudyRoomJoinPayload
@@ -352,8 +386,12 @@ async function handleLeaveEvent(
   removeSocketMembership(socket, normalizedRoomId);
 
   if (isNonEmptyString(userId)) {
+    const participantCount = await removeStudyRoomParticipant(
+      normalizedRoomId,
+      userId
+    );
     const state = await markStudyRoomParticipantDisconnected(normalizedRoomId, userId);
-    if (state && state.connectedUserIds.length === 0) {
+    if (participantCount === 0 || (state && state.connectedUserIds.length === 0)) {
       clearAutoCloseTimer(normalizedRoomId);
       await closeStudyRoomAndPersistDuration(normalizedRoomId, "inactive-disconnect");
     } else {
@@ -379,8 +417,9 @@ async function handleDisconnectingEvent(socket: Socket): Promise<void> {
   }
 
   for (const roomId of memberships) {
+    const participantCount = await removeStudyRoomParticipant(roomId, userId);
     const state = await markStudyRoomParticipantDisconnected(roomId, userId);
-    if (state && state.connectedUserIds.length === 0) {
+    if (participantCount === 0 || (state && state.connectedUserIds.length === 0)) {
       clearAutoCloseTimer(roomId);
       await closeStudyRoomAndPersistDuration(roomId, "inactive-disconnect");
     } else {

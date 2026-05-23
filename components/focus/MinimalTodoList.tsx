@@ -23,7 +23,7 @@ export function MinimalTodoList({ compact = false }: { compact?: boolean }) {
       className="glass-panel rounded-2xl border border-white/60 bg-white/60 p-5 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.03]"
     >
       <header className="mb-4 flex items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h3
             id={compact ? "dashboard-todo-title" : "focus-todo-title"}
             className="text-lg font-black text-text-main dark:text-white"
@@ -34,7 +34,7 @@ export function MinimalTodoList({ compact = false }: { compact?: boolean }) {
             Session tasks stay synced while this dashboard is open.
           </p>
         </div>
-        <span className="rounded-full bg-[#7C3AED]/10 px-2.5 py-1 text-xs font-bold text-[#7C3AED]">
+        <span className="shrink-0 rounded-full bg-[#7C3AED]/10 px-2.5 py-1 text-xs font-bold leading-none text-[#7C3AED]">
           {tasks.filter((task) => !task.completed).length} open
         </span>
       </header>
