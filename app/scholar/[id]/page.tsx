@@ -2,11 +2,31 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import mongoose from "mongoose";
-import { BookOpen, CalendarDays, GraduationCap, UserRound } from "lucide-react";
+import {
+  Award,
+  BookOpen,
+  CalendarDays,
+  Clock,
+  Crown,
+  Flame,
+  GraduationCap,
+  MessageSquare,
+  Shield,
+  Sparkles,
+  Star,
+  Target,
+  Trophy,
+  UserRound,
+  Users,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import BackButton from "@/components/ui/BackButton";
 import { connectMongoDB } from "@/lib/mongodb";
+import Badge from "@/models/Badge";
 import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
+import UserBadge from "@/models/UserBadge";
 import UserProgress from "@/models/UserProgress";
 
 type ScholarPageProps = {
@@ -30,7 +50,40 @@ type ScholarData = {
     xp: number;
     level: number;
   } | null;
+  badges: {
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+    rarity: "common" | "rare" | "legendary";
+    earnedAt: Date | null;
+  }[];
 };
+
+const BADGE_ICONS: Record<string, LucideIcon> = {
+  Award,
+  BookOpen,
+  Clock,
+  Crown,
+  Flame,
+  MessageSquare,
+  Shield,
+  Sparkles,
+  Star,
+  Target,
+  Trophy,
+  Users,
+  Zap,
+};
+
+const badgeRarityStyles = {
+  common:
+    "border-slate-200 bg-slate-50 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200",
+  rare:
+    "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-400/20 dark:bg-purple-500/10 dark:text-purple-200",
+  legendary:
+    "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-200",
+} satisfies Record<"common" | "rare" | "legendary", string>;
 
 function getInitials(name: string) {
   return (
@@ -73,7 +126,7 @@ async function getScholarData(id: string): Promise<ScholarData | null> {
     return null;
   }
 
-  const [profile, progress] = await Promise.all([
+  const [profile, progress, earnedBadges] = await Promise.all([
     StudentProfile.findOne({ userId: user._id })
       .select("headline bio academicLevel interestedSubjects")
       .lean<{
@@ -85,6 +138,27 @@ async function getScholarData(id: string): Promise<ScholarData | null> {
     UserProgress.findOne({ userId: user.email })
       .select("xp level")
       .lean<{ xp?: number; level?: number }>(),
+    UserBadge.find({ userId: user._id })
+      .sort({ earnedAt: -1 })
+      .limit(6)
+      .populate({
+        path: "badgeId",
+        model: Badge,
+        select: "title description icon rarity",
+      })
+      .lean<
+        {
+          _id: mongoose.Types.ObjectId;
+          earnedAt?: Date;
+          badgeId?: {
+            _id: mongoose.Types.ObjectId;
+            title?: string;
+            description?: string;
+            icon?: string;
+            rarity?: "common" | "rare" | "legendary";
+          };
+        }[]
+      >(),
   ]);
 
   return {
@@ -106,6 +180,16 @@ async function getScholarData(id: string): Promise<ScholarData | null> {
           level: progress.level || 1,
         }
       : null,
+    badges: earnedBadges
+      .filter((row) => row.badgeId)
+      .map((row) => ({
+        id: String(row.badgeId?._id || row._id),
+        title: row.badgeId?.title || "Achievement",
+        description: row.badgeId?.description || "",
+        icon: row.badgeId?.icon || "Award",
+        rarity: row.badgeId?.rarity || "common",
+        earnedAt: row.earnedAt || null,
+      })),
   };
 }
 
@@ -248,6 +332,63 @@ export default async function ScholarProfilePage({ params }: ScholarPageProps) {
               </section>
             )}
           </aside>
+        </section>
+
+        <section
+          aria-labelledby="recent-achievements"
+          className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-slate-900"
+        >
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-600 text-white">
+              <Award size={20} aria-hidden="true" />
+            </div>
+            <div>
+              <h2 id="recent-achievements" className="text-2xl font-black">
+                Recent Achievements
+              </h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Public badges this scholar has unlocked.
+              </p>
+            </div>
+          </div>
+
+          {scholar.badges.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {scholar.badges.map((badge) => {
+                const Icon = BADGE_ICONS[badge.icon] || Award;
+
+                return (
+                  <article
+                    key={badge.id}
+                    className={`rounded-2xl border p-4 ${badgeRarityStyles[badge.rarity]}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white shadow-sm">
+                        <Icon size={20} aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-black">
+                          {badge.title}
+                        </h3>
+                        {badge.description && (
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 opacity-80">
+                            {badge.description}
+                          </p>
+                        )}
+                        <p className="mt-2 text-[11px] font-bold uppercase tracking-wide opacity-70">
+                          {badge.rarity}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 dark:bg-white/5 dark:text-slate-400">
+              This scholar has not unlocked public badges yet.
+            </p>
+          )}
         </section>
 
         <section

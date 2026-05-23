@@ -63,11 +63,45 @@ function userHasAccess(resource: any, userId: string) {
     : false;
 }
 
+type SerializedResourceReview = {
+  id: string;
+  user: {
+    id: string;
+    name: string;
+    image: string;
+  };
+  rating: number;
+  comment: string;
+  createdAt: unknown;
+};
+
+function serializeReview(review: any): SerializedResourceReview {
+  const user =
+    review?.userId && typeof review.userId === "object" ? review.userId : null;
+
+  return {
+    id: String(review?._id || `${review?.userId || "review"}-${review?.createdAt || ""}`),
+    user: {
+      id: String(user?._id || review?.userId || ""),
+      name: user?.name || "StudyBuddy User",
+      image: user?.image || "",
+    },
+    rating: Number(review?.rating || 0),
+    comment: String(review?.comment || "").trim(),
+    createdAt: review?.createdAt || null,
+  };
+}
+
 function serializeResource(resource: any, userId: string) {
   const isUnlocked = userHasAccess(resource, userId);
   const price = Math.max(0, Number(resource.price || 0));
   const ratings = Array.isArray(resource.ratings) ? resource.ratings : [];
   const averageRating = Number(resource.averageRating ?? resource.rating ?? 0);
+  const reviews = Array.isArray(resource.reviews)
+    ? (resource.reviews as unknown[])
+        .map(serializeReview)
+        .filter((review: SerializedResourceReview) => review.rating > 0)
+    : [];
 
   return {
     ...resource,
@@ -75,6 +109,7 @@ function serializeResource(resource: any, userId: string) {
     rating: averageRating,
     averageRating,
     ratingCount: ratings.length,
+    reviews,
     isUnlocked,
     fileUrl: isUnlocked ? resource.fileUrl : "",
     allowedUsers: undefined,
@@ -244,7 +279,8 @@ export async function GET(request: Request) {
     }
 
     const resources = await Resource.find(query)
-      .populate("uploadedBy", "name")
+      .populate("uploadedBy", "name image")
+      .populate("reviews.userId", "name image")
       .sort({ createdAt: -1 })
       .lean();
 

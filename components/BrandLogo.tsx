@@ -3,13 +3,13 @@ import Image from "next/image";
 type BrandLogoSize = "mark" | "lockup";
 
 const sizeClasses: Record<BrandLogoSize, string> = {
-  mark: "h-11 w-11",
-  lockup: "h-12 w-12",
+  mark: "h-9 w-9",
+  lockup: "h-10 w-10",
 };
 
 const imageDimensions: Record<BrandLogoSize, { width: number; height: number; sizes: string }> = {
-  mark: { width: 44, height: 44, sizes: "44px" },
-  lockup: { width: 48, height: 48, sizes: "48px" },
+  mark: { width: 36, height: 36, sizes: "36px" },
+  lockup: { width: 40, height: 40, sizes: "40px" },
 };
 
 export function BrandLogo({

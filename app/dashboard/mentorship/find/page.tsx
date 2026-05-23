@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -175,9 +176,17 @@ function MentorCard({
         shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_2px_4px_-1px_rgba(0,0,0,0.02)]
         dark:shadow-none
         transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
-        hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)]
-        hover:border-primary/20 dark:hover:border-primary/30"
+      hover:-translate-y-1 hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.05),0_10px_10px_-5px_rgba(0,0,0,0.01)]
+      hover:border-primary/20 dark:hover:border-primary/30"
     >
+      <Link
+        href={`/dashboard/mentorship/mentor/${mentor.id}`}
+        aria-label={`View ${mentor.name}'s mentor profile`}
+        className="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/60"
+      >
+        <span className="sr-only">View {mentor.name}&apos;s mentor profile</span>
+      </Link>
+
       {/* Top row: Avatar + Rating */}
       <div className="relative flex justify-between items-start mb-4">
         {/* Avatar */}
@@ -243,7 +252,7 @@ function MentorCard({
       </div>
 
       {/* Bottom: Rate + Actions */}
-      <div className="mt-auto space-y-4 border-t border-gray-200/80 pt-4 dark:border-white/10">
+      <div className="relative z-20 mt-auto space-y-4 border-t border-gray-200/80 pt-4 dark:border-white/10">
         <div>
           <span className="text-xs text-gray-400 dark:text-slate-500 block">Rate</span>
           <span className="text-lg font-bold text-text-main dark:text-white">
@@ -476,7 +485,11 @@ export default function MentorshipPage() {
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full bg-transparent border-none focus:ring-0 text-text-main dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-lg py-3 px-4 outline-none"
                 />
-                <button className="bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 text-gray-600 dark:text-slate-400 rounded-xl p-3 transition-colors shrink-0">
+                <button
+                  type="button"
+                  aria-label="Open mentor filters"
+                  className="bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 text-gray-600 dark:text-slate-400 rounded-xl p-3 transition-colors shrink-0"
+                >
                   <SlidersHorizontal size={20} />
                 </button>
               </div>

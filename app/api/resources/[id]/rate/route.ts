@@ -37,6 +37,7 @@ export async function POST(
 
     const body = await request.json().catch(() => ({}));
     const score = Number(body.score);
+    const comment = String(body.comment ?? "").trim().slice(0, 1000);
 
     if (!Number.isInteger(score) || score < 1 || score > 5) {
       return NextResponse.json({ message: "Rating must be between 1 and 5 stars." }, { status: 400 });
@@ -59,8 +60,12 @@ export async function POST(
 
     const userObjectId = new mongoose.Types.ObjectId(session.user.id);
     const ratings = Array.isArray(resource.ratings) ? resource.ratings : [];
+    const reviews = Array.isArray(resource.reviews) ? resource.reviews : [];
     const existingRating = ratings.find(
       (rating: { userId?: unknown }) => String(rating.userId || "") === session.user.id
+    );
+    const existingReview = reviews.find(
+      (review: { userId?: unknown }) => String(review.userId || "") === session.user.id
     );
 
     if (existingRating) {
@@ -69,11 +74,25 @@ export async function POST(
       ratings.push({ userId: userObjectId, score });
     }
 
+    if (existingReview) {
+      existingReview.rating = score;
+      existingReview.comment = comment;
+      existingReview.createdAt = new Date();
+    } else {
+      reviews.push({
+        userId: userObjectId,
+        rating: score,
+        comment,
+        createdAt: new Date(),
+      });
+    }
+
     const averageRating =
       ratings.reduce((total: number, rating: { score?: unknown }) => total + Number(rating.score || 0), 0) /
       Math.max(1, ratings.length);
 
     resource.ratings = ratings;
+    resource.reviews = reviews;
     resource.averageRating = Math.round(averageRating * 10) / 10;
     resource.rating = resource.averageRating;
     await resource.save();
@@ -83,6 +102,17 @@ export async function POST(
       message: "Thanks for rating this resource.",
       averageRating: resource.averageRating,
       ratingCount: ratings.length,
+      review: {
+        id: `${session.user.id}-${new Date().toISOString()}`,
+        user: {
+          id: session.user.id,
+          name: session.user.name || "StudyBuddy User",
+          image: session.user.image || "",
+        },
+        rating: score,
+        comment,
+        createdAt: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error("Rate resource error:", error);

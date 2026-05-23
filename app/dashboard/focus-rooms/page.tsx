@@ -148,6 +148,18 @@ export default function FocusRoomsPage() {
     });
   }, [sounds]);
 
+  const stopAmbientAudio = useCallback(() => {
+    Object.values(audioRefs.current).forEach((audio) => {
+      audio.pause();
+    });
+
+    setSounds((currentSounds) =>
+      currentSounds.map((sound) =>
+        sound.enabled ? { ...sound, enabled: false } : sound
+      )
+    );
+  }, []);
+
   const fetchWeeklyFocusStats = useCallback(async () => {
     try {
       setIsLoadingWeeklyFocus(true);
@@ -297,12 +309,13 @@ export default function FocusRoomsPage() {
   );
 
   const handleSessionComplete = useCallback(async () => {
+    stopAmbientAudio();
     await saveElapsedFocus({
       completed: true,
       elapsedSeconds: activeTimerSecondsRef.current,
     });
     persistedFocusSecondsRef.current = 0;
-  }, [saveElapsedFocus]);
+  }, [saveElapsedFocus, stopAmbientAudio]);
 
   useEffect(() => {
     if (!isRunning) return;

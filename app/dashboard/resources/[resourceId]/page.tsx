@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -45,6 +46,19 @@ interface ApiResource {
   uploadedBy?: {
     name?: string;
   };
+  reviews?: ApiResourceReview[];
+}
+
+interface ApiResourceReview {
+  id: string;
+  user: {
+    id: string;
+    name: string;
+    image?: string;
+  };
+  rating: number;
+  comment: string;
+  createdAt?: string | null;
 }
 
 function formatDate(input: string): string {
@@ -136,6 +150,7 @@ export default function ResourceDetailPage() {
   const authorName = resource?.uploadedBy?.name?.trim() || "Unknown User";
   const authorAvatar = getInitials(authorName);
   const isPaidLocked = Boolean(resource && resource.price > 0 && !resource.isUnlocked);
+  const reviews = resource?.reviews ?? [];
 
   const handleDownload = () => {
     if (!resource?.fileUrl || !resource.isUnlocked) return;
@@ -390,12 +405,58 @@ export default function ResourceDetailPage() {
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <MessageSquare size={18} />
-              Reviews (0)
+              Reviews ({reviews.length})
             </h2>
 
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-sm text-slate-500 dark:text-slate-400">
-              No reviews yet.
-            </div>
+            {reviews.length > 0 ? (
+              <div className="space-y-3">
+                {reviews.map((review) => {
+                  const reviewerName =
+                    review.user?.name?.trim() || "StudyBuddy User";
+                  const reviewerInitials = getInitials(reviewerName);
+
+                  return (
+                    <article
+                      key={review.id}
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED]/10 text-xs font-black text-[#7C3AED] dark:bg-[#7C3AED]/20">
+                          {review.user?.image ? (
+                            <Image
+                              src={review.user.image}
+                              alt={`${reviewerName} avatar`}
+                              width={40}
+                              height={40}
+                              unoptimized
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            reviewerInitials
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                              {reviewerName}
+                            </p>
+                            <Stars rating={review.rating} />
+                          </div>
+                          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">
+                            {review.comment || "No written comment."}
+                          </p>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-sm text-slate-500 dark:text-slate-400">
+                No reviews yet.
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -410,11 +471,27 @@ export default function ResourceDetailPage() {
         resourceId={isRatingOpen ? resource._id : null}
         resourceTitle={resource.title}
         onClose={() => setIsRatingOpen(false)}
-        onRated={(averageRating) => {
+        onRated={(averageRating, ratingCount, review) => {
           setResources((current) =>
             current.map((item) =>
               item._id === resource._id
-                ? { ...item, rating: averageRating, averageRating }
+                ? {
+                    ...item,
+                    rating: averageRating,
+                    averageRating,
+                    ratingCount,
+                    reviews:
+                      review && typeof review === "object"
+                        ? [
+                            ...(item.reviews || []).filter(
+                              (existingReview) =>
+                                existingReview.user?.id !==
+                                (review as ApiResourceReview).user?.id
+                            ),
+                            review as ApiResourceReview,
+                          ]
+                        : item.reviews,
+                  }
                 : item
             )
           );

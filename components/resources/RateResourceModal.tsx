@@ -8,7 +8,7 @@ type RateResourceModalProps = {
   resourceId: string | null;
   resourceTitle?: string;
   onClose: () => void;
-  onRated?: (averageRating: number, ratingCount: number) => void;
+  onRated?: (averageRating: number, ratingCount: number, review?: unknown) => void;
 };
 
 export default function RateResourceModal({
@@ -18,6 +18,7 @@ export default function RateResourceModal({
   onRated,
 }: RateResourceModalProps) {
   const [score, setScore] = useState(0);
+  const [comment, setComment] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   if (!resourceId) return null;
@@ -30,7 +31,7 @@ export default function RateResourceModal({
       const response = await fetch(`/api/resources/${resourceId}/rate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ score }),
+        body: JSON.stringify({ score, comment }),
       });
       const data = await response.json().catch(() => null);
 
@@ -38,9 +39,14 @@ export default function RateResourceModal({
         throw new Error(data?.message || "Failed to save rating.");
       }
 
-      onRated?.(Number(data?.averageRating || 0), Number(data?.ratingCount || 0));
+      onRated?.(
+        Number(data?.averageRating || 0),
+        Number(data?.ratingCount || 0),
+        data?.review
+      );
       toast.success(data?.message || "Thanks for rating this resource.");
       setScore(0);
+      setComment("");
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save rating.");
@@ -107,6 +113,20 @@ export default function RateResourceModal({
           })}
         </div>
 
+        <label className="mb-5 block">
+          <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-200">
+            Review
+          </span>
+          <textarea
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            maxLength={1000}
+            rows={4}
+            placeholder="Share what helped, what was missing, or who this is best for..."
+            className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+          />
+        </label>
+
         <button
           type="button"
           onClick={() => void submitRating()}
@@ -114,7 +134,7 @@ export default function RateResourceModal({
           className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving && <Loader2 size={16} className="animate-spin" />}
-          Submit Rating
+          Submit Review
         </button>
       </section>
     </div>

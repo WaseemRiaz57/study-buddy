@@ -16,6 +16,12 @@ export interface IResource extends Document {
     userId: mongoose.Types.ObjectId;
     score: number;
   }[];
+  reviews: {
+    userId: mongoose.Types.ObjectId;
+    rating: number;
+    comment: string;
+    createdAt: Date;
+  }[];
   averageRating: number;
   downloadCount: number;
   price: number;
@@ -88,6 +94,34 @@ const resourceSchema = new Schema<IResource>({
           required: true,
           min: 1,
           max: 5,
+        },
+      },
+    ],
+    default: [],
+  },
+  reviews: {
+    type: [
+      {
+        userId: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        rating: {
+          type: Number,
+          required: true,
+          min: 1,
+          max: 5,
+        },
+        comment: {
+          type: String,
+          default: "",
+          trim: true,
+          maxlength: 1000,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
         },
       },
     ],
