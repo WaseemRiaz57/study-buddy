@@ -105,6 +105,7 @@ function serializeResource(resource: any, userId: string) {
 
   return {
     ...resource,
+    id: String(resource._id || ""),
     price,
     rating: averageRating,
     averageRating,
@@ -262,9 +263,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = String(searchParams.get("search") || "").trim().slice(0, 100);
     const subject = String(searchParams.get("subject") || "").trim().slice(0, 100);
+    const mine =
+      searchParams.get("mine") === "true" ||
+      searchParams.get("uploadedByMe") === "true";
 
     const query: Record<string, unknown> = {
-      status: "approved",
+      ...(mine
+        ? { uploadedBy: session.user.id }
+        : { status: "approved" }),
     };
 
     if (subject) {

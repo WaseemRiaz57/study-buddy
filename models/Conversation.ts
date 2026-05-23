@@ -5,6 +5,7 @@ export interface IConversation extends Document {
   lastMessage: string;
   lastMessageAt: Date;
   unreadCounts: Map<string, number>;
+  blockedBy: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,11 +36,19 @@ const ConversationSchema = new Schema<IConversation>(
       of: Number,
       default: {},
     },
+    blockedBy: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        index: true,
+      },
+    ],
   },
   { timestamps: true }
 );
 
 ConversationSchema.index({ participants: 1, lastMessageAt: -1 });
+ConversationSchema.index({ participants: 1, blockedBy: 1 });
 
 const Conversation: Model<IConversation> =
   mongoose.models.Conversation ||

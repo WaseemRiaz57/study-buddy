@@ -163,6 +163,8 @@ const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
 }));
 
 const FloatingParticles = memo(function FloatingParticles() {
+  const isMobile = useIsMobile();
+
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       {PARTICLES.map((p) => (
@@ -170,7 +172,11 @@ const FloatingParticles = memo(function FloatingParticles() {
           key={p.id}
           className="absolute rounded-full bg-purple-400/20"
           style={{ left: `${p.x}%`, top: `${p.y}%`, width: p.size, height: p.size }}
-          animate={{ y: [0, -40, 0], x: [0, p.driftX, 0], opacity: [0.1, 0.45, 0.1] }}
+          animate={{
+            y: isMobile ? [0, -20, 0] : [0, -40, 0],
+            x: isMobile ? [0, 0, 0] : [0, p.driftX, 0],
+            opacity: [0.1, 0.45, 0.1],
+          }}
           transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: "easeInOut" }}
         />
       ))}
@@ -374,8 +380,8 @@ function AnimatedProgressBar({ pct, color = " " }: { pct: number; color?: string
 // PRICING CARD
 // ============================================================================
 const PricingCard = memo(function PricingCard({
-  plan, isYearly, index,
-}: { plan: PricingPlan; isYearly: boolean; index: number }) {
+  plan, isYearly, index, isMobile,
+}: { plan: PricingPlan; isYearly: boolean; index: number; isMobile: boolean }) {
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
   const pkr   = isYearly ? plan.yearlyPkr   : plan.monthlyPkr;
   const [hovered, setHovered] = useState(false);
@@ -446,8 +452,8 @@ const PricingCard = memo(function PricingCard({
         {plan.features.map((feat, i) => (
           <motion.li
             key={feat}
-            initial={{ opacity: 0, x: -10 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={isMobile ? { opacity: 0, y: 14 } : { opacity: 0, x: -10 }}
+            whileInView={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.06 + index * 0.08, duration: 0.4, ease }}
             className="flex items-start gap-3"
@@ -490,6 +496,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
   testimonials: PublicReview[];
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const isMobile = useIsMobile();
 
   if (testimonials.length === 0) {
     return (
@@ -519,7 +526,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
           const normalizedOffset =
             offset > testimonials.length / 2 ? offset - testimonials.length : offset;
           const isActive = normalizedOffset === 0;
-          const isVisible = Math.abs(normalizedOffset) <= 2;
+          const isVisible = isMobile ? isActive : Math.abs(normalizedOffset) <= 2;
           const roleMeta = getReviewRoleMeta(review.user.role);
           const cleanedComment = cleanReviewComment(review.comment);
 
@@ -534,15 +541,30 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
                 if (info.offset.x < -80) move(1);
                 if (info.offset.x > 80) move(-1);
               }}
-              initial={{ opacity: 0, scale: 0.88, x: normalizedOffset * 120 }}
-              animate={{
-                opacity: isActive ? 1 : 0.55,
-                scale: isActive ? 1 : 0.88,
-                x: normalizedOffset * 150,
-                y: Math.abs(normalizedOffset) * 18,
-                rotateY: normalizedOffset * -12,
-                zIndex: 20 - Math.abs(normalizedOffset),
-              }}
+              initial={
+                isMobile
+                  ? { opacity: 0, scale: 0.96, y: 20, x: 0 }
+                  : { opacity: 0, scale: 0.88, x: normalizedOffset * 120 }
+              }
+              animate={
+                isMobile
+                  ? {
+                      opacity: 1,
+                      scale: 1,
+                      x: 0,
+                      y: 0,
+                      rotateY: 0,
+                      zIndex: 20,
+                    }
+                  : {
+                      opacity: isActive ? 1 : 0.55,
+                      scale: isActive ? 1 : 0.88,
+                      x: normalizedOffset * 150,
+                      y: Math.abs(normalizedOffset) * 18,
+                      rotateY: normalizedOffset * -12,
+                      zIndex: 20 - Math.abs(normalizedOffset),
+                    }
+              }
               exit={{ opacity: 0, scale: 0.84 }}
               transition={{ type: "spring", stiffness: 260, damping: 28 }}
               className={`absolute flex h-[350px] w-[min(88vw,420px)] flex-col justify-between rounded-3xl border p-7 shadow-2xl ${
@@ -723,7 +745,7 @@ export default function Home() {
   const springY = useSpring(mousePos.y * 20, { stiffness: 40, damping: 20 });
 
   return (
-    <div className="landing-page relative min-h-screen bg-background text-foreground overflow-hidden font-sans">
+    <div className="landing-page relative min-h-screen w-full overflow-x-hidden bg-background text-foreground font-sans">
 
       {/* ── BACKGROUND ORBS ── */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
@@ -748,7 +770,7 @@ export default function Home() {
       </div>
 
       {/* ══════════════ HERO ══════════════ */}
-      <section className="relative flex min-h-[80vh] w-full flex-col justify-center overflow-hidden px-4 py-24 text-center sm:px-6 lg:px-8">
+      <section className="relative flex min-h-[80vh] w-full flex-col justify-center overflow-x-hidden px-4 py-24 text-center sm:px-6 lg:px-8">
         <Image
           src="/hero.png"
           alt="StudyBuddy Hero Image"
@@ -806,7 +828,7 @@ export default function Home() {
                 className="group inline-flex items-center gap-2 rounded-lg bg-purple-600 px-10 py-4 text-base font-bold text-white shadow-xl shadow-purple-600/25 transition-all hover:bg-purple-700 hover:shadow-2xl hover:shadow-purple-600/35"
               >
                 Begin a session
-                <motion.span className="inline-flex" animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
+                <motion.span className="inline-flex" animate={isMobile ? { y: [0, 3, 0] } : { x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
                   <ArrowRight className="h-4 w-4" />
                 </motion.span>
               </Link>
@@ -848,7 +870,7 @@ export default function Home() {
       <AnimatedDivider />
 
       {/* ══════════════ PROBLEM ══════════════ */}
-      <section className="relative px-6 py-28 overflow-hidden">
+      <section className="relative w-full overflow-x-hidden px-6 py-28">
         {/* Subtle animated grid */}
         <motion.div
           className="pointer-events-none absolute inset-0 opacity-[0.015]"
@@ -903,7 +925,7 @@ export default function Home() {
       <AnimatedDivider />
 
       {/* ══════════════ FEATURES ══════════════ */}
-      <section id="features" className="relative px-6 py-28">
+      <section id="features" className="relative w-full overflow-x-hidden px-6 py-28">
         <div className="mx-auto max-w-7xl">
           <div className="mb-16 text-center">
             <SectionBadge color="border-purple-500/30 bg-purple-500/10 text-purple-400" icon={Zap} label="Core Features" />
@@ -925,7 +947,7 @@ export default function Home() {
       <AnimatedDivider />
 
       {/* ══════════════ WORKFLOW ══════════════ */}
-      <section id="workflow" className="relative px-6 py-28 bg-muted/40 border-y border-border overflow-hidden">
+      <section id="workflow" className="relative w-full overflow-x-hidden px-6 py-28 bg-muted/40 border-y border-border">
         <motion.div
           className="pointer-events-none absolute -right-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-violet-500/[0.05] blur-[100px]"
           animate={{ scale: [1, 1.18, 1], opacity: [0.05, 0.09, 0.05] }}
@@ -950,8 +972,8 @@ export default function Home() {
               {workflow.map((step, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, x: -50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={isMobile ? { opacity: 0, y: 20 } : { opacity: 0, x: -50 }}
+                  whileInView={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, x: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ duration: 0.65, ease, delay: i * 0.15 }}
                   className="flex gap-5 group"
@@ -986,8 +1008,8 @@ export default function Home() {
 
             {/* Timer mockup */}
             <motion.div
-              initial={{ opacity: 0, x: 60, scale: 0.93 }}
-              whileInView={{ opacity: 1, x: 0, scale: 1 }}
+              initial={isMobile ? { opacity: 0, y: 20, scale: 0.96 } : { opacity: 0, x: 60, scale: 0.93 }}
+              whileInView={isMobile ? { opacity: 1, y: 0, scale: 1 } : { opacity: 1, x: 0, scale: 1 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.8, ease, delay: 0.2 }}
               whileHover={{ y: -6 }}
@@ -1074,7 +1096,7 @@ export default function Home() {
       <AnimatedDivider />
 
       {/* ══════════════ TESTIMONIALS ══════════════ */}
-      <section className="relative py-28 overflow-hidden">
+      <section className="relative w-full overflow-x-hidden py-28">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-12 text-center">
             <SectionBadge color="border-yellow-500/30 bg-yellow-500/10 text-yellow-400" icon={Star} label="Reviews" />
@@ -1087,7 +1109,7 @@ export default function Home() {
       <AnimatedDivider />
 
       {/* ══════════════ PRICING ══════════════ */}
-      <section id="pricing" className="relative px-6 py-28 bg-muted/40 border-y border-border overflow-hidden">
+      <section id="pricing" className="relative w-full overflow-x-hidden px-6 py-28 bg-muted/40 border-y border-border">
         <motion.div
           className="pointer-events-none absolute -left-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-fuchsia-500/[0.05] blur-[100px]"
           animate={{ scale: [1, 1.2, 1] }}
@@ -1128,7 +1150,7 @@ export default function Home() {
           </div>
           <div className="grid gap-6 lg:grid-cols-3 items-stretch">
             {pricingPlans.map((plan, i) => (
-              <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} />
+              <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} isMobile={isMobile} />
             ))}
           </div>
         </div>
@@ -1137,7 +1159,7 @@ export default function Home() {
       <AnimatedDivider />
 
       {/* ══════════════ FINAL CTA ══════════════ */}
-      <section className="relative px-6 py-36 text-center overflow-hidden">
+      <section className="relative w-full overflow-x-hidden px-6 py-36 text-center">
         {/* Breathing glow */}
         <motion.div
           className="pointer-events-none absolute inset-0 flex items-center justify-center"
@@ -1175,7 +1197,7 @@ export default function Home() {
                 className="inline-flex items-center gap-3 rounded-lg bg-foreground px-10 py-4 text-lg font-bold text-background shadow-[0_0_50px_rgba(0,0,0,0.12)] dark:shadow-[0_0_50px_rgba(255,255,255,0.12)] hover:shadow-2xl transition-shadow"
               >
                 Create Free Account
-                <motion.span className="inline-flex" animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
+                <motion.span className="inline-flex" animate={isMobile ? { y: [0, 3, 0] } : { x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
                   <ArrowRight className="h-5 w-5" />
                 </motion.span>
               </Link>

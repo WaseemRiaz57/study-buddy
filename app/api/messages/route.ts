@@ -16,6 +16,13 @@ import { isUserInConversationRoom } from "@/lib/study-room-socket";
 
 export const dynamic = "force-dynamic";
 
+const MESSAGE_TYPES = new Set([
+  "text",
+  "live_session",
+  "booking_confirmation",
+  "resource_card",
+]);
+
 async function getSessionUserId() {
   const session = await getServerSession(authOptions);
   const userId = String(session?.user?.id || "");
@@ -25,6 +32,19 @@ async function getSessionUserId() {
   }
 
   return userId;
+}
+
+function normalizeMessageType(value: unknown) {
+  const type = String(value || "text");
+  return MESSAGE_TYPES.has(type) ? type : "text";
+}
+
+function normalizeMetadata(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
 }
 
 export async function GET(request: Request) {
@@ -61,7 +81,10 @@ export async function GET(request: Request) {
         );
       }
 
-      const messages = await Message.find({ conversationId })
+      const messages = await Message.find({
+        conversationId,
+        deletedFor: { $ne: toObjectId(currentUserId) },
+      })
         .populate("senderId", CHAT_USER_SELECT)
         .sort({ createdAt: 1 })
         .lean();
@@ -71,6 +94,7 @@ export async function GET(request: Request) {
           conversationId,
           senderId: { $ne: toObjectId(currentUserId) },
           isRead: false,
+          deletedFor: { $ne: toObjectId(currentUserId) },
         },
         { $set: { isRead: true } }
       );
@@ -146,6 +170,8 @@ export async function POST(request: Request) {
     const conversationId = String(body.conversationId || "");
     const receiverId = String(body.receiverId || "");
     const text = String(body.text || "").trim();
+    const type = normalizeMessageType(body.type);
+    const metadata = normalizeMetadata(body.metadata);
 
     if (!text || text.length > 4000) {
       return NextResponse.json(
@@ -196,6 +222,24 @@ export async function POST(request: Request) {
     const receiverUserId =
       participantIds.find((participantId: string) => participantId !== currentUserId) ||
       receiverId;
+    const blockedBy = Array.isArray(conversation.blockedBy)
+      ? conversation.blockedBy.map((userId: unknown) => String(userId))
+      : [];
+
+    if (blockedBy.includes(currentUserId)) {
+      return NextResponse.json(
+        { message: "You blocked this user. Unblock them before sending a message." },
+        { status: 403 }
+      );
+    }
+
+    if (receiverUserId && blockedBy.includes(receiverUserId)) {
+      return NextResponse.json(
+        { message: "This user is not accepting messages from you." },
+        { status: 403 }
+      );
+    }
+
     const receiverInRoom =
       Boolean(receiverUserId) &&
       isUserInConversationRoom(String(conversation._id), receiverUserId);
@@ -204,6 +248,8 @@ export async function POST(request: Request) {
       conversationId: conversation._id,
       senderId: currentUserId,
       text,
+      type,
+      metadata,
       isRead: receiverInRoom,
     });
 
@@ -254,6 +300,122 @@ export async function POST(request: Request) {
           error instanceof Error
             ? error.message
             : "Failed to send message.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const currentUserId = await getSessionUserId();
+
+    if (!currentUserId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const conversationId = String(searchParams.get("conversationId") || "");
+
+    if (!conversationId || !isValidObjectId(conversationId)) {
+      return NextResponse.json(
+        { message: "Invalid conversation id." },
+        { status: 400 }
+      );
+    }
+
+    await connectMongoDB();
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: toObjectId(currentUserId),
+    }).select("_id");
+
+    if (!conversation) {
+      return NextResponse.json(
+        { message: "Conversation not found." },
+        { status: 404 }
+      );
+    }
+
+    await Message.updateMany(
+      { conversationId },
+      { $addToSet: { deletedFor: toObjectId(currentUserId) } }
+    );
+    await Conversation.updateOne(
+      { _id: conversationId },
+      { $set: { [`unreadCounts.${currentUserId}`]: 0 } }
+    );
+
+    return NextResponse.json({ success: true, conversationId });
+  } catch (error) {
+    console.error("Messages DELETE error:", error);
+    return NextResponse.json(
+      {
+        message:
+          error instanceof Error ? error.message : "Failed to clear chat.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const currentUserId = await getSessionUserId();
+
+    if (!currentUserId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const conversationId = String(body.conversationId || "");
+    const action = String(body.action || "").toLowerCase();
+
+    if (!conversationId || !isValidObjectId(conversationId)) {
+      return NextResponse.json(
+        { message: "Invalid conversation id." },
+        { status: 400 }
+      );
+    }
+
+    if (action !== "block") {
+      return NextResponse.json(
+        { message: "Unsupported chat action." },
+        { status: 400 }
+      );
+    }
+
+    await connectMongoDB();
+
+    const conversation = await Conversation.findOneAndUpdate(
+      {
+        _id: conversationId,
+        participants: toObjectId(currentUserId),
+      },
+      { $addToSet: { blockedBy: toObjectId(currentUserId) } },
+      { new: true }
+    )
+      .populate("participants", CHAT_USER_SELECT)
+      .lean();
+
+    if (!conversation) {
+      return NextResponse.json(
+        { message: "Conversation not found." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      conversation: await serializeChatConversation(conversation, currentUserId),
+    });
+  } catch (error) {
+    console.error("Messages PATCH error:", error);
+    return NextResponse.json(
+      {
+        message:
+          error instanceof Error ? error.message : "Failed to update chat.",
       },
       { status: 500 }
     );

@@ -2,6 +2,7 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef, type ReactNode } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface RevealProps {
   children: ReactNode;
@@ -33,8 +34,12 @@ export function Reveal({
 }: RevealProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once, margin: margin as any });
+  const isMobile = useIsMobile();
 
-  const offset = directionMap[direction];
+  const offset =
+    isMobile && (direction === "left" || direction === "right")
+      ? { x: 0, y: 20 }
+      : directionMap[direction];
 
   return (
     <motion.div

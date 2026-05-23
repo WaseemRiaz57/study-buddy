@@ -37,6 +37,7 @@ type LiveVideoRoomProps = {
   userName?: string;
   hostId?: string;
   userId?: string;
+  roomType?: "peer" | "mentorship";
   autoJoin?: boolean;
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
 };
@@ -115,6 +116,7 @@ const ROOM_CONTROL_TOPIC = "room-control";
 const VAULT_FILE_TOPIC = "vault-file";
 const DASHBOARD_REDIRECT_PATH = "/dashboard";
 const MIN_CONFIRMED_SESSION_MS = 60 * 60 * 1000;
+const DIRECT_CONNECTION_TIMEOUT_MS = 12000;
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -159,6 +161,7 @@ export default function LiveVideoRoom({
   userName,
   hostId,
   userId,
+  roomType,
   autoJoin = false,
   renderAction,
 }: LiveVideoRoomProps) {
@@ -183,6 +186,8 @@ export default function LiveVideoRoom({
     typeof isHostProp === "boolean"
       ? isHostProp
       : Boolean(effectiveCurrentUserId && normalizedHostId && effectiveCurrentUserId === normalizedHostId);
+  const effectiveRoomType = roomType || (autoJoin ? "peer" : "mentorship");
+  const isPeerRoom = effectiveRoomType === "peer";
 
   const roomRef = useRef<Room | null>(null);
   const previewStreamRef = useRef<MediaStream | null>(null);
@@ -215,6 +220,11 @@ export default function LiveVideoRoom({
   const forceEndApprovedRef = useRef(false);
   const [earlyEndRequest, setEarlyEndRequest] = useState<RoomControlMessage | null>(null);
   const [isWaitingForEarlyEndApproval, setIsWaitingForEarlyEndApproval] = useState(false);
+  const [forceRelayTransport, setForceRelayTransport] = useState(false);
+
+  useEffect(() => {
+    setForceRelayTransport(false);
+  }, [liveKitUrl, roomId, token]);
 
   useEffect(() => {
     hostMuteAllModeRef.current = isHostMuteAllMode;
@@ -301,9 +311,14 @@ export default function LiveVideoRoom({
     if (!hasJoined || !roomId || !token || !liveKitUrl) return;
 
     let isActive = true;
+    let hasConnected = false;
+    let connectionTimeoutId: number | null = null;
     const room = new Room({
       adaptiveStream: true,
       dynacast: true,
+      publishDefaults: {
+        videoSimulcast: true,
+      },
     });
 
     roomRef.current = room;
@@ -349,6 +364,14 @@ export default function LiveVideoRoom({
       syncRoomState(room);
     };
 
+    const retryWithRelayTransport = (reason: string) => {
+      if (!isActive || forceRelayTransport) return;
+
+      console.warn(`[LiveKit] ${reason}. Retrying with TURN relay transport.`);
+      toast.info("Network looks constrained. Reconnecting through TURN relay...");
+      setForceRelayTransport(true);
+    };
+
     const handleDataReceived = (
       payload: Uint8Array,
       participant?: RemoteParticipant,
@@ -361,7 +384,7 @@ export default function LiveVideoRoom({
           const message = String(parsed.message || "").trim();
 
           if (parsed.action === "EARLY_END_REQUEST") {
-            if (!isHost) {
+            if (effectiveRoomType === "mentorship" && !isHost) {
               setEarlyEndRequest(parsed);
             }
             return;
@@ -566,15 +589,37 @@ export default function LiveVideoRoom({
       .on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
       .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
       .on(RoomEvent.DataReceived, handleDataReceived)
+      .on(RoomEvent.Reconnecting, () => {
+        retryWithRelayTransport("Connection entered reconnecting state");
+      })
+      .on(RoomEvent.Reconnected, () => {
+        setIsConnected(true);
+      })
       .on(RoomEvent.Disconnected, () => {
         setIsConnected(false);
       });
 
     async function connectToRoom() {
       setIsJoining(true);
+      connectionTimeoutId = window.setTimeout(() => {
+        if (!hasConnected) {
+          retryWithRelayTransport("Direct UDP connection timed out");
+        }
+      }, DIRECT_CONNECTION_TIMEOUT_MS);
 
       try {
-        await room.connect(liveKitUrl, token, { autoSubscribe: true });
+        await room.connect(liveKitUrl, token, {
+          autoSubscribe: true,
+          rtcConfig: {
+            iceTransportPolicy: forceRelayTransport ? "relay" : "all",
+          },
+        });
+        hasConnected = true;
+
+        if (connectionTimeoutId) {
+          window.clearTimeout(connectionTimeoutId);
+          connectionTimeoutId = null;
+        }
 
         if (!isActive) {
           await room.disconnect();
@@ -604,6 +649,10 @@ export default function LiveVideoRoom({
         joinedAtRef.current = Date.now();
       } catch (error) {
         console.error("[LiveKit] Failed to connect:", error);
+        if (!forceRelayTransport) {
+          retryWithRelayTransport("Initial connection failed");
+          return;
+        }
         toast.error("Could not connect to the video room. Please check your LiveKit configuration.");
         setHasJoined(false);
       } finally {
@@ -621,6 +670,9 @@ export default function LiveVideoRoom({
         window.clearTimeout(sessionEndRedirectTimerRef.current);
         sessionEndRedirectTimerRef.current = null;
       }
+      if (connectionTimeoutId) {
+        window.clearTimeout(connectionTimeoutId);
+      }
       room.disconnect();
       roomRef.current = null;
       setRemoteParticipants([]);
@@ -628,7 +680,17 @@ export default function LiveVideoRoom({
       setScreenTrack(null);
       setIsConnected(false);
     };
-  }, [hasJoined, roomId, token, liveKitUrl, router, syncRoomState]);
+  }, [
+    effectiveRoomType,
+    forceRelayTransport,
+    hasJoined,
+    isHost,
+    roomId,
+    token,
+    liveKitUrl,
+    router,
+    syncRoomState,
+  ]);
 
   const publishRoomControlMessage = useCallback(
     async (message: RoomControlMessage, destinationIdentities?: string[]) => {
@@ -995,10 +1057,45 @@ export default function LiveVideoRoom({
   const leaveRoom = useCallback(async () => {
     if (isLeaving) return;
 
+    if (isPeerRoom) {
+      setIsLeaving(true);
+
+      try {
+        const response = await fetch("/api/buddies/requests/end", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ connectionId: roomId }),
+          keepalive: true,
+        });
+        const data = await response.json().catch(() => null);
+
+        if (response.ok && data?.reward) {
+          const xpAwarded = Number(data.reward.xpAwarded || 0);
+          const coinsAwarded = Number(data.reward.coinsAwarded || 0);
+
+          if (xpAwarded || coinsAwarded) {
+            addReward(xpAwarded, coinsAwarded);
+            window.dispatchEvent(new Event("gamification-stats-updated"));
+          }
+        }
+      } catch (error) {
+        console.error("Peer room reward close error:", error);
+      } finally {
+        previewStreamRef.current?.getTracks().forEach((track) => track.stop());
+        await updateRoomParticipantLifecycle();
+        await roomRef.current?.disconnect();
+        await resetWaitingRoomStatus();
+        router.push(DASHBOARD_REDIRECT_PATH);
+      }
+
+      return;
+    }
+
     const joinedAt = joinedAtRef.current || Date.now();
     const elapsedMs = Date.now() - joinedAt;
 
     if (
+      effectiveRoomType === "mentorship" &&
       isHost &&
       !forceEndApprovedRef.current &&
       elapsedMs < MIN_CONFIRMED_SESSION_MS &&
@@ -1054,7 +1151,7 @@ export default function LiveVideoRoom({
       await resetWaitingRoomStatus();
       router.push(DASHBOARD_REDIRECT_PATH);
     }
-  }, [addReward, isHost, isLeaving, publishRoomControlMessage, remoteParticipants.length, resetWaitingRoomStatus, roomId, router, updateRoomParticipantLifecycle, updateSessionDatabase]);
+  }, [addReward, effectiveRoomType, isHost, isLeaving, isPeerRoom, publishRoomControlMessage, remoteParticipants.length, resetWaitingRoomStatus, roomId, router, updateRoomParticipantLifecycle, updateSessionDatabase]);
 
   useEffect(() => {
     leaveRoomRef.current = leaveRoom;
@@ -1118,7 +1215,7 @@ export default function LiveVideoRoom({
     messages,
     sharedFiles,
     remoteParticipantCards,
-    leaveButtonLabel: isHost ? "End Session" : "Leave Room",
+    leaveButtonLabel: isPeerRoom ? "Leave" : isHost ? "End Session" : "Leave Room",
     isEndingSession,
     isModeratingAllParticipants,
     toggleMic,

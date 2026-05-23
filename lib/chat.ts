@@ -51,6 +51,10 @@ export function serializeChatMessage(message: any) {
         : message.senderId
     ),
     text: message.text || "",
+    type: message.type || "text",
+    metadata: message.metadata && typeof message.metadata === "object"
+      ? message.metadata
+      : {},
     isRead: Boolean(message.isRead),
     createdAt: message.createdAt || null,
     sender:
@@ -115,7 +119,11 @@ export async function serializeChatConversation(
           conversationId: conversation._id,
           senderId: { $ne: toObjectId(currentUserId) },
           isRead: false,
+          deletedFor: { $ne: toObjectId(currentUserId) },
         });
+  const blockedBy = Array.isArray(conversation.blockedBy)
+    ? conversation.blockedBy.map((userId: unknown) => String(userId))
+    : [];
 
   return {
     id: String(conversation._id),
@@ -124,5 +132,7 @@ export async function serializeChatConversation(
     lastMessageAt:
       conversation.lastMessageAt || conversation.updatedAt || conversation.createdAt,
     unreadCount,
+    isBlockedByMe: blockedBy.includes(currentUserId),
+    isBlockedByOther: blockedBy.includes(String(otherParticipant?._id || otherParticipant || "")),
   };
 }
