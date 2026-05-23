@@ -481,7 +481,10 @@ export default function NotificationsManagerPage() {
                       {/* Actions */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-1 justify-end">
-                          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                          <button
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                            aria-label={`Delete notification ${notif.title}`}
+                          >
                             <Trash2 size={14} />
                           </button>
                         </div>

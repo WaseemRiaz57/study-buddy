@@ -188,7 +188,7 @@ export default function AdminReviewsPage() {
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={review.user.image}
-                              alt=""
+                              alt={`${review.user.name} profile picture`}
                               className="h-full w-full object-cover"
                             />
                           ) : (

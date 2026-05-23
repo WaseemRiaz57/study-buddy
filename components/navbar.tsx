@@ -134,15 +134,25 @@ export function Navbar() {
               <Link href="/dashboard" className="text-sm font-semibold text-muted-foreground hover:text-primary transition-colors">
                 Dashboard
               </Link>
-              <Link href="/dashboard/settings" className="p-2 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="Settings">
+              <Link
+                href="/dashboard/settings"
+                className="p-2 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                title="Settings"
+                aria-label="Open settings"
+              >
                 <Settings className="w-5 h-5" />
               </Link>
-              <Link href="/dashboard/settings" className="size-8 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center hover:scale-105 transition-transform" title="My Profile">
+              <Link
+                href="/dashboard/settings"
+                className="size-8 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center hover:scale-105 transition-transform"
+                title="My Profile"
+                aria-label="Open profile settings"
+              >
                  {/* Agar Google Image hai toh yahan image lag sakti hai, warna default user icon */}
                  {profileImage ? (
                    <img
                      src={profileImage}
-                     alt="Profile"
+                     alt={`${session?.user?.name || "User"} profile picture`}
                      className="size-full rounded-full object-cover"
                      referrerPolicy="no-referrer"
                      onError={() => setAvatarFailed(true)}

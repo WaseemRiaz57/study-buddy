@@ -160,6 +160,7 @@ export function DashboardTopbar({
       className="group flex min-h-[44px] items-center gap-2 rounded-full p-1 transition-colors hover:bg-[#7C3AED]/10"
       aria-haspopup="menu"
       aria-expanded={userMenuOpen}
+      aria-label="Open user menu"
     >
       <div className="relative">
         <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold text-white shadow-lg ring-2 ring-background ring-offset-2 ring-offset-[#7C3AED]/20">
@@ -233,6 +234,7 @@ export function DashboardTopbar({
             onClick={() => setStoreOpen(true)}
             className="hidden min-h-[44px] items-center gap-1.5 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:flex"
             title="Open streak store"
+            aria-label="Open streak store"
           >
             <Flame className="text-orange-500" size={16} />
             <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
@@ -244,6 +246,7 @@ export function DashboardTopbar({
             onClick={() => setStoreOpen(true)}
             className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:px-3"
             title="Open coin store"
+            aria-label="Open coin store"
           >
             <Coins className="text-yellow-600 dark:text-yellow-400" size={16} />
             <span className="text-sm font-bold text-yellow-700 dark:text-yellow-400">

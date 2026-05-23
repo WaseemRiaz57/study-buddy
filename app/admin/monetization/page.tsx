@@ -663,7 +663,7 @@ export default function MonetizationPage() {
                                                             // eslint-disable-next-line @next/next/no-img-element
                                                             <img
                                                                 src={tx.image}
-                                                                alt=""
+                                                                alt={`${tx.user} profile picture`}
                                                                 className="h-full w-full object-cover"
                                                             />
                                                         ) : (

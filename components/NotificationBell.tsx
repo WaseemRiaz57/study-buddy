@@ -197,6 +197,9 @@ export function NotificationBell() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative min-h-[44px] min-w-[44px] rounded-full p-3 text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10"
+        aria-label={unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : "Open notifications"}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
       >
         <Bell size={20} />
         {unreadCount > 0 && (

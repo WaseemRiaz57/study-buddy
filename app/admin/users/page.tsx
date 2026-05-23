@@ -423,14 +423,15 @@ export default function UserManagementPage() {
                   <td className="px-4 py-3 text-xs text-slate-700 dark:text-slate-300">{formatDate(user.lastActive, true)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center gap-2 justify-end">
-                      <button className="p-2 rounded hover:bg-slate-100 dark:hover:bg-white/[0.04]" onClick={() => openModal(user, "edit")}><Edit className="w-4 h-4 text-[#7C3AED]" /></button>
-                      <button className="p-2 rounded hover:bg-slate-100 dark:hover:bg-white/[0.04]" onClick={() => openModal(user, "reset") }><Key className="w-4 h-4 text-green-500" /></button>
+                      <button className="p-2 rounded hover:bg-slate-100 dark:hover:bg-white/[0.04]" onClick={() => openModal(user, "edit")} aria-label={`Edit ${user.name}`}><Edit className="w-4 h-4 text-[#7C3AED]" /></button>
+                      <button className="p-2 rounded hover:bg-slate-100 dark:hover:bg-white/[0.04]" onClick={() => openModal(user, "reset") } aria-label={`Reset password for ${user.name}`}><Key className="w-4 h-4 text-green-500" /></button>
                       {user.status === "suspended" ? (
                         <button
                           className="p-2 rounded hover:bg-slate-100 dark:hover:bg-white/[0.04] disabled:opacity-50"
                           disabled={Boolean(actionKey)}
                           onClick={() => void handleStatusChange(user, "active")}
                           title="Activate user"
+                          aria-label={`Activate ${user.name}`}
                         >
                           {actionKey === `${user.id}-active` ? (
                             <Loader2 className="w-4 h-4 animate-spin text-green-500" />
@@ -444,6 +445,7 @@ export default function UserManagementPage() {
                           disabled={Boolean(actionKey)}
                           onClick={() => void handleStatusChange(user, "suspended")}
                           title="Suspend user"
+                          aria-label={`Suspend ${user.name}`}
                         >
                           {actionKey === `${user.id}-suspended` ? (
                             <Loader2 className="w-4 h-4 animate-spin text-red-500" />
@@ -465,7 +467,7 @@ export default function UserManagementPage() {
                           <Trash2 className="w-4 h-4 text-red-500" />
                         )}
                       </button>
-                      <button className="p-2 rounded hover:bg-slate-100 dark:hover:bg-white/[0.04]" onClick={() => openModal(user, "more") }><MoreVertical className="w-4 h-4 text-slate-400" /></button>
+                      <button className="p-2 rounded hover:bg-slate-100 dark:hover:bg-white/[0.04]" onClick={() => openModal(user, "more") } aria-label={`More actions for ${user.name}`}><MoreVertical className="w-4 h-4 text-slate-400" /></button>
                     </div>
                   </td>
                 </tr>

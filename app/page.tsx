@@ -8,6 +8,7 @@ import {
   AnimatePresence,
   Variants,
 } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -566,7 +567,11 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
                 <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-xs font-bold text-white ring-2 ring-white/20">
                   {review.user.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={review.user.image} alt="" className="h-full w-full object-cover" />
+                    <img
+                      src={review.user.image}
+                      alt={`${review.user.name} profile photo`}
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     review.user.initials
                   )}
@@ -739,7 +744,15 @@ export default function Home() {
       </div>
 
       {/* ══════════════ HERO ══════════════ */}
-      <section className="relative flex min-h-[80vh] w-full flex-col justify-center bg-[url('/hero.png')] bg-cover bg-center bg-no-repeat px-4 py-24 text-center sm:px-6 lg:px-8">
+      <section className="relative flex min-h-[80vh] w-full flex-col justify-center overflow-hidden px-4 py-24 text-center sm:px-6 lg:px-8">
+        <Image
+          src="/hero.png"
+          alt="StudyBuddy Hero Image"
+          fill
+          priority={true}
+          className="object-cover"
+          sizes="100vw"
+        />
         <div className="absolute inset-0 bg-white/55 backdrop-blur-[1px] dark:bg-slate-950/60" />
         <motion.div initial="hidden" animate="show" variants={stagger} className="relative z-10 mx-auto max-w-5xl">
 
@@ -1088,6 +1101,8 @@ export default function Home() {
               <button
                 onClick={() => setIsYearly(v => !v)}
                 className="relative w-14 h-7 rounded-lg bg-muted border border-border flex items-center p-1 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                aria-label={isYearly ? "Switch to monthly billing" : "Switch to annual billing"}
+                aria-pressed={isYearly}
               >
                 <motion.div
                   className="w-5 h-5 rounded-md bg-purple-500 shadow-lg shadow-purple-500/30"

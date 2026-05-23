@@ -134,7 +134,7 @@ function NavLink({
   onNavigate?: () => void;
 }) {
   return (
-    <Link href={item.href} onClick={onNavigate}>
+    <Link href={item.href} onClick={onNavigate} aria-label={item.label}>
       <div
         className={`
           group relative flex items-center gap-3 rounded-xl
@@ -439,6 +439,7 @@ export default function AdminLayout({
           <button
             onClick={() => setMobileOpen(false)}
             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground dark:hover:text-white transition-colors"
+            aria-label="Close menu"
           >
             <X size={20} />
           </button>
@@ -535,7 +536,7 @@ export default function AdminLayout({
         {/* Desktop footer */}
         <div className="px-2.5 pb-3 border-t border-slate-200 dark:border-white/10 pt-3 space-y-0.5">
           {/* Dashboard shortcut */}
-          <Link href="/dashboard">
+          <Link href="/dashboard" aria-label="Dashboard">
             <div
               className={`
                 group relative flex items-center gap-3 rounded-xl
@@ -639,6 +640,9 @@ export default function AdminLayout({
               <button
                 onClick={() => setProfileOpen((p) => !p)}
                 className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                aria-label="Open admin profile menu"
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
               >
                 <div className="w-8 h-8 rounded-full bg-[#7C3AED]   flex items-center justify-center text-white text-xs font-bold shrink-0">
                   AD

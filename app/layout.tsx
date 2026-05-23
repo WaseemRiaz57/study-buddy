@@ -65,11 +65,27 @@ export const metadata: Metadata = {
     locale: "en_US",
     type: "website",
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   twitter: {
     card: "summary_large_image",
     title,
     description,
-    images: [heroImage],
+    images: [
+      {
+        url: heroImage,
+        alt: "StudyBuddy social learning platform",
+      },
+    ],
     creator: "@studybuddy",
     site: "@studybuddy",
   },
@@ -94,11 +110,11 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#3b0764" />
       </head>
-      <body className="min-h-screen overflow-x-hidden bg-background text-foreground antialiased">
+      <body className="flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground antialiased">
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
             <ConditionalNavbar />
-            {children}
+            <main className="flex-1">{children}</main>
             <Footer />
             {/* 👇 2. Toaster component add kiya (theme aur colors ke sath) */}
             <Toaster richColors position="top-right" theme="system" />

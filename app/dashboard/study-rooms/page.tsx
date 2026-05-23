@@ -279,7 +279,7 @@ export default function StudyRoomsPage() {
                         {room.hostImage && (
                           <img
                             src={room.hostImage}
-                            alt=""
+                            alt={`${room.hostName} profile picture`}
                             className="h-5 w-5 rounded-full object-cover"
                           />
                         )}

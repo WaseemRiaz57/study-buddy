@@ -173,6 +173,7 @@ export default function SettingsLayout({
             <Link 
               href="/dashboard/settings" 
               className="hidden min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 bg-white p-2.5 shadow-sm transition-all hover:-translate-x-1 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 md:flex"
+              aria-label="Back to settings menu"
             >
               <ArrowLeft className="text-slate-700 dark:text-slate-300" size={20} />
             </Link>

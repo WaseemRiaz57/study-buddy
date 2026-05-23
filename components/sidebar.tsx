@@ -304,6 +304,7 @@ export function Sidebar({
                       onNavigate?.();
                     }}
                     aria-disabled={item.locked}
+                    aria-label={`${item.label}${item.locked ? " locked" : ""}`}
                   >
                     <div
                       className={`group relative flex items-center gap-3 overflow-hidden rounded-xl transition-all duration-200 ${
@@ -390,6 +391,7 @@ export function Sidebar({
             className={`group relative flex items-center gap-3 overflow-hidden rounded-xl bg-[#7C3AED] text-white shadow-lg shadow-purple-500/20 transition-colors hover:bg-purple-700 ${
               !mobile && isCollapsed ? "min-h-[44px] justify-center px-0 py-3" : "min-h-[44px] px-4 py-3"
             }`}
+            aria-label={upgradeItem.label}
           >
             <upgradeItem.icon size={20} className="shrink-0" />
             {(mobile || !isCollapsed) && (

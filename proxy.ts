@@ -56,5 +56,10 @@ export const proxy = withAuth(
 );
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/api/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/admin/:path*",
+    "/api/:path*",
+    "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|icon-.*\\.png|sounds/.*\\.mp3|.*\\..*).*)",
+  ],
 };
