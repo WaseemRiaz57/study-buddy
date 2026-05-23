@@ -205,7 +205,7 @@ export function DashboardTopbar({
             <Menu size={20} />
           </button>
 
-          <div className="hidden w-48 flex-col md:flex">
+          <div className="tour-gamification hidden w-48 flex-col md:flex">
               <div className="mb-1 flex justify-between text-[10px] font-bold uppercase tracking-wider text-[#7C3AED]">
                 <span>
                   {role === "TEACHER" || role === "MENTOR"
@@ -244,7 +244,19 @@ export function DashboardTopbar({
 
           <button
             onClick={() => setStoreOpen(true)}
-            className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:px-3"
+            className="tour-gamification flex min-h-[44px] items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:px-3 md:hidden"
+            title="Open coin store"
+            aria-label="Open coin store"
+          >
+            <Coins className="text-yellow-600 dark:text-yellow-400" size={16} />
+            <span className="text-sm font-bold text-yellow-700 dark:text-yellow-400">
+              {coins.toLocaleString()}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setStoreOpen(true)}
+            className="flex hidden min-h-[44px] items-center gap-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2.5 py-1.5 transition-colors hover:border-[#7C3AED]/40 sm:px-3 md:flex"
             title="Open coin store"
             aria-label="Open coin store"
           >

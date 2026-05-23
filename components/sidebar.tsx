@@ -137,8 +137,10 @@ function groupNavItems(items: NavItem[], isMentorRole: boolean): NavGroup[] {
 
 function getTourClassName(href: string) {
   if (href === "/dashboard/content-generator") return "tour-ai-studio";
-  if (href === "/dashboard/focus-rooms") return "tour-focus-room";
-  if (href === "/dashboard/leaderboard") return "tour-gamification";
+  if (href === "/dashboard/focus-rooms") return "tour-focus-rooms";
+  if (href === "/dashboard/study-rooms") return "tour-study-rooms";
+  if (href === "/dashboard/resources") return "tour-resource-hub";
+  if (href === "/dashboard/mentorship") return "tour-mentorship";
 
   return "";
 }

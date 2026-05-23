@@ -11,32 +11,53 @@ type TourStepDefinition = Omit<Step, "target"> & {
 
 const tourStepDefinitions: TourStepDefinition[] = [
   {
-    target: ".tour-dashboard-overview",
-    title: "Your study command center",
+    target: "body",
+    title: "Welcome to StudyBuddy!",
     content:
-      "Start here to see your progress, recent activity, and the next best action for your study day.",
-    placement: "bottom",
+      "This quick tour highlights the core areas of your learning workspace: AI tools, focused study sessions, live collaboration, rewards, resources, and mentorship.",
+    placement: "center",
   },
   {
     target: ".tour-ai-studio",
-    title: "Create faster with AI Studio",
+    title: "AI Studio",
     content:
-      "Generate notes, summaries, quizzes, and reusable study material without leaving your workspace.",
-    placement: "right",
+      "Generate smart notes, summaries, quizzes, explanations, and reusable study material from a single prompt so you can move from confusion to clarity faster.",
+    placement: "auto",
   },
   {
-    target: ".tour-focus-room",
-    title: "Settle into Focus Rooms",
+    target: ".tour-focus-rooms",
+    title: "Focus Rooms",
     content:
-      "Use focus sessions and lightweight tasks to protect deep work time when you need it most.",
-    placement: "right",
+      "Track your study time with Pomodoro-style sessions, keep your to-do list nearby, and build reliable focus streaks without leaving the dashboard.",
+    placement: "auto",
+  },
+  {
+    target: ".tour-study-rooms",
+    title: "Live Study Rooms",
+    content:
+      "Collaborate with peers in real time through shared rooms, live chat, resources, and session tools built for group learning.",
+    placement: "auto",
+  },
+  {
+    target: ".tour-resource-hub",
+    title: "Resource Hub",
+    content:
+      "Discover, upload, unlock, rate, and review study resources so useful material keeps flowing through the community.",
+    placement: "auto",
   },
   {
     target: ".tour-gamification",
-    title: "Turn momentum into rewards",
+    title: "Rewards",
     content:
-      "Track XP, levels, streaks, challenges, and badges as you build consistent study habits.",
-    placement: "bottom",
+      "Earn XP and coins for every productive session, then use your progress to unlock streak tools, badges, and better study momentum.",
+    placement: "auto",
+  },
+  {
+    target: ".tour-mentorship",
+    title: "Mentorship",
+    content:
+      "Connect with expert mentors, request sessions, prepare with shared materials, and get targeted help when self-study is not enough.",
+    placement: "auto",
   },
 ];
 
@@ -103,6 +124,10 @@ export function ProductTour() {
   return (
     <Joyride
       continuous
+      floatingOptions={{
+        flipOptions: { padding: 16 },
+        shiftOptions: { padding: 16 },
+      }}
       locale={{
         back: "Back",
         close: "Close",
@@ -113,51 +138,55 @@ export function ProductTour() {
       }}
       onEvent={handleTourEvent}
       options={{
-        arrowColor: "var(--card)",
-        backgroundColor: "var(--card)",
+        arrowColor: "#1e293b",
+        backgroundColor: "#1e293b",
         closeButtonAction: "skip",
+        buttons: ["back", "skip", "close", "primary"],
         overlayClickAction: false,
-        overlayColor: "rgba(15, 10, 22, 0.68)",
-        primaryColor: "#7C3AED",
-        scrollOffset: 88,
+        overlayColor: "rgba(0, 0, 0, 0.7)",
+        primaryColor: "#8b5cf6",
+        scrollOffset: 100,
         showProgress: true,
         skipBeacon: true,
-        spotlightPadding: 10,
+        spotlightPadding: 8,
         spotlightRadius: 16,
-        textColor: "var(--foreground)",
+        textColor: "#f8fafc",
         width: 380,
-        zIndex: 120,
+        zIndex: 1000,
       }}
       run={run}
       scrollToFirstStep
       steps={steps}
       styles={{
         buttonBack: {
-          color: "#7C3AED",
+          color: "#cbd5e1",
           fontSize: 13,
           fontWeight: 700,
-          marginRight: 8,
+          marginRight: 10,
         },
         buttonClose: {
-          color: "var(--muted-foreground)",
-          height: 34,
-          padding: 8,
-          width: 34,
+          color: "#cbd5e1",
+          height: 12,
+          marginTop: 4,
+          padding: 0,
+          width: 12,
         },
         buttonPrimary: {
-          backgroundColor: "#7C3AED",
-          borderRadius: 10,
-          boxShadow: "0 12px 28px rgba(124, 58, 237, 0.28)",
+          backgroundColor: "#8b5cf6",
+          borderRadius: 8,
+          boxShadow: "0 12px 28px rgba(139, 92, 246, 0.28)",
           color: "#ffffff",
           fontSize: 13,
           fontWeight: 800,
-          minHeight: 40,
-          padding: "10px 18px",
+          padding: "8px 16px",
         },
         buttonSkip: {
-          color: "var(--muted-foreground)",
+          color: "#cbd5e1",
           fontSize: 13,
           fontWeight: 700,
+        },
+        floater: {
+          transition: "none",
         },
         overlay: {
           backdropFilter: "blur(2px)",
@@ -167,11 +196,11 @@ export function ProductTour() {
           strokeWidth: 2,
         },
         tooltip: {
-          backgroundColor: "var(--card)",
-          border: "1px solid rgba(140, 48, 232, 0.24)",
+          backgroundColor: "#1e293b",
+          border: "1px solid rgba(139, 92, 246, 0.35)",
           borderRadius: 18,
-          boxShadow: "0 24px 70px rgba(15, 10, 22, 0.34)",
-          color: "var(--foreground)",
+          boxShadow: "0 24px 70px rgba(0, 0, 0, 0.45)",
+          color: "#f8fafc",
           padding: 18,
         },
         tooltipContainer: {
@@ -179,7 +208,7 @@ export function ProductTour() {
           textAlign: "left",
         },
         tooltipContent: {
-          color: "var(--muted-foreground)",
+          color: "#cbd5e1",
           fontSize: 14,
           padding: "10px 0 4px",
         },
@@ -188,7 +217,7 @@ export function ProductTour() {
           marginTop: 14,
         },
         tooltipTitle: {
-          color: "var(--foreground)",
+          color: "#f8fafc",
           fontSize: 18,
           fontWeight: 900,
           letterSpacing: 0,
