@@ -104,6 +104,10 @@
 
 /* Base Styles */
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   * {
     border-color: var(--border);
   }
@@ -186,12 +190,6 @@
 
 /* Utilities */
 @layer utilities {
-  .landing-page [style*="opacity:0"],
-  .auth-page [style*="opacity:0"] {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-
   @media (min-width: 768px) {
     nav [style*="opacity:0"] {
       opacity: 1 !important;

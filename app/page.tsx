@@ -139,16 +139,34 @@ const fallbackPricingPlans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
 // ============================================================================
 // ANIMATION VARIANTS
 // ============================================================================
-const ease = [0.22, 1, 0.36, 1] as const;
 
+// Liquid cubic-bezier — fast start, gentle settle
+const ease = [0.16, 1, 0.3, 1] as const;
+
+// Standard liquid reveal: fades up with fluid easing
 const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 40 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.7, ease } },
+  hidden: { opacity: 0, y: 30 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.8, ease } },
 };
+
+// Stagger parent — drives staggerChildren for section grids
 const stagger: Variants = {
   hidden: {},
-  show:   { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+  show:   { transition: { staggerChildren: 0.15, delayChildren: 0.05 } },
 };
+
+// Children variant used inside staggered grids (Features, Hero text, CTA)
+const fluidChild: Variants = {
+  hidden:  { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease } },
+};
+
+// Stagger parent keyed to "visible" so it can drive fluidChild
+const fluidParent: Variants = {
+  hidden:  {},
+  visible: { transition: { staggerChildren: 0.15 } },
+};
+
 // ============================================================================
 // FLOATING PARTICLES
 // ============================================================================
@@ -192,8 +210,8 @@ function SectionBadge({ color, icon: Icon, label }: { color: string; icon: Lucid
     <motion.div
       initial={{ opacity: 0, scale: 0.75, y: 12 }}
       whileInView={{ opacity: 1, scale: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5, ease, type: "spring", stiffness: 200 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ type: "spring", stiffness: 50, damping: 15 }}
       className={`mb-4 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest ${color}`}
     >
       <Icon className="h-3 w-3" /> {label}
@@ -211,7 +229,7 @@ function SectionHeading({ children, className = "" }: { children: string; classN
       className={`text-4xl md:text-5xl font-bold text-foreground ${className}`}
       initial="hidden"
       whileInView="show"
-      viewport={{ once: true, margin: "-60px" }}
+      viewport={{ once: true, margin: "-100px" }}
       variants={stagger}
     >
       {words.map((word, i) => (
@@ -248,7 +266,7 @@ function AnimatedDivider() {
     <motion.div
       initial={{ scaleX: 0, opacity: 0 }}
       whileInView={{ scaleX: 1, opacity: 1 }}
-      viewport={{ once: true }}
+      viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 1.1, ease }}
       className="mx-auto h-px w-full max-w-2xl bg-[#7C3AED]   "
     />
@@ -289,8 +307,8 @@ const StatCard = memo(function StatCard({
       ref={ref}
       initial={{ opacity: 0, y: 30, scale: 0.9 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6, ease, delay: index * 0.1 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: index * 0.15 }}
       whileHover={{ y: -6, scale: 1.04 }}
       className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card/50 p-6 md:p-8
                  hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/[0.05] transition-all duration-300"
@@ -317,15 +335,16 @@ const FeatureCard = memo(function FeatureCard({ feature, index }: { feature: Fea
   const Icon = feature.icon;
   const g = GLOW[feature.glow] ?? GLOW.purple;
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 50 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, ease, delay: (index % 3) * 0.1 + Math.floor(index / 3) * 0.12 }}
+      variants={fluidChild}
+      initial="hidden"
+      animate={inView ? "visible" : "hidden"}
       whileHover={{ y: -8, scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 50, damping: 15 }}
       className="group relative overflow-hidden rounded-2xl border border-border bg-card/50 p-7
                  hover:border-foreground/20 hover:bg-card hover:shadow-xl hover:shadow-purple-500/[0.05]
                  transition-colors duration-300 cursor-pointer"
@@ -337,7 +356,7 @@ const FeatureCard = memo(function FeatureCard({ feature, index }: { feature: Fea
         <motion.div
           initial={{ opacity: 0, scale: 0.7 }}
           animate={inView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ delay: (index % 3) * 0.1 + 0.35, duration: 0.4, type: "spring" }}
+          transition={{ delay: (index % 3) * 0.1 + 0.35, duration: 0.4, type: "spring", stiffness: 50, damping: 15 }}
           className={`absolute right-4 top-4 rounded-full border px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider ${feature.badgeColor}`}
         >
           {feature.badge}
@@ -389,10 +408,10 @@ const PricingCard = memo(function PricingCard({
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 50 }}
+      initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.65, ease, delay: index * 0.13 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.8, ease }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       whileHover={{ y: -10, scale: 1.025 }}
@@ -452,10 +471,10 @@ const PricingCard = memo(function PricingCard({
         {plan.features.map((feat, i) => (
           <motion.li
             key={feat}
-            initial={isMobile ? { opacity: 0, y: 14 } : { opacity: 0, x: -10 }}
-            whileInView={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.06 + index * 0.08, duration: 0.4, ease }}
+            initial={{ opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ delay: i * 0.06, duration: 0.8, ease }}
             className="flex items-start gap-3"
           >
             <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors duration-300 ${isActive ? "bg-emerald-500/30" : "bg-emerald-500/20"}`}>
@@ -747,40 +766,54 @@ export default function Home() {
   return (
     <div className="landing-page relative min-h-screen w-full overflow-x-hidden bg-background text-foreground font-sans">
 
-      {/* ── BACKGROUND ORBS ── */}
+      {/* ── BACKGROUND ORBS — liquid floating effect ── */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-background" />
         <motion.div
           className="absolute left-1/4 top-0 h-[650px] w-[650px] -translate-x-1/2 rounded-full bg-purple-600/[0.08] blur-[140px]"
           style={{ x: springX, y: springY }}
-          animate={{ scale: [1, 1.06, 1] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ y: [0, -15, 0], scale: [1, 1.06, 1] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
           className="absolute right-1/4 top-1/3 h-[500px] w-[500px] translate-x-1/2 rounded-full bg-fuchsia-600/[0.07] blur-[140px]"
-          animate={{ scale: [1, 1.1, 1], opacity: [0.07, 0.11, 0.07] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          animate={{ y: [0, -15, 0], scale: [1, 1.1, 1], opacity: [0.07, 0.11, 0.07] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
         />
         <motion.div
           className="absolute left-1/2 bottom-0 h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-violet-600/[0.06] blur-[120px]"
-          animate={{ scale: [1, 1.12, 1] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+          animate={{ y: [0, -15, 0], scale: [1, 1.12, 1] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 2.5 }}
         />
         <FloatingParticles />
       </div>
 
       {/* ══════════════ HERO ══════════════ */}
       <section className="relative flex min-h-[80vh] w-full flex-col justify-center overflow-x-hidden px-4 py-24 text-center sm:px-6 lg:px-8">
-        <Image
-          src="/hero.png"
-          alt="StudyBuddy Hero Image"
-          fill
-          priority={true}
-          className="object-cover"
-          sizes="100vw"
-        />
+        {/* Hero background image — liquid floating */}
+        <motion.div
+          className="absolute inset-0"
+          animate={{ y: [0, -18, 0] }}
+          transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+        >
+          <Image
+            src="/hero.png"
+            alt="StudyBuddy Hero Image"
+            fill
+            priority={true}
+            className="object-cover"
+            sizes="100vw"
+          />
+        </motion.div>
         <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] dark:bg-slate-950/60" />
-        <motion.div initial="hidden" animate="show" variants={stagger} className="relative z-10 mx-auto max-w-5xl">
+
+        {/* Hero content — staggered fluid reveal */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fluidParent}
+          className="relative z-10 mx-auto max-w-5xl"
+        >
 
           {/* Headline — 3D flip-in per word */}
           <motion.h1
@@ -795,7 +828,7 @@ export default function Home() {
                   key={i}
                   variants={{
                     hidden: { opacity: 0, y: 60, rotateX: -25 },
-                    show:   { opacity: 1, y: 0,  rotateX: 0, transition: { duration: 0.75, ease, delay: i * 0.1 } },
+                    show:   { opacity: 1, y: 0,  rotateX: 0, transition: { duration: 0.8, ease } },
                   }}
                   className="inline-block mr-[0.22em] last:mr-0"
                   style={{ display: "inline-block" }}
@@ -816,13 +849,13 @@ export default function Home() {
           </motion.h1>
 
           <motion.p
-            variants={fadeUp}
+            variants={fluidChild}
             className="mx-auto mb-12 max-w-2xl text-lg leading-relaxed text-slate-700 drop-shadow-md dark:text-slate-300 md:text-xl"
           >
             Where learning meets innovation. Build knowledge, connect with mentors, and achieve your goals in a community that never stops growing.
           </motion.p>
 
-          <motion.div variants={fadeUp} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <motion.div variants={fluidChild} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
               <Link href="/register"
                 className="group inline-flex items-center gap-2 rounded-lg bg-purple-600 px-10 py-4 text-base font-bold text-white shadow-xl shadow-purple-600/25 transition-all hover:bg-purple-700 hover:shadow-2xl hover:shadow-purple-600/35"
@@ -842,7 +875,7 @@ export default function Home() {
             </motion.div>
           </motion.div>
 
-          <motion.p variants={fadeUp} className="mt-8 text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <motion.p variants={fluidChild} className="mt-8 text-sm font-semibold text-slate-700 dark:text-slate-300">
             No credit card required&nbsp;&bull;&nbsp;Free forever plan
           </motion.p>
         </motion.div>
@@ -886,14 +919,20 @@ export default function Home() {
             <SectionBadge color="border-red-500/30 bg-red-500/10 text-red-400" icon={Flame} label="The Old Way" />
             <SectionHeading className="mb-4">Sound Familiar?</SectionHeading>
             <motion.p
-              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.25, ease }}
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8, delay: 0.25, ease }}
               className="text-muted-foreground max-w-xl mx-auto"
             >
               Traditional studying is broken. These are the three biggest traps students fall into.
             </motion.p>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
+          <motion.div
+            className="grid gap-6 md:grid-cols-3"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fluidParent}
+          >
             {[
               { icon: Sparkles, title: "Scattered Materials", desc: "Notes across 5 apps, PDFs in random folders, and that one lecture recording you can never find when you need it." },
               { icon: Users,    title: "Studying Alone",      desc: "No study group, no accountability partner, and no one to explain concepts you don't understand at 2 AM." },
@@ -901,10 +940,7 @@ export default function Home() {
             ].map((p, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 45, rotateY: -8 }}
-                whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.65, ease, delay: i * 0.13 }}
+                variants={fluidChild}
                 whileHover={{ y: -8, scale: 1.02 }}
                 className="rounded-2xl border border-red-500/10 bg-red-500/[0.03] p-7 hover:border-red-500/25 hover:shadow-lg hover:shadow-red-500/[0.04] transition-all duration-300 h-full"
               >
@@ -918,7 +954,7 @@ export default function Home() {
                 <p className="text-sm leading-relaxed text-muted-foreground">{p.desc}</p>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -931,16 +967,23 @@ export default function Home() {
             <SectionBadge color="border-purple-500/30 bg-purple-500/10 text-purple-400" icon={Zap} label="Core Features" />
             <SectionHeading className="mb-4">Everything You Need to Succeed</SectionHeading>
             <motion.p
-              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.25, ease }}
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8, delay: 0.25, ease }}
               className="text-muted-foreground max-w-xl mx-auto"
             >
               Nine powerful modules working together so you never study the hard way again.
             </motion.p>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Staggered fluid grid — parent drives children stagger */}
+          <motion.div
+            className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fluidParent}
+          >
             {features.map((f, i) => <FeatureCard key={i} feature={f} index={i} />)}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -958,8 +1001,8 @@ export default function Home() {
             <SectionBadge color="border-violet-500/30 bg-violet-500/10 text-violet-400" icon={Target} label="How It Works" />
             <SectionHeading className="mb-4">A Ritual Built For Deep Work</SectionHeading>
             <motion.p
-              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2, ease }}
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8, delay: 0.2, ease }}
               className="text-muted-foreground max-w-xl mx-auto"
             >
               Three simple steps. One powerful system. Focus on what matters.
@@ -972,10 +1015,10 @@ export default function Home() {
               {workflow.map((step, i) => (
                 <motion.div
                   key={i}
-                  initial={isMobile ? { opacity: 0, y: 20 } : { opacity: 0, x: -50 }}
-                  whileInView={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, x: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ duration: 0.65, ease, delay: i * 0.15 }}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: i * 0.15 }}
                   className="flex gap-5 group"
                 >
                   <div className="flex flex-col items-center">
@@ -1008,10 +1051,10 @@ export default function Home() {
 
             {/* Timer mockup */}
             <motion.div
-              initial={isMobile ? { opacity: 0, y: 20, scale: 0.96 } : { opacity: 0, x: 60, scale: 0.93 }}
-              whileInView={isMobile ? { opacity: 1, y: 0, scale: 1 } : { opacity: 1, x: 0, scale: 1 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.8, ease, delay: 0.2 }}
+              initial={{ opacity: 0, y: 30, scale: 0.96 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ type: "spring", stiffness: 50, damping: 15, delay: 0.2 }}
               whileHover={{ y: -6 }}
               className="rounded-[1.75rem] border border-border bg-card/60 p-8 shadow-2xl shadow-purple-500/[0.06] backdrop-blur-sm"
             >
@@ -1119,8 +1162,8 @@ export default function Home() {
           <div className="mb-16 text-center">
             <SectionHeading className="mb-6">Invest In Your Grades</SectionHeading>
             <motion.div
-              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.25, ease }}
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8, delay: 0.25, ease }}
               className="flex items-center justify-center gap-4 text-sm font-bold"
             >
               <span className={!isYearly ? "text-foreground" : "text-muted-foreground"}>Monthly</span>
@@ -1148,11 +1191,17 @@ export default function Home() {
               </span>
             </motion.div>
           </div>
-          <div className="grid gap-6 lg:grid-cols-3 items-stretch">
+          <motion.div
+            className="grid gap-6 lg:grid-cols-3 items-stretch"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fluidParent}
+          >
             {pricingPlans.map((plan, i) => (
               <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} isMobile={isMobile} />
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -1169,13 +1218,19 @@ export default function Home() {
           <div className="h-[400px] w-[700px] rounded-full bg-purple-500/[0.06] blur-[120px]" />
         </motion.div>
 
-        <motion.div initial="hidden" whileInView="show" viewport={{ once: true }} variants={stagger} className="mx-auto max-w-3xl relative">
-          <motion.div variants={fadeUp} className="mb-4">
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={fluidParent}
+          className="mx-auto max-w-3xl relative"
+        >
+          <motion.div variants={fluidChild} className="mb-4">
             <SectionBadge color="border-purple-500/30 bg-purple-500/10 text-purple-400" icon={Sparkles} label="Get Started Free" />
           </motion.div>
 
           {/* CTA heading word by word */}
-          <motion.h2 className="mb-6 text-5xl md:text-6xl font-black leading-[1.1]" initial="hidden" whileInView="show" viewport={{ once: true }} variants={stagger}>
+          <motion.h2 className="mb-6 text-5xl md:text-6xl font-black leading-[1.1]" initial="hidden" whileInView="show" viewport={{ once: true, margin: "-100px" }} variants={stagger}>
             {["Stop", "Procrastinating."].map((w, i) => (
               <motion.span key={i} variants={fadeUp} className="inline-block mr-3">{w}</motion.span>
             ))}
@@ -1187,11 +1242,11 @@ export default function Home() {
             ))}
           </motion.h2>
 
-          <motion.p variants={fadeUp} className="mb-10 text-lg text-muted-foreground">
+          <motion.p variants={fluidChild} className="mb-10 text-lg text-muted-foreground">
             Join the smartest study community today. Setup takes less than 60 seconds.
           </motion.p>
 
-          <motion.div variants={fadeUp}>
+          <motion.div variants={fluidChild}>
             <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.97 }} className="inline-block">
               <Link href="/register"
                 className="inline-flex items-center gap-3 rounded-lg bg-foreground px-10 py-4 text-lg font-bold text-background shadow-[0_0_50px_rgba(0,0,0,0.12)] dark:shadow-[0_0_50px_rgba(255,255,255,0.12)] hover:shadow-2xl transition-shadow"
@@ -1211,7 +1266,4 @@ export default function Home() {
     </div>
   );
 }
-
-
-
 
