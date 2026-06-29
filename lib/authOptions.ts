@@ -4,8 +4,11 @@ import { type NextAuthOptions } from "next-auth";
 import { connectMongoDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { type Role } from "@/store/useUserStore";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { randomBytes } from "crypto";
 import { hashPassword, isPasswordHash, verifyPassword } from "@/lib/password";
+import Session from "@/models/Session";
+import { getRequestNetworkInfo, parseUserAgent } from "@/lib/security";
 
 declare module "next-auth" {
   interface Session {
@@ -28,6 +31,8 @@ declare module "next-auth/jwt" {
     subscriptionPlan?: "free" | "pro" | "elite";
     accountStatus?: "active" | "suspended" | "banned";
     image?: string | null;
+    /** Device-session id; mirrors a row in the Session collection. */
+    sid?: string;
   }
 }
 
@@ -223,6 +228,37 @@ export const authOptions: NextAuthOptions = {
           token.subscriptionPlan = "free";
           token.accountStatus = "active";
         }
+
+        // Record this login as a device session. The JWT strategy keeps no DB
+        // sessions, so we log one here (parsing the UA) and embed its `sid` in
+        // the token to identify the current device later.
+        try {
+          if (!token.sid && token.id) {
+            const requestHeaders = await headers();
+            const parsed = parseUserAgent(requestHeaders.get("user-agent"));
+            const { ipAddress, location } = getRequestNetworkInfo((key) =>
+              requestHeaders.get(key)
+            );
+            const sid = randomBytes(24).toString("hex");
+
+            await Session.create({
+              userId: token.id,
+              sid,
+              device: parsed.device,
+              os: parsed.os,
+              browser: parsed.browser,
+              deviceType: parsed.deviceType,
+              ipAddress,
+              location,
+              lastActive: new Date(),
+              isCurrentSession: true,
+            });
+
+            token.sid = sid;
+          }
+        } catch (error) {
+          console.error("Error recording login session:", error);
+        }
       } else if (token.id) {
         try {
           await connectMongoDB();
@@ -260,6 +296,19 @@ export const authOptions: NextAuthOptions = {
         session.user.accountStatus = normalizeAccountStatus(token.accountStatus);
       }
       return session;
+    },
+  },
+  events: {
+    // Remove the current device's session row when the user signs out.
+    async signOut({ token }) {
+      try {
+        if (token?.sid) {
+          await connectMongoDB();
+          await Session.deleteOne({ sid: token.sid });
+        }
+      } catch (error) {
+        console.error("Error clearing session on sign-out:", error);
+      }
     },
   },
   session: {

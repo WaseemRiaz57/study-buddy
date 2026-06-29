@@ -83,6 +83,26 @@ const userSchema = new Schema(
       default: false,
       index: true,
     },
+    // ── Account security (Account & Security settings) ──
+    // Email one-time-code MFA on new logins.
+    emailMfaEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    // FaceID / TouchID biometric login on supported devices.
+    biometricEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    // True once the user sets a password that passes our strength rule. Feeds the
+    // security score (base 50, +25 MFA, +25 strong password).
+    passwordStrong: {
+      type: Boolean,
+      default: false,
+    },
+    passwordUpdatedAt: {
+      type: Date,
+    },
     savedPosts: [
       {
         type: Schema.Types.ObjectId,
