@@ -5,6 +5,8 @@ import {
   useReducedMotion,
   useInView,
   useSpring,
+  useScroll,
+  useTransform,
   AnimatePresence,
   Variants,
 } from "framer-motion";
@@ -143,11 +145,14 @@ const fallbackPricingPlans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
 // Liquid cubic-bezier — fast start, gentle settle
 const ease = [0.16, 1, 0.3, 1] as const;
 
-// Standard liquid reveal: fades up with fluid easing
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.8, ease } },
-};
+// Deeper "liquid" curve — slower glide-in, oily settle (used for cinematic reveals)
+const liquidEase = [0.22, 1, 0.36, 1] as const;
+
+// Soft spring — fluid settle with zero overshoot (the default "liquid" reveal feel)
+const softSpring = { type: "spring", stiffness: 58, damping: 18, mass: 0.9 } as const;
+
+// Liquid spring — a whisper of overshoot for hero / headline characters
+const liquidSpring = { type: "spring", stiffness: 90, damping: 14, mass: 0.85 } as const;
 
 // Stagger parent — drives staggerChildren for section grids
 const stagger: Variants = {
@@ -155,10 +160,16 @@ const stagger: Variants = {
   show:   { transition: { staggerChildren: 0.15, delayChildren: 0.05 } },
 };
 
+// Cinematic 3D word flip — rotateX up from behind, soft spring settle
+const wordFlip3D: Variants = {
+  hidden: { opacity: 0, y: 44, rotateX: -70 },
+  show:   { opacity: 1, y: 0,  rotateX: 0, transition: liquidSpring },
+};
+
 // Children variant used inside staggered grids (Features, Hero text, CTA)
 const fluidChild: Variants = {
   hidden:  { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease } },
+  visible: { opacity: 1, y: 0, transition: softSpring },
 };
 
 // Stagger parent keyed to "visible" so it can drive fluidChild
@@ -220,28 +231,159 @@ function SectionBadge({ color, icon: Icon, label }: { color: string; icon: Lucid
 }
 
 // ============================================================================
-// ANIMATED SECTION HEADING (word by word)
+// SPLIT TEXT — "Pretext"-style cinematic 3D reveal (char-by-char rotateX flip)
 // ============================================================================
-function SectionHeading({ children, className = "" }: { children: string; className?: string }) {
-  const words = children.split(" ");
+// Splits a string into words → characters, each flipping up from -90° on the X
+// axis behind a shared perspective. Words stay nowrap so they never break
+// mid-character, preserving the original copy and line-wrapping behaviour.
+function SplitText({
+  text,
+  className = "",
+  delay = 0,
+  perChar = true,
+  once = true,
+}: {
+  text: string;
+  className?: string;
+  delay?: number;
+  perChar?: boolean;
+  once?: boolean;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+
+  // Reduced-motion / SSR-safe: render the plain string, no transforms.
+  if (prefersReducedMotion) {
+    return <span className={className}>{text}</span>;
+  }
+
+  const words = text.split(" ");
+
+  const container: Variants = {
+    hidden: {},
+    show: {
+      transition: { staggerChildren: perChar ? 0.022 : 0.07, delayChildren: delay },
+    },
+  };
+  const piece: Variants = {
+    hidden: { opacity: 0, y: "0.6em", rotateX: -90 },
+    show:   { opacity: 1, y: "0em",  rotateX: 0, transition: liquidSpring },
+  };
+
   return (
-    <motion.h2
-      className={`text-4xl md:text-5xl font-bold text-foreground ${className}`}
+    <motion.span
+      aria-label={text}
+      className={className}
+      style={{ display: "inline-block", perspective: 700 }}
+      variants={container}
       initial="hidden"
       whileInView="show"
-      viewport={{ once: true, margin: "-100px" }}
-      variants={stagger}
+      viewport={{ once, margin: "-100px" }}
     >
-      {words.map((word, i) => (
-        <motion.span
-          key={i}
-          variants={fadeUp}
-          className="inline-block mr-[0.28em] last:mr-0"
+      {words.map((word, wi) => (
+        <span
+          key={wi}
+          aria-hidden="true"
+          className="inline-block whitespace-nowrap mr-[0.26em] last:mr-0"
+          style={{ transformStyle: "preserve-3d" }}
         >
-          {word}
-        </motion.span>
+          {perChar ? (
+            word.split("").map((char, ci) => (
+              <motion.span
+                key={ci}
+                variants={piece}
+                className="inline-block"
+                style={{ transformOrigin: "bottom center" }}
+              >
+                {char}
+              </motion.span>
+            ))
+          ) : (
+            <motion.span
+              variants={piece}
+              className="inline-block"
+              style={{ transformOrigin: "bottom center" }}
+            >
+              {word}
+            </motion.span>
+          )}
+        </span>
       ))}
-    </motion.h2>
+    </motion.span>
+  );
+}
+
+// ============================================================================
+// CINEMATIC LAYER — scroll-bound 3D depth (rotateX + scale + translateZ)
+// ============================================================================
+// Binds scroll progress through the element to a subtle 3D push: tilts on the
+// X axis, recedes on Z and scales down as it enters/exits the viewport, behind
+// a perspective container. Spring-smoothed so the depth glides like liquid.
+// Disabled on mobile + reduced-motion to guarantee zero jank / no layout shift.
+function CinematicLayer({
+  children,
+  className = "",
+  intensity = 1,
+  dim = true,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  intensity?: number;
+  dim?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
+
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start end", "end start"],
+  });
+
+  const rotateXRaw = useTransform(scrollYProgress, [0, 0.5, 1], [6 * intensity, 0, -6 * intensity]);
+  const scaleRaw   = useTransform(scrollYProgress, [0, 0.5, 1], [1 - 0.05 * intensity, 1, 1 - 0.05 * intensity]);
+  const zRaw       = useTransform(scrollYProgress, [0, 0.5, 1], [-70 * intensity, 0, -70 * intensity]);
+  const opacity    = useTransform(scrollYProgress, [0, 0.16, 0.84, 1], [0.7, 1, 1, 0.7]);
+
+  const springCfg = { stiffness: 60, damping: 22, mass: 0.6 };
+  const rotateX = useSpring(rotateXRaw, springCfg);
+  const scale   = useSpring(scaleRaw, springCfg);
+  const z       = useSpring(zRaw, springCfg);
+
+  if (prefersReducedMotion || isMobile) {
+    return (
+      <div ref={ref} className={className}>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} className={className} style={{ perspective: 1300 }}>
+      <motion.div
+        className="will-change-transform"
+        style={{
+          rotateX,
+          scale,
+          z,
+          opacity: dim ? opacity : undefined,
+          transformStyle: "preserve-3d",
+          transformOrigin: "center",
+        }}
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ANIMATED SECTION HEADING — cinematic split-text 3D reveal
+// ============================================================================
+function SectionHeading({ children, className = "" }: { children: string; className?: string }) {
+  return (
+    <h2 className={`text-4xl md:text-5xl font-bold text-foreground ${className}`}>
+      <SplitText text={children} />
+    </h2>
   );
 }
 
@@ -772,29 +914,29 @@ export default function Home() {
         <motion.div
           className="absolute left-1/4 top-0 h-[650px] w-[650px] -translate-x-1/2 rounded-full bg-purple-600/[0.08] blur-[140px]"
           style={{ x: springX, y: springY }}
-          animate={{ y: [0, -15, 0], scale: [1, 1.06, 1] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ y: [0, -28, 6, 0], scale: [1, 1.08, 1.02, 1], rotate: [0, 4, -2, 0] }}
+          transition={{ duration: 16, repeat: Infinity, ease: liquidEase }}
         />
         <motion.div
           className="absolute right-1/4 top-1/3 h-[500px] w-[500px] translate-x-1/2 rounded-full bg-fuchsia-600/[0.07] blur-[140px]"
-          animate={{ y: [0, -15, 0], scale: [1, 1.1, 1], opacity: [0.07, 0.11, 0.07] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
+          animate={{ y: [0, -34, 8, 0], x: [0, 18, -10, 0], scale: [1, 1.12, 1.04, 1], rotate: [0, -5, 3, 0], opacity: [0.07, 0.12, 0.08, 0.07] }}
+          transition={{ duration: 19, repeat: Infinity, ease: liquidEase, delay: 1.2 }}
         />
         <motion.div
           className="absolute left-1/2 bottom-0 h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-violet-600/[0.06] blur-[120px]"
-          animate={{ y: [0, -15, 0], scale: [1, 1.12, 1] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 2.5 }}
+          animate={{ y: [0, -24, 10, 0], x: [0, -16, 8, 0], scale: [1, 1.14, 1.05, 1], rotate: [0, 6, -3, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: liquidEase, delay: 2.5 }}
         />
         <FloatingParticles />
       </div>
 
       {/* ══════════════ HERO ══════════════ */}
-      <section className="relative flex min-h-[80vh] w-full flex-col justify-center overflow-x-hidden px-4 py-24 text-center sm:px-6 lg:px-8">
-        {/* Hero background image — liquid floating */}
+      <section className="relative flex min-h-[80vh] w-full flex-col justify-center overflow-x-hidden px-4 py-16 text-center sm:px-6 sm:py-24 lg:px-8">
+        {/* Hero background image — continuous liquid floating (overscan hides edges) */}
         <motion.div
           className="absolute inset-0"
-          animate={{ y: [0, -18, 0] }}
-          transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+          animate={{ y: [0, -22, 6, 0], x: [0, 10, -6, 0], scale: [1.06, 1.12, 1.07, 1.06], rotate: [0, 0.5, -0.4, 0] }}
+          transition={{ repeat: Infinity, duration: 18, ease: liquidEase }}
         >
           <Image
             src="/hero.png"
@@ -815,34 +957,20 @@ export default function Home() {
           className="relative z-10 mx-auto max-w-5xl"
         >
 
-          {/* Headline — 3D flip-in per word */}
+          {/* Headline — cinematic split-text 3D reveal (char-by-char rotateX flip) */}
           <motion.h1
             className="mb-8 text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-900 drop-shadow-lg dark:text-white sm:text-5xl lg:text-7xl"
-            initial="hidden"
-            animate="show"
-            variants={stagger}
+            style={{ perspective: 900 }}
           >
-            <motion.span className="block" variants={stagger}>
-              {["Studying", "made", "social."].map((w, i) => (
-                <motion.span
-                  key={i}
-                  variants={{
-                    hidden: { opacity: 0, y: 60, rotateX: -25 },
-                    show:   { opacity: 1, y: 0,  rotateX: 0, transition: { duration: 0.8, ease } },
-                  }}
-                  className="inline-block mr-[0.22em] last:mr-0"
-                  style={{ display: "inline-block" }}
-                >
-                  {w}
-                </motion.span>
-              ))}
-            </motion.span>
+            <span className="block">
+              <SplitText text="Studying made social." />
+            </span>
             <motion.span
               className="block"
-              variants={{
-                hidden: { opacity: 0, y: 60 },
-                show:   { opacity: 1, y: 0, transition: { duration: 0.8, ease, delay: 0.38 } },
-              }}
+              initial={{ opacity: 0, y: 60, rotateX: -45 }}
+              animate={{ opacity: 1, y: 0, rotateX: 0 }}
+              transition={{ ...liquidSpring, delay: 0.55 }}
+              style={{ transformOrigin: "bottom center", transformStyle: "preserve-3d" }}
             >
               <FadeOutGradientText>Success made certain.</FadeOutGradientText>
             </motion.span>
@@ -893,17 +1021,17 @@ export default function Home() {
         </motion.div>
 
         {/* Stats */}
-        <div className="mx-auto mt-20 max-w-5xl">
+        <CinematicLayer className="mx-auto mt-20 max-w-5xl" intensity={0.8} dim={false}>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {stats.map((s, i) => <StatCard key={i} {...s} index={i} />)}
           </div>
-        </div>
+        </CinematicLayer>
       </section>
 
       <AnimatedDivider />
 
       {/* ══════════════ PROBLEM ══════════════ */}
-      <section className="relative w-full overflow-x-hidden px-6 py-28">
+      <section className="relative w-full overflow-x-hidden px-6 py-20 md:py-28">
         {/* Subtle animated grid */}
         <motion.div
           className="pointer-events-none absolute inset-0 opacity-[0.015]"
@@ -911,8 +1039,8 @@ export default function Home() {
             backgroundImage: "none",
             backgroundSize: "60px 60px",
           }}
-          animate={{ backgroundPosition: ["0px 0px", "60px 60px"] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          animate={{ backgroundPosition: ["0px 0px", "60px 60px", "0px 0px"] }}
+          transition={{ duration: 24, repeat: Infinity, ease: liquidEase }}
         />
         <div className="mx-auto max-w-6xl">
           <div className="mb-14 text-center">
@@ -961,7 +1089,7 @@ export default function Home() {
       <AnimatedDivider />
 
       {/* ══════════════ FEATURES ══════════════ */}
-      <section id="features" className="relative w-full overflow-x-hidden px-6 py-28">
+      <section id="features" className="relative w-full overflow-x-hidden px-6 py-20 md:py-28">
         <div className="mx-auto max-w-7xl">
           <div className="mb-16 text-center">
             <SectionBadge color="border-purple-500/30 bg-purple-500/10 text-purple-400" icon={Zap} label="Core Features" />
@@ -974,23 +1102,25 @@ export default function Home() {
               Nine powerful modules working together so you never study the hard way again.
             </motion.p>
           </div>
-          {/* Staggered fluid grid — parent drives children stagger */}
-          <motion.div
-            className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={fluidParent}
-          >
-            {features.map((f, i) => <FeatureCard key={i} feature={f} index={i} />)}
-          </motion.div>
+          {/* Staggered fluid grid — parent drives children stagger, behind scroll-depth */}
+          <CinematicLayer intensity={0.7} dim={false}>
+            <motion.div
+              className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={fluidParent}
+            >
+              {features.map((f, i) => <FeatureCard key={i} feature={f} index={i} />)}
+            </motion.div>
+          </CinematicLayer>
         </div>
       </section>
 
       <AnimatedDivider />
 
       {/* ══════════════ WORKFLOW ══════════════ */}
-      <section id="workflow" className="relative w-full overflow-x-hidden px-6 py-28 bg-muted/40 border-y border-border">
+      <section id="workflow" className="relative w-full overflow-x-hidden px-6 py-20 md:py-28 bg-muted/40 border-y border-border">
         <motion.div
           className="pointer-events-none absolute -right-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-violet-500/[0.05] blur-[100px]"
           animate={{ scale: [1, 1.18, 1], opacity: [0.05, 0.09, 0.05] }}
@@ -1139,7 +1269,7 @@ export default function Home() {
       <AnimatedDivider />
 
       {/* ══════════════ TESTIMONIALS ══════════════ */}
-      <section className="relative w-full overflow-x-hidden py-28">
+      <section className="relative w-full overflow-x-hidden py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-12 text-center">
             <SectionBadge color="border-yellow-500/30 bg-yellow-500/10 text-yellow-400" icon={Star} label="Reviews" />
@@ -1152,7 +1282,7 @@ export default function Home() {
       <AnimatedDivider />
 
       {/* ══════════════ PRICING ══════════════ */}
-      <section id="pricing" className="relative w-full overflow-x-hidden px-6 py-28 bg-muted/40 border-y border-border">
+      <section id="pricing" className="relative w-full overflow-x-hidden px-6 py-20 md:py-28 bg-muted/40 border-y border-border">
         <motion.div
           className="pointer-events-none absolute -left-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-fuchsia-500/[0.05] blur-[100px]"
           animate={{ scale: [1, 1.2, 1] }}
@@ -1191,24 +1321,26 @@ export default function Home() {
               </span>
             </motion.div>
           </div>
-          <motion.div
-            className="grid gap-6 lg:grid-cols-3 items-stretch"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={fluidParent}
-          >
-            {pricingPlans.map((plan, i) => (
-              <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} isMobile={isMobile} />
-            ))}
-          </motion.div>
+          <CinematicLayer intensity={0.7} dim={false}>
+            <motion.div
+              className="grid gap-6 lg:grid-cols-3 items-stretch"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={fluidParent}
+            >
+              {pricingPlans.map((plan, i) => (
+                <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} isMobile={isMobile} />
+              ))}
+            </motion.div>
+          </CinematicLayer>
         </div>
       </section>
 
       <AnimatedDivider />
 
       {/* ══════════════ FINAL CTA ══════════════ */}
-      <section className="relative w-full overflow-x-hidden px-6 py-36 text-center">
+      <section className="relative w-full overflow-x-hidden px-6 py-24 md:py-36 text-center">
         {/* Breathing glow */}
         <motion.div
           className="pointer-events-none absolute inset-0 flex items-center justify-center"
@@ -1218,6 +1350,7 @@ export default function Home() {
           <div className="h-[400px] w-[700px] rounded-full bg-purple-500/[0.06] blur-[120px]" />
         </motion.div>
 
+        <CinematicLayer intensity={0.8}>
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -1229,14 +1362,14 @@ export default function Home() {
             <SectionBadge color="border-purple-500/30 bg-purple-500/10 text-purple-400" icon={Sparkles} label="Get Started Free" />
           </motion.div>
 
-          {/* CTA heading word by word */}
-          <motion.h2 className="mb-6 text-5xl md:text-6xl font-black leading-[1.1]" initial="hidden" whileInView="show" viewport={{ once: true, margin: "-100px" }} variants={stagger}>
+          {/* CTA heading — cinematic 3D word flip */}
+          <motion.h2 className="mb-6 text-4xl sm:text-5xl md:text-6xl font-black leading-[1.1]" initial="hidden" whileInView="show" viewport={{ once: true, margin: "-100px" }} variants={stagger} style={{ perspective: 900 }}>
             {["Stop", "Procrastinating."].map((w, i) => (
-              <motion.span key={i} variants={fadeUp} className="inline-block mr-3">{w}</motion.span>
+              <motion.span key={i} variants={wordFlip3D} className="inline-block mr-3" style={{ transformOrigin: "bottom center" }}>{w}</motion.span>
             ))}
             <br />
             {["Start", "Achieving."].map((w, i) => (
-              <motion.span key={i} variants={fadeUp} className="inline-block mr-3 text-[#7C3AED]">
+              <motion.span key={i} variants={wordFlip3D} className="inline-block mr-3 text-[#7C3AED]" style={{ transformOrigin: "bottom center" }}>
                 {w}
               </motion.span>
             ))}
@@ -1262,6 +1395,7 @@ export default function Home() {
             </p>
           </motion.div>
         </motion.div>
+        </CinematicLayer>
       </section>
     </div>
   );
