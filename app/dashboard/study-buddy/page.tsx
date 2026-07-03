@@ -125,15 +125,27 @@ export default function StudyBuddyPage() {
 
     try {
       const res = await fetch("/api/study-buddy/listings/active");
-      const data = await res.json();
 
+      // Gracefully handle non-ok responses without crashing the UI
       if (!res.ok) {
-        throw new Error(data?.message || "Failed to fetch active listings.");
+        let errorMessage = "Failed to fetch active listings.";
+        try {
+          const errData = await res.json();
+          errorMessage = errData?.error || errData?.message || errorMessage;
+        } catch {
+          // Response body was not JSON – keep the default message
+        }
+        setMyListings([]);
+        setOtherListings([]);
+        toast.error(errorMessage);
+        return;
       }
 
+      const data = await res.json();
       setMyListings(Array.isArray(data.myListings) ? data.myListings : []);
       setOtherListings(Array.isArray(data.otherListings) ? data.otherListings : []);
     } catch (error) {
+      // Network-level failure – still show empty state instead of breaking
       setMyListings([]);
       setOtherListings([]);
       toast.error(
@@ -183,9 +195,13 @@ export default function StudyBuddyPage() {
 
     if (!userId) return;
 
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "";
-    const socket = io(`${socketUrl}/study-room`, {
+    // Strip any trailing slashes to prevent a malformed wss://https:// URL
+    const rawUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "";
+    const cleanUrl = rawUrl.replace(/\/+$/, "");
+    const socket = io(`${cleanUrl}/study-room`, {
       transports: ["websocket", "polling"],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
     socketRef.current = socket;

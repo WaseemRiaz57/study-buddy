@@ -35,6 +35,10 @@ function serializeListing(listing: any) {
 
 export async function GET() {
   try {
+    // connectDB() MUST be the first awaited call so Vercel serverless
+    // functions always have an active DB connection before any Mongoose work.
+    await connectDB();
+
     const session = await getServerSession(authOptions);
     const currentUserId = String(session?.user?.id || "").trim();
 
@@ -49,7 +53,6 @@ export async function GET() {
       );
     }
 
-    await connectDB();
     await closeExpiredStudyBuddyListings();
 
     const studentId = new mongoose.Types.ObjectId(currentUserId);
@@ -71,13 +74,11 @@ export async function GET() {
       myListings: myListings.map(serializeListing),
       otherListings: otherListings.map(serializeListing),
     });
-  } catch (error) {
-    console.error("Active Study Buddy Listings Error:", error);
+  } catch (error: any) {
+    console.error("Listings Fetch Error:", error);
     return NextResponse.json(
-      { message: "Internal server error while fetching listings." },
+      { error: "Internal Server Error", details: error.message },
       { status: 500 }
     );
   }
 }
-
-
