@@ -339,7 +339,7 @@ export default function CommunityFeedPage() {
             <BookOpen size={16} /> Community Forum
           </div>
           <h1 className="text-3xl font-extrabold md:text-4xl">
-            The Scholar&apos;s Agora
+            Discussion Forum
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-gray-400">
             Ask questions, share insights, and learn together.

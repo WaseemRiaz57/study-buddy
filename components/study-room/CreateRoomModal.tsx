@@ -142,7 +142,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
                         dark:bg-[#8c30e8]/20 dark:text-[#8c30e8] dark:border-[#8c30e8]/30 dark:shadow-[0_0_15px_rgba(140,48,232,0.3)]">
                         <Sparkles size={24} />
                       </div>
-                      <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Forge a New Sanctuary</h2>
+                      <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Create a New Study Group</h2>
                       <p className="text-sm text-slate-500 dark:text-gray-400">Create a focused space for you and your peers.</p>
                     </div>
 
@@ -238,7 +238,7 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
                             ? "bg-[#7C3AED]   hover:shadow-purple-500/25 hover:scale-[1.02]" 
                             : "bg-slate-300 dark:bg-white/10 cursor-not-allowed text-slate-500 dark:text-gray-500"}`}
                       >
-                        {isCreating ? "Forging..." : "Ignite Room"} <ArrowRight size={18} />
+                        {isCreating ? "Creating..." : "Start Room"} <ArrowRight size={18} />
                       </button>
                       {error ? (
                         <p className="mt-3 text-sm text-red-500 text-center">{error}</p>

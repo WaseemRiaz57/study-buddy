@@ -48,8 +48,8 @@ interface NavGroup {
 
 const buildNavItems = (isCommunity: boolean, plan: string): NavItem[] => [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", roles: ["STUDENT", "TEACHER", "MENTOR"] },
-  { icon: FileText, label: "AI Studio", href: "/dashboard/content-generator", roles: ["STUDENT"], badge: "AI" },
-  { icon: ClipboardList, label: "AI Studio", href: "/dashboard/content-generator", roles: ["TEACHER", "MENTOR"], badge: "AI" },
+  { icon: FileText, label: "Notes Generator", href: "/dashboard/content-generator", roles: ["STUDENT"], badge: "AI" },
+  { icon: ClipboardList, label: "Quiz Generator", href: "/dashboard/content-generator", roles: ["TEACHER", "MENTOR"], badge: "AI" },
   { icon: Library, label: "Resource Hub", href: "/dashboard/resources", roles: ["STUDENT", "TEACHER", "MENTOR"] },
   { icon: Users, label: "My Students", href: "/dashboard/my-students", roles: ["TEACHER", "MENTOR"] },
   { icon: CalendarCheck, label: "Sessions", href: "/dashboard/sessions", roles: ["TEACHER", "MENTOR"] },

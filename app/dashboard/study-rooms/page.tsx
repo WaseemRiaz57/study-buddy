@@ -139,7 +139,7 @@ export default function StudyRoomsPage() {
             <div className="flex flex-col gap-1">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
                 <span className="text-[#7C3AED]">
-                  Group Sanctuaries
+                  Study Groups
                 </span>
               </h1>
               <p className="text-slate-500 dark:text-gray-400 text-lg font-light">
@@ -153,7 +153,7 @@ export default function StudyRoomsPage() {
               className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#7C3AED] font-bold text-white shadow-lg transition-opacity hover:opacity-90"
             >
               <Plus size={20} />
-              Forge New Room
+              Create New Room
             </button>
           </div>
 

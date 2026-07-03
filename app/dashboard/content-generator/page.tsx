@@ -185,6 +185,41 @@ export default function ContentGeneratorPage() {
       const res = await fetch("/api/ai-notes?limit=6", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
+
+  const [activeTab, setActiveTab] = useState<TabId>("notes");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [upgradeModal, setUpgradeModal] = useState<{ message: string } | null>(null);
+  const [markdownResult, setMarkdownResult] = useState("");
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [resultType, setResultType] = useState<TabId>("notes");
+  const [isPreviewMaximized, setIsPreviewMaximized] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [recentCreations, setRecentCreations] = useState<RecentCreationItem[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const [notesTopic, setNotesTopic] = useState("");
+  const [notesDetail, setNotesDetail] = useState("standard");
+  const [notesContext, setNotesContext] = useState("");
+  const [notesFormat, setNotesFormat] = useState<"bullets" | "paragraphs">("bullets");
+
+  const [summarizerText, setSummarizerText] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedText, setUploadedText] = useState("");
+
+  const [quizTopic, setQuizTopic] = useState("");
+  const [quizDifficulty, setQuizDifficulty] = useState("medium");
+  const [quizCount, setQuizCount] = useState(5);
+  const [quizType, setQuizType] = useState<QuizQuestionType>("mcq");
+
+  const currentTab = availableTabs.find((tab) => tab.id === activeTab) || availableTabs[0];
+  const CurrentGenerateIcon = currentTab?.icon || PenLine;
+  const hasResult = Boolean(markdownResult || quizQuestions.length);
+
+  const fetchRecentCreations = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai-notes?limit=6", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
       setRecentCreations(Array.isArray(data) ? data : []);
     } catch {
       setRecentCreations([]);
@@ -194,6 +229,10 @@ export default function ContentGeneratorPage() {
   useEffect(() => {
     void fetchRecentCreations();
   }, [fetchRecentCreations]);
+
+  useEffect(() => {
+    document.title = `${isMentor ? 'Quiz Generator' : 'Notes Generator'} | StudyBuddy`;
+  }, [isMentor]);
 
   useEffect(() => {
     if (!isMentor && activeTab === "quiz") {
@@ -319,85 +358,6 @@ export default function ContentGeneratorPage() {
           setUpgradeModal({
             message: data?.message || "Upgrade to Pro to continue using this feature.",
           });
-          return;
-        }
-
-        throw new Error(data?.message || "Failed to generate content.");
-      }
-
-      if (data?.type === "quiz") {
-        setQuizQuestions(Array.isArray(data.questions) ? data.questions : []);
-      } else {
-        setMarkdownResult(String(data?.text || ""));
-      }
-
-      await fetchRecentCreations();
-      window.dispatchEvent(new Event("ai-notes-updated"));
-      addGamificationReward(10, 5);
-      await refreshGamificationStats();
-      window.dispatchEvent(new Event("gamification-stats-updated"));
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-
-      toast.error(error instanceof Error ? error.message : "Failed to generate content.");
-    } finally {
-      abortControllerRef.current = null;
-      setIsGenerating(false);
-    }
-  };
-
-  const handleStopGenerating = () => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-    setIsGenerating(false);
-  };
-
-  const resultForClipboard =
-    resultType === "quiz" ? serializeQuiz(quizQuestions) : markdownResult;
-
-  const handleCopy = async () => {
-    if (!resultForClipboard) return;
-    await navigator.clipboard.writeText(resultForClipboard);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
-  };
-
-  const handleDownload = () => {
-    if (!resultForClipboard.trim()) return;
-
-    const blob = new Blob([resultForClipboard], {
-      type: resultType === "quiz" ? "application/json" : "text/markdown;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `studybuddy-${resultType}-${Date.now()}.${
-      resultType === "quiz" ? "json" : "md"
-    }`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 md:py-12 lg:px-8">
-        <motion.header
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="mb-10 text-center"
-        >
-          <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-5xl">
-            <span className="text-[#7C3AED]">AI Studio</span>
-          </h1>
-          <p className="mx-auto max-w-2xl text-base text-text-muted dark:text-slate-400 md:text-lg">
-            Generate polished notes, source-aware summaries, and mentor-ready MCQ quizzes.
-          </p>
-        </motion.header>
-
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-12">
-          <section className="space-y-6 lg:col-span-7">
-            <div className="glass-panel flex rounded-xl p-1.5">
               {availableTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
