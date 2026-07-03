@@ -55,7 +55,7 @@ export default function RegisterPage() {
 
   const roleConfig = {
     student: {
-      title: "Scholar",
+      title: "Student",
       description: "I want to learn, join rooms, and track progress.",
       icon: GraduationCap,
       primaryColor: "border-primary bg-primary/5",
@@ -66,7 +66,7 @@ export default function RegisterPage() {
       checkColor: "text-primary",
     },
     teacher: {
-      title: "Mentor",
+      title: "Teacher",
       description: "I want to guide others, host sessions, and earn.",
       icon: Sparkles,
       primaryColor: "border-[#7C3AED] bg-[#7C3AED]/5",
@@ -230,16 +230,21 @@ export default function RegisterPage() {
     const isSelected = selectedRole === cardRole;
 
     return (
-      <button
-        type="button"
-        onClick={() => onSelect(cardRole)}
-        aria-pressed={isSelected}
+      <label
         className={`relative cursor-pointer p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-3 group sm:p-6 ${
           isSelected
             ? `${primaryColor} ${shadowColor} scale-[1.02]`
             : `border-border/50 ${hoverColor} hover:bg-slate-50 dark:hover:bg-white/5 opacity-70 hover:opacity-100`
         }`}
       >
+        <input
+          type="radio"
+          name="role"
+          value={cardRole}
+          checked={isSelected}
+          onChange={() => onSelect(cardRole)}
+          className="sr-only"
+        />
         {isSelected && (
           <div className={`absolute top-3 right-3 ${checkColor}`}>
             <CheckCircle size={20} fill="currentColor" className="text-white dark:text-black" />
@@ -258,7 +263,7 @@ export default function RegisterPage() {
           <h3 className="font-bold text-lg">{title}</h3>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>
         </div>
-      </button>
+      </label>
     );
   };
 
@@ -304,7 +309,7 @@ export default function RegisterPage() {
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-bold mb-3">
             {step === 1 ? "Choose Your Path" : "Verify Your Email"}
           </p>
-          <h1 className="text-3xl md:text-4xl font-serif font-bold text-foreground">
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             {step === 1 ? "Join StudyBuddy as..." : "Enter your code"}
           </h1>
         </header>
