@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useUserStore, type Plan } from "@/store/useUserStore";
-import { PRICING_PLANS } from "@/lib/pricingConfig";
+import { PRICING_PLANS, calculateYearlyPrice, getYearlyTotal } from "@/lib/pricingConfig";
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /* TYPES & DATA                                                      */
@@ -434,12 +434,29 @@ function FAQ() {
 /* PAGE                                                              */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-export default function UpgradePage() {
-  const [yearly, setYearly] = useState(false);
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
+
+function UpgradePageContent() {
+  const searchParams = useSearchParams();
+  const initialBilling = searchParams.get("billing") === "yearly";
+  const planParam = searchParams.get("plan");
+
+  const [yearly, setYearly] = useState(initialBilling);
   const currentPlan = useUserStore((s) => s.plan);
 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+
+  useEffect(() => {
+    if (planParam) {
+      const targetPlan = plans.find(p => p.id.toLowerCase() === planParam.toLowerCase());
+      if (targetPlan) {
+        setSelectedPlan(targetPlan);
+        setIsCheckoutOpen(true);
+      }
+    }
+  }, [planParam]);
 
   const handleUpgradeClick = (plan: PricingPlan) => {
     setSelectedPlan(plan);
@@ -531,7 +548,7 @@ export default function UpgradePage() {
           isOpen={isCheckoutOpen}
           onClose={() => setIsCheckoutOpen(false)}
           planName={`${selectedPlan.name} Plan`}
-          price={yearly ? selectedPlan.yearlyPrice * 12 : selectedPlan.monthlyPrice}
+          price={yearly ? getYearlyTotal(selectedPlan.monthlyPrice) : selectedPlan.monthlyPrice}
           billingCycle={yearly ? "yearly" : "monthly"}
         />
       )}
@@ -539,4 +556,10 @@ export default function UpgradePage() {
   );
 }
 
-
+export default function UpgradePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen w-full flex items-center justify-center">Loading...</div>}>
+      <UpgradePageContent />
+    </Suspense>
+  );
+}

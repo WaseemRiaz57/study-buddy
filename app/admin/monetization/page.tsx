@@ -16,11 +16,13 @@ import {
     Crown,
     Zap,
 } from "lucide-react";
+import { PRICING_PLANS, calculateYearlyPrice } from "@/lib/pricingConfig";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type PlanTier = "free" | "pro" | "elite";
 type TxStatus = "success" | "refunded" | "failed";
 
+// Note: we remap PricingPlanConfig to match the local PricingPlan interface structure for UI rendering
 interface PricingPlan {
     tier: PlanTier;
     title: string;
@@ -29,6 +31,7 @@ interface PricingPlan {
     activeUsers: number;
     features: string[];
     highlight?: boolean;
+    rawPrice: number;
 }
 
 interface Transaction {
@@ -101,7 +104,7 @@ function normalizeStatus(status: string): TxStatus {
     return "success";
 }
 
-// ─── Status Config ──────────────────────────────────────────────────────────────
+// --- Status Config --------------------------------------------------------------
 const STATUS_CONFIG: Record<
     TxStatus,
     { label: string; emoji: string; badge: string }
@@ -122,47 +125,6 @@ const STATUS_CONFIG: Record<
         badge: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/25",
     },
 };
-
-// ─── Mock Data ──────────────────────────────────────────────────────────────────
-const PLANS: PricingPlan[] = [
-    {
-        tier: "free",
-        title: "Free",
-        price: "$0",
-        period: "forever",
-        activeUsers: 8420,
-        features: [
-            "Access to public study groups",
-            "Basic flashcard creation (up to 50)",
-            "Community Q&A participation",
-        ],
-    },
-    {
-        tier: "pro",
-        title: "Pro Member 🌟",
-        price: "$9.99",
-        period: "/month",
-        activeUsers: 1340,
-        features: [
-            "Unlimited flashcards & quizzes",
-            "AI-powered study recommendations",
-            "Priority mentor matching",
-        ],
-    },
-    {
-        tier: "elite",
-        title: "Elite 👑",
-        price: "$24.99",
-        period: "/month",
-        activeUsers: 287,
-        features: [
-            "Everything in Pro",
-            "1-on-1 live mentor sessions",
-            "Custom learning paths & analytics",
-        ],
-        highlight: true,
-    },
-];
 
 
 // ─── Plan Card Styles ───────────────────────────────────────────────────────────
@@ -312,6 +274,7 @@ export default function MonetizationPage() {
                             activeUsers: 0,
                             features: Array.isArray(plan.features) ? plan.features : [],
                             highlight: Boolean(plan.featured),
+                            rawPrice: Number(plan.price) || 0,
                         }))
                     );
                 }
@@ -335,6 +298,30 @@ export default function MonetizationPage() {
         };
     }, []);
 
+    const [isYearly, setIsYearly] = useState(false);
+
+    // Merge activeUsers from stats into plans
+    const plansToDisplay = (dbPlans.length > 0 ? dbPlans : PRICING_PLANS.map(p => ({
+        tier: p.id as PlanTier,
+        title: p.name,
+        price: p.displayPrice,
+        period: "/month",
+        activeUsers: 0,
+        features: p.features,
+        highlight: p.featured,
+        rawPrice: p.price
+    }))).map((plan) => {
+        let users = 0;
+        if (plan.tier === "free") users = stats.freeCount;
+        if (plan.tier === "pro") users = stats.proCount;
+        if (plan.tier === "elite") users = stats.eliteCount;
+        
+        return {
+            ...plan,
+            activeUsers: users || plan.activeUsers,
+        };
+    });
+
     useEffect(() => {
         if (!editModal) return;
         setEditTitle(editModal.title);
@@ -345,27 +332,6 @@ export default function MonetizationPage() {
     if (!mounted) {
         return <div className="min-h-[60vh]" />;
     }
-
-    const planSource = dbPlans.length > 0 ? dbPlans : PLANS;
-    const plans = planSource.map((plan) => {
-        if (plan.tier === "free") {
-            return { ...plan, activeUsers: stats.freeCount };
-        }
-
-        if (plan.tier === "pro") {
-            return {
-                ...plan,
-                price: formatCurrency(stats.prices.pro),
-                activeUsers: stats.proCount,
-            };
-        }
-
-        return {
-            ...plan,
-            price: formatCurrency(stats.prices.elite),
-            activeUsers: stats.eliteCount,
-        };
-    });
 
     const savePlan = async () => {
         if (!editModal) return;
@@ -488,14 +454,37 @@ export default function MonetizationPage() {
 
             {/* ════════ SUBSCRIPTION TIERS ════════ */}
             <div>
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                    <Settings size={14} className="text-slate-400 dark:text-slate-500" />
-                    Subscription Tiers
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Settings size={14} className="text-slate-400 dark:text-slate-500" />
+                        Subscription Tiers
+                    </h2>
+                    <div className="flex items-center gap-3 text-sm font-medium bg-slate-50 dark:bg-white/[0.02] p-1 rounded-xl border border-slate-200 dark:border-white/[0.05]">
+                        <button
+                            onClick={() => setIsYearly(false)}
+                            className={`px-3 py-1.5 rounded-lg transition-all ${!isYearly ? "bg-white dark:bg-white/[0.05] shadow-sm text-slate-900 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+                        >
+                            Monthly
+                        </button>
+                        <button
+                            onClick={() => setIsYearly(true)}
+                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${isYearly ? "bg-white dark:bg-white/[0.05] shadow-sm text-slate-900 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+                        >
+                            Yearly
+                            <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                -20%
+                            </span>
+                        </button>
+                    </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {plans.map((plan) => {
+                    {plansToDisplay.map((plan) => {
                         const style = TIER_STYLES[plan.tier];
                         const TierIcon = style.icon;
+                        
+                        const calculatedPrice = isYearly ? calculateYearlyPrice(plan.rawPrice || 0) : (plan.rawPrice || 0);
+                        const displayPrice = plan.rawPrice === 0 ? "Free" : `$${calculatedPrice.toFixed(2)}`;
+                        const displayPeriod = plan.rawPrice === 0 ? "forever" : "/month";
 
                         return (
                             <div
@@ -527,12 +516,19 @@ export default function MonetizationPage() {
 
                                     {/* Price */}
                                     <div className="mb-4">
-                                        <span className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                                            {plan.price}
-                                        </span>
-                                        <span className="text-sm text-slate-400 dark:text-slate-500 ml-1">
-                                            {plan.period}
-                                        </span>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                                                {displayPrice}
+                                            </span>
+                                            <span className="text-sm text-slate-400 dark:text-slate-500">
+                                                {displayPeriod}
+                                            </span>
+                                        </div>
+                                        {isYearly && plan.rawPrice > 0 && (
+                                            <div className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 mt-1">
+                                                Billed ${(calculatedPrice * 12).toFixed(2)}/year
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Active Users */}
@@ -730,7 +726,7 @@ export default function MonetizationPage() {
             {/* ════════ FOOTER ════════ */}
             <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
                 <span>
-                    {plans.length} plans · {transactions.length} recent transactions
+                    {plansToDisplay.length} plans · {transactions.length} recent transactions
                 </span>
                 <span>StudyBuddy Admin · Monetization Panel</span>
             </div>

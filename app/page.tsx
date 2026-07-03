@@ -33,8 +33,9 @@ import {
 } from "lucide-react";
 import { memo, useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useSession } from "next-auth/react";
 import { Reveal } from "@/components/landing/Reveal";
-import { PRICING_PLANS } from "@/lib/pricingConfig";
+import { PRICING_PLANS, calculateYearlyPrice, formatPlanPrice, getYearlyTotal } from "@/lib/pricingConfig";
 
 // ============================================================================
 // TYPES
@@ -48,6 +49,7 @@ interface Feature {
   badgeColor?: string;
 }
 interface PricingPlan {
+  id: string;
   title: string;
   monthlyPrice: string;
   yearlyPrice: string;
@@ -58,6 +60,7 @@ interface PricingPlan {
   ctaText: string;
   features: string[];
   excluded?: string[];
+  rawMonthlyPrice: number;
 }
 interface WorkflowStep { step: string; title: string; detail: string; }
 interface PublicReview {
@@ -127,15 +130,17 @@ const stats = [
 ];
 
 const fallbackPricingPlans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
+  id: plan.id,
   title: `${plan.name} Plan`,
   monthlyPrice: plan.displayPrice,
-  yearlyPrice: plan.price === 0 ? "$0" : `$${Math.round(plan.price * 10) / 10}`,
+  yearlyPrice: formatPlanPrice(calculateYearlyPrice(plan.price)),
   monthlyPkr: plan.price === 0 ? "Free Forever" : "Billed monthly",
-  yearlyPkr: plan.price === 0 ? "Free Forever" : "Annual billing available",
+  yearlyPkr: plan.price === 0 ? "Free Forever" : `Billed $${getYearlyTotal(plan.price).toFixed(2)}/year`,
   desc: plan.description,
   highlight: plan.featured,
   ctaText: plan.cta,
   features: plan.features,
+  rawMonthlyPrice: plan.price,
 }));
 
 // ============================================================================
@@ -541,8 +546,8 @@ function AnimatedProgressBar({ pct, color = " " }: { pct: number; color?: string
 // PRICING CARD
 // ============================================================================
 const PricingCard = memo(function PricingCard({
-  plan, isYearly, index, isMobile,
-}: { plan: PricingPlan; isYearly: boolean; index: number; isMobile: boolean }) {
+  plan, isYearly, index, isMobile, session
+}: { plan: PricingPlan; isYearly: boolean; index: number; isMobile: boolean; session: any }) {
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
   const pkr   = isYearly ? plan.yearlyPkr   : plan.monthlyPkr;
   const [hovered, setHovered] = useState(false);
@@ -633,17 +638,27 @@ const PricingCard = memo(function PricingCard({
         ))}
       </ul>
 
-      <Link
-        href="/register"
-        prefetch={true}
-        className={`block w-full rounded-xl py-3.5 text-center text-sm font-bold transition-all duration-300 ${
-          isActive
-            ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25 hover:bg-purple-700 hover:shadow-xl"
-            : "border border-border bg-card text-foreground hover:bg-muted"
-        }`}
-      >
-        {plan.ctaText}
-      </Link>
+      {(() => {
+        let targetHref = "/register";
+        if (plan.id && plan.id !== "free") {
+          const billingStr = isYearly ? "yearly" : "monthly";
+          const upgradeUrl = `/dashboard/upgrade?plan=${plan.id}&billing=${billingStr}`;
+          targetHref = session?.user ? upgradeUrl : `/login?callbackUrl=${encodeURIComponent(upgradeUrl)}`;
+        }
+        return (
+          <Link
+            href={targetHref}
+            prefetch={true}
+            className={`block w-full rounded-xl py-3.5 text-center text-sm font-bold transition-all duration-300 ${
+              isActive
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25 hover:bg-purple-700 hover:shadow-xl"
+                : "border border-border bg-card text-foreground hover:bg-muted"
+            }`}
+          >
+            {plan.ctaText}
+          </Link>
+        );
+      })()}
     </motion.article>
   );
 });
@@ -829,6 +844,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
 // MAIN
 // ============================================================================
 export default function Home() {
+  const { data: session } = useSession();
   const prefersReducedMotion = useReducedMotion();
   const isMobile = useIsMobile();
   const [isYearly, setIsYearly] = useState(false);
@@ -866,21 +882,20 @@ export default function Home() {
 
       setPricingPlans(
         data.plans.map((plan: any) => ({
+          id: plan.id,
           title: `${plan.name} Plan`,
           monthlyPrice: plan.displayPrice,
-          yearlyPrice:
-            Number(plan.price || 0) === 0
-              ? "$0"
-              : `$${Math.round(Number(plan.price || 0) * 10) / 10}`,
+          yearlyPrice: formatPlanPrice(calculateYearlyPrice(Number(plan.price || 0))),
           monthlyPkr: Number(plan.price || 0) === 0 ? "Free Forever" : "Billed monthly",
           yearlyPkr:
             Number(plan.price || 0) === 0
               ? "Free Forever"
-              : "Annual billing available",
+              : `Billed $${getYearlyTotal(Number(plan.price || 0)).toFixed(2)}/year`,
           desc: String(plan.description || ""),
           highlight: Boolean(plan.featured),
           ctaText: String(plan.cta || "Join Free"),
           features: Array.isArray(plan.features) ? plan.features.map(String) : [],
+          rawMonthlyPrice: Number(plan.price || 0),
         }))
       );
     }
@@ -1330,7 +1345,7 @@ export default function Home() {
               variants={fluidParent}
             >
               {pricingPlans.map((plan, i) => (
-                <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} isMobile={isMobile} />
+                <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} isMobile={isMobile} session={session} />
               ))}
             </motion.div>
           </CinematicLayer>

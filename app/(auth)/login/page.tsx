@@ -3,10 +3,10 @@
 import { motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getSession, signIn } from "next-auth/react";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import BackButton from "@/components/ui/BackButton";
 
@@ -28,19 +28,21 @@ const scaleIn = {
   animate: { opacity: 1, scale: 1 },
 };
 
-export default function LoginPage() {
+function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const prefersReducedMotion = useReducedMotion();
 
   // 🔴 Google Login Handler
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    await signIn("google", { callbackUrl: "/dashboard" });
+    await signIn("google", { callbackUrl });
   };
 
   // 📧 Email/Password Login Handler
@@ -63,11 +65,15 @@ export default function LoginPage() {
         const session = await getSession();
         const role = String(session?.user?.role || "").toUpperCase();
 
-        router.push(role === "ADMIN" ? "/admin" : "/dashboard");
+        if (role === "ADMIN") {
+            router.push("/admin");
+        } else {
+            router.push(callbackUrl);
+        }
         router.refresh();
       }
-    } catch {
-      setError("Network error. Please try again.");
+    } catch (err) {
+      setError("An unexpected error occurred.");
     } finally {
       setIsLoading(false);
     }
@@ -353,3 +359,10 @@ export default function LoginPage() {
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen w-full flex items-center justify-center">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
+  );
+}
