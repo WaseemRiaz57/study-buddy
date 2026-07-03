@@ -108,3 +108,42 @@ export function getPricingPlan(plan: unknown): PricingPlanConfig {
   return PRICING_BY_ID[normalizeSubscriptionPlan(plan)];
 }
 
+// ─── Billing Cycle ──────────────────────────────────────────────────────────────
+
+export const YEARLY_DISCOUNT_PERCENT = 20;
+
+export type BillingCycle = "monthly" | "yearly";
+
+/**
+ * Applies the yearly discount to a monthly price.
+ * This is the **single source of truth** for yearly pricing math.
+ *
+ * @example calculateYearlyPrice(9.99)  → 7.99
+ * @example calculateYearlyPrice(24)    → 19.20
+ * @example calculateYearlyPrice(0)     → 0
+ */
+export function calculateYearlyPrice(monthlyPrice: number): number {
+  if (monthlyPrice <= 0) return 0;
+  const discountMultiplier = 1 - YEARLY_DISCOUNT_PERCENT / 100;
+  return Math.round(monthlyPrice * discountMultiplier * 100) / 100;
+}
+
+/**
+ * Formats a numeric price for display.
+ *
+ * @example formatPlanPrice(9.99)  → "$9.99"
+ * @example formatPlanPrice(0)     → "Free"
+ */
+export function formatPlanPrice(price: number): string {
+  if (price <= 0) return "Free";
+  return `$${price.toFixed(2)}`;
+}
+
+/**
+ * Returns the total annual cost when paying yearly.
+ *
+ * @example getYearlyTotal(9.99)  → 95.88
+ */
+export function getYearlyTotal(monthlyPrice: number): number {
+  return Math.round(calculateYearlyPrice(monthlyPrice) * 12 * 100) / 100;
+}
