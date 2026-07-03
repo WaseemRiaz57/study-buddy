@@ -38,7 +38,7 @@ const ScrollIndicator = memo(function ScrollIndicator() {
       transition={{ delay: 3 }}
     >
       <motion.span
-        className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30"
+        className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-white/30"
         animate={{ opacity: [0.3, 0.6, 0.3] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
       >
@@ -56,29 +56,7 @@ const ScrollIndicator = memo(function ScrollIndicator() {
   );
 });
 
-// ─── Trust Badges ────────────────────────────────────────────────────────────
-const TrustBadges = memo(function TrustBadges() {
-  return (
-    <motion.div
-      variants={fluidChild}
-      className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8"
-    >
-      {[
-        { icon: "🔒", text: "No credit card required" },
-        { icon: "⚡", text: "Setup in 60 seconds" },
-        { icon: "🎁", text: "Free forever plan" },
-      ].map((badge) => (
-        <span
-          key={badge.text}
-          className="flex items-center gap-1.5 text-[11px] font-semibold text-white/40"
-        >
-          <span>{badge.icon}</span>
-          {badge.text}
-        </span>
-      ))}
-    </motion.div>
-  );
-});
+
 
 // ─── Social Proof Counter ────────────────────────────────────────────────────
 const SocialProof = memo(function SocialProof() {
@@ -100,10 +78,10 @@ const SocialProof = memo(function SocialProof() {
         )}
       </div>
       <div className="text-left">
-        <p className="text-[11px] font-bold text-white/70">
-          <span className="text-purple-400">50,000+</span> students & teachers
+        <p className="text-[11px] font-bold text-slate-800 dark:text-white/70">
+          <span className="text-purple-600 dark:text-purple-400">50,000+</span> students & teachers
         </p>
-        <p className="text-[9px] text-white/40">learning together right now</p>
+        <p className="text-[9px] text-slate-500 dark:text-white/40">learning together right now</p>
       </div>
     </motion.div>
   );
@@ -152,7 +130,7 @@ const HeroSection = memo(function HeroSection() {
       {/* ── Layer 1: Ambient orbs — liquid floating glows ── */}
       <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
         <motion.div
-          className="absolute -left-[15%] top-[10%] h-[600px] w-[600px] rounded-full bg-purple-600/[0.12] blur-[160px]"
+          className="absolute -left-[15%] top-[10%] h-[600px] w-[600px] rounded-full bg-purple-600/[0.06] dark:bg-purple-600/[0.12] blur-[160px]"
           animate={{
             y: [0, -30, 10, 0],
             scale: [1, 1.1, 1.03, 1],
@@ -160,7 +138,7 @@ const HeroSection = memo(function HeroSection() {
           transition={{ duration: 18, repeat: Infinity, ease: liquidEase }}
         />
         <motion.div
-          className="absolute right-[-10%] top-[20%] h-[500px] w-[500px] rounded-full bg-fuchsia-600/[0.09] blur-[150px]"
+          className="absolute right-[-10%] top-[20%] h-[500px] w-[500px] rounded-full bg-fuchsia-600/[0.04] dark:bg-fuchsia-600/[0.09] blur-[150px]"
           animate={{
             y: [0, -35, 12, 0],
             x: [0, 20, -10, 0],
@@ -173,7 +151,7 @@ const HeroSection = memo(function HeroSection() {
           }}
         />
         <motion.div
-          className="absolute bottom-[5%] left-[30%] h-[400px] w-[400px] rounded-full bg-cyan-500/[0.06] blur-[130px]"
+          className="absolute bottom-[5%] left-[30%] h-[400px] w-[400px] rounded-full bg-cyan-500/[0.03] dark:bg-cyan-500/[0.06] blur-[130px]"
           animate={{
             y: [0, -20, 8, 0],
             x: [0, -18, 8, 0],
@@ -196,10 +174,10 @@ const HeroSection = memo(function HeroSection() {
 
       {/* ── Layer 3: Grid pattern overlay ── */}
       <div
-        className="pointer-events-none absolute inset-0 z-[3] opacity-[0.025]"
+        className="pointer-events-none absolute inset-0 z-[3] opacity-[0.06] dark:opacity-[0.025]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(168,85,247,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(168,85,247,0.3) 1px, transparent 1px)",
+            "linear-gradient(rgba(168,85,247,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(168,85,247,0.4) 1px, transparent 1px)",
           backgroundSize: "80px 80px",
         }}
       />
@@ -223,11 +201,11 @@ const HeroSection = memo(function HeroSection() {
         {/* Announcement badge */}
         <motion.div variants={fluidChild} className="mb-8 flex justify-center">
           <motion.div
-            className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-5 py-2 backdrop-blur-sm"
+            className="inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/5 dark:border-purple-500/30 dark:bg-purple-500/10 px-5 py-2 backdrop-blur-sm"
             whileHover={{ scale: 1.05, borderColor: "rgba(168,85,247,0.5)" }}
           >
-            <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-            <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+            <Sparkles className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+            <span className="text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
               AI-Powered Learning Platform
             </span>
           </motion.div>
@@ -236,20 +214,19 @@ const HeroSection = memo(function HeroSection() {
         {/* Kinetic headline */}
         <motion.div variants={fluidChild}>
           <KineticHeadline
-            line1="Unlock Your Full"
-            line2="Learning Potential"
-            className="mb-8 text-4xl font-extrabold leading-[1.05] tracking-tight text-white drop-shadow-2xl sm:text-5xl md:text-6xl lg:text-7xl"
+            line1="Studying made social."
+            line2="Success made certain."
+            className="mb-8 text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-900 dark:text-white drop-shadow-lg dark:drop-shadow-2xl sm:text-5xl md:text-6xl lg:text-7xl"
           />
         </motion.div>
 
         {/* Subtitle */}
         <motion.p
           variants={fluidChild}
-          className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg md:text-xl"
+          className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-slate-700 dark:text-white/60 sm:text-lg md:text-xl"
         >
-          Where learning meets innovation. Connect with expert teachers,
-          generate AI-powered study notes, and collaborate in real-time study
-          rooms — all in one platform built for your success.
+          Where learning meets innovation. Build knowledge, connect with teachers,
+          and achieve your goals in a community that never stops growing.
         </motion.p>
 
         {/* CTA buttons */}
@@ -267,7 +244,7 @@ const HeroSection = memo(function HeroSection() {
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-violet-600 to-purple-600 bg-[length:200%_100%] hero-btn-gradient" />
               {/* Shine sweep */}
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-              <span className="relative z-10">Start Learning Free</span>
+              <span className="relative z-10">Begin a session</span>
               <motion.span
                 className="relative z-10 inline-flex"
                 animate={
@@ -287,19 +264,24 @@ const HeroSection = memo(function HeroSection() {
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.06] px-10 py-4 text-base font-bold text-white/90 backdrop-blur-sm transition-all hover:border-white/[0.2] hover:bg-white/[0.1]"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/70 px-10 py-4 text-base font-bold text-slate-900 dark:text-white/90 backdrop-blur-sm transition-all hover:border-foreground/20 hover:bg-muted dark:hover:border-white/[0.2] dark:hover:bg-white/[0.1]"
               id="hero-cta-secondary"
             >
-              View Dashboard
+              View dashboard
             </Link>
           </motion.div>
         </motion.div>
 
+        {/* Bottom Caption */}
+        <motion.p
+          variants={fluidChild}
+          className="mt-6 text-sm font-semibold text-slate-500 dark:text-white/40"
+        >
+          No credit card required &bull; Free forever plan
+        </motion.p>
+
         {/* Social proof */}
         <SocialProof />
-
-        {/* Trust badges */}
-        <TrustBadges />
       </motion.div>
 
       {/* ── Layer 6: Bottom gradient fade ── */}

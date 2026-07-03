@@ -414,8 +414,28 @@ input[type=range].mentor-slider::-webkit-slider-runnable-track {
    HERO SECTION — Cinematic Dark Mode
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Deep immersive dark background with subtle purple-to-indigo gradient */
+/* Bright, airy background for light mode */
 .hero-bg-gradient {
+  background: radial-gradient(
+      ellipse 120% 80% at 50% 0%,
+      rgba(139, 92, 246, 0.15) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 100% 60% at 80% 100%,
+      rgba(217, 70, 239, 0.1) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 80% 50% at 20% 80%,
+      rgba(56, 189, 248, 0.08) 0%,
+      transparent 50%
+    ),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 40%, #f8fafc 70%, #ffffff 100%);
+}
+
+/* Deep immersive dark background with subtle purple-to-indigo gradient */
+.dark .hero-bg-gradient {
   background: radial-gradient(
       ellipse 120% 80% at 50% 0%,
       rgba(88, 28, 135, 0.25) 0%,
@@ -510,11 +530,4 @@ input[type=range].mentor-slider::-webkit-slider-runnable-track {
   50% { background-position: 100% 50%; }
 }
 
-/* Hero section forced dark mode — ensures the hero always renders dark
-   regardless of the site-wide light/dark theme toggle */
-.hero-section {
-  color-scheme: dark;
-  --hero-text: #ffffff;
-  --hero-text-muted: rgba(255, 255, 255, 0.6);
-}
 
