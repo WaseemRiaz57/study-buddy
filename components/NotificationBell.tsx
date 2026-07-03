@@ -113,7 +113,8 @@ export function NotificationBell() {
     const currentUserId = String(session?.user?.id || "").trim();
     if (!currentUserId) return;
 
-    const socket = io("/study-room", {
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "";
+    const socket = io(`${socketUrl}/study-room`, {
       transports: ["websocket", "polling"],
     });
 
