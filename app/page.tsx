@@ -607,7 +607,7 @@ const PricingCard = memo(function PricingCard({
             {price}
           </motion.span>
           {price !== "$0" && (
-            <span className="text-sm text-muted-foreground">/{isYearly ? "yr" : "mo"}</span>
+            <span className="text-sm text-muted-foreground">/mo</span>
           )}
         </div>
         <p className="mt-2 text-sm text-muted-foreground font-medium">{pkr}</p>

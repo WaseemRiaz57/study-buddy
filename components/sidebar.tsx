@@ -46,7 +46,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const buildNavItems = (isCommunity: boolean): NavItem[] => [
+const buildNavItems = (isCommunity: boolean, plan: string): NavItem[] => [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", roles: ["STUDENT", "TEACHER", "MENTOR"] },
   { icon: FileText, label: "AI Studio", href: "/dashboard/content-generator", roles: ["STUDENT"], badge: "AI" },
   { icon: ClipboardList, label: "AI Studio", href: "/dashboard/content-generator", roles: ["TEACHER", "MENTOR"], badge: "AI" },
@@ -63,7 +63,8 @@ const buildNavItems = (isCommunity: boolean): NavItem[] => [
   { icon: MessageSquare, label: "Community", href: "/dashboard/community", roles: ["STUDENT", "TEACHER", "MENTOR"] },
   { icon: Send, label: "Messages", href: "/dashboard/messages", roles: ["STUDENT", "TEACHER", "MENTOR"] },
   { icon: DollarSign, label: "Earnings", href: "/dashboard/earnings", roles: ["TEACHER", "MENTOR"], locked: isCommunity },
-  { icon: Sparkles, label: "Upgrade to Pro", href: "/dashboard/upgrade", roles: ["STUDENT", "TEACHER", "MENTOR"], badge: "NEW" },
+  ...(plan === "FREE" ? [{ icon: Sparkles, label: "Upgrade to Pro", href: "/dashboard/upgrade", roles: ["STUDENT", "TEACHER", "MENTOR"] as Role[], badge: "NEW" }] : []),
+  ...(plan === "PRO" ? [{ icon: Sparkles, label: "Upgrade to Elite", href: "/dashboard/upgrade", roles: ["STUDENT", "TEACHER", "MENTOR"] as Role[], badge: "NEW" }] : []),
 ];
 
 function itemMatches(item: NavItem, href: string) {
@@ -174,7 +175,7 @@ export function Sidebar({
   const plan = initialPlan || storePlan;
   const isMentorRole = role === "TEACHER" || role === "MENTOR";
 
-  const filteredNavItems = buildNavItems(plan === "FREE" || plan === "COMMUNITY").filter((item) => {
+  const filteredNavItems = buildNavItems(plan === "FREE" || plan === "COMMUNITY", plan).filter((item) => {
     if (!item.roles.includes(role)) return false;
 
     if (

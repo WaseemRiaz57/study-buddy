@@ -25,11 +25,11 @@ function serializeUser(user: any) {
     role: user.role || "student",
     isVerified: Boolean(user.isVerified || false),
     subscriptionPlan:
-      String(user.subscriptionPlan || user.plan || "free").toLowerCase() === "elite"
-        ? "elite"
-        : String(user.subscriptionPlan || user.plan || "free").toLowerCase() === "pro"
-          ? "pro"
-          : "free",
+      String(user.plan || "FREE").toUpperCase() === "ELITE"
+        ? "ELITE"
+        : String(user.plan || "FREE").toUpperCase() === "PRO"
+          ? "PRO"
+          : "FREE",
     status:
       normalizedStatus === "suspended" || normalizedStatus === "banned"
         ? "suspended"
@@ -112,20 +112,14 @@ export async function GET(request: Request) {
       }),
       User.countDocuments({
         $or: [
-          { subscriptionPlan: "free" },
-          { plan: "Free" },
-          { plan: "free" },
-          { subscriptionPlan: { $exists: false } },
-          { subscriptionPlan: null },
-          { subscriptionPlan: "" },
+          { plan: "FREE" },
+          { plan: { $exists: false } },
+          { plan: null },
+          { plan: "" },
         ],
       }),
-      User.countDocuments({
-        $or: [{ subscriptionPlan: "pro" }, { plan: "Pro" }, { plan: "pro" }],
-      }),
-      User.countDocuments({
-        $or: [{ subscriptionPlan: "elite" }, { plan: "Elite" }, { plan: "elite" }],
-      }),
+      User.countDocuments({ plan: "PRO" }),
+      User.countDocuments({ plan: "ELITE" }),
       User.find(userQuery)
         .select("-password")
         .sort({ createdAt: -1 })

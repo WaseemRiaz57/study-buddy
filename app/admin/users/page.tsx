@@ -24,7 +24,7 @@ interface AdminUser {
   image: string;
   role: string;
   isVerified: boolean;
-  subscriptionPlan: "free" | "pro" | "elite";
+  subscriptionPlan: "FREE" | "PRO" | "ELITE";
   status: "active" | "suspended";
   createdAt: string | null;
   lastActive: string | null;
@@ -95,8 +95,8 @@ function roleLabel(role: string) {
 }
 
 function planLabel(plan: string) {
-  if (plan === "elite") return "Elite";
-  if (plan === "pro") return "Pro";
+  if (plan === "ELITE") return "Elite";
+  if (plan === "PRO") return "Pro";
   return "Free";
 }
 
@@ -331,9 +331,9 @@ export default function UserManagementPage() {
               onChange={e => setPlanFilter(e.target.value)}
             >
               <option value="all">All Plans</option>
-              <option value="free">Free</option>
-              <option value="pro">Pro</option>
-              <option value="elite">Elite</option>
+              <option value="FREE">Free</option>
+              <option value="PRO">Pro</option>
+              <option value="ELITE">Elite</option>
             </select>
           </div>
           <div className="relative">

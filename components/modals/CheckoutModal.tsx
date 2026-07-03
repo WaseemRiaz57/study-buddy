@@ -15,6 +15,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { useUserStore } from "@/store/useUserStore"; // <--- NAYI LINE: Store import
+import { useSession } from "next-auth/react";
 
 /* ────────────────────────────────────────────────
    Types
@@ -67,6 +68,7 @@ export default function CheckoutModal({
 }: CheckoutModalProps) {
   /* ── NAYI LINE: Store se setPlan function lena ── */
   const setPlan = useUserStore((state) => state.setPlan);
+  const { update } = useSession();
 
   /* ── state ── */
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
@@ -132,25 +134,41 @@ export default function CheckoutModal({
     }
   }
 
-  /* ── NAYA MOCK SUBMIT (Plan update logic ke sath) ── */
-  function handleSubmit() {
+  /* ── REAL SUBMIT (Plan update logic ke sath) ── */
+  async function handleSubmit() {
     if (stage !== "idle") return;
     setStage("processing");
-    setTimeout(() => {
-      setStage("success");
-      
-      // Update plan in global store based on planName
+    
+    try {
+      let targetPlan = "FREE";
       if (planName.toLowerCase().includes("elite")) {
-        setPlan("ELITE");
+        targetPlan = "ELITE";
       } else if (planName.toLowerCase().includes("pro")) {
-        setPlan("PRO");
+        targetPlan = "PRO";
       }
+
+      const res = await fetch("/api/user/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: targetPlan }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to upgrade plan");
+      }
+
+      setStage("success");
+      setPlan(targetPlan as any); // Update Zustand store (fallback)
+      await update(); // Update NextAuth session
 
       setTimeout(() => {
         onClose();
         resetState();
       }, 1600);
-    }, 2200);
+    } catch (error) {
+      console.error(error);
+      setStage("idle");
+    }
   }
 
   /* ── payment method tabs ── */

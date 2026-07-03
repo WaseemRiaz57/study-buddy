@@ -15,7 +15,7 @@ declare module "next-auth" {
     user: {
       id: string;
       role: Role;
-      subscriptionPlan?: "free" | "pro" | "elite";
+      subscriptionPlan?: "FREE" | "PRO" | "ELITE";
       accountStatus?: "active" | "suspended" | "banned";
       name?: string | null;
       email?: string | null;
@@ -28,7 +28,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: Role;
-    subscriptionPlan?: "free" | "pro" | "elite";
+    subscriptionPlan?: "FREE" | "PRO" | "ELITE";
     accountStatus?: "active" | "suspended" | "banned";
     image?: string | null;
     /** Device-session id; mirrors a row in the Session collection. */
@@ -48,11 +48,11 @@ function normalizeSignupRole(role: unknown): "student" | "mentor" {
   return normalized === "teacher" || normalized === "mentor" ? "mentor" : "student";
 }
 
-function normalizeSubscriptionPlan(plan: unknown): "free" | "pro" | "elite" {
-  const normalized = String(plan || "").trim().toLowerCase();
-  if (normalized === "elite") return "elite";
-  if (normalized === "pro") return "pro";
-  return "free";
+function normalizeSubscriptionPlan(plan: unknown): "FREE" | "PRO" | "ELITE" {
+  const normalized = String(plan || "").trim().toUpperCase();
+  if (normalized === "ELITE") return "ELITE";
+  if (normalized === "PRO") return "PRO";
+  return "FREE";
 }
 
 function normalizeAccountStatus(
@@ -225,7 +225,7 @@ export const authOptions: NextAuthOptions = {
           token.name = user.name;
           token.image = user.image ?? null;
           token.role = normalizeRole((user as { role?: unknown }).role);
-          token.subscriptionPlan = "free";
+          token.subscriptionPlan = "FREE";
           token.accountStatus = "active";
         }
 
