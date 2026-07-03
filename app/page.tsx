@@ -36,6 +36,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSession } from "next-auth/react";
 import { Reveal } from "@/components/landing/Reveal";
 import { PRICING_PLANS, calculateYearlyPrice, formatPlanPrice, getYearlyTotal } from "@/lib/pricingConfig";
+import HeroSection from "@/components/landing/hero/HeroSection";
 
 // ============================================================================
 // TYPES
@@ -945,98 +946,12 @@ export default function Home() {
         <FloatingParticles />
       </div>
 
-      {/* ══════════════ HERO ══════════════ */}
-      <section className="relative flex min-h-[80vh] w-full flex-col justify-center overflow-x-hidden px-4 py-16 text-center sm:px-6 sm:py-24 lg:px-8">
-        {/* Hero background image — continuous liquid floating (overscan hides edges) */}
-        <motion.div
-          className="absolute inset-0"
-          animate={{ y: [0, -22, 6, 0], x: [0, 10, -6, 0], scale: [1.06, 1.12, 1.07, 1.06], rotate: [0, 0.5, -0.4, 0] }}
-          transition={{ repeat: Infinity, duration: 18, ease: liquidEase }}
-        >
-          <Image
-            src="/hero.png"
-            alt="StudyBuddy Hero Image"
-            fill
-            priority={true}
-            className="object-cover"
-            sizes="100vw"
-          />
-        </motion.div>
-        <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] dark:bg-slate-950/60" />
+      {/* ══════════════ HERO — Cinematic Dark Section ══════════════ */}
+      <HeroSection />
 
-        {/* Hero content — staggered fluid reveal */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={fluidParent}
-          className="relative z-10 mx-auto max-w-5xl"
-        >
-
-          {/* Headline — cinematic split-text 3D reveal (char-by-char rotateX flip) */}
-          <motion.h1
-            className="mb-8 text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-900 drop-shadow-lg dark:text-white sm:text-5xl lg:text-7xl"
-            style={{ perspective: 900 }}
-          >
-            <span className="block">
-              <SplitText text="Studying made social." />
-            </span>
-            <motion.span
-              className="block"
-              initial={{ opacity: 0, y: 60, rotateX: -45 }}
-              animate={{ opacity: 1, y: 0, rotateX: 0 }}
-              transition={{ ...liquidSpring, delay: 0.55 }}
-              style={{ transformOrigin: "bottom center", transformStyle: "preserve-3d" }}
-            >
-              <FadeOutGradientText>Success made certain.</FadeOutGradientText>
-            </motion.span>
-          </motion.h1>
-
-          <motion.p
-            variants={fluidChild}
-            className="mx-auto mb-12 max-w-2xl text-lg leading-relaxed text-slate-700 drop-shadow-md dark:text-slate-300 md:text-xl"
-          >
-            Where learning meets innovation. Build knowledge, connect with mentors, and achieve your goals in a community that never stops growing.
-          </motion.p>
-
-          <motion.div variants={fluidChild} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
-              <Link href="/register"
-                className="group inline-flex items-center gap-2 rounded-lg bg-purple-600 px-10 py-4 text-base font-bold text-white shadow-xl shadow-purple-600/25 transition-all hover:bg-purple-700 hover:shadow-2xl hover:shadow-purple-600/35"
-              >
-                Begin a session
-                <motion.span className="inline-flex" animate={isMobile ? { y: [0, 3, 0] } : { x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
-                  <ArrowRight className="h-4 w-4" />
-                </motion.span>
-              </Link>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
-              <Link href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card/70 px-10 py-4 text-base font-bold text-slate-900 transition-all hover:border-foreground/20 hover:bg-muted dark:text-foreground"
-              >
-                View dashboard
-              </Link>
-            </motion.div>
-          </motion.div>
-
-          <motion.p variants={fluidChild} className="mt-8 text-sm font-semibold text-slate-700 dark:text-slate-300">
-            No credit card required&nbsp;&bull;&nbsp;Free forever plan
-          </motion.p>
-        </motion.div>
-
-        {/* Scroll indicator */}
-        <motion.div className="relative z-10 mt-16 flex justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}>
-          <motion.div
-            className="flex flex-col items-center gap-1"
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <div className="h-8 w-[1px] bg-[#7C3AED]  " />
-            <div className="h-1 w-1 rounded-full bg-purple-400/40" />
-          </motion.div>
-        </motion.div>
-
-        {/* Stats */}
-        <CinematicLayer className="mx-auto mt-20 max-w-5xl" intensity={0.8} dim={false}>
+      {/* Stats — sits just below the hero, uses existing page theme */}
+      <section className="relative w-full px-4 py-16 sm:px-6 lg:px-8">
+        <CinematicLayer className="mx-auto max-w-5xl" intensity={0.8} dim={false}>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {stats.map((s, i) => <StatCard key={i} {...s} index={i} />)}
           </div>
