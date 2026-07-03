@@ -196,6 +196,10 @@ export default function ContentGeneratorPage() {
   }, [fetchRecentCreations]);
 
   useEffect(() => {
+    document.title = `${isMentor ? 'Quiz Generator' : 'Notes Generator'} | StudyBuddy`;
+  }, [isMentor]);
+
+  useEffect(() => {
     if (!isMentor && activeTab === "quiz") {
       setActiveTab("notes");
       setQuizQuestions([]);
@@ -388,10 +392,12 @@ export default function ContentGeneratorPage() {
           className="mb-10 text-center"
         >
           <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-5xl">
-            <span className="text-[#7C3AED]">AI Studio</span>
+            <span className="text-[#7C3AED]">{isMentor ? "Quiz Generator" : "Notes Generator"}</span>
           </h1>
           <p className="mx-auto max-w-2xl text-base text-text-muted dark:text-slate-400 md:text-lg">
-            Generate polished notes, source-aware summaries, and mentor-ready MCQ quizzes.
+            {isMentor
+              ? "Generate MCQ quizzes, source-aware summaries, and study resources."
+              : "Generate polished notes, source-aware summaries, and study guides."}
           </p>
         </motion.header>
 
