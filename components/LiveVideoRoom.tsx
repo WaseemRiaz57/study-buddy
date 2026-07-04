@@ -38,6 +38,7 @@ type LiveVideoRoomProps = {
   hostId?: string;
   userId?: string;
   roomType?: "peer" | "mentorship";
+  userRole?: string;
   autoJoin?: boolean;
   renderAction: (state: LiveVideoRoomRenderState) => ReactNode;
 };
@@ -162,6 +163,7 @@ export default function LiveVideoRoom({
   hostId,
   userId,
   roomType,
+  userRole,
   autoJoin = false,
   renderAction,
 }: LiveVideoRoomProps) {
@@ -1130,7 +1132,8 @@ export default function LiveVideoRoom({
         }
       }
 
-      if (isHost) {
+      const isMentorOrTeacher = userRole === "mentor" || userRole === "teacher";
+      if (isHost && isMentorOrTeacher) {
         setIsEndingSession(true);
         setSessionEndedMessage("The host has ended this StudyBuddy session.");
         await publishRoomControlMessage({
@@ -1215,7 +1218,7 @@ export default function LiveVideoRoom({
     messages,
     sharedFiles,
     remoteParticipantCards,
-    leaveButtonLabel: isPeerRoom ? "Leave" : isHost ? "End Session" : "Leave Room",
+    leaveButtonLabel: isPeerRoom ? "Leave" : (isHost && (userRole === "mentor" || userRole === "teacher")) ? "End Session" : "Leave Room",
     isEndingSession,
     isModeratingAllParticipants,
     toggleMic,

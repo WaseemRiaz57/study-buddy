@@ -25,6 +25,14 @@ async function endSession(
       );
     }
 
+    const userRole = String(session?.user?.role || "").toLowerCase();
+    if (userRole !== "teacher" && userRole !== "mentor") {
+      return NextResponse.json(
+        { message: "Forbidden: only Mentors can end sessions" },
+        { status: 403 }
+      );
+    }
+
     const { roomId } = await params;
     const normalizedRoomId = normalizeRoomId(roomId);
 
@@ -76,5 +84,3 @@ export async function DELETE(
 ) {
   return endSession(request, context);
 }
-
-

@@ -63,6 +63,7 @@ type DashboardSession = {
   reviewSubmitted?: boolean;
   mentorJoinedAt?: string;
   studentJoinedAt?: string;
+  isSessionStarted?: boolean;
 };
 
 function getPopulatedUser(value?: PopulatedUser | string): PopulatedUser {
@@ -265,12 +266,18 @@ function StudentSessionCard({
       )}
 
       {!expired && session.status === "payment_verified" && (
-        <Link
-          href={`/dashboard/study-rooms/${session._id}`}
-          className="mt-5 inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
-        >
-          Join Room
-        </Link>
+        session.isSessionStarted ? (
+          <Link
+            href={`/dashboard/study-rooms/${session._id}`}
+            className="mt-5 inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+          >
+            Join Room
+          </Link>
+        ) : (
+          <div className="mt-5 inline-flex rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-700">
+            Waiting for Mentor to start...
+          </div>
+        )
       )}
 
       {session.status === "completed" && !session.reviewSubmitted && (
@@ -297,22 +304,26 @@ function MentorSessionCard({
   respondingActionKey,
   isCompleting,
   isVerifying,
+  isStartingSession,
   currentTime,
   onRespond,
   onOpenReceipt,
   onComplete,
   onJoinRoom,
+  onStartSession,
   hasJoinedRoom,
 }: {
   session: DashboardSession;
   respondingActionKey: string;
   isCompleting: boolean;
   isVerifying: boolean;
+  isStartingSession: boolean;
   currentTime: number;
   onRespond: (id: string, status: RequestAction) => void;
   onOpenReceipt: (session: DashboardSession) => void;
   onComplete: (id: string) => void;
   onJoinRoom: (id: string) => void;
+  onStartSession: (id: string) => void;
   hasJoinedRoom: boolean;
 }) {
   const student = getPopulatedUser(session.student || session.studentId);
@@ -424,13 +435,25 @@ function MentorSessionCard({
         {session.status === "payment_verified" && (
           <>
             {!expired && (
-              <Link
-                href={`/dashboard/study-rooms/${session._id}`}
-                onClick={() => onJoinRoom(session._id)}
-                className="inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
-              >
-                Join Room
-              </Link>
+              session.isSessionStarted ? (
+                <Link
+                  href={`/dashboard/study-rooms/${session._id}`}
+                  onClick={() => onJoinRoom(session._id)}
+                  className="inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+                >
+                  Join Room
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onStartSession(session._id)}
+                  disabled={isStartingSession}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isStartingSession && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Start Session
+                </button>
+              )
             )}
             <button
               type="button"
@@ -683,6 +706,59 @@ export default function SessionsPage() {
       isActive = false;
     };
   }, [authStatus, userRole]);
+
+  useEffect(() => {
+    function handleSessionStarted(event: Event) {
+      const customEvent = event as CustomEvent;
+      const payload = customEvent.detail;
+      if (payload && payload.sessionId) {
+        setSessions((currentSessions) =>
+          currentSessions.map((session) =>
+            session._id === payload.sessionId
+              ? { ...session, isSessionStarted: true }
+              : session
+          )
+        );
+      }
+    }
+
+    window.addEventListener("mentor-session-started", handleSessionStarted);
+    return () => {
+      window.removeEventListener("mentor-session-started", handleSessionStarted);
+    };
+  }, []);
+
+  const [startingSessionId, setStartingSessionId] = useState("");
+
+  async function handleStartSession(sessionId: string) {
+    if (startingSessionId) return;
+
+    try {
+      setStartingSessionId(sessionId);
+      const response = await fetch(`/api/study-rooms/${sessionId}/start-session`, {
+        method: "POST",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to start session.");
+      }
+
+      setSessions((currentSessions) =>
+        currentSessions.map((session) =>
+          session._id === sessionId
+            ? { ...session, isSessionStarted: true }
+            : session
+        )
+      );
+
+      // We don't automatically redirect; the UI button will change to "Join Room" instantly.
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to start session.");
+    } finally {
+      setStartingSessionId("");
+    }
+  }
 
   const groupedSessions = useMemo(() => {
     const sorted = [...sessions].sort(
@@ -947,11 +1023,13 @@ export default function SessionsPage() {
                         respondingActionKey={respondingActionKey}
                         isCompleting={completingSessionId === session._id}
                         isVerifying={verifyingSessionId === session._id}
+                        isStartingSession={startingSessionId === session._id}
                         currentTime={currentTime}
                         onRespond={handleRespond}
                         onOpenReceipt={setReceiptSession}
                         onComplete={requestCompleteSession}
                         onJoinRoom={markSessionJoined}
+                        onStartSession={handleStartSession}
                         hasJoinedRoom={
                           joinedSessionIds.has(session._id) ||
                           Boolean(session.mentorJoinedAt)
@@ -995,11 +1073,13 @@ export default function SessionsPage() {
                         respondingActionKey={respondingActionKey}
                         isCompleting={completingSessionId === session._id}
                         isVerifying={verifyingSessionId === session._id}
+                        isStartingSession={startingSessionId === session._id}
                         currentTime={currentTime}
                         onRespond={handleRespond}
                         onOpenReceipt={setReceiptSession}
                         onComplete={requestCompleteSession}
                         onJoinRoom={markSessionJoined}
+                        onStartSession={handleStartSession}
                         hasJoinedRoom={
                           joinedSessionIds.has(session._id) ||
                           Boolean(session.mentorJoinedAt)

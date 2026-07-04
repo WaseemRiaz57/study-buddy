@@ -38,6 +38,7 @@ export interface IMentorSession extends Document {
   goals: string[];
   attachments: IMentorSessionAttachment[];
   privateNotes: string;
+  isSessionStarted: boolean;
   mentorJoinedAt?: Date;
   studentJoinedAt?: Date;
   completedAt?: Date;
@@ -101,6 +102,7 @@ const MentorSessionSchema = new Schema<IMentorSession>(
     goals: { type: [String], default: [] },
     attachments: { type: [MentorSessionAttachmentSchema], default: [] },
     privateNotes: { type: String, default: "" },
+    isSessionStarted: { type: Boolean, default: false },
     mentorJoinedAt: { type: Date },
     studentJoinedAt: { type: Date },
     completedAt: { type: Date },

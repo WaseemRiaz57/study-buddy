@@ -150,6 +150,14 @@ export function NotificationBell() {
       );
     });
 
+    socket.on("session:started", (payload: any) => {
+      window.dispatchEvent(
+        new CustomEvent("mentor-session-started", {
+          detail: payload,
+        })
+      );
+    });
+
     return () => {
       socket.off("notification:new");
       socket.off("session_completed");
