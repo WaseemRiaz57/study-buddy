@@ -651,6 +651,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
           {liveRoom.isHost ? (
+            <div className="hidden sm:flex items-center gap-2">
               <button
                 onClick={() => setIsInviteModalOpen(true)}
                 className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-bold text-purple-700 transition-all hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-300 dark:hover:bg-purple-500/20"
