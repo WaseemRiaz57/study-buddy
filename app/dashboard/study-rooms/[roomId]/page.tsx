@@ -100,6 +100,7 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
   const { data: session } = useSession();
 
   const currentUserName = session?.user?.name || "You";
+  const userRole = String(session?.user?.role || "student").toLowerCase();
   const sessionUserId = normalizeUserId(session?.user?.id);
   const [guestUserId] = useState(() => createGuestUserId());
   const effectiveCurrentUserId = normalizeUserId(sessionUserId || guestUserId);
