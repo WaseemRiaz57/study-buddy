@@ -36,16 +36,16 @@ interface GlassCardData {
 // ─── Card Definitions ────────────────────────────────────────────────────────
 const GLASS_CARDS: GlassCardData[] = [
   {
-    id: "book-teacher",
-    title: "Book a Teacher",
+    id: "book-mentor",
+    title: "Book a Mentor",
     icon: <Users className="h-4 w-4" />,
     content: (
-      <article aria-label="Book a Teacher feature preview">
+      <article aria-label="Book a Mentor feature preview">
         <div className="flex items-center gap-2 mb-3">
           <div className="h-7 w-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
             <Users className="h-3.5 w-3.5 text-white" />
           </div>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-white/90 uppercase tracking-wider">Book a Teacher</span>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-white/90 uppercase tracking-wider">Book a Mentor</span>
         </div>
         <div className="space-y-2">
           {[
@@ -77,7 +77,7 @@ const GLASS_CARDS: GlassCardData[] = [
           ))}
         </div>
         <button className="mt-3 w-full rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 py-1.5 text-[10px] font-bold text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-shadow">
-          Browse All Teachers →
+          Browse All Mentors →
         </button>
       </article>
     ),
@@ -383,7 +383,7 @@ export const FloatingEcosystem = memo(function FloatingEcosystem({
       style={{ perspective: 1200 }}
       aria-hidden="false"
       role="region"
-      aria-label="StudyBuddy feature previews showcasing Book a Teacher, AI Notes, Focus Room, and Live Sessions"
+      aria-label="StudyBuddy feature previews showcasing Book a Mentor, AI Notes, Focus Room, and Live Sessions"
     >
       {GLASS_CARDS.map((card) => (
         <GlassCard

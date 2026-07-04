@@ -79,7 +79,7 @@ const SocialProof = memo(function SocialProof() {
       </div>
       <div className="text-left">
         <p className="text-[11px] font-bold text-slate-800 dark:text-white/70">
-          <span className="text-purple-600 dark:text-purple-400">50,000+</span> students & teachers
+          <span className="text-purple-600 dark:text-cyan-400">50,000+</span> students & mentors
         </p>
         <p className="text-[9px] text-slate-500 dark:text-white/40">learning together right now</p>
       </div>
@@ -122,10 +122,10 @@ const HeroSection = memo(function HeroSection() {
     <section
       id="hero"
       className="hero-section relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden"
-      aria-label="StudyBuddy — Unlock your full learning potential with AI-powered study tools, expert teachers, and collaborative study rooms"
+      aria-label="StudyBuddy — Unlock your full learning potential with AI-powered study tools, expert mentors, and collaborative study rooms"
     >
       {/* ── Layer 0: Deep background gradient ── */}
-      <div className="absolute inset-0 z-0 hero-bg-gradient" />
+      <div className="absolute inset-0 z-0 bg-slate-50 dark:bg-[#0D1428] transition-colors duration-500" />
 
       {/* ── Layer 1: Ambient orbs — liquid floating glows ── */}
       <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
@@ -225,7 +225,7 @@ const HeroSection = memo(function HeroSection() {
           variants={fluidChild}
           className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-slate-700 dark:text-white/60 sm:text-lg md:text-xl"
         >
-          Where learning meets innovation. Build knowledge, connect with teachers,
+          Where learning meets innovation. Build knowledge, connect with mentors,
           and achieve your goals in a community that never stops growing.
         </motion.p>
 
@@ -237,13 +237,9 @@ const HeroSection = memo(function HeroSection() {
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
             <Link
               href="/register"
-              className="group relative inline-flex items-center gap-2.5 rounded-xl px-10 py-4 text-base font-bold text-white shadow-2xl shadow-purple-600/30 transition-all overflow-hidden"
+              className="group relative inline-flex items-center gap-2.5 rounded-xl bg-purple-600 px-10 py-4 text-base font-bold text-white shadow-xl shadow-purple-600/30 transition-all hover:bg-purple-700 hover:shadow-2xl hover:shadow-purple-600/40"
               id="hero-cta-primary"
             >
-              {/* Button gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-violet-600 to-purple-600 bg-[length:200%_100%] hero-btn-gradient" />
-              {/* Shine sweep */}
-              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               <span className="relative z-10">Begin a session</span>
               <motion.span
                 className="relative z-10 inline-flex"
