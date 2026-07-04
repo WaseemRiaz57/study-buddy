@@ -921,45 +921,6 @@ export default function StudyRoomSessionPage({ params }: { params: Promise<{ roo
                   : 'bg-transparent text-slate-500 hover:bg-slate-100 dark:text-gray-400 dark:hover:bg-white/10'}`}
               >
                 <MessageSquare size={20} />
-          ) : null}
-
-          {/* Bottom Floating Controls */}
-          <motion.div
-            drag
-            dragConstraints={{ left: 0, right: 0, top: -500, bottom: 0 }}
-            dragElastic={0.2}
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 cursor-grab active:cursor-grabbing"
-          >
-            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl shadow-2xl border backdrop-blur-xl transition-colors
-              bg-white/90 border-slate-200
-              dark:bg-[#191121]/90 dark:border-white/10">
-              
-              <ControlBtn isActive={liveRoom.isMicEnabled} onClick={liveRoom.toggleMic} iconOn={Mic} iconOff={MicOff} />
-              <ControlBtn isActive={liveRoom.isCameraEnabled} onClick={liveRoom.toggleCamera} iconOn={Video} iconOff={VideoOff} />
-              
-              <div className="w-[1px] h-8 bg-slate-200 dark:bg-white/10 mx-2" />
-              
-              <button onClick={liveRoom.toggleScreenShare} className="flex flex-col items-center gap-1 group px-2">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform group-hover:scale-110
-                  bg-purple-600 text-white
-                  dark:bg-[#8c30e8]">
-                  <MonitorUp size={18} />
-                </div>
-                <span className="text-[10px] font-medium text-purple-600 dark:text-[#8c30e8]">
-                  {liveRoom.isScreenSharing ? "Sharing" : "Share"}
-                </span>
-              </button>
-
-              <div className="w-[1px] h-8 bg-slate-200 dark:bg-white/10 mx-2" />
-              
-              <button 
-                onClick={() => setShowChat(!showChat)}
-                className={`p-3 rounded-xl transition-all ${
-                  showChat 
-                  ? 'bg-purple-100 text-purple-600 dark:bg-[#8c30e8] dark:text-white' 
-                  : 'bg-transparent text-slate-500 hover:bg-slate-100 dark:text-gray-400 dark:hover:bg-white/10'}`}
-              >
-                <MessageSquare size={20} />
               </button>
             </div>
           </motion.div>
