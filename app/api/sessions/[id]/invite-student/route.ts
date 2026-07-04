@@ -100,7 +100,7 @@ export async function POST(
 
     // ── 4. Prevent duplicate invitations ────────────────────────────────────
     const alreadyInSession = currentStudents.some(
-      (sid) => String(sid) === studentId
+      (sid: any) => String(sid) === studentId
     );
 
     if (alreadyInSession) {

@@ -72,7 +72,7 @@ export async function GET(
         const mentorId = String(mentorSession.mentorId);
         const studentId = mentorSession.studentId ? String(mentorSession.studentId) : null;
         const students = Array.isArray(mentorSession.students) 
-          ? mentorSession.students.map(id => String(id)) 
+          ? mentorSession.students.map((id: any) => String(id)) 
           : [];
 
         if (currentUserId !== mentorId && currentUserId !== studentId && !students.includes(currentUserId)) {
