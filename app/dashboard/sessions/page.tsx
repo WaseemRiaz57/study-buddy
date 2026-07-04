@@ -651,6 +651,8 @@ export default function SessionsPage() {
     return () => window.clearInterval(timer);
   }, []);
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   useEffect(() => {
     if (authStatus === "loading") return;
 
@@ -705,7 +707,7 @@ export default function SessionsPage() {
     return () => {
       isActive = false;
     };
-  }, [authStatus, userRole]);
+  }, [authStatus, userRole, refreshTrigger]);
 
   useEffect(() => {
     function handleSessionStarted(event: Event) {
@@ -722,9 +724,15 @@ export default function SessionsPage() {
       }
     }
 
+    function handleSessionInvited() {
+      setRefreshTrigger((prev) => prev + 1);
+    }
+
     window.addEventListener("mentor-session-started", handleSessionStarted);
+    window.addEventListener("student-session-invited", handleSessionInvited);
     return () => {
       window.removeEventListener("mentor-session-started", handleSessionStarted);
+      window.removeEventListener("student-session-invited", handleSessionInvited);
     };
   }, []);
 
@@ -761,10 +769,14 @@ export default function SessionsPage() {
   }
 
   const groupedSessions = useMemo(() => {
-    const sorted = [...sessions].sort(
-      (a, b) =>
-        new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
-    );
+    const sorted = [...sessions].sort((a, b) => {
+      const aActive = a.isSessionStarted ? 1 : 0;
+      const bActive = b.isSessionStarted ? 1 : 0;
+      if (aActive !== bActive) {
+        return bActive - aActive;
+      }
+      return new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime();
+    });
 
     const isPastSession = (session: DashboardSession) =>
       ["completed", "declined", "rejected"].includes(session.status) ||

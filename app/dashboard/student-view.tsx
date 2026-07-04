@@ -48,6 +48,7 @@ interface StudentMentorSession {
   duration: number;
   status: SessionStatus;
   roomId?: string;
+  isSessionStarted?: boolean;
   reviewSubmitted?: boolean;
 }
 
@@ -299,9 +300,11 @@ export function StudentDashboard() {
 
     window.addEventListener("ai-notes-updated", onNotesUpdated);
     window.addEventListener("gamification-stats-updated", onGamificationUpdated);
+    window.addEventListener("student-session-invited", fetchMentorSessions);
     return () => {
       window.removeEventListener("ai-notes-updated", onNotesUpdated);
       window.removeEventListener("gamification-stats-updated", onGamificationUpdated);
+      window.removeEventListener("student-session-invited", fetchMentorSessions);
     };
   }, [
     fetchAssignments,
@@ -332,14 +335,15 @@ export function StudentDashboard() {
       const scheduledAt = new Date(session.scheduledAt).getTime();
       return (
         session.status === "payment_verified" &&
-        !Number.isNaN(scheduledAt) &&
-        scheduledAt >= Date.now()
+        (session.isSessionStarted || (!Number.isNaN(scheduledAt) && scheduledAt >= Date.now() - 3600000))
       );
     })
-    .sort(
-      (a, b) =>
-        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
-    )[0];
+    .sort((a, b) => {
+      const aActive = a.isSessionStarted ? 1 : 0;
+      const bActive = b.isSessionStarted ? 1 : 0;
+      if (aActive !== bActive) return bActive - aActive;
+      return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+    })[0];
   const currentLevelStartXp = Math.max(0, (gamificationStats.level - 1) * 1000);
   const nextLevelXp = Math.max(
     gamificationStats.nextLevelXp || gamificationStats.level * 1000,
@@ -486,23 +490,33 @@ export function StudentDashboard() {
                   : "Your accepted mentor sessions will appear here"}
               </p>
             </div>
-
             <div className="mt-6 relative z-10">
-              <p className="text-xs font-bold text-muted-foreground uppercase mb-3 tracking-wider">Starts In</p>
-              <div className="flex gap-2">
-                <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
-                  <span className="block text-2xl font-black text-foreground">
-                    {completedSessionsCount}
-                  </span>
-                  <span className="text-[10px] font-bold text-muted-foreground">DONE</span>
-                </div>
-                <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
-                  <span className="block text-2xl font-black text-foreground">
-                    {mentorSessions.length}
-                  </span>
-                  <span className="text-[10px] font-bold text-muted-foreground">TOTAL</span>
-                </div>
-              </div>
+              {nextMentorSession?.isSessionStarted ? (
+                <Link
+                  href={`/dashboard/study-rooms/${nextMentorSession._id}`}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#7C3AED] shadow-lg transition-all hover:bg-purple-50"
+                >
+                  Join Room <ArrowRight size={16} />
+                </Link>
+              ) : (
+                <>
+                  <p className="text-xs font-bold text-muted-foreground uppercase mb-3 tracking-wider">Starts In</p>
+                  <div className="flex gap-2">
+                    <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
+                      <span className="block text-2xl font-black text-foreground">
+                        {completedSessionsCount}
+                      </span>
+                      <span className="text-[10px] font-bold text-muted-foreground">DONE</span>
+                    </div>
+                    <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
+                      <span className="block text-2xl font-black text-foreground">
+                        {mentorSessions.length}
+                      </span>
+                      <span className="text-[10px] font-bold text-muted-foreground">TOTAL</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
         </div>

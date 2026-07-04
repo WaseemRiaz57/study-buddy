@@ -40,7 +40,12 @@ export async function GET() {
 
     await connectMongoDB();
 
-    const mentorSessions = await MentorSession.find({ studentId: session.user.id })
+    const mentorSessions = await MentorSession.find({
+      $or: [
+        { studentId: session.user.id },
+        { students: session.user.id }
+      ]
+    })
       .populate("mentorId", "name image email")
       .populate("students", "name image email")
       .sort({ scheduledAt: -1 })

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { io, type Socket } from "socket.io-client";
 import { Bell, Check, MailOpen, X } from "lucide-react";
+import { toast } from "sonner";
+import Link from "next/link";
 import { playNotificationSound } from "@/lib/playNotificationSound";
 
 interface UserNotification {
@@ -158,9 +160,47 @@ export function NotificationBell() {
       );
     });
 
+    socket.on("mentor:session-invitation", (payload: any) => {
+      playNotificationSound();
+      
+      const { sessionId, mentorName = "Your Mentor", subject = "Session" } = payload;
+      
+      window.dispatchEvent(
+        new CustomEvent("student-session-invited", {
+          detail: payload,
+        })
+      );
+      
+      toast.custom(
+        (t) => (
+          <div className="flex w-full min-w-[320px] flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-surface-dark">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white">Join {mentorName}</h3>
+                <p className="text-sm text-slate-500">{subject} is starting now!</p>
+              </div>
+              <button onClick={() => toast.dismiss(t)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
+                <X size={16} />
+              </button>
+            </div>
+            <Link 
+              href={`/dashboard/study-rooms/${sessionId}`}
+              onClick={() => toast.dismiss(t)}
+              className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
+            >
+              Join Room
+            </Link>
+          </div>
+        ),
+        { duration: 15000 }
+      );
+    });
+
     return () => {
       socket.off("notification:new");
       socket.off("session_completed");
+      socket.off("session:started");
+      socket.off("mentor:session-invitation");
       socket.disconnect();
       socketRef.current = null;
     };
