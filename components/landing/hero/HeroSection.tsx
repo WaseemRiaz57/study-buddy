@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, useRef } from 'react';
-import Particles, { initParticlesEngine } from '@tsparticles/react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import Particles, { ParticlesProvider } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
 import type { Container, ISourceOptions } from '@tsparticles/engine';
 import { motion, useReducedMotion, Variants } from 'framer-motion';
@@ -49,16 +49,13 @@ function AnimatedWord({ word }: { word: string }) {
 }
 
 export default function StudyBuddyHero() {
-  const [engineReady, setEngineReady] = useState(false);
   const [nodeCount, setNodeCount] = useState(0);
   const [contentVisible, setContentVisible] = useState(false);
   const containerRef = useRef<Container | null>(null);
   const prefersReducedMotion = useReducedMotion();
 
-  useEffect(() => {
-    initParticlesEngine(async (engine) => {
-      await loadSlim(engine);
-    }).then(() => setEngineReady(true));
+  const initEngine = useCallback(async (engine: any) => {
+    await loadSlim(engine as Engine);
   }, []);
 
   useEffect(() => {
@@ -122,7 +119,7 @@ export default function StudyBuddyHero() {
       {/* Background Glow Effect */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-purple-500/10 dark:bg-purple-600/15 blur-[120px] rounded-full pointer-events-none" />
 
-      {engineReady && (
+      <ParticlesProvider init={initEngine}>
         <Particles
           id="studybuddy-network"
           options={options}
@@ -131,7 +128,7 @@ export default function StudyBuddyHero() {
           }}
           className="absolute inset-0 z-0"
         />
-      )}
+      </ParticlesProvider>
 
       <div className="relative z-10 w-full max-w-4xl px-6 text-center">
         {/* Network Status Badge */}
