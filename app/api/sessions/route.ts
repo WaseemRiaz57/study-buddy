@@ -42,6 +42,7 @@ export async function GET() {
 
     const mentorSessions = await MentorSession.find({ studentId: session.user.id })
       .populate("mentorId", "name image email")
+      .populate("students", "name image email")
       .sort({ scheduledAt: -1 })
       .lean();
 

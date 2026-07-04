@@ -17,6 +17,7 @@ import {
 import RequestApprovalModal, {
   type StudentRequestData,
 } from "@/components/modals/RequestApprovalModal";
+import { UserAvatar } from "@/components/mentorship/UserAvatar";
 
 // 👇 DYNAMIC DATA OBJECT (Ready for Backend Integration)
 // 👇 DYNAMIC DATA OBJECT (Updated with Modal Details)
@@ -638,20 +639,12 @@ export function MentorDashboard() {
                       </div>
                     )}
                     <div className="flex items-start gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-[#7C3AED] flex items-center justify-center text-white font-bold overflow-hidden">
-                        {student.image ? (
-                          <Image
-                            src={student.image}
-                            alt={studentName}
-                            width={48}
-                            height={48}
-                            unoptimized
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          initials
-                        )}
-                      </div>
+                      <UserAvatar
+                        name={studentName}
+                        imageUrl={student.image || null}
+                        size="lg"
+                        className="rounded-lg"
+                      />
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-foreground truncate">{studentName}</h4>
                         <p className="text-xs text-muted-foreground mb-2">{request.subject}</p>

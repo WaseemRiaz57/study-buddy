@@ -65,14 +65,17 @@ export async function GET(
 
     if (mongoose.Types.ObjectId.isValid(rawRoomId)) {
       const mentorSession = await MentorSession.findById(rawRoomId)
-        .select("mentorId studentId scheduledAt status")
+        .select("mentorId students studentId scheduledAt status")
         .lean();
 
       if (mentorSession) {
         const mentorId = String(mentorSession.mentorId);
-        const studentId = String(mentorSession.studentId);
+        const studentId = mentorSession.studentId ? String(mentorSession.studentId) : null;
+        const students = Array.isArray(mentorSession.students) 
+          ? mentorSession.students.map(id => String(id)) 
+          : [];
 
-        if (currentUserId !== mentorId && currentUserId !== studentId) {
+        if (currentUserId !== mentorId && currentUserId !== studentId && !students.includes(currentUserId)) {
           return NextResponse.json(
             { message: "You are not authorized to join this session." },
             { status: 403 }

@@ -18,6 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import ReviewModal from "@/components/mentorship/ReviewModal";
+import { UserAvatar } from "@/components/mentorship/UserAvatar";
 import { useGamificationStore } from "@/store/useGamificationStore";
 
 type SessionStatus =
@@ -141,22 +142,7 @@ function Avatar({
   const name = user.name || fallback;
   const imageSrc = user.profileImage || user.image || "";
 
-  return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#7C3AED] text-sm font-black text-white">
-      {imageSrc ? (
-        <Image
-          src={imageSrc}
-          alt={name}
-          width={48}
-          height={48}
-          unoptimized
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        getInitials(name) || "SB"
-      )}
-    </div>
-  );
+  return <UserAvatar name={name} imageUrl={imageSrc || null} size="lg" />;
 }
 
 function StudentSessionCard({

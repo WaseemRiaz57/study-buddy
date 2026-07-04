@@ -32,6 +32,7 @@ export async function GET(
 
     const mentorSession = await MentorSession.findById(id)
       .populate("studentId", "name image email")
+      .populate("students", "name image email")
       .populate("mentorId", "name image email role");
 
     if (!mentorSession) {

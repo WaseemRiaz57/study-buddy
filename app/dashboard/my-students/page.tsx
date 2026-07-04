@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import AssignTaskModal from "@/components/modals/AssignTaskModal";
 import GiftCoinsModal from "@/components/modals/GiftCoinsModal";
+import { UserAvatar } from "@/components/mentorship/UserAvatar";
 
 interface Student {
   id: string;
@@ -315,19 +316,11 @@ export default function MyStudentsPage() {
               >
                 <div className="p-5">
                   <div className="flex items-center gap-3.5">
-                    <div className="relative shrink-0">
-                      <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-sm font-bold text-white shadow-lg shadow-purple-500/15">
-                        {student.image ? (
-                          <img
-                            src={student.image}
-                            alt={student.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          student.initials
-                        )}
-                      </div>
-                    </div>
+                    <UserAvatar
+                      name={student.name}
+                      imageUrl={student.image || null}
+                      size="lg"
+                    />
 
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-bold text-foreground">
