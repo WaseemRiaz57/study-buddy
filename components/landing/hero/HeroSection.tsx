@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import Particles, { ParticlesProvider } from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
-import type { Container, ISourceOptions } from '@tsparticles/engine';
+import type { Container, ISourceOptions, Engine } from '@tsparticles/engine';
 import { motion, useReducedMotion, Variants } from 'framer-motion';
 import Link from 'next/link';
 
