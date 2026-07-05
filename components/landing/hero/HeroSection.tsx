@@ -1,207 +1,66 @@
-'use client';
+import React from 'react';
 
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import Particles, { ParticlesProvider } from '@tsparticles/react';
-import { loadSlim } from '@tsparticles/slim';
-import type { Container, ISourceOptions, Engine } from '@tsparticles/engine';
-import { motion, useReducedMotion, Variants } from 'framer-motion';
-import Link from 'next/link';
-
-const PURPLE = '#9333EA'; // Brand Purple (Works on Light & Dark)
-const CYAN = '#06B6D4';   // Secondary Cyan
-
-const line1 = ['Studying', 'made', 'social.'];
-const line2 = ['Success', 'made', 'certain.'];
-
-const container: Variants = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.04, delayChildren: 0.2 },
-  },
-};
-
-const letter: Variants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95, filter: 'blur(5px)' },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    filter: 'blur(0px)',
-    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
-  },
-};
-
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 15 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } },
-};
-
-function AnimatedWord({ word }: { word: string }) {
+const HeroSection = () => {
   return (
-    <span className="inline-block whitespace-nowrap">
-      {word.split('').map((ch, i) => (
-        <motion.span key={i} variants={letter} className="inline-block">
-          {ch}
-        </motion.span>
-      ))}
-    </span>
-  );
-}
-
-export default function StudyBuddyHero() {
-  const [nodeCount, setNodeCount] = useState(0);
-  const [contentVisible, setContentVisible] = useState(false);
-  const containerRef = useRef<Container | null>(null);
-  const prefersReducedMotion = useReducedMotion();
-
-  const initEngine = useCallback(async (engine: any) => {
-    await loadSlim(engine as Engine);
-  }, []);
-
-  useEffect(() => {
-    const totalLetters = [...line1, ...line2].join('').length;
-    const totalMs = prefersReducedMotion ? 0 : (0.2 + totalLetters * 0.04 + 0.6) * 1000;
-    const t = setTimeout(() => setContentVisible(true), totalMs);
-    return () => clearTimeout(t);
-  }, [prefersReducedMotion]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      const c = containerRef.current;
-      if (!c) return;
-      setNodeCount(c.particles?.count ?? 0);
-    }, 500);
-    return () => clearInterval(id);
-  }, []);
-
-  const options: ISourceOptions = useMemo(
-    () => ({
-      background: { color: { value: 'transparent' } }, // Tailwind handles the background now
-      fpsLimit: 60,
-      particles: {
-        number: { value: 60, density: { enable: true, width: 1440, height: 900 } },
-        color: { value: PURPLE },
-        opacity: { value: 0.5 },
-        size: { value: { min: 1, max: 2.5 } },
-        move: {
-          enable: !prefersReducedMotion,
-          speed: 0.6,
-          outModes: { default: 'bounce' },
-        },
-        links: {
-          enable: true,
-          distance: 140,
-          color: CYAN,
-          opacity: 0.25,
-          width: 1,
-        },
-      },
-      interactivity: {
-        events: {
-          onHover: { enable: true, mode: 'grab' },
-          resize: { enable: true },
-        },
-        modes: {
-          grab: { distance: 180, links: { opacity: 0.6, color: PURPLE } },
-        },
-      },
-      detectRetina: true,
-    }),
-    [prefersReducedMotion]
-  );
-
-  return (
-    // SEO: Semantic section with clear aria-label
-    <section
-      aria-label="StudyBuddy Hero Section"
-      className="relative flex items-center justify-center min-h-screen overflow-hidden bg-slate-50 dark:bg-[#0b1121] font-sans transition-colors duration-300"
+    // The semantic <section> tag and clear structure aid in AEO and SEO parsing.
+    // toggle "dark" class on a parent element (like <html> or <body>) to switch themes.
+    <section 
+      className="flex items-center justify-center min-h-[80vh] px-4 py-20 bg-[#f9fafb] dark:bg-gray-900 transition-colors duration-300 font-sans"
+      aria-label="StudyBuddy Platform Introduction"
     >
-      {/* Background Glow Effect */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-purple-500/10 dark:bg-purple-600/15 blur-[120px] rounded-full pointer-events-none" />
-
-      <ParticlesProvider init={initEngine}>
-        <Particles
-          id="studybuddy-network"
-          options={options}
-          particlesLoaded={async (c) => {
-            containerRef.current = c ?? null;
-          }}
-          className="absolute inset-0 z-0"
-        />
-      </ParticlesProvider>
-
-      <div className="relative z-10 w-full max-w-4xl px-6 text-center">
-        {/* Removed Network Status Badge to match image */}
-
-        {/* H1 Kinetic Typography */}
-        <motion.h1
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-6"
-        >
-          {/* Line 1: Adaptive Dark/Light Color */}
-          <span className="block text-slate-900 dark:text-white">
-            {line1.map((w, i) => (
-              <span key={w}>
-                <AnimatedWord word={w} />
-                {i < line1.length - 1 ? '\u00A0' : ''}
-              </span>
-            ))}
+      <div className="max-w-4xl mx-auto text-center">
+        
+        {/* SEO-optimized H1 Header with optimized keyword visibility */}
+        <h1 className="mb-6 text-6xl font-extrabold tracking-tight md:text-7xl lg:text-8xl">
+          <span className="block text-[#111827] dark:text-white mb-2">
+            Studying made social.
           </span>
-          {/* Line 2: Brand Purple Gradient matching image */}
-          <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#A78BFA] to-[#E9D5FF] dark:from-[#A855F7] dark:via-[#C084FC] dark:to-[#F3E8FF]">
-            {line2.map((w, i) => (
-              <span key={w}>
-                <AnimatedWord word={w} />
-                {i < line2.length - 1 ? '\u00A0' : ''}
-              </span>
-            ))}
+          {/* Gradient text implementation */}
+          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#9333EA] to-[#D8B4FE] dark:from-[#A855F7] dark:to-[#E9D5FF]">
+            Success made certain.
           </span>
-        </motion.h1>
+        </h1>
 
-        {/* Subheading */}
-        <motion.p
-          variants={fadeUp}
-          initial="hidden"
-          animate={contentVisible ? 'show' : 'hidden'}
-          className="max-w-2xl mx-auto mb-10 text-lg md:text-xl font-medium text-slate-500 dark:text-slate-400 leading-relaxed"
-        >
-          Where learning meets innovation. Build knowledge, connect with mentors, 
+        {/* Subheading: Semantic <p> tag with highly readable contrast in both themes */}
+        <p className="max-w-2xl mx-auto mb-10 text-lg font-medium text-[#4B5563] dark:text-gray-300 md:text-xl leading-relaxed">
+          Where learning meets innovation. Build knowledge, connect with teachers, 
           and achieve your goals in a community that never stops growing.
-        </motion.p>
+        </p>
 
-        {/* CTA Buttons */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate={contentVisible ? 'show' : 'hidden'}
-          className="flex flex-col items-center justify-center gap-4 sm:flex-row"
-        >
-          <Link
-            href="/dashboard"
-            className="flex items-center justify-center gap-2 px-8 py-3.5 text-sm font-bold text-white transition-all duration-200 bg-[#9333EA] hover:bg-[#7E22CE] rounded-full shadow-[0_12px_24px_-8px_rgba(147,51,234,0.6)] dark:shadow-[0_12px_24px_-8px_rgba(147,51,234,0.4)] hover:shadow-[0_16px_32px_-8px_rgba(147,51,234,0.7)] active:scale-95"
+        {/* Call to Action Buttons */}
+        <div className="flex flex-col items-center justify-center gap-4 mb-8 sm:flex-row">
+          <button 
+            className="flex items-center justify-center px-8 py-3.5 text-base font-semibold text-white transition-all bg-[#8B5CF6] rounded-full hover:bg-[#7C3AED] dark:bg-[#9333EA] dark:hover:bg-[#A855F7] shadow-[0_4px_30px_rgba(139,92,246,0.4)] hover:shadow-[0_6px_40px_rgba(139,92,246,0.6)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5CF6] dark:focus:ring-offset-gray-900"
+            aria-label="Begin a new study session"
           >
-            Begin a session <span>&rarr;</span>
-          </Link>
-          <Link
-            href="/dashboard"
-            className="flex items-center justify-center px-8 py-3.5 text-sm font-bold transition-all duration-200 bg-white dark:bg-[#0b1121] text-[#0F172A] dark:text-white border border-slate-200 dark:border-slate-800 rounded-full shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 active:scale-95"
+            Begin a session
+            <svg 
+              className="w-5 h-5 ml-2" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24" 
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+          
+          <button 
+            className="flex items-center justify-center px-8 py-3.5 text-base font-semibold text-[#111827] transition-all bg-white border border-gray-200 rounded-full hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 dark:focus:ring-gray-700 dark:focus:ring-offset-gray-900"
+            aria-label="View your dashboard"
           >
             View dashboard
-          </Link>
-        </motion.div>
+          </button>
+        </div>
 
         {/* Footer Text */}
-        <motion.p
-          variants={fadeUp}
-          initial="hidden"
-          animate={contentVisible ? 'show' : 'hidden'}
-          className="mt-8 text-xs font-bold text-slate-500 dark:text-slate-400"
-        >
+        <p className="text-sm font-semibold text-[#6B7280] dark:text-gray-400">
           No credit card required &bull; Free forever plan
-        </motion.p>
+        </p>
       </div>
     </section>
   );
-}
+};
+
+export default HeroSection;
