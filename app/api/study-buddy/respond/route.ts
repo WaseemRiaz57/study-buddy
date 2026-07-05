@@ -64,7 +64,7 @@ export async function PATCH(req: Request) {
         "name image"
       ).lean();
 
-      // ── Update BuddyMatch → "Connected" if one exists ───────────
+      // Complete BuddyMatch if one exists.
       await BuddyMatch.updateMany(
         {
           $or: [
@@ -73,7 +73,7 @@ export async function PATCH(req: Request) {
           ],
           status: "Pending",
         },
-        { status: "Connected" }
+        { status: "Completed" }
       );
 
       // ── Dispatch notification to requester (FR-12) ───────────────

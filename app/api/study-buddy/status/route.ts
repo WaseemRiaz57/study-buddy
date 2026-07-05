@@ -31,7 +31,7 @@ type LeanBuddyMatch = {
   studentId: { toString(): string };
   matchedPeerId?: { toString(): string } | null;
   subject: string;
-  status: "Searching" | "Pending" | "Connected" | "Rejected";
+  status: "Searching" | "Pending" | "Connected" | "Rejected" | "Completed";
   roomId?: { toString(): string } | null;
 };
 
@@ -194,9 +194,9 @@ export async function GET(req: Request) {
         });
       }
 
-      if (match.status !== "Connected") {
+      if (match.status !== "Completed") {
         await BuddyMatch.findByIdAndUpdate(matchId, {
-          $set: { status: "Connected" },
+          $set: { status: "Completed" },
         });
       }
 

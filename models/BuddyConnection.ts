@@ -9,6 +9,7 @@ export type BuddyConnectionStatus =
 export interface IBuddyConnection extends Document {
   requester: Types.ObjectId;
   recipient: Types.ObjectId;
+  listingId?: Types.ObjectId;
   subject: string;
   roomId?: string;
   status: BuddyConnectionStatus;
@@ -27,6 +28,10 @@ const buddyConnectionSchema = new Schema<IBuddyConnection>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    listingId: {
+      type: Schema.Types.ObjectId,
+      ref: "BuddyMatch",
     },
     subject: {
       type: String,
@@ -49,6 +54,7 @@ const buddyConnectionSchema = new Schema<IBuddyConnection>(
 
 buddyConnectionSchema.index({ requester: 1, status: 1 });
 buddyConnectionSchema.index({ recipient: 1, status: 1 });
+buddyConnectionSchema.index({ listingId: 1, status: 1 });
 buddyConnectionSchema.index({ requester: 1, recipient: 1, status: 1 });
 
 const BuddyConnection: Model<IBuddyConnection> =

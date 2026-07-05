@@ -3,7 +3,7 @@
  *
  * Allows a Mentor to invite up to 4 Students into an active session room.
  * - Shows room capacity badge (e.g. "2 / 4 Students in Room")
- * - Lists all connected Students with their profile pictures (UserAvatar)
+ * - Lists all registered Students with their profile pictures (UserAvatar)
  * - Disables invite when room is full
  * - Shows loading spinners and graceful error states
  * - Fully compatible with Tailwind CSS light/dark mode
@@ -68,7 +68,7 @@ export function InviteStudentsModal({
     setInvitedIds(new Set(currentStudentIds));
   }, [currentStudentIds]);
 
-  // Fetch connected Students when modal opens
+  // Fetch all registered Students when modal opens
   const fetchStudents = useCallback(async () => {
     try {
       setIsLoadingStudents(true);
@@ -178,7 +178,7 @@ export function InviteStudentsModal({
               Invite Students
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Select a connected Student to invite to this session.
+              Select a registered Student to invite to this session.
             </p>
           </div>
           <button
@@ -245,7 +245,7 @@ export function InviteStudentsModal({
             <div className="flex flex-col items-center justify-center gap-3 py-12">
               <Loader2 size={28} className="animate-spin text-[#7C3AED]" />
               <p className="text-sm text-muted-foreground">
-                Loading your Students…
+                Loading Students...
               </p>
             </div>
           )}
@@ -268,10 +268,10 @@ export function InviteStudentsModal({
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
               <Users size={36} className="text-muted-foreground/40" />
               <p className="text-sm font-semibold text-muted-foreground">
-                No connected Students found
+                No registered Students found
               </p>
               <p className="text-xs text-muted-foreground/70">
-                Students appear here after an accepted or completed session.
+                Registered Student accounts will appear here when available.
               </p>
             </div>
           )}
@@ -330,7 +330,7 @@ export function InviteStudentsModal({
                         ) : (
                           <UserPlus size={13} />
                         )}
-                        {isInviting ? "Inviting…" : "Invite"}
+                        {isInviting ? "Inviting..." : "Invite"}
                       </button>
                     )}
                   </li>

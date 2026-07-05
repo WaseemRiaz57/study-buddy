@@ -38,7 +38,7 @@ export async function POST(
 
     const userRole = String(session.user.role ?? "").toLowerCase();
 
-    if (userRole !== "teacher" && userRole !== "mentor") {
+    if (userRole !== "mentor") {
       return NextResponse.json(
         { message: "Forbidden. Only Mentors can invite Students to a session." },
         { status: 403 }
@@ -119,19 +119,19 @@ export async function POST(
     }
 
     // ── 5. Verify Student is connected to this Mentor ───────────────────────
-    const connectedSession = await MentorSession.findOne({
-      mentorId: session.user.id,
-      studentId,
-      status: { $in: ["accepted", "completed", "payment_verified"] },
-    }).select("_id");
+    const student = await User.findOne({
+      _id: studentId,
+      role: { $in: ["student", "STUDENT"] },
+    })
+      .select("_id")
+      .lean();
 
-    if (!connectedSession) {
+    if (!student) {
       return NextResponse.json(
         {
-          message:
-            "You can only invite Students who have an existing session with you.",
+          message: "Student account not found.",
         },
-        { status: 403 }
+        { status: 404 }
       );
     }
 

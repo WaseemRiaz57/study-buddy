@@ -117,6 +117,9 @@ export async function POST(req: Request) {
 
     const requesterObjectId = new mongoose.Types.ObjectId(requesterId);
     const recipientObjectId = new mongoose.Types.ObjectId(recipientId);
+    const listingObjectId = listingId
+      ? new mongoose.Types.ObjectId(listingId)
+      : null;
 
     const recipient = await User.findOne({
       _id: recipientObjectId,
@@ -128,6 +131,15 @@ export async function POST(req: Request) {
         { message: "Recipient not found or unavailable" },
         { status: 404 }
       );
+    }
+
+    if (listingObjectId) {
+      await BuddyMatch.findByIdAndUpdate(listingObjectId, {
+        $set: {
+          status: "Pending",
+          matchedPeerId: requesterObjectId,
+        },
+      });
     }
 
     const existingConnection = await BuddyConnection.findOne({
@@ -148,6 +160,7 @@ export async function POST(req: Request) {
               String(existingConnection.status) === "accepted"
                 ? existingConnection.status
                 : "pending",
+            ...(listingObjectId ? { listingId: listingObjectId } : {}),
             updatedAt: new Date(),
           },
         },
@@ -212,6 +225,7 @@ export async function POST(req: Request) {
     const createdConnection = await BuddyConnection.create({
       requester: requesterObjectId,
       recipient: recipientObjectId,
+      ...(listingObjectId ? { listingId: listingObjectId } : {}),
       subject,
       status: "pending",
     });

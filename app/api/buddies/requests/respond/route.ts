@@ -9,6 +9,7 @@ import {
   emitUserNotification,
 } from "@/lib/study-room-socket";
 import { emitSocketEventToUser } from "@/lib/server-socket-emit";
+import BuddyMatch from "@/models/BuddyMatch";
 import BuddyConnection from "@/models/BuddyConnection";
 import Notification from "@/models/Notification";
 import mongoose from "mongoose";
@@ -79,6 +80,16 @@ export async function PATCH(req: Request) {
       connection.roomId = room.roomId;
       await connection.save();
 
+      if (connection.listingId) {
+        await BuddyMatch.findByIdAndUpdate(connection.listingId, {
+          $set: {
+            status: "Completed",
+            matchedPeerId: connection.requester,
+            roomId: room.roomObjectId,
+          },
+        });
+      }
+
       const notification = await Notification.create({
         userId: requesterId,
         recipientId: requesterId,
@@ -128,6 +139,18 @@ export async function PATCH(req: Request) {
 
     // Decline flow: remove pending request record to keep queue clean.
     const requesterId = String(connection.requester);
+    if (connection.listingId) {
+      await BuddyMatch.findOneAndUpdate(
+        {
+          _id: connection.listingId,
+          status: "Pending",
+        },
+        {
+          $set: { status: "Searching" },
+          $unset: { matchedPeerId: "" },
+        }
+      );
+    }
     await BuddyConnection.findByIdAndDelete(connectionId);
     const notification = await Notification.create({
       userId: requesterId,

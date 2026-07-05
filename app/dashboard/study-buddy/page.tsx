@@ -6,12 +6,18 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { io, type Socket } from "socket.io-client";
+import dynamic from "next/dynamic";
 
 import ActivePeersView from "@/components/study-buddy/ActivePeersView";
 import TopicSelectionView from "@/components/study-buddy/TopicSelectionView";
-import MatchingLoader from "@/components/study-buddy/MatchingLoader";
-import PublicProfileModal from "@/components/study-buddy/PublicProfileModal";
 import { getStudyRoomSocketUrl } from "@/lib/socket-client";
+
+const MatchingLoader = dynamic(() => import("@/components/study-buddy/MatchingLoader"), {
+  ssr: false,
+});
+const PublicProfileModal = dynamic(() => import("@/components/study-buddy/PublicProfileModal"), {
+  ssr: false,
+});
 
 type ViewState = "dashboard" | "topic" | "loading";
 type MatchmakingStatus = "searching" | "match_found" | "no_match";
@@ -121,6 +127,8 @@ export default function StudyBuddyPage() {
   const [acceptedRoomId, setAcceptedRoomId] = useState<string | null>(null);
   const [isCancellingActiveSession, setIsCancellingActiveSession] =
     useState(false);
+  const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
+  const [respondingAction, setRespondingAction] = useState<"accept" | "decline" | null>(null);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -244,6 +252,7 @@ export default function StudyBuddyPage() {
         pendingRequestIdRef.current = null;
         setAcceptedRoomId(roomId);
         setActiveSessionId(roomId);
+        void fetchActiveListings();
         setView("dashboard");
         toast.success("Match Found!");
         router.push(`/dashboard/study-rooms/${encodeURIComponent(roomId)}`);
@@ -300,7 +309,7 @@ export default function StudyBuddyPage() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [router, session?.user?.id, stopStatusPolling]);
+  }, [fetchActiveListings, router, session?.user?.id, stopStatusPolling]);
 
   // ─── Fetch incoming pending buddy requests ───
   useEffect(() => {
@@ -499,6 +508,9 @@ export default function StudyBuddyPage() {
         throw new Error("Request sent, but no requestId was returned.");
       }
 
+      setOtherListings((current) =>
+        current.filter((activeListing) => activeListing._id !== listing._id)
+      );
       setMatchedPeerData({
         userId: listing.student?._id || "",
         name: listing.student?.name || "Study Buddy",
@@ -650,6 +662,8 @@ export default function StudyBuddyPage() {
     action: "accept" | "decline"
   ) => {
     try {
+      setRespondingRequestId(connectionId);
+      setRespondingAction(action);
       const res = await fetch("/api/buddies/requests/respond", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -663,6 +677,10 @@ export default function StudyBuddyPage() {
 
       if (action === "accept") {
         toast.success("Request accepted. Redirecting to study room...");
+        setIncomingRequests((prev) =>
+          prev.filter((request) => request._id !== connectionId)
+        );
+        void fetchActiveListings();
         router.push(`/dashboard/study-rooms/${result.roomId || connectionId}`);
         return;
       }
@@ -677,6 +695,9 @@ export default function StudyBuddyPage() {
           ? error.message
           : "Failed to respond to request.";
       toast.error(message);
+    } finally {
+      setRespondingRequestId(null);
+      setRespondingAction(null);
     }
   };
 

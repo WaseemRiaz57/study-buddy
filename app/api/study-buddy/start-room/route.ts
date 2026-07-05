@@ -59,8 +59,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Upgrade match status to "Connected"
-      match.status = "Connected";
+      // Mark the listing complete after the accepted room flow starts.
+      match.status = "Completed";
       await match.save();
 
       resolvedSubject = resolvedSubject || match.subject;

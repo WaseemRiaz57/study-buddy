@@ -88,7 +88,7 @@ export async function POST(request: Request) {
 
       const updatedMatch = await BuddyMatch.findByIdAndUpdate(
         matchedBuddy._id,
-        { $set: { roomId: room.roomObjectId } },
+        { $set: { status: "Completed", roomId: room.roomObjectId } },
         { new: true }
       ).lean();
 
@@ -210,7 +210,7 @@ export async function POST(request: Request) {
 
       const updatedMatch = await BuddyMatch.findByIdAndUpdate(
         matchedBuddy._id,
-        { $set: { roomId: room.roomObjectId } },
+        { $set: { status: "Completed", roomId: room.roomObjectId } },
         { new: true }
       ).lean();
 

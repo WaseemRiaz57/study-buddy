@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Loader2, Plus, Send, Sparkles, Trash2, Users } from "lucide-react";
 
@@ -56,7 +56,7 @@ interface ActivePeersViewProps {
   onViewProfile?: (userId: string) => void;
 }
 
-function ProfileAvatar({ name, image }: { name: string; image?: string }) {
+const ProfileAvatar = memo(function ProfileAvatar({ name, image }: { name: string; image?: string }) {
   const initials =
     name
       .split(" ")
@@ -76,9 +76,9 @@ function ProfileAvatar({ name, image }: { name: string; image?: string }) {
       )}
     </div>
   );
-}
+});
 
-export default function ActivePeersView({
+function ActivePeersView({
   onAddNewAction,
   myListings = [],
   otherListings = [],
@@ -443,4 +443,6 @@ export default function ActivePeersView({
     </div>
   );
 }
+
+export default memo(ActivePeersView);
 

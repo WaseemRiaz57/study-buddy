@@ -30,7 +30,7 @@ export async function GET() {
 
     const userRole = String(session.user.role ?? "").toLowerCase();
 
-    if (userRole !== "teacher" && userRole !== "mentor") {
+    if (userRole !== "mentor") {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
@@ -43,13 +43,12 @@ export async function GET() {
 
     await connectMongoDB();
 
-    const connectedStatuses = ["accepted", "completed", "payment_verified"];
     const now = new Date();
-    const [studentIds, upcomingSessions, pendingRequests] = await Promise.all([
-      MentorSession.distinct("studentId", {
-        mentorId: session.user.id,
-        status: { $in: connectedStatuses },
-      }),
+    const [students, upcomingSessions, pendingRequests] = await Promise.all([
+      User.find({ role: { $in: ["student", "STUDENT"] } })
+        .select("name email image lastActive")
+        .sort({ name: 1, email: 1 })
+        .lean(),
       MentorSession.countDocuments({
         mentorId: session.user.id,
         status: { $in: ["accepted", "payment_verified"] },
@@ -61,16 +60,12 @@ export async function GET() {
       }),
     ]);
 
-    const [students, pendingAssignments] = await Promise.all([
-      User.find({ _id: { $in: studentIds } })
-        .select("name email image lastActive")
-        .lean(),
-      Assignment.countDocuments({
-        mentorId: session.user.id,
-        studentId: { $in: studentIds },
-        status: "pending",
-      }),
-    ]);
+    const studentIds = students.map((student) => student._id);
+    const pendingAssignments = await Assignment.countDocuments({
+      mentorId: session.user.id,
+      studentId: { $in: studentIds },
+      status: "pending",
+    });
 
     return NextResponse.json({
       stats: {

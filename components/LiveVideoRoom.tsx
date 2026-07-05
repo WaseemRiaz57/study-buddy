@@ -445,6 +445,21 @@ export default function LiveVideoRoom({
             }
 
             setIsMicLockedByHost(true);
+            setIsMicEnabled(false);
+            const currentRoom = roomRef.current;
+            if (currentRoom) {
+              const microphoneTrack = currentRoom.localParticipant.getTrackPublication(
+                Track.Source.Microphone
+              )?.track?.mediaStreamTrack;
+              if (microphoneTrack) microphoneTrack.enabled = false;
+              void currentRoom.localParticipant
+                .setMicrophoneEnabled(false)
+                .finally(() => syncRoomState(currentRoom));
+            } else {
+              previewStreamRef.current?.getAudioTracks().forEach((track) => {
+                track.enabled = false;
+              });
+            }
             toast.warning(message || "You have been muted by the host.", {
               icon: <MicOff size={16} />,
             });
@@ -1106,7 +1121,7 @@ export default function LiveVideoRoom({
       setIsWaitingForEarlyEndApproval(true);
       await publishRoomControlMessage({
         action: "EARLY_END_REQUEST",
-        message: "Your mentor wishes to end the session early. Do you agree?",
+        message: "Your Mentor wishes to end the session early. Do you agree?",
       });
       toast.info("Early end request sent to the student.");
       return;
@@ -1132,8 +1147,8 @@ export default function LiveVideoRoom({
         }
       }
 
-      const isMentorOrTeacher = userRole === "mentor" || userRole === "teacher";
-      if (isHost && isMentorOrTeacher) {
+      const isMentor = userRole === "mentor";
+      if (isHost && isMentor) {
         setIsEndingSession(true);
         setSessionEndedMessage("The host has ended this StudyBuddy session.");
         await publishRoomControlMessage({
@@ -1218,7 +1233,7 @@ export default function LiveVideoRoom({
     messages,
     sharedFiles,
     remoteParticipantCards,
-    leaveButtonLabel: isPeerRoom ? "Leave" : (isHost && (userRole === "mentor" || userRole === "teacher")) ? "End Session" : "Leave Room",
+    leaveButtonLabel: isPeerRoom ? "Leave" : (isHost && userRole === "mentor") ? "End Session" : "Leave Room",
     isEndingSession,
     isModeratingAllParticipants,
     toggleMic,
