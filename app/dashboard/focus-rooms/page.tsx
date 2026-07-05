@@ -94,6 +94,7 @@ export default function FocusRoomsPage() {
 
   /* ---- 🎵 Audio Engine Refs 🎵 ---- */
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const unavailableSoundIdsRef = useRef<Set<string>>(new Set());
 
   /* ---- Sounds ---- */
   const [sounds, setSounds] = useState<SoundChannel[]>([
@@ -118,8 +119,11 @@ export default function FocusRoomsPage() {
       if (!refs[s.id]) {
         const audio = new Audio(s.file);
         audio.loop = true;
-        audio.preload = "auto";
-        audio.onerror = () => console.warn(`Failed to load audio: ${s.file}`);
+        audio.preload = "none";
+        audio.onerror = () => {
+          unavailableSoundIdsRef.current.add(s.id);
+          audio.pause();
+        };
         refs[s.id] = audio;
       }
     });
@@ -140,7 +144,27 @@ export default function FocusRoomsPage() {
       if (audio) {
         audio.volume = s.volume / 100;
         if (s.enabled) {
-          audio.play().catch(() => console.log("User interaction required"));
+          if (unavailableSoundIdsRef.current.has(s.id)) {
+            audio.pause();
+            return;
+          }
+
+          audio.play().catch((error) => {
+            if (audio.error) {
+              unavailableSoundIdsRef.current.add(s.id);
+              audio.pause();
+              return;
+            }
+
+            if (
+              error instanceof DOMException &&
+              error.name === "NotAllowedError"
+            ) {
+              return;
+            }
+
+            console.warn("Ambient sound playback failed.", error);
+          });
         } else {
           audio.pause();
         }
@@ -707,7 +731,7 @@ export default function FocusRoomsPage() {
               </div>
 
               {isLoadingWeeklyFocus ? (
-                <div className="flex h-32 items-end gap-2" aria-label="Loading weekly focus chart">
+                <div className="flex min-h-[300px] items-end gap-2" aria-label="Loading weekly focus chart">
                   {DEFAULT_WEEKLY_DATA.map((day, index) => (
                     <div key={`${day.label}-${index}`} className="flex-1">
                       <div
@@ -718,8 +742,8 @@ export default function FocusRoomsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="h-32" aria-label="Weekly focus minutes chart">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="min-h-[300px] w-full" aria-label="Weekly focus minutes chart">
+                  <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={weeklyFocusData} margin={{ top: 8, right: 0, left: -28, bottom: 0 }}>
                       <XAxis
                         dataKey="day"

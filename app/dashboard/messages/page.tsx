@@ -36,6 +36,7 @@ import {
   Video,
   X,
 } from "lucide-react";
+import { getStudyRoomSocketUrl } from "@/lib/socket-client";
 
 interface ChatUser {
   id: string;
@@ -377,9 +378,14 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!currentUserId) return;
 
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "";
-    const socket = io(`${socketUrl}/study-room`, {
+    const socketUrl = getStudyRoomSocketUrl();
+
+    if (!socketUrl) return;
+
+    const socket = io(socketUrl, {
       transports: ["websocket", "polling"],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
     socketRef.current = socket;

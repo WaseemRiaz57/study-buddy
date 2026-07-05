@@ -99,7 +99,8 @@ export async function POST(
     await mentorSession.save();
 
     // Emit socket event to students in the session
-    const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
+    const socketServerUrl =
+      process.env.NEXT_PUBLIC_SOCKET_SERVER_URL?.replace(/\/+$/, "");
     const emitSecret = process.env.EMIT_SECRET;
     const studentsToNotify = resolveStudentIds(mentorSession);
 

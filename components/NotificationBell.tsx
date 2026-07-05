@@ -8,6 +8,7 @@ import { Bell, Check, MailOpen, X } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { playNotificationSound } from "@/lib/playNotificationSound";
+import { getStudyRoomSocketUrl } from "@/lib/socket-client";
 
 interface UserNotification {
   id: string;
@@ -117,9 +118,14 @@ export function NotificationBell() {
     const currentUserId = String(session?.user?.id || "").trim();
     if (!currentUserId) return;
 
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "";
-    const socket = io(`${socketUrl}/study-room`, {
+    const socketUrl = getStudyRoomSocketUrl();
+
+    if (!socketUrl) return;
+
+    const socket = io(socketUrl, {
       transports: ["websocket", "polling"],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
     socketRef.current = socket;

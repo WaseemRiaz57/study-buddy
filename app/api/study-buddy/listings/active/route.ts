@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
-import { connectDB } from "@/lib/connectDB";
+import { connectMongoDB } from "@/lib/mongodb";
 import {
   activeStudyBuddyListingFilter,
   closeExpiredStudyBuddyListings,
@@ -35,9 +35,9 @@ function serializeListing(listing: any) {
 
 export async function GET() {
   try {
-    // connectDB() MUST be the first awaited call so Vercel serverless
+    // connectMongoDB() MUST be the first awaited call so Vercel serverless
     // functions always have an active DB connection before any Mongoose work.
-    await connectDB();
+    await connectMongoDB();
 
     const session = await getServerSession(authOptions);
     const currentUserId = String(session?.user?.id || "").trim();
@@ -71,13 +71,18 @@ export async function GET() {
     ]);
 
     return NextResponse.json({
-      myListings: myListings.map(serializeListing),
-      otherListings: otherListings.map(serializeListing),
+      myListings: Array.isArray(myListings)
+        ? myListings.map(serializeListing)
+        : [],
+      otherListings: Array.isArray(otherListings)
+        ? otherListings.map(serializeListing)
+        : [],
     });
-  } catch (error: any) {
+  } catch (error) {
+    console.error(error);
     console.error("Listings Fetch Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error", details: error.message },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }

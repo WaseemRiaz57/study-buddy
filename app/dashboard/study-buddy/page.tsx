@@ -11,6 +11,7 @@ import ActivePeersView from "@/components/study-buddy/ActivePeersView";
 import TopicSelectionView from "@/components/study-buddy/TopicSelectionView";
 import MatchingLoader from "@/components/study-buddy/MatchingLoader";
 import PublicProfileModal from "@/components/study-buddy/PublicProfileModal";
+import { getStudyRoomSocketUrl } from "@/lib/socket-client";
 
 type ViewState = "dashboard" | "topic" | "loading";
 type MatchmakingStatus = "searching" | "match_found" | "no_match";
@@ -195,10 +196,11 @@ export default function StudyBuddyPage() {
 
     if (!userId) return;
 
-    // Strip any trailing slashes to prevent a malformed wss://https:// URL
-    const rawUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "";
-    const cleanUrl = rawUrl.replace(/\/+$/, "");
-    const socket = io(`${cleanUrl}/study-room`, {
+    const socketUrl = getStudyRoomSocketUrl();
+
+    if (!socketUrl) return;
+
+    const socket = io(socketUrl, {
       transports: ["websocket", "polling"],
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

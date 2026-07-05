@@ -146,7 +146,8 @@ export async function POST(
       .lean();
 
     // ── 7. Emit real-time Socket.IO invitation to the Student ───────────────
-    const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
+    const socketServerUrl =
+      process.env.NEXT_PUBLIC_SOCKET_SERVER_URL?.replace(/\/+$/, "");
     const emitSecret = process.env.EMIT_SECRET;
 
     const mentorUser = await User.findById(session.user.id)

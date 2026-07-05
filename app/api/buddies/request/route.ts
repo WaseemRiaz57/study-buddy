@@ -17,15 +17,32 @@ interface RequestBody {
 
 // POST /api/buddies/request
 export async function POST(req: Request) {
-  const { error, session } = await requireRole("student");
-  if (error) return error;
-
   try {
-    const body = (await req.json()) as RequestBody;
+    const { error, session } = await requireRole("student");
+    if (error) return error;
+
+    const requesterId = String(session?.user?.id || "").trim();
+
+    if (!mongoose.Types.ObjectId.isValid(requesterId)) {
+      return NextResponse.json(
+        { message: "Invalid user session." },
+        { status: 400 }
+      );
+    }
+
+    let body: RequestBody;
+    try {
+      body = (await req.json()) as RequestBody;
+    } catch {
+      return NextResponse.json(
+        { message: "Invalid request body." },
+        { status: 400 }
+      );
+    }
+
     const listingId = String(body.listingId || "").trim();
     let recipientId = String(body.recipientId || "").trim();
     let subject = String(body.subject || "").trim().slice(0, 100);
-    const requesterId = session!.user.id;
 
     await connectMongoDB();
     await closeExpiredStudyBuddyListings();
@@ -94,7 +111,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const recipient = await User.findOne({ _id: recipientId, role: "student" }).select("_id");
+    const requesterObjectId = new mongoose.Types.ObjectId(requesterId);
+    const recipientObjectId = new mongoose.Types.ObjectId(recipientId);
+
+    const recipient = await User.findOne({
+      _id: recipientObjectId,
+      role: "student",
+    }).select("_id");
+
     if (!recipient) {
       return NextResponse.json(
         { message: "Recipient not found or unavailable" },
@@ -104,8 +128,8 @@ export async function POST(req: Request) {
 
     const existingConnection = await BuddyConnection.findOne({
       $or: [
-        { requester: requesterId, recipient: recipientId },
-        { requester: recipientId, recipient: requesterId },
+        { requester: requesterObjectId, recipient: recipientObjectId },
+        { requester: recipientObjectId, recipient: requesterObjectId },
       ],
       status: { $in: ["pending", "accepted", "rejected"] },
     }).lean();
@@ -126,11 +150,13 @@ export async function POST(req: Request) {
         { new: true }
       );
 
-      const requester = await User.findById(requesterId).select("name").lean();
+      const requester = await User.findById(requesterObjectId)
+        .select("name")
+        .lean();
       const notification = await Notification.create({
-        userId: recipientId,
-        recipientId,
-        senderId: requesterId,
+        userId: recipientObjectId,
+        recipientId: recipientObjectId,
+        senderId: requesterObjectId,
         type: "buddy_request",
         title: "Study Buddy Ping",
         message: `${requester?.name || "A student"} pinged you again for ${subject}.`,
@@ -154,17 +180,19 @@ export async function POST(req: Request) {
     }
 
     const createdConnection = await BuddyConnection.create({
-      requester: requesterId,
-      recipient: recipientId,
+      requester: requesterObjectId,
+      recipient: recipientObjectId,
       subject,
       status: "pending",
     });
 
-    const requester = await User.findById(requesterId).select("name").lean();
+    const requester = await User.findById(requesterObjectId)
+      .select("name")
+      .lean();
     const notification = await Notification.create({
-      userId: recipientId,
-      recipientId,
-      senderId: requesterId,
+      userId: recipientObjectId,
+      recipientId: recipientObjectId,
+      senderId: requesterObjectId,
       type: "buddy_request",
       title: "New Study Buddy Ping",
       message: `${requester?.name || "A student"} wants to connect for ${subject}.`,
@@ -184,8 +212,9 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (err) {
-    console.error("Buddy Request Error:", err);
+  } catch (error) {
+    console.error(error);
+    console.error("Buddy Request Error:", error);
     return NextResponse.json(
       { message: "Internal server error while sending request" },
       { status: 500 }
