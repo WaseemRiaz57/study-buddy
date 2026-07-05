@@ -131,16 +131,7 @@ export default function StudyBuddyHero() {
       </ParticlesProvider>
 
       <div className="relative z-10 w-full max-w-4xl px-6 text-center">
-        {/* Network Status Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 text-xs font-medium tracking-widest uppercase border rounded-full text-cyan-700 dark:text-cyan-400 bg-cyan-50/50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 backdrop-blur-sm"
-        >
-          <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shadow-[0_0_8px_rgba(147,51,234,0.6)]" />
-          Live Network · {String(nodeCount).padStart(2, '0')} Active Nodes
-        </motion.div>
+        {/* Removed Network Status Badge to match image */}
 
         {/* H1 Kinetic Typography */}
         <motion.h1
@@ -158,8 +149,8 @@ export default function StudyBuddyHero() {
               </span>
             ))}
           </span>
-          {/* Line 2: Brand Purple Gradient */}
-          <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-purple-400 dark:from-purple-400 dark:to-purple-300">
+          {/* Line 2: Brand Purple Gradient matching image */}
+          <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] via-[#A78BFA] to-[#E9D5FF] dark:from-[#A855F7] dark:via-[#C084FC] dark:to-[#F3E8FF]">
             {line2.map((w, i) => (
               <span key={w}>
                 <AnimatedWord word={w} />
@@ -174,10 +165,9 @@ export default function StudyBuddyHero() {
           variants={fadeUp}
           initial="hidden"
           animate={contentVisible ? 'show' : 'hidden'}
-          className="max-w-2xl mx-auto mb-10 text-lg md:text-xl text-slate-600 dark:text-slate-300 leading-relaxed"
+          className="max-w-2xl mx-auto mb-10 text-lg md:text-xl font-medium text-slate-500 dark:text-slate-400 leading-relaxed"
         >
-          Where learning meets innovation. Build knowledge, connect with{' '}
-          <strong className="font-semibold text-slate-900 dark:text-white">mentors</strong>, 
+          Where learning meets innovation. Build knowledge, connect with mentors, 
           and achieve your goals in a community that never stops growing.
         </motion.p>
 
@@ -190,13 +180,13 @@ export default function StudyBuddyHero() {
         >
           <Link
             href="/dashboard"
-            className="flex items-center justify-center gap-2 px-8 py-3.5 text-sm font-semibold text-white transition-all duration-200 bg-purple-600 rounded-lg hover:bg-purple-700 hover:shadow-lg hover:shadow-purple-500/25 active:scale-95"
+            className="flex items-center justify-center gap-2 px-8 py-3.5 text-sm font-bold text-white transition-all duration-200 bg-[#9333EA] hover:bg-[#7E22CE] rounded-full shadow-[0_12px_24px_-8px_rgba(147,51,234,0.6)] dark:shadow-[0_12px_24px_-8px_rgba(147,51,234,0.4)] hover:shadow-[0_16px_32px_-8px_rgba(147,51,234,0.7)] active:scale-95"
           >
-            Begin a session <span>→</span>
+            Begin a session <span>&rarr;</span>
           </Link>
           <Link
             href="/dashboard"
-            className="flex items-center justify-center px-8 py-3.5 text-sm font-semibold transition-all duration-200 border rounded-lg text-slate-700 dark:text-slate-200 bg-white/50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 backdrop-blur-md active:scale-95"
+            className="flex items-center justify-center px-8 py-3.5 text-sm font-bold transition-all duration-200 bg-white dark:bg-[#0b1121] text-[#0F172A] dark:text-white border border-slate-200 dark:border-slate-800 rounded-full shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 active:scale-95"
           >
             View dashboard
           </Link>
@@ -207,9 +197,9 @@ export default function StudyBuddyHero() {
           variants={fadeUp}
           initial="hidden"
           animate={contentVisible ? 'show' : 'hidden'}
-          className="mt-6 text-sm text-slate-500 dark:text-slate-400"
+          className="mt-8 text-xs font-bold text-slate-500 dark:text-slate-400"
         >
-          No credit card required • Free forever plan
+          No credit card required &bull; Free forever plan
         </motion.p>
       </div>
     </section>
