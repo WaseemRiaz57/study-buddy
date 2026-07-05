@@ -11,11 +11,47 @@ import BuddyMatch from "@/models/BuddyMatch";
 
 export const dynamic = "force-dynamic";
 
-function serializeListing(listing: any) {
-  const student =
-    listing.studentId && typeof listing.studentId === "object"
-      ? listing.studentId
-      : null;
+type ListingStudent = {
+  _id?: unknown;
+  name?: string | null;
+  image?: string | null;
+};
+
+type StudyBuddyListing = {
+  _id: unknown;
+  subject?: string | null;
+  topic?: string | null;
+  status?: string | null;
+  createdAt?: Date | string;
+  studentId?: ListingStudent | unknown;
+};
+
+function getErrorDetails(error: unknown) {
+  if (error instanceof Error) {
+    const code =
+      typeof (error as { code?: unknown }).code === "number"
+        ? (error as { code: number }).code
+        : undefined;
+
+    return {
+      name: error.name,
+      message: error.message,
+      code,
+    };
+  }
+
+  return {
+    name: "UnknownError",
+    message: "Unknown error",
+  };
+}
+
+function isListingStudent(value: unknown): value is ListingStudent {
+  return Boolean(value && typeof value === "object" && "_id" in value);
+}
+
+function serializeListing(listing: StudyBuddyListing) {
+  const student = isListingStudent(listing.studentId) ? listing.studentId : null;
 
   return {
     _id: String(listing._id),
@@ -53,36 +89,58 @@ export async function GET() {
       );
     }
 
-    await closeExpiredStudyBuddyListings();
-
     const studentId = new mongoose.Types.ObjectId(currentUserId);
-    const activeFilter = activeStudyBuddyListingFilter();
-    const [myListings, otherListings] = await Promise.all([
-      BuddyMatch.find({ studentId, ...activeFilter })
-        .sort({ createdAt: -1 })
-        .lean(),
-      BuddyMatch.find({
-        studentId: { $ne: studentId },
-        ...activeFilter,
-      })
-        .sort({ createdAt: -1 })
-        .populate("studentId", "name image")
-        .lean(),
-    ]);
 
-    return NextResponse.json({
-      myListings: Array.isArray(myListings)
-        ? myListings.map(serializeListing)
-        : [],
-      otherListings: Array.isArray(otherListings)
-        ? otherListings.map(serializeListing)
-        : [],
-    });
+    try {
+      await closeExpiredStudyBuddyListings();
+
+      const activeFilter = activeStudyBuddyListingFilter();
+      const [myListings, otherListings] = await Promise.all([
+        BuddyMatch.find({ studentId, ...activeFilter })
+          .sort({ createdAt: -1 })
+          .lean(),
+        BuddyMatch.find({
+          studentId: { $ne: studentId },
+          ...activeFilter,
+        })
+          .sort({ createdAt: -1 })
+          .populate("studentId", "name image")
+          .lean(),
+      ]);
+
+      return NextResponse.json({
+        myListings: Array.isArray(myListings)
+          ? myListings.map(serializeListing)
+          : [],
+        otherListings: Array.isArray(otherListings)
+          ? otherListings.map(serializeListing)
+          : [],
+      });
+    } catch (error) {
+      console.error("Active Study Buddy listings query failed:", {
+        ...getErrorDetails(error),
+        route: "/api/study-buddy/listings/active",
+      });
+
+      return NextResponse.json(
+        {
+          message: "Failed to load active Study Buddy listings.",
+          code: "STUDY_BUDDY_ACTIVE_LISTINGS_FAILED",
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error(error);
-    console.error("Listings Fetch Error:", error);
+    console.error("Active Study Buddy listings request failed:", {
+      ...getErrorDetails(error),
+      route: "/api/study-buddy/listings/active",
+    });
+
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      {
+        message: "Failed to load active Study Buddy listings.",
+        code: "STUDY_BUDDY_ACTIVE_LISTINGS_FAILED",
+      },
       { status: 500 }
     );
   }

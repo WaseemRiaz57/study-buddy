@@ -5,7 +5,14 @@ export interface IBuddyMatch extends Document {
   matchedPeerId?: mongoose.Types.ObjectId;
   subject: string;
   topic?: string;
-  status: "Searching" | "Pending" | "Connected" | "Rejected" | "Expired" | "Closed";
+  status:
+    | "Searching"
+    | "Pending"
+    | "Connected"
+    | "Rejected"
+    | "Expired"
+    | "Completed"
+    | "Closed";
   roomId?: mongoose.Types.ObjectId;
   expiresAt?: Date;
   createdAt: Date;
@@ -35,7 +42,15 @@ const BuddyMatchSchema = new Schema<IBuddyMatch>(
     },
     status: {
       type: String,
-      enum: ["Searching", "Pending", "Connected", "Rejected", "Expired", "Closed"],
+      enum: [
+        "Searching",
+        "Pending",
+        "Connected",
+        "Rejected",
+        "Expired",
+        "Completed",
+        "Closed",
+      ],
       default: "Searching",
       index: true,
     },
@@ -50,11 +65,6 @@ const BuddyMatchSchema = new Schema<IBuddyMatch>(
     },
   },
   { timestamps: true }
-);
-
-BuddyMatchSchema.index(
-  { studentId: 1, subject: 1, status: 1 },
-  { unique: true, partialFilterExpression: { status: "Searching" } }
 );
 
 BuddyMatchSchema.index({ studentId: 1, status: 1 });
