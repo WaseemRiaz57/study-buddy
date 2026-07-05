@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * Study Buddy — Standalone Socket.IO Microservice
@@ -1132,18 +1133,25 @@ app.post("/emit", (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const { event, userId, payload } = req.body;
+  const { event, userId, payload, room, data } = req.body;
+  const targetUserId =
+    isNonEmptyString(userId)
+      ? userId.trim()
+      : isNonEmptyString(room) && room.startsWith("user:")
+        ? room.replace(/^user:/, "").trim()
+        : "";
+  const eventPayload = payload !== undefined ? payload : data;
 
-  if (!event || !userId) {
+  if (!event || !targetUserId) {
     return res
       .status(400)
       .json({ error: "event and userId are required" });
   }
 
-  const targetChannel = userChannel(userId.trim());
-  studyRoomNamespace.to(targetChannel).emit(event, payload || {});
+  const targetChannel = userChannel(targetUserId);
+  studyRoomNamespace.to(targetChannel).emit(event, eventPayload || {});
 
-  return res.json({ ok: true, event, userId });
+  return res.json({ ok: true, event, userId: targetUserId });
 });
 
 // ─── MongoDB Connection & Server Start ──────────────────────────────────────────

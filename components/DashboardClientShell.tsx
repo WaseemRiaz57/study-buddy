@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
 import ReviewModal from "@/components/mentorship/ReviewModal";
 import { Sidebar } from "@/components/sidebar";
+import { StudyBuddyRealtimeRequests } from "@/components/study-buddy/StudyBuddyRealtimeRequests";
 import { useActiveTimeReward } from "@/hooks/useActiveTimeReward";
 import { useOfflinePresence } from "@/hooks/useOfflinePresence";
 import { useGamificationStore } from "@/store/useGamificationStore";
@@ -211,6 +212,7 @@ export function DashboardClientShell({
         onClose={() => setCompletedReviewSession(null)}
         onSubmitted={() => setCompletedReviewSession(null)}
       />
+      {initialRole === "STUDENT" && <StudyBuddyRealtimeRequests />}
     </div>
   );
 }

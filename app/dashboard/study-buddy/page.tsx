@@ -72,6 +72,18 @@ interface AcceptedRequestConnection {
   };
 }
 
+type BuddyRequestCreatedPayload = {
+  connectionId?: string;
+  subject?: string;
+  requester?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+    image?: string;
+    subjects?: string[];
+  };
+};
+
 export default function StudyBuddyPage() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -112,6 +124,7 @@ export default function StudyBuddyPage() {
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const pendingRequestIdRef = useRef<string | null>(null);
 
   // ─── Stop Polling Helpers ───
   const stopStatusPolling = useCallback(() => {
@@ -216,23 +229,78 @@ export default function StudyBuddyPage() {
       "buddy-request-accepted",
       (payload: { roomId?: string; requestId?: string }) => {
         const roomId = String(payload?.roomId || "").trim();
+        const requestId = String(payload?.requestId || "").trim();
 
         if (!roomId) return;
+        if (
+          pendingRequestIdRef.current &&
+          requestId &&
+          pendingRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
 
         stopStatusPolling();
+        pendingRequestIdRef.current = null;
         setAcceptedRoomId(roomId);
         setActiveSessionId(roomId);
         setView("dashboard");
         toast.success("Match Found!");
+        router.push(`/dashboard/study-rooms/${encodeURIComponent(roomId)}`);
       }
     );
 
+    socket.on("buddy-request-declined", (payload: { requestId?: string }) => {
+      const requestId = String(payload?.requestId || "").trim();
+      if (
+        pendingRequestIdRef.current &&
+        requestId &&
+        pendingRequestIdRef.current !== requestId
+      ) {
+        return;
+      }
+
+      stopStatusPolling();
+      pendingRequestIdRef.current = null;
+      setView("dashboard");
+      setActiveSessionId(null);
+      setMatchmakingStatus("searching");
+      toast.info("Your study buddy request was declined.");
+    });
+
+    socket.on("buddy-request-created", (payload: BuddyRequestCreatedPayload) => {
+      const connectionId = String(payload?.connectionId || "").trim();
+      const requesterId = String(payload?.requester?._id || "").trim();
+
+      if (!connectionId || !requesterId) return;
+
+      setIncomingRequests((current) => [
+        {
+          _id: connectionId,
+          requester: {
+            _id: requesterId,
+            name: payload.requester?.name || "A student",
+            email: payload.requester?.email || "",
+            image: payload.requester?.image || "",
+            subjects: Array.isArray(payload.requester?.subjects)
+              ? payload.requester.subjects
+              : [],
+          },
+          subject: payload.subject || "General Study",
+          status: "pending",
+        },
+        ...current.filter((request) => request._id !== connectionId),
+      ]);
+    });
+
     return () => {
       socket.off("buddy-request-accepted");
+      socket.off("buddy-request-declined");
+      socket.off("buddy-request-created");
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [session?.user?.id, stopStatusPolling]);
+  }, [router, session?.user?.id, stopStatusPolling]);
 
   // ─── Fetch incoming pending buddy requests ───
   useEffect(() => {
@@ -296,6 +364,7 @@ export default function StudyBuddyPage() {
 
           if (data.matchFound && data.roomId) {
             stopStatusPolling();
+            pendingRequestIdRef.current = null;
             setActiveSessionId(String(data.roomId));
             setMatchedPeerData({
               userId: data.peer?.id || data.peer?._id || "",
@@ -306,6 +375,7 @@ export default function StudyBuddyPage() {
             router.push(`/dashboard/study-rooms/${encodeURIComponent(String(data.roomId))}`);
           } else if (data.status === "rejected") {
             stopStatusPolling();
+            pendingRequestIdRef.current = null;
             toast.info("Your study match was cancelled.");
             setView("dashboard");
             setActiveSessionId(null);
@@ -435,6 +505,7 @@ export default function StudyBuddyPage() {
         image: listing.student?.image || "",
         tags: [],
       });
+      pendingRequestIdRef.current = requestId;
       toast.success("Request sent! Waiting for approval...");
       setView("loading");
       startStatusPolling(requestId);
@@ -501,6 +572,7 @@ export default function StudyBuddyPage() {
         image: peer.image || "",
         tags: peer.tags || [],
       });
+      pendingRequestIdRef.current = requestId;
       toast.success("Ping sent! Waiting for approval...");
       setView("loading");
       startStatusPolling(requestId);
@@ -562,6 +634,7 @@ export default function StudyBuddyPage() {
         image: profile.image || "",
         tags: profile.preferredSubjects || [],
       });
+      pendingRequestIdRef.current = requestId;
       toast.success("Request sent! Waiting for approval...");
       setView("loading");
       startStatusPolling(requestId);
@@ -616,6 +689,7 @@ export default function StudyBuddyPage() {
     setMatchedListing(null);
     setMatchmakingStatus("searching");
     setActiveSessionId(null);
+    pendingRequestIdRef.current = null;
   };
 
   const handleCancelLoading = () => {
@@ -624,6 +698,7 @@ export default function StudyBuddyPage() {
     setMatchedListing(null);
     setMatchmakingStatus("searching");
     setActiveSessionId(null);
+    pendingRequestIdRef.current = null;
   };
 
   const handleCancelActiveSession = async ({

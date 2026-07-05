@@ -3,7 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import { createStudyBuddyMatchRoom } from "@/lib/study-buddy-match-room";
-import { emitBuddyRequestAccepted, emitUserNotification } from "@/lib/study-room-socket";
+import {
+  emitBuddyRequestAccepted,
+  emitBuddyRequestDeclined,
+  emitUserNotification,
+} from "@/lib/study-room-socket";
+import { emitSocketEventToUser } from "@/lib/server-socket-emit";
 import BuddyConnection from "@/models/BuddyConnection";
 import Notification from "@/models/Notification";
 import mongoose from "mongoose";
@@ -94,6 +99,21 @@ export async function PATCH(req: Request) {
         requestId: String(connection._id),
       });
       emitUserNotification(requesterId, notification.toObject());
+      await Promise.all([
+        emitSocketEventToUser({
+          userId: requesterId,
+          event: "buddy-request-accepted",
+          payload: {
+            roomId: room.roomId,
+            requestId: String(connection._id),
+          },
+        }),
+        emitSocketEventToUser({
+          userId: requesterId,
+          event: "notification:new",
+          payload: notification.toObject(),
+        }),
+      ]);
 
       return NextResponse.json(
         {
@@ -123,6 +143,27 @@ export async function PATCH(req: Request) {
       },
     });
     emitUserNotification(requesterId, notification.toObject());
+    emitBuddyRequestDeclined(requesterId, {
+      requestId: connectionId || "",
+      subject: connection.subject,
+      responderName: session.user.name || "Your study buddy",
+    });
+    await Promise.all([
+      emitSocketEventToUser({
+        userId: requesterId,
+        event: "buddy-request-declined",
+        payload: {
+          requestId: connectionId,
+          subject: connection.subject,
+          responderName: session.user.name || "Your study buddy",
+        },
+      }),
+      emitSocketEventToUser({
+        userId: requesterId,
+        event: "notification:new",
+        payload: notification.toObject(),
+      }),
+    ]);
 
     return NextResponse.json(
       {

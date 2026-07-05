@@ -48,6 +48,23 @@ type BuddyRequestAcceptedPayload = {
   requestId: string;
 };
 
+type BuddyRequestCreatedPayload = {
+  connectionId: string;
+  subject: string;
+  requester: {
+    _id: string;
+    name?: string;
+    image?: string;
+    subjects?: string[];
+  };
+};
+
+type BuddyRequestDeclinedPayload = {
+  requestId: string;
+  subject?: string;
+  responderName?: string;
+};
+
 type ConversationJoinPayload = {
   conversationId?: string;
   userId?: string;
@@ -651,6 +668,30 @@ export function emitBuddyRequestAccepted(
   }
 
   studyRoomNamespace.to(userChannel(requesterId)).emit("buddy-request-accepted", payload);
+  return true;
+}
+
+export function emitBuddyRequestCreated(
+  recipientId: string,
+  payload: BuddyRequestCreatedPayload
+): boolean {
+  if (!studyRoomNamespace || !isNonEmptyString(recipientId)) {
+    return false;
+  }
+
+  studyRoomNamespace.to(userChannel(recipientId)).emit("buddy-request-created", payload);
+  return true;
+}
+
+export function emitBuddyRequestDeclined(
+  requesterId: string,
+  payload: BuddyRequestDeclinedPayload
+): boolean {
+  if (!studyRoomNamespace || !isNonEmptyString(requesterId)) {
+    return false;
+  }
+
+  studyRoomNamespace.to(userChannel(requesterId)).emit("buddy-request-declined", payload);
   return true;
 }
 

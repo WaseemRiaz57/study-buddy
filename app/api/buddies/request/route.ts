@@ -6,7 +6,11 @@ import BuddyMatch from "@/models/BuddyMatch";
 import BuddyConnection from "@/models/BuddyConnection";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
-import { emitUserNotification } from "@/lib/study-room-socket";
+import {
+  emitBuddyRequestCreated,
+  emitUserNotification,
+} from "@/lib/study-room-socket";
+import { emitSocketEventToUser } from "@/lib/server-socket-emit";
 import mongoose from "mongoose";
 
 interface RequestBody {
@@ -151,8 +155,21 @@ export async function POST(req: Request) {
       );
 
       const requester = await User.findById(requesterObjectId)
-        .select("name")
+        .select("_id name image subjects")
         .lean();
+      const connectionId = String(existingConnection._id);
+      const buddyRequestPayload = {
+        connectionId,
+        subject,
+        requester: {
+          _id: requesterId,
+          name: requester?.name || "A student",
+          image: (requester as { image?: string } | null)?.image || "",
+          subjects: Array.isArray((requester as { subjects?: string[] } | null)?.subjects)
+            ? (requester as { subjects?: string[] }).subjects
+            : [],
+        },
+      };
       const notification = await Notification.create({
         userId: recipientObjectId,
         recipientId: recipientObjectId,
@@ -162,13 +179,26 @@ export async function POST(req: Request) {
         message: `${requester?.name || "A student"} pinged you again for ${subject}.`,
         read: false,
         metadata: {
-          connectionId: String(existingConnection._id),
+          connectionId,
           subject,
           reping: true,
         },
       });
 
+      emitBuddyRequestCreated(recipientId, buddyRequestPayload);
       emitUserNotification(recipientId, notification.toObject());
+      await Promise.all([
+        emitSocketEventToUser({
+          userId: recipientId,
+          event: "buddy-request-created",
+          payload: buddyRequestPayload,
+        }),
+        emitSocketEventToUser({
+          userId: recipientId,
+          event: "notification:new",
+          payload: notification.toObject(),
+        }),
+      ]);
 
       return NextResponse.json(
         {
@@ -187,8 +217,20 @@ export async function POST(req: Request) {
     });
 
     const requester = await User.findById(requesterObjectId)
-      .select("name")
+      .select("_id name image subjects")
       .lean();
+    const buddyRequestPayload = {
+      connectionId: String(createdConnection._id),
+      subject,
+      requester: {
+        _id: requesterId,
+        name: requester?.name || "A student",
+        image: (requester as { image?: string } | null)?.image || "",
+        subjects: Array.isArray((requester as { subjects?: string[] } | null)?.subjects)
+          ? (requester as { subjects?: string[] }).subjects
+          : [],
+      },
+    };
     const notification = await Notification.create({
       userId: recipientObjectId,
       recipientId: recipientObjectId,
@@ -203,7 +245,20 @@ export async function POST(req: Request) {
       },
     });
 
+    emitBuddyRequestCreated(recipientId, buddyRequestPayload);
     emitUserNotification(recipientId, notification.toObject());
+    await Promise.all([
+      emitSocketEventToUser({
+        userId: recipientId,
+        event: "buddy-request-created",
+        payload: buddyRequestPayload,
+      }),
+      emitSocketEventToUser({
+        userId: recipientId,
+        event: "notification:new",
+        payload: notification.toObject(),
+      }),
+    ]);
 
     return NextResponse.json(
       {
