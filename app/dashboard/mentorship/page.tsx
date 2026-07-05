@@ -232,7 +232,7 @@ function SessionCard({
             onClick={() => onPay(session)}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-purple-700"
           >
-            💳 Pay to Join
+            Pay to Join
           </button>
         )}
 
