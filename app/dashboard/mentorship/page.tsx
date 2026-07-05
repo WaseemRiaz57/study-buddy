@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ type SessionStatus =
   | "accepted"
   | "payment_pending"
   | "payment_verified"
+  | "active"
   | "completed"
   | "declined"
   | "rejected";
@@ -54,6 +55,8 @@ type StudentSession = {
   roomId?: string;
   paymentReceipt?: string;
   reviewSubmitted?: boolean;
+  isSessionStarted?: boolean;
+  actualStartTime?: string;
 };
 
 function getMentor(session: StudentSession): PopulatedMentor {
@@ -90,15 +93,18 @@ function formatSessionTime(value: string) {
 const SESSION_WINDOW_MS = 60 * 60 * 1000;
 
 function getSessionStartTime(session: StudentSession) {
-  return session.startTime || session.scheduledAt;
+  return session.actualStartTime || session.startTime || session.scheduledAt;
 }
 
-function isSessionExpired(startTime: string | undefined, currentTime: number) {
-  const start = new Date(startTime || "").getTime();
+function isSessionExpired(session: StudentSession, currentTime: number) {
+  if (!session.isSessionStarted || !session.actualStartTime) return false;
+
+  const start = new Date(session.actualStartTime).getTime();
 
   if (!Number.isFinite(start)) return false;
 
-  const expiration = start + SESSION_WINDOW_MS;
+  const durationMs = Math.max(1, Number(session.duration || 60)) * 60 * 1000;
+  const expiration = start + durationMs;
   return currentTime > expiration;
 }
 
@@ -108,6 +114,7 @@ function statusLabel(status: SessionStatus) {
     accepted: "Awaiting Payment",
     payment_pending: "Verifying Payment...",
     payment_verified: "Ready to Join",
+    active: "Active",
     completed: "Completed",
     declined: "Declined",
     rejected: "Rejected",
@@ -154,7 +161,7 @@ function SessionCard({
   const mentor = getMentor(session);
   const mentorName = getMentorName(session);
   const initials = getInitials(mentorName) || "MT";
-  const expired = isSessionExpired(getSessionStartTime(session), currentTime);
+  const expired = isSessionExpired(session, currentTime);
   const showEndedBadge = expired && session.status !== "completed";
 
   return (
@@ -235,13 +242,19 @@ function SessionCard({
           </span>
         )}
 
-        {!expired && session.status === "payment_verified" && (
-          <Link
-            href={`/dashboard/study-rooms/${session._id}`}
-            className="inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-purple-700"
-          >
-            Join Room
-          </Link>
+        {!expired && (session.status === "payment_verified" || session.status === "active") && (
+          session.isSessionStarted ? (
+            <Link
+              href={`/dashboard/study-rooms/${session._id}`}
+              className="inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-purple-700"
+            >
+              Join Room
+            </Link>
+          ) : (
+            <span className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-700">
+              Waiting for Mentor to start...
+            </span>
+          )
         )}
 
         {session.status === "completed" && !session.reviewSubmitted && (
@@ -284,6 +297,30 @@ export default function MentorshipActivitiesHub() {
     null
   );
 
+  const fetchSessions = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setIsLoading(true);
+      const response = await fetch("/api/sessions/student", {
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Could not load mentorship sessions.");
+      }
+
+      setSessions(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not load mentorship sessions."
+      );
+    } finally {
+      if (showLoading) setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 60000);
 
@@ -291,44 +328,21 @@ export default function MentorshipActivitiesHub() {
   }, []);
 
   useEffect(() => {
-    let active = true;
-
-    async function fetchSessions() {
-      try {
-        setIsLoading(true);
-        const response = await fetch("/api/sessions/student", {
-          cache: "no-store",
-        });
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok) {
-          throw new Error(data?.message || "Could not load mentorship sessions.");
-        }
-
-        if (active) {
-          setSessions(Array.isArray(data) ? data : []);
-        }
-      } catch (error) {
-        if (active) {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not load mentorship sessions."
-          );
-        }
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    }
-
     void fetchSessions();
+  }, [fetchSessions]);
 
-    return () => {
-      active = false;
+  useEffect(() => {
+    const refreshSessions = () => {
+      void fetchSessions(false);
     };
-  }, []);
+
+    window.addEventListener("student-session-invited", refreshSessions);
+    window.addEventListener("mentor-session-started", refreshSessions);
+    return () => {
+      window.removeEventListener("student-session-invited", refreshSessions);
+      window.removeEventListener("mentor-session-started", refreshSessions);
+    };
+  }, [fetchSessions]);
 
   const groupedSessions = useMemo(() => {
     const sorted = [...sessions].sort(
@@ -341,21 +355,21 @@ export default function MentorshipActivitiesHub() {
       activeRequests: sorted.filter(
         (session) =>
           session.status === "pending" &&
-          !isSessionExpired(getSessionStartTime(session), currentTime)
+          !isSessionExpired(session, currentTime)
       ),
       awaitingPayment: sorted.filter((session) =>
         ["accepted", "payment_pending"].includes(session.status) &&
-        !isSessionExpired(getSessionStartTime(session), currentTime)
+        !isSessionExpired(session, currentTime)
       ),
       upcomingSessions: sorted.filter(
         (session) =>
-          session.status === "payment_verified" &&
-          !isSessionExpired(getSessionStartTime(session), currentTime)
+          (session.status === "payment_verified" || session.status === "active") &&
+          !isSessionExpired(session, currentTime)
       ),
       pastSessions: sorted.filter(
         (session) =>
           ["completed", "declined", "rejected"].includes(session.status) ||
-          isSessionExpired(getSessionStartTime(session), currentTime)
+          isSessionExpired(session, currentTime)
       ),
     };
   }, [currentTime, sessions]);

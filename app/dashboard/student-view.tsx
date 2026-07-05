@@ -29,6 +29,7 @@ type SessionStatus =
   | "accepted"
   | "payment_pending"
   | "payment_verified"
+  | "active"
   | "declined"
   | "rejected"
   | "completed";
@@ -301,10 +302,12 @@ export function StudentDashboard() {
     window.addEventListener("ai-notes-updated", onNotesUpdated);
     window.addEventListener("gamification-stats-updated", onGamificationUpdated);
     window.addEventListener("student-session-invited", fetchMentorSessions);
+    window.addEventListener("mentor-session-started", fetchMentorSessions);
     return () => {
       window.removeEventListener("ai-notes-updated", onNotesUpdated);
       window.removeEventListener("gamification-stats-updated", onGamificationUpdated);
       window.removeEventListener("student-session-invited", fetchMentorSessions);
+      window.removeEventListener("mentor-session-started", fetchMentorSessions);
     };
   }, [
     fetchAssignments,
@@ -334,7 +337,7 @@ export function StudentDashboard() {
     .filter((session) => {
       const scheduledAt = new Date(session.scheduledAt).getTime();
       return (
-        session.status === "payment_verified" &&
+        (session.status === "payment_verified" || session.status === "active") &&
         (session.isSessionStarted || (!Number.isNaN(scheduledAt) && scheduledAt >= Date.now() - 3600000))
       );
     })
@@ -500,7 +503,9 @@ export function StudentDashboard() {
                 </Link>
               ) : (
                 <>
-                  <p className="text-xs font-bold text-muted-foreground uppercase mb-3 tracking-wider">Starts In</p>
+                  <p className="text-xs font-bold text-amber-600 uppercase mb-3 tracking-wider">
+                    Waiting for Mentor to start...
+                  </p>
                   <div className="flex gap-2">
                     <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
                       <span className="block text-2xl font-black text-foreground">

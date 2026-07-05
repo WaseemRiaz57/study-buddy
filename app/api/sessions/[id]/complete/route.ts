@@ -63,7 +63,7 @@ export async function PATCH(
 
     const sessionQuery: Record<string, unknown> = {
       _id: id,
-      status: { $in: ["payment_verified", "accepted"] },
+      status: { $in: ["payment_verified", "accepted", "active"] },
     };
     const userRole = String(session.user.role ?? "").toLowerCase();
 
@@ -91,6 +91,7 @@ export async function PATCH(
     }
 
     existingSession.status = "completed";
+    existingSession.isSessionStarted = false;
     existingSession.completedAt = new Date();
     const mentorSession = await existingSession.save();
 

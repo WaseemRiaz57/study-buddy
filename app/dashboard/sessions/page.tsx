@@ -26,6 +26,7 @@ type SessionStatus =
   | "accepted"
   | "payment_pending"
   | "payment_verified"
+  | "active"
   | "completed"
   | "declined"
   | "rejected";
@@ -61,6 +62,7 @@ type DashboardSession = {
   roomId?: string;
   paymentReceipt?: string;
   reviewSubmitted?: boolean;
+  actualStartTime?: string;
   mentorJoinedAt?: string;
   studentJoinedAt?: string;
   isSessionStarted?: boolean;
@@ -94,15 +96,18 @@ function formatSessionTime(value: string) {
 const SESSION_WINDOW_MS = 60 * 60 * 1000;
 
 function getSessionStartTime(session: DashboardSession) {
-  return session.startTime || session.scheduledAt;
+  return session.actualStartTime || session.startTime || session.scheduledAt;
 }
 
-function isSessionExpired(startTime: string | undefined, currentTime: number) {
-  const start = new Date(startTime || "").getTime();
+function isSessionExpired(session: DashboardSession, currentTime: number) {
+  if (!session.isSessionStarted || !session.actualStartTime) return false;
+
+  const start = new Date(session.actualStartTime).getTime();
 
   if (!Number.isFinite(start)) return false;
 
-  const expiration = start + SESSION_WINDOW_MS;
+  const durationMs = Math.max(1, Number(session.duration || 60)) * 60 * 1000;
+  const expiration = start + durationMs;
   return currentTime > expiration;
 }
 
@@ -121,6 +126,7 @@ function StatusPill({ status }: { status: SessionStatus }) {
     accepted: "Accepted",
     payment_pending: "Verifying Payment...",
     payment_verified: "Payment Verified",
+    active: "Active",
     completed: "Completed",
     declined: "Declined",
     rejected: "Rejected",
@@ -162,7 +168,7 @@ function StudentSessionCard({
   const mentor = getPopulatedUser(session.mentorId);
   const mentorName = mentor.name || "Mentor";
   const bankDetails = session.mentorProfile;
-  const expired = isSessionExpired(getSessionStartTime(session), currentTime);
+  const expired = isSessionExpired(session, currentTime);
   const showEndedBadge = expired && session.status !== "completed";
 
   return (
@@ -265,7 +271,7 @@ function StudentSessionCard({
         </div>
       )}
 
-      {!expired && session.status === "payment_verified" && (
+      {!expired && (session.status === "payment_verified" || session.status === "active") && (
         session.isSessionStarted ? (
           <Link
             href={`/dashboard/study-rooms/${session._id}`}
@@ -331,7 +337,7 @@ function MentorSessionCard({
   const acceptingKey = `${session._id}-accepted`;
   const decliningKey = `${session._id}-declined`;
   const isResponding = respondingActionKey.startsWith(`${session._id}-`);
-  const expired = isSessionExpired(getSessionStartTime(session), currentTime);
+  const expired = isSessionExpired(session, currentTime);
   const showEndedBadge =
     expired &&
     !["accepted", "payment_pending", "payment_verified", "completed"].includes(
@@ -432,7 +438,7 @@ function MentorSessionCard({
           </button>
         )}
 
-        {session.status === "payment_verified" && (
+        {(session.status === "payment_verified" || session.status === "active") && (
           <>
             {!expired && (
               session.isSessionStarted ? (
@@ -780,7 +786,7 @@ export default function SessionsPage() {
 
     const isPastSession = (session: DashboardSession) =>
       ["completed", "declined", "rejected"].includes(session.status) ||
-      isSessionExpired(getSessionStartTime(session), currentTime);
+      isSessionExpired(session, currentTime);
 
     return {
       all: sorted,
@@ -903,7 +909,7 @@ export default function SessionsPage() {
 
       updateSession(result.session as DashboardSession);
       setReceiptSession(null);
-      toast.success("Payment verified. The room is now open.");
+      toast.success("Payment verified. Waiting for the Mentor to start.");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to verify payment."

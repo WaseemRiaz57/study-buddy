@@ -6,16 +6,25 @@ import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
 import StudyRoom from "@/models/StudyRoom";
 import MentorSession from "@/models/MentorSession";
+import {
+  escapeStudyRoomRegex,
+  getMentorSessionExpiresAt,
+  hasMentorSessionExpired,
+  isMentorForSession as isMentorSessionMentor,
+  isStudentForSession,
+  normalizeStudyRoomId,
+  resolveMentorId,
+} from "@/lib/mentor-session-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 function normalizeRoomId(roomId: string): string {
-  return roomId.trim().toUpperCase();
+  return normalizeStudyRoomId(roomId);
 }
 
 function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return escapeStudyRoomRegex(text);
 }
 
 function resolveRoomHostId(room: unknown): string {
@@ -63,35 +72,55 @@ export async function GET(
 
     await connectDB();
 
+    // Track whether this room is a MentorSession and whether the user is the Mentor.
+    let mentorSessionExpiresAt: Date | null = null;
+    let mentorSessionHostId = "";
+    let isMentorSessionRoom = false;
+    let isMentorForSession = false;
+    let isStudentForMentorSession = false;
+
     if (mongoose.Types.ObjectId.isValid(rawRoomId)) {
       const mentorSession = await MentorSession.findById(rawRoomId)
-        .select("mentorId students studentId scheduledAt status")
+        .select("mentorId students studentId scheduledAt duration status isSessionStarted actualStartTime")
         .lean();
 
       if (mentorSession) {
-        const mentorId = String(mentorSession.mentorId);
-        const studentId = mentorSession.studentId ? String(mentorSession.studentId) : null;
-        const students = Array.isArray(mentorSession.students) 
-          ? mentorSession.students.map((id: any) => String(id)) 
-          : [];
+        isMentorSessionRoom = true;
+        mentorSessionHostId = resolveMentorId(mentorSession);
+        mentorSessionExpiresAt = getMentorSessionExpiresAt(mentorSession);
+        isMentorForSession = isMentorSessionMentor(mentorSession, currentUserId);
+        isStudentForMentorSession = isStudentForSession(
+          mentorSession,
+          currentUserId
+        );
 
-        if (currentUserId !== mentorId && currentUserId !== studentId && !students.includes(currentUserId)) {
+        // Authorization: only session participants can join
+        if (!isMentorForSession && !isStudentForMentorSession) {
           return NextResponse.json(
             { message: "You are not authorized to join this session." },
             { status: 403 }
           );
         }
 
-        const expirationTime =
-          new Date(mentorSession.scheduledAt).getTime() + 60 * 60 * 1000;
-
+        // Server-side gate: block Students from joining before Mentor starts
         if (
-          Number.isFinite(expirationTime) &&
-          Date.now() > expirationTime &&
+          !isMentorForSession &&
+          !mentorSession.isSessionStarted &&
           mentorSession.status !== "completed"
         ) {
           return NextResponse.json(
-            { message: "This session has expired." },
+            { message: "Waiting for Mentor to start the session." },
+            { status: 403 }
+          );
+        }
+
+        // Expiry: calculate from actualStartTime + duration, not scheduledAt
+        if (
+          hasMentorSessionExpired(mentorSession) &&
+          mentorSession.status !== "completed"
+        ) {
+          return NextResponse.json(
+            { message: "This session has ended." },
             { status: 403 }
           );
         }
@@ -99,7 +128,7 @@ export async function GET(
         if (!metadataOnly) {
           await MentorSession.updateOne(
             { _id: rawRoomId },
-            currentUserId === mentorId
+            isMentorForSession
               ? { $set: { mentorJoinedAt: new Date() } }
               : { $set: { studentJoinedAt: new Date() } }
           );
@@ -115,14 +144,23 @@ export async function GET(
       console.log(`[Room API] Auto-creating room: ${normalizedRoomId}`);
 
       // 🛑 THE BUG FIX: Safely handling non-MongoDB IDs (like Google Auth IDs)
-      const isValidObjectId = mongoose.Types.ObjectId.isValid(currentUserId);
-      const creatorId = isValidObjectId ? new mongoose.Types.ObjectId(currentUserId) : currentUserId;
+      const roomOwnerId =
+        isMentorSessionRoom && mentorSessionHostId
+          ? mentorSessionHostId
+          : currentUserId;
+      const isValidObjectId = mongoose.Types.ObjectId.isValid(roomOwnerId);
+      const creatorId = isValidObjectId
+        ? new mongoose.Types.ObjectId(roomOwnerId)
+        : roomOwnerId;
+      const participantId = mongoose.Types.ObjectId.isValid(currentUserId)
+        ? new mongoose.Types.ObjectId(currentUserId)
+        : currentUserId;
 
       const newRoom = await StudyRoom.create({
         roomId: normalizedRoomId,
         createdBy: creatorId,
-        title: "Study Buddy Session",
-        participants: [creatorId],
+        title: isMentorSessionRoom ? "Mentor Session" : "Study Buddy Session",
+        participants: [participantId],
         isActive: true,
         status: "active",
         isLive: true,
@@ -131,8 +169,10 @@ export async function GET(
       room = await StudyRoom.findById(newRoom._id).lean();
     }
 
-    const hostId = resolveRoomHostId(room);
-    const isHost = Boolean(hostId && currentUserId === hostId);
+    const hostId = mentorSessionHostId || resolveRoomHostId(room);
+    const isHost = isMentorSessionRoom
+      ? Boolean(isMentorForSession)
+      : Boolean(hostId && currentUserId === hostId);
     const isStudyBuddyRoom = normalizedRoomId.startsWith("SB-");
 
     if (metadataOnly) {
@@ -144,6 +184,7 @@ export async function GET(
           hostId,
           isHost,
           isStudyBuddyRoom,
+          expiresAt: mentorSessionExpiresAt?.toISOString() || null,
         },
         { status: 200 }
       );
@@ -161,17 +202,23 @@ export async function GET(
       name: participantName,
     });
 
+    const participantRole = isMentorSessionRoom
+      ? isMentorForSession
+        ? "mentor"
+        : "student"
+      : isHost
+        ? "host"
+        : "student";
+    const canControl = participantRole === "mentor" || participantRole === "host";
+
     accessToken.addGrant({
       room: normalizedRoomId,
       roomJoin: true,
       canPublish: true,
       canSubscribe: true,
       canPublishData: true,
-      ...(isHost
-        ? ({
-            canAdmin: true,
-            roomAdmin: true,
-          } as { canAdmin: true; roomAdmin: true })
+      ...(canControl
+        ? { roomAdmin: true }
         : {}),
     });
 
@@ -185,6 +232,12 @@ export async function GET(
         hostId,
         isHost,
         isStudyBuddyRoom,
+        participantRole,
+        permissions: {
+          canPublish: true,
+          canControl,
+        },
+        expiresAt: mentorSessionExpiresAt?.toISOString() || null,
         token,
         liveKitUrl,
       },

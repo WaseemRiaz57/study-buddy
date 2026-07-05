@@ -5,6 +5,7 @@ export type MentorSessionStatus =
   | "accepted"
   | "payment_pending"
   | "payment_verified"
+  | "active"
   | "declined"
   | "rejected"
   | "completed";
@@ -39,6 +40,7 @@ export interface IMentorSession extends Document {
   attachments: IMentorSessionAttachment[];
   privateNotes: string;
   isSessionStarted: boolean;
+  actualStartTime?: Date;
   mentorJoinedAt?: Date;
   studentJoinedAt?: Date;
   completedAt?: Date;
@@ -86,6 +88,7 @@ const MentorSessionSchema = new Schema<IMentorSession>(
         "accepted",
         "payment_pending",
         "payment_verified",
+        "active",
         "declined",
         "rejected",
         "completed",
@@ -103,6 +106,7 @@ const MentorSessionSchema = new Schema<IMentorSession>(
     attachments: { type: [MentorSessionAttachmentSchema], default: [] },
     privateNotes: { type: String, default: "" },
     isSessionStarted: { type: Boolean, default: false },
+    actualStartTime: { type: Date },
     mentorJoinedAt: { type: Date },
     studentJoinedAt: { type: Date },
     completedAt: { type: Date },
@@ -113,6 +117,15 @@ const MentorSessionSchema = new Schema<IMentorSession>(
 MentorSessionSchema.index({ studentId: 1, scheduledAt: -1 });
 MentorSessionSchema.index({ mentorId: 1, scheduledAt: -1 });
 MentorSessionSchema.index({ mentorId: 1, status: 1, scheduledAt: 1 });
+MentorSessionSchema.index(
+  { mentorId: 1, status: 1, isSessionStarted: 1 },
+  {
+    partialFilterExpression: {
+      status: "active",
+      isSessionStarted: true,
+    },
+  }
+);
 MentorSessionSchema.index({ status: 1, paymentStatus: 1 });
 MentorSessionSchema.index({ type: 1, status: 1 });
 /** Enables efficient lookup of all sessions a Student (group member) is part of. */

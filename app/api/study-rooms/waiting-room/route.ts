@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
+import { resolveRoomHostIdForLifecycle } from "@/lib/mentor-session-lifecycle";
 import StudyRoom from "@/models/StudyRoom";
 
 export const dynamic = "force-dynamic";
@@ -34,18 +35,6 @@ function normalizeUserId(userId: unknown): string {
 
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function resolveRoomHostId(room: unknown): string {
-  const createdBy = (room as { createdBy?: { _id?: unknown } | unknown })?.createdBy;
-  const host = (room as { host?: { _id?: unknown } | unknown })?.host;
-  const owner = createdBy || host;
-
-  return String(
-    owner && typeof owner === "object" && "_id" in owner
-      ? (owner as { _id?: unknown })._id
-      : owner || ""
-  ).trim();
 }
 
 async function getRoom(roomId: string) {
@@ -159,7 +148,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "respond") {
-      const hostId = resolveRoomHostId(room);
+      const hostId = await resolveRoomHostIdForLifecycle(roomId);
 
       if (currentUserId !== hostId) {
         return NextResponse.json(
@@ -257,7 +246,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "Study room not found" }, { status: 404 });
     }
 
-    const hostId = resolveRoomHostId(room);
+    const hostId = await resolveRoomHostIdForLifecycle(roomId);
     const waitingList = ((room.waitingList || []) as WaitingListEntry[]).map((entry) => ({
       userId: normalizeUserId(entry.userId),
       userName: String(entry.userName || "Study Buddy").trim(),

@@ -42,7 +42,7 @@ export async function GET() {
 
     const sessions = await MentorSession.find({ mentorId: session.user.id })
       .select(
-        "studentId students mentorId subject scheduledAt duration type status paymentStatus paymentReceipt roomId mentorJoinedAt studentJoinedAt createdAt updatedAt"
+        "studentId students mentorId subject scheduledAt duration type status paymentStatus paymentReceipt roomId isSessionStarted actualStartTime mentorJoinedAt studentJoinedAt createdAt updatedAt"
       )
       .populate("studentId", "name image email")
       .populate("students", "name image email")

@@ -4,6 +4,10 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
 import { closeStudyRoomAndPersistDuration } from "@/lib/study-room-lifecycle";
+import {
+  escapeStudyRoomRegex,
+  resolveRoomHostIdForLifecycle,
+} from "@/lib/mentor-session-lifecycle";
 import StudyRoom from "@/models/StudyRoom";
 
 function normalizeRoomId(roomId: string): string {
@@ -42,17 +46,19 @@ async function endSession(
 
     await connectDB();
 
-    const hostObjectId = new mongoose.Types.ObjectId(requesterId);
-
-    const room = await StudyRoom.findOne({ roomId: normalizedRoomId });
+    const room = await StudyRoom.findOne({
+      roomId: { $regex: `^${escapeStudyRoomRegex(normalizedRoomId)}$`, $options: "i" },
+    });
 
     if (!room) {
       return NextResponse.json({ message: "Room not found" }, { status: 404 });
     }
 
-    if (room.createdBy.toString() !== hostObjectId.toString()) {
+    const hostId = await resolveRoomHostIdForLifecycle(normalizedRoomId);
+
+    if (hostId !== requesterId) {
       return NextResponse.json(
-        { message: "Forbidden: only host can end session" },
+        { message: "Forbidden: only the Mentor can end this session" },
         { status: 403 }
       );
     }

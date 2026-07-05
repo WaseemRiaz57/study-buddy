@@ -12,6 +12,7 @@ import {
   ROOM_AUTO_CLOSE_GRACE_SECONDS,
   STUDY_ROOM_SOCKET_NAMESPACE,
 } from "@/lib/study-room-constants";
+import { resolveRoomHostIdForLifecycle } from "@/lib/mentor-session-lifecycle";
 import StudyRoom from "@/models/StudyRoom";
 
 type StudyRoomJoinPayload = {
@@ -271,30 +272,12 @@ export function isUserInConversationRoom(
   return Boolean(sockets && sockets.size > 0);
 }
 
-function resolveRoomHostId(room: unknown): string {
-  const createdBy = (room as { createdBy?: { _id?: unknown } | unknown })?.createdBy;
-  const host = (room as { host?: { _id?: unknown } | unknown })?.host;
-  const owner = createdBy || host;
-
-  return String(
-    owner && typeof owner === "object" && "_id" in owner
-      ? (owner as { _id?: unknown })._id
-      : owner || ""
-  ).trim();
-}
-
 async function getStudyRoomHostId(roomId: string): Promise<string> {
   const normalizedRoomId = normalizeRoomId(roomId);
 
   await connectDB();
 
-  const room = await StudyRoom.findOne({
-    roomId: { $regex: `^${escapeRegex(normalizedRoomId)}$`, $options: "i" },
-  })
-    .select("createdBy host roomId")
-    .lean();
-
-  return resolveRoomHostId(room);
+  return resolveRoomHostIdForLifecycle(normalizedRoomId);
 }
 
 async function removeStudyRoomParticipant(
@@ -689,6 +672,36 @@ export function emitSessionCompleted(
   }
 
   studyRoomNamespace.to(userChannel(studentId)).emit("session_completed", payload);
+  return true;
+}
+
+export function emitMentorSessionInvitation(
+  studentId: string,
+  payload: {
+    sessionId: string;
+    mentorId: string;
+    mentorName?: string;
+    subject?: string;
+    roomId?: string;
+  }
+): boolean {
+  if (!studyRoomNamespace || !isNonEmptyString(studentId)) {
+    return false;
+  }
+
+  studyRoomNamespace.to(userChannel(studentId)).emit("mentor:session-invitation", payload);
+  return true;
+}
+
+export function emitMentorSessionStarted(
+  studentId: string,
+  payload: { sessionId: string; roomId: string }
+): boolean {
+  if (!studyRoomNamespace || !isNonEmptyString(studentId)) {
+    return false;
+  }
+
+  studyRoomNamespace.to(userChannel(studentId)).emit("session:started", payload);
   return true;
 }
 

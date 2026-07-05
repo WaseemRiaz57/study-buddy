@@ -3,6 +3,11 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import {
+  MENTOR_SESSION_ACTIVE_STATUS,
+  resolveStudentIds,
+} from "@/lib/mentor-session-lifecycle";
+import { emitMentorSessionStarted } from "@/lib/study-room-socket";
 import MentorSession from "@/models/MentorSession";
 
 /**
@@ -57,30 +62,65 @@ export async function POST(
       );
     }
 
-    // Mark as started
+    // ── Idempotency: if this session is already started, return success ──
+    if (mentorSession.isSessionStarted) {
+      return NextResponse.json(
+        { message: "Session already started." },
+        { status: 200 }
+      );
+    }
+
+    // ── Concurrency guard: prevent starting a second session ──
+    const existingActiveSession = await MentorSession.findOne({
+      mentorId: session.user.id,
+      isSessionStarted: true,
+      status: MENTOR_SESSION_ACTIVE_STATUS,
+      _id: { $ne: roomId },
+    })
+      .select("_id subject")
+      .lean();
+
+    if (existingActiveSession) {
+      const activeSubject =
+        (existingActiveSession as { subject?: string }).subject || "Untitled";
+      return NextResponse.json(
+        {
+          message: "You are already in an active session.",
+          activeSessionSubject: activeSubject,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Mark as started and record the actual start time for expiry calculation
     mentorSession.isSessionStarted = true;
+    mentorSession.actualStartTime = new Date();
+    mentorSession.status = MENTOR_SESSION_ACTIVE_STATUS;
     await mentorSession.save();
 
     // Emit socket event to students in the session
     const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
     const emitSecret = process.env.EMIT_SECRET;
+    const studentsToNotify = resolveStudentIds(mentorSession);
+
+    for (const studentId of studentsToNotify) {
+      emitMentorSessionStarted(studentId, {
+        sessionId: String(roomId),
+        roomId: mentorSession.roomId || String(roomId),
+      });
+    }
 
     if (socketServerUrl) {
       try {
-        const studentsToNotify = mentorSession.students || [];
-        if (mentorSession.studentId && !studentsToNotify.includes(mentorSession.studentId)) {
-          studentsToNotify.push(mentorSession.studentId);
-        }
-
         const headers: HeadersInit = { "Content-Type": "application/json" };
         if (emitSecret) headers["x-emit-secret"] = emitSecret;
 
         // Notify each student
         await Promise.all(
-          studentsToNotify.map((studentId: mongoose.Types.ObjectId) => {
+          studentsToNotify.map((studentId: string) => {
             const emitPayload = {
               event: "session:started",
-              room: `user:${studentId.toString()}`,
+              room: `user:${studentId}`,
               data: {
                 sessionId: String(roomId),
                 roomId: mentorSession.roomId || String(roomId),

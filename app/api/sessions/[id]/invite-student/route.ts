@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { emitMentorSessionInvitation } from "@/lib/study-room-socket";
 import MentorSession from "@/models/MentorSession";
 import User from "@/models/User";
 
@@ -86,6 +87,13 @@ export async function POST(
       );
     }
 
+    if (!mentorSession.isSessionStarted || mentorSession.status !== "active") {
+      return NextResponse.json(
+        { message: "Start this Mentor session before inviting Students." },
+        { status: 400 }
+      );
+    }
+
     // ── 3. Enforce room capacity ────────────────────────────────────────────
     const currentStudents = mentorSession.students ?? [];
 
@@ -141,26 +149,29 @@ export async function POST(
     const socketServerUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
     const emitSecret = process.env.EMIT_SECRET;
 
+    const mentorUser = await User.findById(session.user.id)
+      .select("name image")
+      .lean();
+    const mentorName =
+      (mentorUser as { name?: string } | null)?.name ||
+      session.user.name ||
+      "Your Mentor";
+    const invitationPayload = {
+      sessionId: String(sessionId),
+      mentorId: session.user.id,
+      mentorName,
+      subject: mentorSession.subject,
+      roomId: mentorSession.roomId || String(sessionId),
+    };
+
+    emitMentorSessionInvitation(studentId, invitationPayload);
+
     if (socketServerUrl) {
       try {
-        const mentorUser = await User.findById(session.user.id)
-          .select("name image")
-          .lean();
-        const mentorName =
-          (mentorUser as { name?: string } | null)?.name ||
-          session.user.name ||
-          "Your Mentor";
-
         const emitPayload = {
           event: "mentor:session-invitation",
           room: `user:${studentId}`,
-          data: {
-            sessionId: String(sessionId),
-            mentorId: session.user.id,
-            mentorName,
-            subject: mentorSession.subject,
-            roomId: mentorSession.roomId || String(sessionId),
-          },
+          data: invitationPayload,
         };
 
         const headers: HeadersInit = { "Content-Type": "application/json" };

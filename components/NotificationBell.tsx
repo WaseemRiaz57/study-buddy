@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { io, type Socket } from "socket.io-client";
 import { Bell, Check, MailOpen, X } from "lucide-react";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ function formatNotificationTime(value?: string) {
 
 export function NotificationBell() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -158,6 +160,7 @@ export function NotificationBell() {
           detail: payload,
         })
       );
+      router.refresh();
     });
 
     socket.on("mentor:session-invitation", (payload: any) => {
@@ -170,14 +173,19 @@ export function NotificationBell() {
           detail: payload,
         })
       );
+      router.refresh();
       
       toast.custom(
         (t) => (
           <div className="flex w-full min-w-[320px] flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-surface-dark">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white">Join {mentorName}</h3>
-                <p className="text-sm text-slate-500">{subject} is starting now!</p>
+                <h3 className="font-bold text-slate-900 dark:text-white">
+                  Mentor session invitation
+                </h3>
+                <p className="text-sm text-slate-500">
+                  {mentorName} invited you to join {subject}.
+                </p>
               </div>
               <button onClick={() => toast.dismiss(t)} className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
                 <X size={16} />
@@ -204,7 +212,7 @@ export function NotificationBell() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [session?.user?.id]);
+  }, [router, session?.user?.id]);
 
   const markAllAsRead = async () => {
     if (isMarkingAllRead || notifications.length === 0) return;

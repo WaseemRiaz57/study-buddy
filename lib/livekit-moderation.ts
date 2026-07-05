@@ -1,5 +1,6 @@
 import { RoomServiceClient } from "livekit-server-sdk";
 import { connectDB } from "@/lib/connectDB";
+import { resolveRoomHostIdForLifecycle } from "@/lib/mentor-session-lifecycle";
 import StudyRoom from "@/models/StudyRoom";
 
 type TrackLike = {
@@ -39,10 +40,6 @@ function normalizeRoomId(roomId: string): string {
   return roomId.trim().toUpperCase();
 }
 
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function getLiveKitService() {
   const liveKitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL;
   const liveKitApiKey = process.env.LIVEKIT_API_KEY;
@@ -76,18 +73,10 @@ async function assertHost(roomName: string, requesterId: string) {
 
   await connectDB();
 
-  const room = await StudyRoom.findOne({
-    roomId: { $regex: `^${escapeRegex(roomName)}$`, $options: "i" },
-  }).lean();
-
-  if (!room) {
-    throw new Error("Room not found");
-  }
-
-  const hostId = String((room as { createdBy?: unknown }).createdBy || "").trim();
+  const hostId = await resolveRoomHostIdForLifecycle(roomName);
 
   if (!hostId || hostId !== requesterId) {
-    throw new Error("Forbidden: only the host can moderate participants");
+    throw new Error("Forbidden: only the Mentor can moderate participants");
   }
 }
 
@@ -122,7 +111,7 @@ export async function removeLiveKitParticipant({
   try {
     await StudyRoom.updateOne(
       {
-        roomId: { $regex: `^${escapeRegex(roomName)}$`, $options: "i" },
+        roomId: roomName,
         "waitingList.userId": identity,
       },
       {
