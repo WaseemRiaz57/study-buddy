@@ -5,18 +5,21 @@ import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import {
   MENTOR_SESSION_ACTIVE_STATUS,
+  normalizeStudyRoomId,
   resolveStudentIds,
 } from "@/lib/mentor-session-lifecycle";
+import { clearStudyRoomRuntimeState } from "@/lib/redis";
 import { emitMentorSessionStarted } from "@/lib/study-room-socket";
 import MentorSession from "@/models/MentorSession";
+import StudyRoom from "@/models/StudyRoom";
 
 /**
  * POST /api/study-rooms/[roomId]/start-session
- * 
- * Allows a mentor to mark a session as started.
+ *
+ * Allows a Mentor to mark a session as started.
  */
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ roomId: string }> }
 ) {
   try {
@@ -27,8 +30,9 @@ export async function POST(
     }
 
     const userRole = String(session.user.role ?? "").toLowerCase();
+    const isMentorRole = userRole === "mentor" || userRole === "teacher";
 
-    if (userRole !== "teacher" && userRole !== "mentor") {
+    if (!isMentorRole) {
       return NextResponse.json(
         { message: "Forbidden. Only Mentors can start a session." },
         { status: 403 }
@@ -62,43 +66,93 @@ export async function POST(
       );
     }
 
-    // ── Idempotency: if this session is already started, return success ──
-    if (mentorSession.isSessionStarted) {
-      return NextResponse.json(
-        { message: "Session already started." },
-        { status: 200 }
-      );
-    }
-
-    // ── Concurrency guard: prevent starting a second session ──
-    const existingActiveSession = await MentorSession.findOne({
+    const staleActiveSessions = await MentorSession.find({
       mentorId: session.user.id,
       isSessionStarted: true,
       status: MENTOR_SESSION_ACTIVE_STATUS,
       _id: { $ne: roomId },
     })
-      .select("_id subject")
+      .select("_id roomId")
       .lean();
 
-    if (existingActiveSession) {
-      const activeSubject =
-        (existingActiveSession as { subject?: string }).subject || "Untitled";
+    if (staleActiveSessions.length > 0) {
+      const now = new Date();
+      const staleSessionIds = staleActiveSessions.map((staleSession) => staleSession._id);
+      const staleRoomIds = Array.from(
+        new Set(
+          staleActiveSessions
+            .flatMap((staleSession) => [
+              String(staleSession._id),
+              String(staleSession.roomId || ""),
+            ])
+            .map(normalizeStudyRoomId)
+            .filter(Boolean)
+        )
+      );
+
+      await MentorSession.updateMany(
+        {
+          _id: { $in: staleSessionIds },
+          mentorId: session.user.id,
+          isSessionStarted: true,
+          status: MENTOR_SESSION_ACTIVE_STATUS,
+        },
+        {
+          $set: {
+            isSessionStarted: false,
+            status: "completed",
+            completedAt: now,
+          },
+        }
+      );
+
+      if (staleRoomIds.length > 0) {
+        await StudyRoom.updateMany(
+          { roomId: { $in: staleRoomIds } },
+          {
+            $set: {
+              isActive: false,
+              isLive: false,
+              status: "ended",
+              closedAt: now,
+            },
+          }
+        );
+
+        await Promise.all(
+          staleRoomIds.map((staleRoomId) =>
+            clearStudyRoomRuntimeState(staleRoomId).catch((error) => {
+              console.error("Failed to clear stale Mentor room state:", error);
+            })
+          )
+        );
+      }
+    }
+
+    const startedRoomId = String(mentorSession._id);
+
+    if (mentorSession.isSessionStarted) {
+      if (mentorSession.roomId !== startedRoomId) {
+        mentorSession.roomId = startedRoomId;
+        await mentorSession.save();
+      }
+
       return NextResponse.json(
         {
-          message: "You are already in an active session.",
-          activeSessionSubject: activeSubject,
+          message: "Session already started.",
+          sessionId: String(mentorSession._id),
+          roomId: startedRoomId,
         },
-        { status: 400 }
+        { status: 200 }
       );
     }
 
-    // Mark as started and record the actual start time for expiry calculation
     mentorSession.isSessionStarted = true;
     mentorSession.actualStartTime = new Date();
     mentorSession.status = MENTOR_SESSION_ACTIVE_STATUS;
+    mentorSession.roomId = startedRoomId;
     await mentorSession.save();
 
-    // Emit socket event to students in the session
     const socketServerUrl =
       process.env.NEXT_PUBLIC_SOCKET_SERVER_URL?.replace(/\/+$/, "");
     const emitSecret = process.env.EMIT_SECRET;
@@ -107,7 +161,7 @@ export async function POST(
     for (const studentId of studentsToNotify) {
       emitMentorSessionStarted(studentId, {
         sessionId: String(roomId),
-        roomId: mentorSession.roomId || String(roomId),
+        roomId: startedRoomId,
       });
     }
 
@@ -116,7 +170,6 @@ export async function POST(
         const headers: HeadersInit = { "Content-Type": "application/json" };
         if (emitSecret) headers["x-emit-secret"] = emitSecret;
 
-        // Notify each student
         await Promise.all(
           studentsToNotify.map((studentId: string) => {
             const emitPayload = {
@@ -124,7 +177,7 @@ export async function POST(
               room: `user:${studentId}`,
               data: {
                 sessionId: String(roomId),
-                roomId: mentorSession.roomId || String(roomId),
+                roomId: startedRoomId,
               },
             };
 
@@ -133,7 +186,9 @@ export async function POST(
               headers,
               body: JSON.stringify(emitPayload),
               signal: AbortSignal.timeout(3000),
-            }).catch(e => console.error("Socket emit failed for student", studentId, e));
+            }).catch((error) =>
+              console.error("Socket emit failed for student", studentId, error)
+            );
           })
         );
       } catch (error) {
@@ -142,7 +197,11 @@ export async function POST(
     }
 
     return NextResponse.json(
-      { message: "Session started successfully." },
+      {
+        message: "Session started successfully.",
+        sessionId: String(mentorSession._id),
+        roomId: startedRoomId,
+      },
       { status: 200 }
     );
   } catch (error) {

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
@@ -72,15 +72,6 @@ function getPopulatedUser(value?: PopulatedUser | string): PopulatedUser {
   return typeof value === "object" && value !== null ? value : {};
 }
 
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 function formatSessionTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Time TBD";
@@ -93,7 +84,7 @@ function formatSessionTime(value: string) {
   });
 }
 
-const SESSION_WINDOW_MS = 60 * 60 * 1000;
+const JOINED_MENTOR_SESSIONS_STORAGE_KEY = "studybuddy:joined-mentor-sessions";
 
 function getSessionStartTime(session: DashboardSession) {
   return session.actualStartTime || session.startTime || session.scheduledAt;
@@ -625,9 +616,11 @@ function CompleteSessionDialog({
 }
 
 export default function SessionsPage() {
+  const router = useRouter();
   const { data: authSession, status: authStatus } = useSession();
   const addReward = useGamificationStore((state) => state.addReward);
   const userRole = String(authSession?.user?.role ?? "").toLowerCase();
+  const isMentorDashboardRole = userRole === "mentor" || userRole === "teacher";
   const [sessions, setSessions] = useState<DashboardSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -643,7 +636,7 @@ export default function SessionsPage() {
   const [joinedSessionIds, setJoinedSessionIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
-      const raw = window.localStorage.getItem("studybuddy:joined-mentor-sessions");
+      const raw = window.localStorage.getItem(JOINED_MENTOR_SESSIONS_STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
       return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
     } catch {
@@ -682,14 +675,14 @@ export default function SessionsPage() {
           return;
         }
 
-        if (userRole === "teacher" || userRole === "mentor") {
+        if (isMentorDashboardRole) {
           const response = await fetch("/api/mentor/sessions", {
             cache: "no-store",
           });
           const data = await response.json().catch(() => null);
 
           if (!response.ok) {
-            throw new Error(data?.message || "Failed to load mentor sessions.");
+            throw new Error(data?.message || "Failed to load Mentor sessions.");
           }
 
           if (isActive) setSessions(Array.isArray(data) ? data : []);
@@ -713,7 +706,7 @@ export default function SessionsPage() {
     return () => {
       isActive = false;
     };
-  }, [authStatus, userRole, refreshTrigger]);
+  }, [authStatus, isMentorDashboardRole, userRole, refreshTrigger]);
 
   useEffect(() => {
     function handleSessionStarted(event: Event) {
@@ -749,6 +742,12 @@ export default function SessionsPage() {
 
     try {
       setStartingSessionId(sessionId);
+      setJoinedSessionIds(new Set());
+      try {
+        window.localStorage.removeItem(JOINED_MENTOR_SESSIONS_STORAGE_KEY);
+      } catch {
+      }
+
       const response = await fetch(`/api/study-rooms/${sessionId}/start-session`, {
         method: "POST",
       });
@@ -766,7 +765,8 @@ export default function SessionsPage() {
         )
       );
 
-      // We don't automatically redirect; the UI button will change to "Join Room" instantly.
+      const nextRoomId = String(data?.roomId || sessionId).trim();
+      router.push(`/dashboard/study-rooms/${encodeURIComponent(nextRoomId)}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to start session.");
     } finally {
@@ -815,7 +815,7 @@ export default function SessionsPage() {
       next.add(sessionId);
       try {
         window.localStorage.setItem(
-          "studybuddy:joined-mentor-sessions",
+          JOINED_MENTOR_SESSIONS_STORAGE_KEY,
           JSON.stringify(Array.from(next))
         );
       } catch {
