@@ -28,9 +28,18 @@ export async function GET() {
       {
         status: "active",
         isLive: true,
-        $expr: {
-          $eq: [{ $size: { $ifNull: ["$participants", []] } }, 0],
-        },
+        $or: [
+          {
+            $expr: {
+              $eq: [{ $size: { $ifNull: ["$participants", []] } }, 0],
+            },
+          },
+          {
+            $expr: {
+              $not: [{ $in: ["$createdBy", { $ifNull: ["$participants", []] }] }],
+            },
+          },
+        ],
       },
       {
         $set: {
@@ -47,7 +56,10 @@ export async function GET() {
       isActive: true,
       isLive: true,
       $expr: {
-        $gt: [{ $size: { $ifNull: ["$participants", []] } }, 0],
+        $and: [
+          { $gt: [{ $size: { $ifNull: ["$participants", []] } }, 0] },
+          { $in: ["$createdBy", { $ifNull: ["$participants", []] }] },
+        ],
       },
     })
       .populate("createdBy", "name image profileImage")

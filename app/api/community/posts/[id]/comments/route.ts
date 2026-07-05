@@ -40,6 +40,7 @@ function serializeAuthor(author: any) {
 
 function serializeComment(comment: any, currentUserId = "") {
   const likes = Array.isArray(comment.likes) ? comment.likes : [];
+  const replies = Array.isArray(comment.replies) ? comment.replies : [];
 
   return {
     id: String(comment._id),
@@ -48,7 +49,21 @@ function serializeComment(comment: any, currentUserId = "") {
     author: serializeAuthor(comment.authorId),
     likes: likes.length,
     likedByMe: Boolean(currentUserId && likes.some((userId: unknown) => String(userId) === currentUserId)),
-    replies: Array.isArray(comment.replies) ? comment.replies : [],
+    replies: replies.map((reply: any) => {
+      const replyLikes = Array.isArray(reply.likes) ? reply.likes : [];
+
+      return {
+        id: String(reply._id),
+        text: reply.text || "",
+        author: serializeAuthor(reply.authorId),
+        likes: replyLikes.length,
+        likedByMe: Boolean(
+          currentUserId &&
+            replyLikes.some((userId: unknown) => String(userId) === currentUserId)
+        ),
+        createdAt: reply.createdAt || null,
+      };
+    }),
     createdAt: comment.createdAt || null,
   };
 }
@@ -71,6 +86,7 @@ export async function GET(
 
     const comments = await Comment.find({ postId: id })
       .populate("authorId", AUTHOR_SELECT)
+      .populate("replies.authorId", AUTHOR_SELECT)
       .sort({ createdAt: 1 })
       .lean();
 
@@ -139,6 +155,7 @@ export async function POST(
 
     const populatedComment = await Comment.findById(comment._id)
       .populate("authorId", AUTHOR_SELECT)
+      .populate("replies.authorId", AUTHOR_SELECT)
       .lean();
 
     return NextResponse.json(

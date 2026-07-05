@@ -54,16 +54,20 @@ async function handleLeave(
   const participantCount = Array.isArray(updatedRoom.participants)
     ? updatedRoom.participants.length
     : 0;
+  const hostHasLeft = String(updatedRoom.createdBy || "") === userId;
 
-  if (participantCount === 0 && updatedRoom.status !== "ended") {
-    await closeStudyRoomAndPersistDuration(normalizedRoomId, "inactive-disconnect");
+  if ((hostHasLeft || participantCount === 0) && updatedRoom.status !== "ended") {
+    await closeStudyRoomAndPersistDuration(
+      normalizedRoomId,
+      hostHasLeft ? "manual" : "inactive-disconnect"
+    );
   }
 
   return NextResponse.json({
     success: true,
     roomId: normalizedRoomId,
     participantCount,
-    status: participantCount === 0 ? "ended" : updatedRoom.status,
+    status: hostHasLeft || participantCount === 0 ? "ended" : updatedRoom.status,
   });
 }
 

@@ -184,6 +184,12 @@ export default function FocusRoomsPage() {
     );
   }, []);
 
+  useEffect(() => {
+    if (!isRunning) {
+      stopAmbientAudio();
+    }
+  }, [isRunning, stopAmbientAudio]);
+
   const fetchWeeklyFocusStats = useCallback(async () => {
     try {
       setIsLoadingWeeklyFocus(true);
@@ -394,8 +400,15 @@ export default function FocusRoomsPage() {
   const progressPercent = ((totalSeconds - timeLeft) / totalSeconds) * 100;
   
   const circumference = 2 * Math.PI * 46;
-  const currentLevelXp = userXp % 1000;
-  const xpProgressPct = (currentLevelXp / 1000) * 100;
+  const effectiveLevel = Math.max(userLevel, Math.floor(userXp / 1000) + 1);
+  const currentLevelStartXp = Math.max(0, (effectiveLevel - 1) * 1000);
+  const nextLevelXp = Math.max(currentLevelStartXp + 1000, effectiveLevel * 1000);
+  const currentLevelXp = Math.max(0, userXp - currentLevelStartXp);
+  const levelThresholdXp = Math.max(1, nextLevelXp - currentLevelStartXp);
+  const xpProgressPct = Math.min(
+    100,
+    Math.max(0, (currentLevelXp / levelThresholdXp) * 100)
+  );
   const openFocusTasks = focusTodoTasks.filter((task) => !task.completed);
   const selectedFocusTask =
     focusTodoTasks.find((task) => task.id === selectedFocusTaskId) || null;
@@ -404,8 +417,14 @@ export default function FocusRoomsPage() {
     : null;
 
   /* ---- Sound helpers ---- */
-  const toggleSound = (id: string) =>
+  const toggleSound = (id: string) => {
+    if (!isRunning) {
+      toast.info("Start a focus session to play ambient sounds.");
+      return;
+    }
+
     setSounds((p) => p.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
+  };
   const setVolume = (id: string, v: number) =>
     setSounds((p) => p.map((s) => (s.id === id ? { ...s, volume: v } : s)));
 
@@ -703,19 +722,28 @@ export default function FocusRoomsPage() {
 
               <div className="space-y-3">
                 {sounds.map((s) => (
-                  <div key={s.id} className="flex items-center gap-3">
+                  <div
+                    key={s.id}
+                    className={`flex items-center gap-3 transition-opacity ${
+                      isRunning ? "opacity-100" : "opacity-50"
+                    }`}
+                  >
                     <span className={`${s.enabled ? "text-primary dark:text-purple-400" : "text-text-muted dark:text-slate-500"} transition-colors`}>{s.icon}</span>
                     <span className="text-sm text-text-main dark:text-slate-300 flex-1 font-medium">{s.label}</span>
                     {s.enabled && (
                       <input
                         type="range" min={0} max={100} value={s.volume}
+                        disabled={!isRunning}
                         onChange={(e) => setVolume(s.id, Number(e.target.value))}
-                        className="w-16 h-1 rounded-full appearance-none bg-gray-200 dark:bg-white/10 accent-primary cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow"
+                        className="w-16 h-1 rounded-full appearance-none bg-gray-200 dark:bg-white/10 accent-primary cursor-pointer disabled:cursor-not-allowed [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow"
                       />
                     )}
                     <button
+                      type="button"
                       onClick={() => toggleSound(s.id)}
-                      className={`relative w-9 h-5 rounded-full transition-colors duration-200 shrink-0 ${s.enabled ? "bg-primary" : "bg-gray-200 dark:bg-white/10"}`}
+                      disabled={!isRunning}
+                      aria-disabled={!isRunning}
+                      className={`relative w-9 h-5 rounded-full transition-colors duration-200 shrink-0 disabled:cursor-not-allowed ${s.enabled ? "bg-primary" : "bg-gray-200 dark:bg-white/10"}`}
                     >
                       <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${s.enabled ? "translate-x-4" : "translate-x-0"}`} />
                     </button>
@@ -790,7 +818,7 @@ export default function FocusRoomsPage() {
         <div className="flex items-center gap-4 w-full max-w-6xl mx-auto">
           <div className="flex items-center gap-1.5 shrink-0 hidden sm:flex">
             <Flame size={14} className="text-primary" />
-            <span className="text-xs font-bold text-primary whitespace-nowrap">Level {userLevel}</span>
+            <span className="text-xs font-bold text-primary whitespace-nowrap">Level {effectiveLevel}</span>
           </div>
           
           <div className="relative flex-1 h-1.5 bg-gray-200 dark:bg-white/[0.06] rounded-full overflow-hidden">
@@ -801,7 +829,7 @@ export default function FocusRoomsPage() {
           </div>
           
           <span className="text-xs text-text-muted dark:text-slate-500 whitespace-nowrap">
-            {currentLevelXp} / 1,000 XP
+            {currentLevelXp.toLocaleString()} / {levelThresholdXp.toLocaleString()} XP
           </span>
         </div>
       </footer>

@@ -288,7 +288,7 @@ export default function LeaderboardPage() {
 
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
             <Trophy className="mr-2 inline h-8 w-8 -mt-1 text-yellow-500" />
-            Global Scholars Leaderboard
+            Global leader
           </h1>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
             Rankings are powered by XP, streaks, and rewards earned across the platform.

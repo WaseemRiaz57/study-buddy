@@ -49,7 +49,7 @@ interface CommunityPostDetail {
   createdAt: string | null;
 }
 
-interface Comment {
+interface CommentReply {
   id: string;
   text: string;
   author: Author;
@@ -58,9 +58,20 @@ interface Comment {
   createdAt: string | null;
 }
 
+interface Comment {
+  id: string;
+  text: string;
+  author: Author;
+  likes: number;
+  likedByMe: boolean;
+  replies: CommentReply[];
+  createdAt: string | null;
+}
+
 function RoleBadge({ role }: { role: string }) {
   const rawRole = String(role || "student").toLowerCase();
-  const normalized = rawRole === "teacher" ? "mentor" : rawRole;
+  const normalized =
+    rawRole === "admin" || rawRole === "student" ? rawRole : "mentor";
   const styles: Record<string, string> = {
     admin: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
     mentor: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
@@ -170,6 +181,9 @@ export default function PostDetailPage() {
   const [commentInput, setCommentInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingComment, setIsSendingComment] = useState(false);
+  const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
+  const [activeReplyCommentId, setActiveReplyCommentId] = useState("");
+  const [sendingReplyId, setSendingReplyId] = useState("");
   const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
@@ -302,6 +316,7 @@ export default function PostDetailPage() {
       author: currentUser,
       likes: 0,
       likedByMe: false,
+      replies: [],
       createdAt: new Date().toISOString(),
     };
 
@@ -351,6 +366,123 @@ export default function PostDetailPage() {
       );
     } finally {
       setIsSendingComment(false);
+    }
+  };
+
+  const toggleCommentLike = async (commentId: string) => {
+    const previousComments = comments;
+
+    setComments((current) =>
+      current.map((comment) =>
+        comment.id === commentId
+          ? {
+              ...comment,
+              likedByMe: !comment.likedByMe,
+              likes: comment.likedByMe
+                ? Math.max(0, comment.likes - 1)
+                : comment.likes + 1,
+            }
+          : comment
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/community/comments/${commentId}/like`, {
+        method: "PATCH",
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update comment like.");
+      }
+
+      setComments((current) =>
+        current.map((comment) =>
+          comment.id === commentId
+            ? {
+                ...comment,
+                likedByMe: Boolean(data?.liked),
+                likes: Number(data?.likes || 0),
+              }
+            : comment
+        )
+      );
+    } catch (error) {
+      setComments(previousComments);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update comment like."
+      );
+    }
+  };
+
+  const sendReply = async (commentId: string) => {
+    const text = String(replyInputs[commentId] || "").trim();
+    if (!text || sendingReplyId) return;
+
+    const optimisticReply: CommentReply = {
+      id: `temp-reply-${Date.now()}`,
+      text,
+      author: currentUser,
+      likes: 0,
+      likedByMe: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    setReplyInputs((current) => ({ ...current, [commentId]: "" }));
+    setComments((current) =>
+      current.map((comment) =>
+        comment.id === commentId
+          ? { ...comment, replies: [...(comment.replies || []), optimisticReply] }
+          : comment
+      )
+    );
+
+    try {
+      setSendingReplyId(commentId);
+      const response = await fetch(
+        `/api/community/comments/${commentId}/replies`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        }
+      );
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to add reply.");
+      }
+
+      setComments((current) =>
+        current.map((comment) =>
+          comment.id === commentId
+            ? {
+                ...comment,
+                replies: (comment.replies || []).map((reply) =>
+                  reply.id === optimisticReply.id ? data.reply : reply
+                ),
+              }
+            : comment
+        )
+      );
+      toast.success("Reply added.");
+    } catch (error) {
+      setComments((current) =>
+        current.map((comment) =>
+          comment.id === commentId
+            ? {
+                ...comment,
+                replies: (comment.replies || []).filter(
+                  (reply) => reply.id !== optimisticReply.id
+                ),
+              }
+            : comment
+        )
+      );
+      setReplyInputs((current) => ({ ...current, [commentId]: text }));
+      toast.error(error instanceof Error ? error.message : "Failed to add reply.");
+    } finally {
+      setSendingReplyId("");
     }
   };
 
@@ -624,9 +756,29 @@ export default function PostDetailPage() {
                     <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-gray-300">
                       {comment.text}
                     </div>
-                    <button className="mt-3 flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-[#7C3AED] dark:text-gray-500">
-                      <Heart size={13} />
+                    <button
+                      type="button"
+                      onClick={() => void toggleCommentLike(comment.id)}
+                      className={`mt-3 inline-flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                        comment.likedByMe
+                          ? "text-[#7C3AED]"
+                          : "text-slate-400 hover:text-[#7C3AED] dark:text-gray-500"
+                      }`}
+                    >
+                      <Heart size={13} className={comment.likedByMe ? "fill-current" : ""} />
                       {comment.likes}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveReplyCommentId((current) =>
+                          current === comment.id ? "" : comment.id
+                        )
+                      }
+                      className="ml-4 mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 transition-colors hover:text-[#7C3AED] dark:text-gray-500"
+                    >
+                      <MessageSquare size={13} />
+                      Reply
                     </button>
                     <button
                       type="button"
@@ -643,6 +795,77 @@ export default function PostDetailPage() {
                       <Flag size={13} />
                       Report
                     </button>
+
+                    {comment.replies?.length > 0 && (
+                      <div className="mt-4 space-y-3 border-l-2 border-[#7C3AED]/20 pl-4">
+                        {comment.replies.map((reply) => (
+                          <div key={reply.id} className="flex items-start gap-3">
+                            <Avatar
+                              author={reply.author}
+                              size="h-7 w-7"
+                              onClick={setPublicProfileUserId}
+                            />
+                            <div className="min-w-0 flex-1 rounded-xl bg-slate-50 p-3 dark:bg-white/5">
+                              <div className="mb-1 flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setPublicProfileUserId(reply.author.id)}
+                                  className="text-xs font-semibold text-slate-900 transition-colors hover:text-[#7C3AED] dark:text-white"
+                                >
+                                  {reply.author.name}
+                                </button>
+                                <RoleBadge role={reply.author.role} />
+                                <span className="text-[11px] text-slate-400 dark:text-gray-500">
+                                  {formatRelativeTime(reply.createdAt)}
+                                </span>
+                              </div>
+                              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-gray-300">
+                                {reply.text}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {activeReplyCommentId === comment.id && (
+                      <div className="mt-4 flex items-center gap-2">
+                        <Avatar author={currentUser} size="h-7 w-7" />
+                        <input
+                          value={replyInputs[comment.id] || ""}
+                          onChange={(event) =>
+                            setReplyInputs((current) => ({
+                              ...current,
+                              [comment.id]: event.target.value,
+                            }))
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void sendReply(comment.id);
+                            }
+                          }}
+                          placeholder={`Reply to ${comment.author.name}...`}
+                          className="min-h-[40px] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder-slate-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void sendReply(comment.id)}
+                          disabled={
+                            sendingReplyId === comment.id ||
+                            !String(replyInputs[comment.id] || "").trim()
+                          }
+                          className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-[#7C3AED] px-3 text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="Send reply"
+                        >
+                          {sendingReplyId === comment.id ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <Send size={16} />
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>

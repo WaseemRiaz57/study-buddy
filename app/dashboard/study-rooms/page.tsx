@@ -69,10 +69,20 @@ export default function StudyRoomsPage() {
             hostName: String(room?.createdBy?.name || "Unknown Host"),
             hostId: String(room?.createdBy?._id || ""),
             hostImage: String(room?.createdBy?.profileImage || room?.createdBy?.image || ""),
-            isLive: Boolean(room?.isActive === true || room?.status === "active" || room?.isLive === true),
+            isLive: Boolean(
+              room?.isLive === true &&
+                room?.isActive === true &&
+                room?.status === "active"
+            ),
             isActive: room?.isActive === true,
             status: String(room?.status || ""),
-          })).filter((room: Room) => room.participantsCount > 0);
+          })).filter(
+            (room: Room) =>
+              room.isLive &&
+              room.isActive &&
+              room.status === "active" &&
+              room.participantsCount > 0
+          );
 
       setRooms(normalizedRooms);
     } catch (error) {
@@ -88,7 +98,11 @@ export default function StudyRoomsPage() {
   }, []);
 
   const activeRooms = rooms.filter(
-    (room) => room.isActive === true || room.status === "active"
+    (room) =>
+      room.isLive === true &&
+      room.isActive === true &&
+      room.status === "active" &&
+      room.participantsCount > 0
   );
 
   if (isLoadingRooms && rooms.length === 0 && !roomsError) {
