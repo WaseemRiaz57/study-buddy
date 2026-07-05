@@ -825,6 +825,13 @@ export default function FocusRoomsPage() {
           <span className="text-xs text-text-muted dark:text-slate-500 whitespace-nowrap">
             {currentLevelXp.toLocaleString()} / {maxXPForCurrentLevel.toLocaleString()} XP
           </span>
+        </div>
+      </footer>
+
+      {/* ========================================= */}
+      {/* 👇 Settings Modal (Naya Izafa)            */}
+      {/* ========================================= */}
+      {showSettings && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="glass-panel bg-white/90 dark:bg-slate-900/90 border border-white/20 dark:border-white/10 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
             <div className="flex justify-between items-center mb-6">
