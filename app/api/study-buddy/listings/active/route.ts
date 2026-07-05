@@ -28,10 +28,9 @@ type StudyBuddyListing = {
 
 function getErrorDetails(error: unknown) {
   if (error instanceof Error) {
+    const errorWithCode = error as unknown as { code?: unknown };
     const code =
-      typeof (error as { code?: unknown }).code === "number"
-        ? (error as { code: number }).code
-        : undefined;
+      typeof errorWithCode.code === "number" ? errorWithCode.code : undefined;
 
     return {
       name: error.name,
