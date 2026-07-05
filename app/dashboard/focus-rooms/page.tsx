@@ -82,9 +82,9 @@ export default function FocusRoomsPage() {
   const activeTimerSecondsRef = useRef(focusDuration * 60);
 
   /* ---- XP & Progress State ---- */
-  const [userLevel, setUserLevel] = useState(1);
-  const [userXp, setUserXp] = useState(0);
-  const addReward = useGamificationStore((state) => state.addReward);
+  const { stats, addReward } = useGamificationStore();
+  const userLevel = stats.level;
+  const userXp = stats.xp;
   const focusTodoTasks = useFocusTodoStore((state) => state.tasks);
   const [selectedFocusTaskId, setSelectedFocusTaskId] = useState("");
   const selectedFocusTaskRef = useRef<{ id: string; text: string } | null>(null);
@@ -257,8 +257,8 @@ export default function FocusRoomsPage() {
 
         if (resProgress.ok) {
           const data = await resProgress.json();
-          setUserLevel(data.level || 1);
-          setUserXp(data.xp || 0);
+          // The global gamification store will sync automatically, but we can set initial data if needed
+          useGamificationStore.getState().setInitialData(data.xp || 0, 0, { level: data.level || 1 });
         } else {
           toast.error("Failed to load XP progress.");
         }
@@ -316,8 +316,7 @@ export default function FocusRoomsPage() {
         if (res.ok) {
           const data = await res.json();
           persistedFocusSecondsRef.current += secondsToSave;
-          setUserLevel(data.progress.level);
-          setUserXp(data.progress.xp);
+          // Local state removed, store handles this via fetch weekly focus or addReward
 
           if (data?.reward) {
             const xpAwarded = Number(data.reward.xpAwarded || 10);
@@ -400,15 +399,10 @@ export default function FocusRoomsPage() {
   const progressPercent = ((totalSeconds - timeLeft) / totalSeconds) * 100;
   
   const circumference = 2 * Math.PI * 46;
-  const effectiveLevel = Math.max(userLevel, Math.floor(userXp / 1000) + 1);
-  const currentLevelStartXp = Math.max(0, (effectiveLevel - 1) * 1000);
-  const nextLevelXp = Math.max(currentLevelStartXp + 1000, effectiveLevel * 1000);
-  const currentLevelXp = Math.max(0, userXp - currentLevelStartXp);
-  const levelThresholdXp = Math.max(1, nextLevelXp - currentLevelStartXp);
-  const xpProgressPct = Math.min(
-    100,
-    Math.max(0, (currentLevelXp / levelThresholdXp) * 100)
-  );
+  const effectiveLevel = Math.max(1, userLevel);
+  const currentLevelXp = userXp % 1000;
+  const maxXPForCurrentLevel = 1000;
+  const xpProgressPct = Math.min(100, Math.max(0, (currentLevelXp / maxXPForCurrentLevel) * 100));
   const openFocusTasks = focusTodoTasks.filter((task) => !task.completed);
   const selectedFocusTask =
     focusTodoTasks.find((task) => task.id === selectedFocusTaskId) || null;
@@ -829,15 +823,8 @@ export default function FocusRoomsPage() {
           </div>
           
           <span className="text-xs text-text-muted dark:text-slate-500 whitespace-nowrap">
-            {currentLevelXp.toLocaleString()} / {levelThresholdXp.toLocaleString()} XP
+            {currentLevelXp.toLocaleString()} / {maxXPForCurrentLevel.toLocaleString()} XP
           </span>
-        </div>
-      </footer>
-
-      {/* ========================================= */}
-      {/* 👇 Settings Modal (Naya Izafa)            */}
-      {/* ========================================= */}
-      {showSettings && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="glass-panel bg-white/90 dark:bg-slate-900/90 border border-white/20 dark:border-white/10 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
             <div className="flex justify-between items-center mb-6">

@@ -91,7 +91,21 @@ export async function GET() {
     const studentId = new mongoose.Types.ObjectId(currentUserId);
 
     try {
-      await closeExpiredStudyBuddyListings();
+      try {
+        await closeExpiredStudyBuddyListings();
+      } catch (dbError: any) {
+        console.error("Auto-expiration update failed:", dbError);
+        
+        // Return a structured JSON 500 error for database update failures (e.g., E11000 duplicate key error)
+        return NextResponse.json(
+          {
+            message: "Database update failed during auto-expiration. A duplicate record may exist.",
+            code: dbError?.code === 11000 ? "DUPLICATE_KEY_ERROR" : "UPDATE_FAILED",
+            error: getErrorDetails(dbError),
+          },
+          { status: 500 }
+        );
+      }
 
       const activeFilter = activeStudyBuddyListingFilter();
       const [myListings, otherListings] = await Promise.all([
