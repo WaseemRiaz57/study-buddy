@@ -2,10 +2,10 @@ import mongoose, { Schema, type InferSchemaType, models } from "mongoose";
 
 const SubscriptionPlanLimitsSchema = new Schema(
   {
-    maxNotesPerDay: { type: Number, default: 5, min: 0 },
-    maxStudyRooms: { type: Number, default: 1, min: 0 },
+    maxNotesPerDay: { type: Number, default: 25, min: 0 },
+    maxStudyRooms: { type: Number, default: 10, min: 0 },
     studyRoomCapacity: { type: Number, default: 4, min: 1 },
-    resourceUploadsPerMonth: { type: Number, default: 3, min: 0 },
+    resourceUploadsPerMonth: { type: Number, default: 15, min: 0 },
   },
   { _id: false }
 );

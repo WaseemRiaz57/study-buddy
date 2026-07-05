@@ -1,7 +1,7 @@
 "use client";
 
 import CheckoutModal from "@/components/modals/CheckoutModal";
-import { useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Crown,
@@ -13,7 +13,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useUserStore, type Plan } from "@/store/useUserStore";
-import { PRICING_PLANS, calculateYearlyPrice, getYearlyTotal } from "@/lib/pricingConfig";
+import {
+  PRICING_PLANS,
+  calculateYearlyPrice,
+  getYearlyTotal,
+  type PricingPlanConfig,
+} from "@/lib/pricingConfig";
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /* TYPES & DATA                                                      */
@@ -45,12 +50,13 @@ const planIconMap: Record<string, LucideIcon> = {
   elite: Crown,
 };
 
-const plans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
+function toPricingPlan(plan: PricingPlanConfig): PricingPlan {
+  return {
   id: (plan.id === "free" ? "FREE" : plan.id.toUpperCase()) as Plan,
   name: plan.name,
   tagline: plan.description,
   monthlyPrice: plan.price,
-  yearlyPrice: plan.price === 0 ? 0 : Math.round(plan.price * 0.8 * 100) / 100,
+  yearlyPrice: calculateYearlyPrice(plan.price),
   icon: planIconMap[plan.id],
   accent: plan.id === "elite" ? "purple" : plan.id === "pro" ? "purple" : "slate",
   glowColor: "rgba(124,58,237,0.22)",
@@ -58,14 +64,17 @@ const plans: PricingPlan[] = PRICING_PLANS.map((plan) => ({
   popular: Boolean(plan.featured),
   premium: plan.id === "elite",
   features: plan.features.map((text) => ({ text, included: true })),
-}));
+  };
+}
+
 /* comparison table rows */
 const comparisonRows = [
-  { feature: "Study Rooms", community: "Up to 4", pro: "Unlimited", elite: "Unlimited" },
+  { feature: "Active Study Rooms", community: "10 rooms", pro: "5 rooms", elite: "Unlimited" },
+  { feature: "Room Participants", community: "Up to 4", pro: "Up to 12", elite: "Up to 20" },
   { feature: "Quizzes", community: "Standard", pro: "Advanced + AI", elite: "Advanced + AI" },
   { feature: "Community Access", community: true, pro: true, elite: true },
   { feature: "Weekly Challenges", community: true, pro: true, elite: true },
-  { feature: "AI Content Generator", community: false, pro: "Unlimited", elite: "Unlimited" },
+  { feature: "AI Content Generator", community: "25/day", pro: "50/day", elite: "Unlimited" },
   { feature: "Elite Challenges", community: false, pro: true, elite: true },
   { feature: "Ad-Free Experience", community: false, pro: true, elite: true },
   { feature: "Mentor Earnings", community: false, pro: false, elite: true },
@@ -435,7 +444,6 @@ function FAQ() {
 /* ═══════════════════════════════════════════════════════════════════ */
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
 
 function UpgradePageContent() {
   const searchParams = useSearchParams();
@@ -443,10 +451,40 @@ function UpgradePageContent() {
   const planParam = searchParams.get("plan");
 
   const [yearly, setYearly] = useState(initialBilling);
+  const [pricingPlans, setPricingPlans] = useState<PricingPlanConfig[]>(PRICING_PLANS);
   const currentPlan = useUserStore((s) => s.plan);
 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+  const plans = useMemo(
+    () => pricingPlans.map(toPricingPlan),
+    [pricingPlans]
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchPricingPlans() {
+      try {
+        const response = await fetch("/api/subscription-plans", {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => null);
+
+        if (active && response.ok && Array.isArray(data?.plans)) {
+          setPricingPlans(data.plans);
+        }
+      } catch {
+        if (active) setPricingPlans(PRICING_PLANS);
+      }
+    }
+
+    void fetchPricingPlans();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (planParam) {
@@ -456,7 +494,7 @@ function UpgradePageContent() {
         setIsCheckoutOpen(true);
       }
     }
-  }, [planParam]);
+  }, [planParam, plans]);
 
   const handleUpgradeClick = (plan: PricingPlan) => {
     setSelectedPlan(plan);

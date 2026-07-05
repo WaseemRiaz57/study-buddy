@@ -17,6 +17,13 @@ export interface PricingPlanConfig {
   features: string[];
 }
 
+export const FREE_TIER_LIMITS = {
+  aiGenerationsPerDay: 25,
+  activeStudyRooms: 10,
+  studyRoomCapacity: 4,
+  resourceUploadsPerMonth: 15,
+} as const;
+
 export const PRICING_PLANS: PricingPlanConfig[] = [
   {
     id: "free",
@@ -26,17 +33,18 @@ export const PRICING_PLANS: PricingPlanConfig[] = [
     description: "Core study tools for getting started.",
     cta: "Join Free",
     limits: {
-      aiGenerationsPerDay: 5,
-      activeStudyRooms: 1,
-      studyRoomCapacity: 4,
-      resourceUploadsPerMonth: 3,
+      aiGenerationsPerDay: FREE_TIER_LIMITS.aiGenerationsPerDay,
+      activeStudyRooms: FREE_TIER_LIMITS.activeStudyRooms,
+      studyRoomCapacity: FREE_TIER_LIMITS.studyRoomCapacity,
+      resourceUploadsPerMonth: FREE_TIER_LIMITS.resourceUploadsPerMonth,
     },
     features: [
-      "5 AI note generations per day",
-      "1 active study room",
+      "25 AI note generations per day",
+      "10 active study rooms",
       "Study rooms up to 4 participants",
       "Community forum access",
       "Focus room and Pomodoro tools",
+      "15 resource marketplace uploads per month",
       "Resource Hub downloads",
     ],
   },

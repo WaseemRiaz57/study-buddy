@@ -1,5 +1,6 @@
 import { connectMongoDB } from "@/lib/mongodb";
 import {
+  FREE_TIER_LIMITS,
   PRICING_PLANS,
   normalizeSubscriptionPlan,
   type PricingPlanConfig,
@@ -27,6 +28,25 @@ export function serializeSubscriptionPlan(plan: any): PricingPlanConfig {
   const id = idFromTier(plan?.tier);
   const limits = plan?.limits || {};
   const price = Number(plan?.price ?? 0);
+  const fallbackPlan = PRICING_PLANS.find((entry) => entry.id === id);
+  const serializedLimits =
+    id === "free"
+      ? FREE_TIER_LIMITS
+      : {
+          aiGenerationsPerDay:
+            id === "elite" && limits.maxNotesPerDay == null
+              ? null
+              : Number(limits.maxNotesPerDay ?? 0),
+          activeStudyRooms:
+            id === "elite" && limits.maxStudyRooms == null
+              ? null
+              : Number(limits.maxStudyRooms ?? 0),
+          studyRoomCapacity: Number(limits.studyRoomCapacity ?? 4),
+          resourceUploadsPerMonth:
+            id === "elite" && limits.resourceUploadsPerMonth == null
+              ? null
+              : Number(limits.resourceUploadsPerMonth ?? 0),
+        };
 
   return {
     id,
@@ -36,22 +56,13 @@ export function serializeSubscriptionPlan(plan: any): PricingPlanConfig {
     description: String(plan?.description || ""),
     cta: String(plan?.cta || (id === "free" ? "Join Free" : id === "pro" ? "Upgrade to Pro" : "Go Elite")),
     featured: Boolean(plan?.featured),
-    limits: {
-      aiGenerationsPerDay:
-        id === "elite" && limits.maxNotesPerDay == null
-          ? null
-          : Number(limits.maxNotesPerDay ?? 0),
-      activeStudyRooms:
-        id === "elite" && limits.maxStudyRooms == null
-          ? null
-          : Number(limits.maxStudyRooms ?? 0),
-      studyRoomCapacity: Number(limits.studyRoomCapacity ?? 4),
-      resourceUploadsPerMonth:
-        id === "elite" && limits.resourceUploadsPerMonth == null
-          ? null
-          : Number(limits.resourceUploadsPerMonth ?? 0),
-    },
-    features: Array.isArray(plan?.features) ? plan.features.map(String) : [],
+    limits: serializedLimits,
+    features:
+      id === "free"
+        ? fallbackPlan?.features ?? []
+        : Array.isArray(plan?.features)
+          ? plan.features.map(String)
+          : [],
   };
 }
 

@@ -55,7 +55,7 @@ export function FeatureGate({
             Upgrade your plan to unlock this workspace.
           </p>
           <Link
-            href="/dashboard/settings/subscription"
+            href="/dashboard/upgrade"
             prefetch={true}
             className="mt-4 inline-flex items-center justify-center rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700"
           >

@@ -1,1 +1,5 @@
-export { default } from "@/app/dashboard/settings/subscription/page";
+import { redirect } from "next/navigation";
+
+export default function DashboardPricingPage() {
+  redirect("/dashboard/upgrade");
+}
