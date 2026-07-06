@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { trackProgress } from "@/lib/challengeTracker";
@@ -11,11 +12,57 @@ import CommunityPost from "@/models/CommunityPost";
 import User from "@/models/User";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const AUTHOR_SELECT = "name image profileImage role lastActive";
+const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024;
+const MAX_ATTACHMENTS = 6;
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
+  ".pdf",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".doc",
+  ".docx",
+  ".ppt",
+  ".pptx",
+  ".xls",
+  ".xlsx",
+  ".txt",
+]);
+const IMAGE_ATTACHMENT_EXTENSIONS = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+]);
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+type CreatePostRequestData = {
+  title: string;
+  body: string;
+  category: string;
+  tags: string[];
+  attachmentUrls: string[];
+  attachmentFiles: File[];
+};
+
+class AttachmentUploadError extends Error {}
 
 function escapeRegex(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
 function getInitials(name: string) {
@@ -30,50 +77,62 @@ function getInitials(name: string) {
   );
 }
 
-function serializeAuthor(author: any) {
-  const name = author?.name || "Scholar";
+function serializeAuthor(author: unknown) {
+  const authorRecord = asRecord(author);
+  const name = String(authorRecord.name || "Scholar");
 
   return {
-    id: String(author?._id || ""),
+    id: String(authorRecord._id || ""),
     name,
-    image: author?.profileImage || author?.image || "",
+    image: String(authorRecord.profileImage || authorRecord.image || ""),
     initials: getInitials(name),
-    role: author?.role || "student",
-    lastActive: author?.lastActive || null,
+    role: String(authorRecord.role || "student"),
+    lastActive: authorRecord.lastActive || null,
   };
 }
 
 async function serializePost(
-  post: any,
+  post: unknown,
   commentCount = 0,
   currentUserId = "",
   savedPostIds: string[] = []
 ) {
-  const likes = Array.isArray(post.likes) ? post.likes : [];
+  const postRecord = asRecord(post);
+  const likes = Array.isArray(postRecord.likes) ? postRecord.likes : [];
 
   return {
-    id: String(post._id),
-    title: post.title || "",
-    body: post.body || "",
-    excerpt: String(post.body || "").replace(/\s+/g, " ").slice(0, 220),
-    tags: Array.isArray(post.tags) ? post.tags : [],
-    category: post.category || "General",
-    attachments: Array.isArray(post.attachments) ? post.attachments : [],
-    author: serializeAuthor(post.authorId),
+    id: String(postRecord._id),
+    title: String(postRecord.title || ""),
+    body: String(postRecord.body || ""),
+    excerpt: String(postRecord.body || "").replace(/\s+/g, " ").slice(0, 220),
+    tags: Array.isArray(postRecord.tags) ? postRecord.tags : [],
+    category: String(postRecord.category || "General"),
+    attachments: Array.isArray(postRecord.attachments) ? postRecord.attachments : [],
+    author: serializeAuthor(postRecord.authorId),
     likes: likes.length,
     likedByMe: Boolean(currentUserId && likes.some((id: unknown) => String(id) === currentUserId)),
-    savedByMe: savedPostIds.includes(String(post._id)),
+    savedByMe: savedPostIds.includes(String(postRecord._id)),
     comments: commentCount,
-    views: Number(post.views || 0),
-    createdAt: post.createdAt || null,
-    hot: likes.length + commentCount * 2 + Number(post.views || 0) / 25 >= 10,
+    views: Number(postRecord.views || 0),
+    createdAt: postRecord.createdAt || null,
+    hot: likes.length + commentCount * 2 + Number(postRecord.views || 0) / 25 >= 10,
   };
 }
 
 function normalizeTags(value: unknown) {
-  const rawTags = Array.isArray(value)
-    ? value
-    : String(value || "")
+  let parsedValue = value;
+
+  if (typeof value === "string") {
+    try {
+      parsedValue = JSON.parse(value) as unknown;
+    } catch {
+      parsedValue = value;
+    }
+  }
+
+  const rawTags = Array.isArray(parsedValue)
+    ? parsedValue
+    : String(parsedValue || "")
         .split(",")
         .map((tag) => tag.trim());
 
@@ -85,6 +144,134 @@ function normalizeTags(value: unknown) {
         .slice(0, 8)
     ),
   ];
+}
+
+function getSavedPostIds(currentUser: unknown) {
+  const savedPosts = asRecord(currentUser).savedPosts;
+
+  return Array.isArray(savedPosts)
+    ? savedPosts.map((id: unknown) => String(id))
+    : [];
+}
+
+function getLowerCaseExtension(fileName: string) {
+  const lastDotIndex = fileName.lastIndexOf(".");
+
+  if (lastDotIndex === -1) {
+    return "";
+  }
+
+  return fileName.slice(lastDotIndex).toLowerCase();
+}
+
+function sanitizeFileName(fileName: string) {
+  const extension = getLowerCaseExtension(fileName);
+  const baseName = fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+
+  return `${baseName || "community-attachment"}${extension}`;
+}
+
+function uploadCommunityAttachment(fileBuffer: Buffer, fileName: string) {
+  const extension = getLowerCaseExtension(fileName);
+  const resourceType = IMAGE_ATTACHMENT_EXTENSIONS.has(extension) ? "image" : "raw";
+
+  return new Promise<UploadApiResponse>((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "study-buddy/community",
+        resource_type: resourceType,
+        public_id: `${Date.now()}-${sanitizeFileName(fileName)}`,
+      },
+      (error, result) => {
+        if (error || !result) {
+          reject(error ?? new Error("Cloudinary upload failed"));
+          return;
+        }
+
+        resolve(result);
+      }
+    );
+
+    uploadStream.end(fileBuffer);
+  });
+}
+
+async function uploadCommunityAttachments(files: File[]) {
+  if (files.length === 0) return [];
+
+  if (files.length > MAX_ATTACHMENTS) {
+    throw new AttachmentUploadError(`Attach up to ${MAX_ATTACHMENTS} files per post.`);
+  }
+
+  if (
+    !process.env.CLOUDINARY_CLOUD_NAME ||
+    !process.env.CLOUDINARY_API_KEY ||
+    !process.env.CLOUDINARY_API_SECRET
+  ) {
+    throw new Error("Cloudinary environment variables are not configured.");
+  }
+
+  const attachmentUrls: string[] = [];
+
+  for (const file of files) {
+    if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
+      throw new AttachmentUploadError(`${file.name} exceeds the 20MB upload limit.`);
+    }
+
+    const extension = getLowerCaseExtension(file.name);
+
+    if (!ALLOWED_ATTACHMENT_EXTENSIONS.has(extension)) {
+      throw new AttachmentUploadError(
+        `${file.name} is not supported. Upload a PDF, image, or document file.`
+      );
+    }
+
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const result = await uploadCommunityAttachment(fileBuffer, file.name);
+
+    if (result.secure_url) {
+      attachmentUrls.push(result.secure_url);
+    }
+  }
+
+  return attachmentUrls;
+}
+
+async function parseCreatePostRequest(request: Request): Promise<CreatePostRequestData> {
+  const contentType = request.headers.get("content-type") || "";
+
+  if (contentType.toLowerCase().includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const files = formData
+      .getAll("attachments")
+      .filter((value): value is File => value instanceof File && value.size > 0);
+
+    return {
+      title: String(formData.get("title") || "").trim(),
+      body: String(formData.get("body") || "").trim(),
+      category: String(formData.get("category") || "").trim(),
+      tags: normalizeTags(formData.get("tags")),
+      attachmentUrls: [],
+      attachmentFiles: files,
+    };
+  }
+
+  const body = await request.json().catch(() => ({}));
+
+  return {
+    title: String(body.title || "").trim(),
+    body: String(body.body || "").trim(),
+    category: String(body.category || "").trim(),
+    tags: normalizeTags(body.tags),
+    attachmentUrls: Array.isArray(body.attachments)
+      ? body.attachments.map((url: unknown) => String(url || "").trim()).filter(Boolean)
+      : [],
+    attachmentFiles: [],
+  };
 }
 
 export async function GET(request: Request) {
@@ -131,9 +318,7 @@ export async function GET(request: Request) {
         : null,
     ]);
     const countMap = new Map(counts.map((item) => [String(item._id), item.count]));
-    const savedPostIds = Array.isArray((currentUser as any)?.savedPosts)
-      ? (currentUser as any).savedPosts.map((id: unknown) => String(id))
-      : [];
+    const savedPostIds = getSavedPostIds(currentUser);
 
     const serialized = await Promise.all(
       posts.map((post) =>
@@ -172,14 +357,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json().catch(() => ({}));
-    const title = String(body.title || "").trim();
-    const postBody = String(body.body || "").trim();
-    const category = String(body.category || "").trim();
-    const tags = normalizeTags(body.tags);
-    const attachments = Array.isArray(body.attachments)
-      ? body.attachments.map((url: unknown) => String(url || "").trim()).filter(Boolean)
-      : [];
+    const {
+      title,
+      body: postBody,
+      category,
+      tags,
+      attachmentUrls,
+      attachmentFiles,
+    } = await parseCreatePostRequest(request);
 
     if (title.length < 3 || title.length > 180) {
       return NextResponse.json(
@@ -201,6 +386,9 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const uploadedAttachmentUrls = await uploadCommunityAttachments(attachmentFiles);
+    const attachments = [...attachmentUrls, ...uploadedAttachmentUrls];
 
     await connectMongoDB();
 
@@ -235,6 +423,10 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof AttachmentUploadError) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+
     console.error("Create community post error:", error);
     return NextResponse.json(
       { message: "Failed to publish community post." },

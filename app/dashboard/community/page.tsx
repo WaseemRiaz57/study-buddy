@@ -52,31 +52,6 @@ interface PopularTag {
   count: number;
 }
 
-async function uploadCommunityAttachments(files: File[]) {
-  const urls: string[] = [];
-
-  for (const file of files) {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await fetch("/api/vault/upload", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(data?.message || `Failed to upload ${file.name}.`);
-    }
-
-    if (data?.secure_url) {
-      urls.push(String(data.secure_url));
-    }
-  }
-
-  return urls;
-}
-
 export default function CommunityFeedPage() {
   const { data: session } = useSession();
   const addReward = useGamificationStore((state) => state.addReward);
@@ -172,17 +147,19 @@ export default function CommunityFeedPage() {
   const publishPost = async (payload: CreatePostPayload) => {
     try {
       setIsPublishing(true);
-      const attachments = await uploadCommunityAttachments(payload.files);
+      const formData = new FormData();
+      formData.append("title", payload.title);
+      formData.append("body", payload.body);
+      formData.append("category", payload.category);
+      formData.append("tags", JSON.stringify(payload.tags));
+
+      for (const file of payload.files) {
+        formData.append("attachments", file);
+      }
+
       const response = await fetch("/api/community/posts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: payload.title,
-          body: payload.body,
-          category: payload.category,
-          tags: payload.tags,
-          attachments,
-        }),
+        body: formData,
       });
       const data = await response.json().catch(() => null);
 

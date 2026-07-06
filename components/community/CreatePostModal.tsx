@@ -278,7 +278,10 @@ export default function CreatePostModal({
                   className="w-full rounded-xl bg-[#7C3AED] py-3 font-bold text-white shadow-lg shadow-purple-500/25 disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
                 >
                   {isPublishing ? (
-                    <Loader2 className="mx-auto animate-spin" size={18} />
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <Loader2 className="animate-spin" size={18} />
+                      Publishing...
+                    </span>
                   ) : (
                     "Publish Post"
                   )}
@@ -320,7 +323,10 @@ export default function CreatePostModal({
                   className="w-full rounded-xl bg-[#7C3AED] py-3 font-bold text-white shadow-lg shadow-purple-500/25 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isPublishing ? (
-                    <Loader2 className="mx-auto animate-spin" size={18} />
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <Loader2 className="animate-spin" size={18} />
+                      Publishing...
+                    </span>
                   ) : (
                     "Publish Post"
                   )}
