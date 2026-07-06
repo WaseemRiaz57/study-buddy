@@ -103,7 +103,6 @@ const StudyRoomSchema = new Schema<IStudyRoom>(
   { timestamps: true }
 );
 
-StudyRoomSchema.index({ roomId: 1 }, { unique: true });
 StudyRoomSchema.index({ isLive: 1, createdAt: -1 });
 StudyRoomSchema.index({ isActive: 1, status: 1, createdAt: -1 });
 StudyRoomSchema.index({ status: 1, participants: 1, createdAt: -1 });
