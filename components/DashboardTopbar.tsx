@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { markStudyBuddyOffline } from "@/hooks/useOfflinePresence";
+import { MessageChatButton } from "@/components/messages/MessageChatButton";
 import { useUserStore } from "@/store/useUserStore";
 import { NotificationBell } from "./NotificationBell";
 import { useGamificationStore } from "@/store/useGamificationStore";
@@ -285,6 +286,7 @@ export function DashboardTopbar({
           </button>
 
           {!isAdminUser && <NotificationBell />}
+          {!isAdminUser && <MessageChatButton />}
 
           <div ref={userMenuRef} className="relative shrink-0">
             {role === "STUDENT" ? (
