@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion, useSpring, useMotionValue, Variants } from "framer-motion";
-import { useEffect, useState, useRef, memo } from "react";
+import { motion, useReducedMotion, useSpring, useTransform, type MotionValue, type Variants } from "framer-motion";
+import { memo } from "react";
 import {
   BookOpen,
   Brain,
@@ -45,32 +45,32 @@ const GLASS_CARDS: GlassCardData[] = [
           <div className="h-7 w-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
             <Users className="h-3.5 w-3.5 text-white" />
           </div>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-white/90 uppercase tracking-wider">Book a Mentor</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800">Book a Mentor</span>
         </div>
         <div className="space-y-2">
           {[
             { name: "Sarah K.", subject: "Mathematics", available: true },
             { name: "Dr. Ali R.", subject: "Physics", available: true },
             { name: "Emma T.", subject: "Chemistry", available: false },
-          ].map((teacher) => (
+          ].map((mentor) => (
             <div
-              key={teacher.name}
-              className="flex items-center justify-between rounded-lg bg-white/60 dark:bg-white/[0.06] px-2.5 py-1.5 border border-slate-200/50 dark:border-white/[0.05]"
+              key={mentor.name}
+              className="flex items-center justify-between rounded-lg border border-violet-100/90 bg-white/70 px-2.5 py-1.5"
             >
               <div className="flex items-center gap-2">
                 <div className="h-5 w-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-[8px] font-bold text-white">
-                  {teacher.name[0]}
+                  {mentor.name[0]}
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-800 dark:text-white/90">{teacher.name}</p>
-                  <p className="text-[8px] text-slate-500 dark:text-white/50">{teacher.subject}</p>
+                  <p className="text-[10px] font-semibold text-slate-800">{mentor.name}</p>
+                  <p className="text-[8px] text-slate-500">{mentor.subject}</p>
                 </div>
               </div>
               <div
                 className={`h-1.5 w-1.5 rounded-full ${
-                  teacher.available
+                  mentor.available
                     ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]"
-                    : "bg-slate-200 dark:bg-white/20"
+                    : "bg-slate-200"
                 }`}
               />
             </div>
@@ -98,26 +98,26 @@ const GLASS_CARDS: GlassCardData[] = [
           <div className="h-7 w-7 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
             <Brain className="h-3.5 w-3.5 text-white" />
           </div>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-white/90 uppercase tracking-wider">AI Notes</span>
-          <span className="ml-auto rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 px-2 py-0.5 text-[8px] font-bold text-emerald-600 dark:text-emerald-300 border border-emerald-500/20 dark:border-emerald-500/30">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800">AI Notes</span>
+          <span className="ml-auto rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[8px] font-bold text-emerald-600">
             LIVE
           </span>
         </div>
-        <div className="rounded-lg bg-white/60 dark:bg-white/[0.06] p-2.5 border border-slate-200/50 dark:border-white/[0.05] mb-2">
+        <div className="mb-2 rounded-lg border border-cyan-100 bg-white/70 p-2.5">
           <div className="flex items-center gap-1.5 mb-1.5">
-            <FileText className="h-3 w-3 text-cyan-500 dark:text-cyan-400" />
-            <span className="text-[9px] font-semibold text-cyan-600 dark:text-cyan-300">Generating notes...</span>
+            <FileText className="h-3 w-3 text-cyan-500" />
+            <span className="text-[9px] font-semibold text-cyan-600">Generating notes...</span>
           </div>
           <div className="space-y-1">
-            <div className="h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+            <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
               <div className="h-full w-[85%] rounded-full bg-gradient-to-r from-cyan-400 to-blue-400 hero-shimmer" />
             </div>
-            <div className="h-1.5 w-[65%] rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+            <div className="h-1.5 w-[65%] overflow-hidden rounded-full bg-slate-200">
               <div className="h-full w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-400 hero-shimmer" style={{ animationDelay: "0.3s" }} />
             </div>
           </div>
         </div>
-        <p className="text-[9px] text-slate-600 dark:text-white/50 leading-relaxed">
+        <p className="text-[9px] leading-relaxed text-slate-600">
           &quot;Quantum entanglement describes a phenomenon where particles become interconnected...&quot;
         </p>
       </article>
@@ -139,7 +139,7 @@ const GLASS_CARDS: GlassCardData[] = [
           <div className="h-7 w-7 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center shadow-lg shadow-rose-500/30">
             <Timer className="h-3.5 w-3.5 text-white" />
           </div>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-white/90 uppercase tracking-wider">Focus Room</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800">Focus Room</span>
         </div>
         <div className="flex items-center justify-center my-2">
           <div className="relative h-16 w-16">
@@ -148,7 +148,7 @@ const GLASS_CARDS: GlassCardData[] = [
                 cx="32" cy="32" r="28"
                 fill="none"
                 strokeWidth="3"
-                className="stroke-slate-200 dark:stroke-white/10"
+                className="stroke-slate-200"
               />
               <circle
                 cx="32" cy="32" r="28"
@@ -168,17 +168,17 @@ const GLASS_CARDS: GlassCardData[] = [
               </defs>
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-sm font-black text-slate-800 dark:text-white tabular-nums">24:38</span>
+              <span className="text-sm font-black tabular-nums text-slate-800">24:38</span>
             </div>
           </div>
         </div>
         <div className="flex items-center justify-center gap-3 mt-1">
-          <div className="flex items-center gap-1 text-[9px] text-slate-500 dark:text-white/50">
+          <div className="flex items-center gap-1 text-[9px] text-slate-500">
             <Headphones className="h-3 w-3" />
             <span>Lo-Fi</span>
           </div>
-          <div className="h-3 w-px bg-slate-300 dark:bg-white/10" />
-          <div className="flex items-center gap-1 text-[9px] text-slate-500 dark:text-white/50">
+          <div className="h-3 w-px bg-slate-300" />
+          <div className="flex items-center gap-1 text-[9px] text-slate-500">
             <Users className="h-3 w-3" />
             <span>4 studying</span>
           </div>
@@ -202,18 +202,18 @@ const GLASS_CARDS: GlassCardData[] = [
           <div className="h-7 w-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
             <Sparkles className="h-3.5 w-3.5 text-white" />
           </div>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-white/90 uppercase tracking-wider">Live Session</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-800">Live Session</span>
           <span className="ml-auto flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-[8px] font-bold text-red-500 dark:text-red-400">REC</span>
+            <span className="text-[8px] font-bold text-red-500">REC</span>
           </span>
         </div>
-        <div className="rounded-lg bg-white/60 dark:bg-white/[0.06] p-2 border border-slate-200/50 dark:border-white/[0.05] mb-2">
+        <div className="mb-2 rounded-lg border border-amber-100 bg-white/70 p-2">
           <div className="grid grid-cols-2 gap-1.5">
             {["AP", "MK", "JL", "SR"].map((initials, i) => (
               <div
                 key={initials}
-                className="flex items-center gap-1.5 rounded bg-slate-100 dark:bg-white/[0.04] px-1.5 py-1"
+                className="flex items-center gap-1.5 rounded bg-slate-100 px-1.5 py-1"
               >
                 <div className={`h-4 w-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white ${
                   ["bg-purple-500", "bg-cyan-500", "bg-emerald-500", "bg-amber-500"][i]
@@ -224,7 +224,7 @@ const GLASS_CARDS: GlassCardData[] = [
                   {[3, 5, 2, 6, 4].map((h, j) => (
                     <div
                       key={j}
-                      className="w-0.5 rounded-full bg-slate-400 dark:bg-white/30 hero-eq-bar"
+                      className="hero-eq-bar w-0.5 rounded-full bg-slate-400"
                       style={{
                         height: `${h * 2}px`,
                         animationDelay: `${j * 0.1 + i * 0.2}s`,
@@ -236,9 +236,9 @@ const GLASS_CARDS: GlassCardData[] = [
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-between text-[9px] text-slate-500 dark:text-white/50">
+        <div className="flex items-center justify-between text-[9px] text-slate-500">
           <span>Organic Chemistry Study Group</span>
-          <span className="text-amber-500 dark:text-amber-400 font-bold">1:24:03</span>
+          <span className="font-bold text-amber-500">1:24:03</span>
         </div>
       </article>
     ),
@@ -259,25 +259,20 @@ const GlassCard = memo(function GlassCard({
   isMobile,
 }: {
   card: GlassCardData;
-  mouseX: number;
-  mouseY: number;
+  mouseX: MotionValue<number>;
+  mouseY: MotionValue<number>;
   isMobile: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
 
   // Parallax: cards move in opposition to cursor (inverted)
-  const parallaxX = isMobile || prefersReducedMotion ? 0 : -mouseX * card.depth * 18;
-  const parallaxY = isMobile || prefersReducedMotion ? 0 : -mouseY * card.depth * 12;
+  const parallaxStrength = isMobile || prefersReducedMotion ? 0 : card.depth;
+  const parallaxX = useTransform(mouseX, (value) => -value * parallaxStrength * 18);
+  const parallaxY = useTransform(mouseY, (value) => -value * parallaxStrength * 12);
 
   const springConfig = { stiffness: 45, damping: 22, mass: 0.8 };
   const x = useSpring(parallaxX, springConfig);
   const y = useSpring(parallaxY, springConfig);
-
-  // Update spring targets when mouse moves
-  useEffect(() => {
-    x.set(parallaxX);
-    y.set(parallaxY);
-  }, [parallaxX, parallaxY, x, y]);
 
   const cardVariants: Variants = {
     hidden: {
@@ -335,15 +330,10 @@ const GlassCard = memo(function GlassCard({
       >
         <div
           className={`
-            relative rounded-2xl p-3.5
-            border border-white border-opacity-60 dark:border-white/[0.12]
-            bg-white/80 dark:bg-white/[0.06]
-            bg-gradient-to-br from-white/40 to-white/10 dark:from-white/[0.08] dark:to-white/[0.02]
-            backdrop-blur-xl
-            shadow-xl dark:shadow-2xl ${card.glowColor}
-            hover:border-slate-300/80 dark:hover:border-white/[0.2]
-            hover:bg-white/95 dark:hover:bg-white/[0.1]
-            hover:shadow-2xl dark:hover:shadow-3xl
+            pxh-card relative rounded-2xl border border-white/90 bg-white/70 p-3.5
+            bg-gradient-to-br from-white/90 to-violet-50/55 backdrop-blur-xl
+            shadow-[0_16px_45px_rgba(109,40,217,0.12)] ${card.glowColor}
+            hover:border-violet-200 hover:bg-white/90 hover:shadow-[0_20px_55px_rgba(109,40,217,0.18)]
             transition-all duration-500
             group
           `}
@@ -355,7 +345,7 @@ const GlassCard = memo(function GlassCard({
           <div className="relative z-10">{card.content}</div>
 
           {/* Subtle edge highlight */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-white/20 to-transparent rounded-t-2xl" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-violet-100 to-transparent" />
         </div>
       </motion.div>
     </motion.div>
@@ -373,8 +363,8 @@ export const FloatingEcosystem = memo(function FloatingEcosystem({
   mouseY,
   isMobile,
 }: {
-  mouseX: number;
-  mouseY: number;
+  mouseX: MotionValue<number>;
+  mouseY: MotionValue<number>;
   isMobile: boolean;
 }) {
   return (

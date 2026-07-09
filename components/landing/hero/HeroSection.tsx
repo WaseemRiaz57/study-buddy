@@ -1,47 +1,91 @@
-import React from 'react';
-import Link from 'next/link';
+"use client";
 
-export default function HeroSection() {
+import Link from "next/link";
+import { useMotionValue } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { FloatingEcosystem } from "./FloatingEcosystem";
+
+/**
+ * The landing-page introduction. The feature previews remain real DOM content,
+ * so their context is available to both visitors and search engines.
+ */
+export default function StudyBuddyParallaxHero() {
+  const isMobile = useIsMobile();
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const frameRef = useRef<number | null>(null);
+  const latestPointerRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      latestPointerRef.current = {
+        x: event.clientX / window.innerWidth - 0.5,
+        y: event.clientY / window.innerHeight - 0.5,
+      };
+
+      if (frameRef.current !== null) return;
+
+      frameRef.current = window.requestAnimationFrame(() => {
+        mouseX.set(latestPointerRef.current.x);
+        mouseY.set(latestPointerRef.current.y);
+        frameRef.current = null;
+      });
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    };
+  }, [mouseX, mouseY]);
+
   return (
     <section
-      className="flex items-center justify-center min-h-[80vh] px-4 py-20 bg-white dark:bg-gray-900 transition-colors duration-300 font-sans overflow-hidden"
-      aria-label="StudyBuddy Platform Introduction"
+      className="relative isolate flex min-h-[720px] items-center justify-center overflow-hidden bg-[#fbfaff] px-5 py-24 sm:px-8 lg:min-h-[780px]"
+      aria-labelledby="studybuddy-hero-heading"
     >
-      <div className="w-full max-w-6xl mx-auto text-center">
-        {/* Headline */}
-        <h1 className="mb-6 text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-[5rem] xl:text-[6rem] leading-tight md:leading-tight">
-          <span className="block whitespace-nowrap text-[#111827] dark:text-white mb-2">
-            Studying made social.
-          </span>
-          {/* Added pr-2 and pb-2 here to prevent clipping of the last letters */}
-          <span className="block whitespace-nowrap pr-2 pb-2 bg-clip-text text-transparent bg-gradient-to-r from-[#7C3AED] to-[#C4B5FD] dark:from-[#A855F7] dark:to-[#E9D5FF]">
-            Success made certain.
-          </span>
-        </h1>
-        {/* Subheading */}
-        <p className="max-w-2xl mx-auto mb-10 text-lg font-normal text-[#4B5563] dark:text-gray-300 md:text-xl leading-relaxed">
-          Where learning meets innovation. Build knowledge, connect with teachers, and achieve your goals in a community that never stops growing.
+      <div
+        className="pointer-events-none absolute inset-0 -z-10"
+        aria-hidden="true"
+        style={{
+          background:
+            "radial-gradient(circle at 16% 27%, rgba(221, 214, 254, 0.62), transparent 26%), radial-gradient(circle at 84% 22%, rgba(233, 213, 255, 0.56), transparent 25%), radial-gradient(circle at 50% 88%, rgba(243, 232, 255, 0.72), transparent 34%)",
+        }}
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-48 bg-gradient-to-t from-white/75 to-transparent" aria-hidden="true" />
+
+      <FloatingEcosystem mouseX={mouseX} mouseY={mouseY} isMobile={isMobile} />
+
+      <div className="relative z-20 mx-auto max-w-3xl text-center">
+        <p className="mb-6 inline-flex rounded-full border border-violet-200 bg-violet-100/80 px-4 py-2 text-xs font-bold tracking-[0.14em] text-violet-700 shadow-sm backdrop-blur-sm">
+          ✨ GET STARTED FREE
         </p>
-        {/* CTA Buttons */}
-        <div className="flex flex-col items-center justify-center gap-4 mb-8 sm:flex-row">
+
+        <h1
+          id="studybuddy-hero-heading"
+          className="text-balance text-5xl font-extrabold leading-[1.04] tracking-[-0.055em] text-slate-900 sm:text-6xl md:text-7xl"
+        >
+          <span className="block">Stop Procrastinating.</span>
+          <span className="block text-violet-600">Start Achieving.</span>
+        </h1>
+
+        <p className="mx-auto mt-7 max-w-xl text-pretty text-base leading-7 text-slate-600 sm:text-lg">
+          Join the smartest study community today. Setup takes less than 60 seconds.
+        </p>
+
+        <div className="mt-9">
           <Link
-            href="/dashboard"
-            className="inline-flex items-center justify-center px-10 py-3 text-base font-semibold text-white bg-[#9333EA] rounded-full hover:bg-[#7C3AED] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9333EA] shadow-[0_4px_30px_rgba(147,51,234,0.4)] transition-all"
-            aria-label="Begin a new study session"
+            href="/register"
+            className="inline-flex min-h-12 items-center justify-center rounded-xl bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-[0_14px_30px_rgba(15,23,42,0.18)] transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
           >
-            Begin a session &rarr;
-          </Link>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center justify-center px-10 py-3 text-base font-semibold text-[#111827] bg-white border border-gray-200 rounded-full hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 dark:focus:ring-gray-700 dark:focus:ring-offset-gray-900"
-            aria-label="View your dashboard"
-          >
-            View dashboard
+            Create Free Account -&gt;
           </Link>
         </div>
-        {/* Footer */}
-        <p className="text-sm font-semibold text-[#6B7280] dark:text-gray-400">
-          No credit card required &bull; Free forever plan
+
+        <p className="mt-5 text-sm font-medium text-slate-500">
+          Free forever plan • No credit card required
         </p>
       </div>
     </section>
