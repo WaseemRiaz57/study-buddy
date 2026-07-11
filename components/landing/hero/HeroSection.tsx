@@ -1,91 +1,53 @@
 "use client";
 
 import Link from "next/link";
-import { useMotionValue } from "framer-motion";
-import { useEffect, useRef } from "react";
-import { useIsMobile } from "@/hooks/useIsMobile";
-import { FloatingEcosystem } from "./FloatingEcosystem";
+import { ArrowRight } from "lucide-react";
 
 /**
- * The landing-page introduction. The feature previews remain real DOM content,
- * so their context is available to both visitors and search engines.
+ * Clean, centered landing-page hero that matches the product mock-up.
+ * Built to look identical in light mode and readable in dark mode.
  */
-export default function StudyBuddyParallaxHero() {
-  const isMobile = useIsMobile();
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const frameRef = useRef<number | null>(null);
-  const latestPointerRef = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const handlePointerMove = (event: PointerEvent) => {
-      latestPointerRef.current = {
-        x: event.clientX / window.innerWidth - 0.5,
-        y: event.clientY / window.innerHeight - 0.5,
-      };
-
-      if (frameRef.current !== null) return;
-
-      frameRef.current = window.requestAnimationFrame(() => {
-        mouseX.set(latestPointerRef.current.x);
-        mouseY.set(latestPointerRef.current.y);
-        frameRef.current = null;
-      });
-    };
-
-    window.addEventListener("pointermove", handlePointerMove, { passive: true });
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
-    };
-  }, [mouseX, mouseY]);
-
+export default function HeroSection() {
   return (
     <section
-      className="relative isolate flex min-h-[720px] items-center justify-center overflow-hidden bg-[#fbfaff] px-5 py-24 sm:px-8 lg:min-h-[780px]"
+      className="relative isolate flex min-h-[80vh] items-center justify-center overflow-hidden bg-white px-5 py-24 dark:bg-[#0a0515] sm:px-8"
       aria-labelledby="studybuddy-hero-heading"
     >
-      <div
-        className="pointer-events-none absolute inset-0 -z-10"
-        aria-hidden="true"
-        style={{
-          background:
-            "radial-gradient(circle at 16% 27%, rgba(221, 214, 254, 0.62), transparent 26%), radial-gradient(circle at 84% 22%, rgba(233, 213, 255, 0.56), transparent 25%), radial-gradient(circle at 50% 88%, rgba(243, 232, 255, 0.72), transparent 34%)",
-        }}
-      />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-48 bg-gradient-to-t from-white/75 to-transparent" aria-hidden="true" />
-
-      <FloatingEcosystem mouseX={mouseX} mouseY={mouseY} isMobile={isMobile} />
-
-      <div className="relative z-20 mx-auto max-w-3xl text-center">
-        <p className="mb-6 inline-flex rounded-full border border-violet-200 bg-violet-100/80 px-4 py-2 text-xs font-bold tracking-[0.14em] text-violet-700 shadow-sm backdrop-blur-sm">
-          ✨ GET STARTED FREE
-        </p>
-
+      <div className="relative z-20 mx-auto max-w-4xl text-center">
         <h1
           id="studybuddy-hero-heading"
-          className="text-balance text-5xl font-extrabold leading-[1.04] tracking-[-0.055em] text-slate-900 sm:text-6xl md:text-7xl"
+          className="text-balance text-5xl font-black leading-[1.04] tracking-[-0.04em] sm:text-6xl md:text-7xl"
         >
-          <span className="block">Stop Procrastinating.</span>
-          <span className="block text-violet-600">Start Achieving.</span>
+          <span className="block text-slate-900 dark:text-white">
+            Studying made social.
+          </span>
+          <span className="block bg-gradient-to-r from-violet-600 via-violet-500 to-violet-200 bg-clip-text text-transparent dark:from-violet-400 dark:via-violet-300 dark:to-violet-200">
+            Success made certain.
+          </span>
         </h1>
 
-        <p className="mx-auto mt-7 max-w-xl text-pretty text-base leading-7 text-slate-600 sm:text-lg">
-          Join the smartest study community today. Setup takes less than 60 seconds.
+        <p className="mx-auto mt-8 max-w-2xl text-pretty text-lg leading-relaxed text-slate-600 dark:text-slate-400">
+          Where learning meets innovation. Build knowledge, connect with mentors, and achieve your goals in a community that never stops growing.
         </p>
 
-        <div className="mt-9">
+        <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
-            href="/register"
-            className="inline-flex min-h-12 items-center justify-center rounded-xl bg-slate-900 px-6 py-3 text-base font-bold text-white shadow-[0_14px_30px_rgba(15,23,42,0.18)] transition duration-200 hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
+            href="/dashboard/study-rooms"
+            className="group inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-violet-600 px-8 text-base font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:-translate-y-0.5 hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 sm:w-auto dark:bg-violet-600 dark:hover:bg-violet-500"
           >
-            Create Free Account -&gt;
+            Begin a session
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-flex h-14 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-8 text-base font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:w-auto dark:border-slate-700 dark:bg-slate-900/50 dark:text-white dark:hover:bg-slate-800"
+          >
+            View dashboard
           </Link>
         </div>
 
-        <p className="mt-5 text-sm font-medium text-slate-500">
-          Free forever plan • No credit card required
+        <p className="mt-6 text-sm font-medium text-slate-500 dark:text-slate-400">
+          No credit card required • Free forever plan
         </p>
       </div>
     </section>
