@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState, memo } from "react";
 
-const Spline = dynamic(() => import("@splinetool/react-spline"), {
+const Spline = dynamic(() => import("@splinetool/react-spline/next"), {
   ssr: false,
 });
 

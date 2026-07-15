@@ -37,6 +37,7 @@ import { useSession } from "next-auth/react";
 import { Reveal } from "@/components/landing/Reveal";
 import { PRICING_PLANS, calculateYearlyPrice, formatPlanPrice, getYearlyTotal } from "@/lib/pricingConfig";
 import HeroSection from "@/components/landing/hero/HeroSection";
+import PremiumFinalCTA from "@/components/landing/PremiumFinalCTA";
 
 // ============================================================================
 // TYPES
@@ -1269,64 +1270,8 @@ export default function Home() {
 
       <AnimatedDivider />
 
-      {/* ══════════════ FINAL CTA ══════════════ */}
-      <section className="relative w-full overflow-x-hidden px-6 py-24 md:py-36 text-center">
-        {/* Breathing glow */}
-        <motion.div
-          className="pointer-events-none absolute inset-0 flex items-center justify-center"
-          animate={{ opacity: [0.3, 0.65, 0.3] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <div className="h-[400px] w-[700px] rounded-full bg-purple-500/[0.06] blur-[120px]" />
-        </motion.div>
-
-        <CinematicLayer intensity={0.8}>
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={fluidParent}
-          className="mx-auto max-w-3xl relative"
-        >
-          <motion.div variants={fluidChild} className="mb-4">
-            <SectionBadge color="border-purple-500/30 bg-purple-500/10 text-purple-400" icon={Sparkles} label="Get Started Free" />
-          </motion.div>
-
-          {/* CTA heading — cinematic 3D word flip */}
-          <motion.h2 className="mb-6 text-4xl sm:text-5xl md:text-6xl font-black leading-[1.1]" initial="hidden" whileInView="show" viewport={{ once: true, margin: "-100px" }} variants={stagger} style={{ perspective: 900 }}>
-            {["Stop", "Procrastinating."].map((w, i) => (
-              <motion.span key={i} variants={wordFlip3D} className="inline-block mr-3" style={{ transformOrigin: "bottom center" }}>{w}</motion.span>
-            ))}
-            <br />
-            {["Start", "Achieving."].map((w, i) => (
-              <motion.span key={i} variants={wordFlip3D} className="inline-block mr-3 text-[#7C3AED]" style={{ transformOrigin: "bottom center" }}>
-                {w}
-              </motion.span>
-            ))}
-          </motion.h2>
-
-          <motion.p variants={fluidChild} className="mb-10 text-lg text-muted-foreground">
-            Join the smartest study community today. Setup takes less than 60 seconds.
-          </motion.p>
-
-          <motion.div variants={fluidChild}>
-            <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.97 }} className="inline-block">
-              <Link href="/register"
-                className="inline-flex items-center gap-3 rounded-lg bg-foreground px-10 py-4 text-lg font-bold text-background shadow-[0_0_50px_rgba(0,0,0,0.12)] dark:shadow-[0_0_50px_rgba(255,255,255,0.12)] hover:shadow-2xl transition-shadow"
-              >
-                Create Free Account
-                <motion.span className="inline-flex" animate={isMobile ? { y: [0, 3, 0] } : { x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
-                  <ArrowRight className="h-5 w-5" />
-                </motion.span>
-              </Link>
-            </motion.div>
-            <p className="mt-5 text-sm font-medium text-muted-foreground">
-              Free forever plan&nbsp;&bull;&nbsp;No credit card required
-            </p>
-          </motion.div>
-        </motion.div>
-        </CinematicLayer>
-      </section>
+      {/* ══════════════ FINAL CTA — Premium Immersive ══════════════ */}
+      <PremiumFinalCTA />
     </div>
   );
 }
