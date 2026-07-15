@@ -3,9 +3,11 @@
 import dynamic from "next/dynamic";
 import { useState, memo } from "react";
 
-const Spline = dynamic(() => import("@splinetool/react-spline/next"), {
-  ssr: false,
-});
+const Spline = dynamic(
+  // @ts-expect-error — webpack ESM resolution workaround
+  () => import("@splinetool/react-spline/dist/react-spline.js"),
+  { ssr: false }
+);
 
 // Replace with your own exported Spline brain scene. The fallback visual stays
 // in place until the 3D scene finishes loading.
