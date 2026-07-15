@@ -1,27 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Particles, { initParticlesEngine } from "@tsparticles/react";
+import { useMemo } from "react";
+import { Particles } from "@tsparticles/react";
+import { tsParticles } from "@tsparticles/engine";
 import { loadSlim } from "@tsparticles/slim";
 import { useTheme } from "next-themes";
-import type { ISourceOptions, Engine } from "@tsparticles/engine";
+import type { ISourceOptions } from "@tsparticles/engine";
 
-/**
- * Premium interactive node network used as a background layer.
- * Theme-aware so it inverts between light and dark modes.
- */
+loadSlim(tsParticles);
+
 export default function ParticleNetwork() {
-  const [init, setInit] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const { resolvedTheme } = useTheme();
-
-  useEffect(() => {
-    setMounted(true);
-    void initParticlesEngine(async (engine: Engine) => {
-      await loadSlim(engine);
-    }).then(() => setInit(true));
-  }, []);
-
   const isDark = resolvedTheme === "dark";
 
   const options: ISourceOptions = useMemo(
@@ -60,8 +49,6 @@ export default function ParticleNetwork() {
     }),
     [isDark]
   );
-
-  if (!mounted || !init) return null;
 
   return (
     <Particles

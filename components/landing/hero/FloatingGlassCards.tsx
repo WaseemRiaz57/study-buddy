@@ -1,12 +1,9 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
-import { useReducedMotion, useSpring, useMotionValue } from "framer-motion";
-import { useIsMobile } from "@/hooks/useIsMobile";
+import { memo, useEffect } from "react";
+import { useReducedMotion, useSpring, useMotionValue, motion } from "framer-motion";
 import {
   Brain,
-  Clock,
-  Play,
   FileText,
   Users,
   Timer,
@@ -230,7 +227,7 @@ const GlassCard = memo(function GlassCard({
   }, [mouseX, mouseY, parallaxStrength, x, y]);
 
   return (
-    <div
+    <motion.div
       className={`absolute ${card.position} z-20 w-[180px] md:w-[220px]`}
       style={{ x, y, willChange: "transform" }}
     >
@@ -246,7 +243,7 @@ const GlassCard = memo(function GlassCard({
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 });
 

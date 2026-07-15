@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import { useIsMobile } from "@/hooks/useIsMobile";
+import { motion } from "framer-motion";
 import ParticleNetwork from "./hero/ParticleNetwork";
 import SplineBrain from "./hero/SplineBrain";
 
@@ -13,14 +11,11 @@ import SplineBrain from "./hero/SplineBrain";
  * Mirrors the HeroSection aesthetic for bookend symmetry.
  */
 export default function PremiumFinalCTA() {
-  const isMobile = useIsMobile();
-  const prefersReducedMotion = useReducedMotion();
-
   const sectionVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.12 },
+      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as const, staggerChildren: 0.12 },
     },
   };
 
@@ -30,7 +25,7 @@ export default function PremiumFinalCTA() {
       opacity: 1,
       y: 0,
       filter: "blur(0px)",
-      transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
+      transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] as const },
     },
   };
 
@@ -117,8 +112,6 @@ export default function PremiumFinalCTA() {
 }
 
 // ── Animation variants (duplicated locally to keep this self-contained) ──
-
-const ease = [0.16, 1, 0.3, 1] as const;
 
 const liquidSpring = { type: "spring", stiffness: 90, damping: 14, mass: 0.85 } as const;
 

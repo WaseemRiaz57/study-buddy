@@ -3,7 +3,6 @@
 import { motion, useReducedMotion, useSpring, useTransform, type MotionValue, type Variants } from "framer-motion";
 import { memo } from "react";
 import {
-  BookOpen,
   Brain,
   Clock,
   Sparkles,

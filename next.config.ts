@@ -43,6 +43,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@splinetool/react-spline"],
+  webpack: (config) => {
+    config.resolve.conditionNames = ["import", "module", "..."];
+    return config;
+  },
   allowedDevOrigins: ["waseem-study-app.loca.lt"],
   images: {
     remotePatterns: [
