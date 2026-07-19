@@ -497,7 +497,7 @@ const FeatureCard = memo(function FeatureCard({ feature, index }: { feature: Fea
       animate={inView ? "visible" : "hidden"}
       whileHover={{ y: -8, scale: 1.02 }}
       transition={{ type: "spring", stiffness: 50, damping: 15 }}
-      className={`landing-glass group relative cursor-pointer overflow-hidden rounded-[1.75rem] p-7 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-violet-500/25 hover:bg-[var(--landing-panel-strong)] ${index === 0 || index === 5 ? "lg:col-span-2" : ""}`}
+      className={`landing-glass group relative cursor-pointer overflow-hidden rounded-[1.75rem] p-7 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-violet-500/25 hover:bg-[var(--landing-panel-strong)] ${index === 0 || index === 5 || index === 8 ? "lg:col-span-2" : ""}`}
     >
       {/* Shine sweep on hover */}
       <div className="pointer-events-none absolute inset-0 -translate-x-full bg-white/20 opacity-0 transition-all duration-700 group-hover:translate-x-full group-hover:opacity-100 dark:bg-white/5" />
