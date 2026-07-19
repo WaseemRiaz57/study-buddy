@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion, Variants } from "framer-motion";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 // Liquid spring — a whisper of overshoot for hero/headline characters
 const liquidSpring = {
@@ -27,6 +28,7 @@ export function KineticHeadline({
   id?: string;
 }) {
   const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobile(768, true);
 
   const container: Variants = {
     hidden: {},
@@ -46,7 +48,7 @@ export function KineticHeadline({
     },
   };
 
-  if (prefersReducedMotion) {
+  if (prefersReducedMotion || isMobile) {
     return (
       <h1 id={id} className={className} aria-label={`${line1} ${line2}`}>
         <span className="block">{line1}</span>

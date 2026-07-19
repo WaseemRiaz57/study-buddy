@@ -569,6 +569,34 @@ input[type=range].mentor-slider::-webkit-slider-runnable-track {
   }
 }
 
+@media (max-width: 767px) {
+  .landing-page > section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 850px;
+  }
+
+  .landing-page .landing-glass,
+  .landing-page .backdrop-blur-xl,
+  .landing-page .backdrop-blur-2xl,
+  .landing-page .landing-button-secondary {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .landing-grid {
+    background-size: 48px 48px;
+    opacity: 0.18;
+  }
+
+  .neural-loader {
+    animation: none;
+  }
+
+  .landing-page :is(a, button) {
+    touch-action: manipulation;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    HERO SECTION — Cinematic Dark Mode
    ═══════════════════════════════════════════════════════════════════════════ */

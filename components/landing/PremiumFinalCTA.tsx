@@ -10,6 +10,7 @@ import {
   type Variants,
 } from "framer-motion";
 import { useRef } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const liquidEase = [0.16, 1, 0.3, 1] as const;
 const liquidSpring = { type: "spring", stiffness: 86, damping: 16, mass: 0.82 } as const;
@@ -32,6 +33,7 @@ const fadeUp: Variants = {
 export default function PremiumFinalCTA() {
   const sectionRef = useRef<HTMLElement>(null);
   const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobile(768, true);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start end", "end start"],
@@ -50,7 +52,7 @@ export default function PremiumFinalCTA() {
         <div className="absolute right-16 top-1/2 aspect-square w-48 -translate-y-1/2 rounded-full bg-violet-500/[0.08] dark:bg-violet-400/[0.06]" />
         <motion.div
           className="absolute bottom-8 left-0 whitespace-nowrap font-mono text-[clamp(5rem,15vw,13rem)] font-medium uppercase leading-none tracking-[-0.08em] text-violet-950/[0.025] dark:text-white/[0.025]"
-          style={{ x: prefersReducedMotion ? 0 : backgroundX }}
+          style={{ x: isMobile || prefersReducedMotion ? 0 : backgroundX }}
         >
           YOUR NEXT SESSION
         </motion.div>
@@ -75,7 +77,7 @@ export default function PremiumFinalCTA() {
 
           <motion.h2
             id="final-cta-heading"
-            className="text-balance text-[clamp(3.25rem,7.5vw,7rem)] font-semibold leading-[0.9] tracking-[-0.065em] text-[#17131e] dark:text-white"
+            className="text-balance text-[clamp(2.8rem,7.5vw,7rem)] font-semibold leading-[0.9] tracking-[-0.065em] text-[#17131e] dark:text-white"
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, margin: "-100px" }}

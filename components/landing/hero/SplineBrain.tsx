@@ -68,9 +68,14 @@ class SplineErrorBoundary extends Component<
 interface SplineBrainProps {
   scene?: string;
   className?: string;
+  allowInteractive?: boolean;
 }
 
-function SplineBrain({ scene = DEFAULT_BRAIN_SCENE, className = "" }: SplineBrainProps) {
+function SplineBrain({
+  scene = DEFAULT_BRAIN_SCENE,
+  className = "",
+  allowInteractive = true,
+}: SplineBrainProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const shouldLoad = useInView(rootRef, { once: true, margin: "240px" });
   const prefersReducedMotion = useReducedMotion();
@@ -88,8 +93,8 @@ function SplineBrain({ scene = DEFAULT_BRAIN_SCENE, className = "" }: SplineBrai
   useEffect(() => {
     setLoaded(false);
 
-    if (!shouldLoad || !supportsWebGL || !scene) {
-      setSceneStatus(scene ? "checking" : "disabled");
+    if (!allowInteractive || !shouldLoad || !supportsWebGL || !scene) {
+      setSceneStatus(allowInteractive && scene ? "checking" : "disabled");
       return;
     }
 
@@ -120,7 +125,7 @@ function SplineBrain({ scene = DEFAULT_BRAIN_SCENE, className = "" }: SplineBrai
       active = false;
       controller.abort();
     };
-  }, [scene, shouldLoad, supportsWebGL]);
+  }, [allowInteractive, scene, shouldLoad, supportsWebGL]);
 
   return (
     <div
@@ -138,7 +143,7 @@ function SplineBrain({ scene = DEFAULT_BRAIN_SCENE, className = "" }: SplineBrai
           }
         />
       )}
-      {shouldLoad && supportsWebGL && sceneStatus === "ready" && (
+      {allowInteractive && shouldLoad && supportsWebGL && sceneStatus === "ready" && (
         <div
           className={`absolute inset-0 transition-opacity duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${loaded ? "opacity-100" : "opacity-0"}`}
         >

@@ -198,7 +198,10 @@ const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
 }));
 
 const FloatingParticles = memo(function FloatingParticles() {
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(768, true);
+  const prefersReducedMotion = useReducedMotion();
+
+  if (isMobile || prefersReducedMotion) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -256,9 +259,10 @@ function SplitText({
   once?: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobile(768, true);
 
   // Reduced-motion / SSR-safe: render the plain string, no transforms.
-  if (prefersReducedMotion) {
+  if (prefersReducedMotion || isMobile) {
     return <span className={className}>{text}</span>;
   }
 
@@ -338,7 +342,7 @@ function CinematicLayer({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(768, true);
 
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -668,7 +672,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(768, true);
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -767,7 +771,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
               <div>
                 <motion.div
                   className="mb-5 flex gap-1 text-violet-500 dark:text-violet-300"
-                  animate={!prefersReducedMotion && isActive ? { y: [0, -3, 0] } : { y: 0 }}
+                  animate={!prefersReducedMotion && !isMobile && isActive ? { y: [0, -3, 0] } : { y: 0 }}
                   transition={{ duration: 4.8, repeat: Infinity, ease }}
                 >
                   {Array.from({ length: Math.max(1, Math.min(5, review.rating)) }).map((_, j) => (
@@ -856,7 +860,7 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
 export default function Home() {
   const { data: session } = useSession();
   const prefersReducedMotion = useReducedMotion();
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(768, true);
   const [isYearly, setIsYearly] = useState(false);
   const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>(fallbackPricingPlans);
   const [testimonials, setTestimonials] = useState<PublicReview[]>([]);
@@ -950,23 +954,27 @@ export default function Home() {
       {/* ── BACKGROUND ORBS — liquid floating effect ── */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-[var(--landing-canvas)]" />
-        <motion.div
-          className="absolute left-1/4 top-0 h-[650px] w-[650px] -translate-x-1/2 rounded-full bg-purple-600/[0.08] blur-[140px]"
-          style={{ x: springX, y: springY }}
-          animate={{ y: [0, -28, 6, 0], scale: [1, 1.08, 1.02, 1], rotate: [0, 4, -2, 0] }}
-          transition={{ duration: 16, repeat: Infinity, ease: liquidEase }}
-        />
-        <motion.div
-          className="absolute right-1/4 top-1/3 h-[500px] w-[500px] translate-x-1/2 rounded-full bg-fuchsia-600/[0.07] blur-[140px]"
-          animate={{ y: [0, -34, 8, 0], x: [0, 18, -10, 0], scale: [1, 1.12, 1.04, 1], rotate: [0, -5, 3, 0], opacity: [0.07, 0.12, 0.08, 0.07] }}
-          transition={{ duration: 19, repeat: Infinity, ease: liquidEase, delay: 1.2 }}
-        />
-        <motion.div
-          className="absolute left-1/2 bottom-0 h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-violet-600/[0.06] blur-[120px]"
-          animate={{ y: [0, -24, 10, 0], x: [0, -16, 8, 0], scale: [1, 1.14, 1.05, 1], rotate: [0, 6, -3, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: liquidEase, delay: 2.5 }}
-        />
-        <FloatingParticles />
+        {!isMobile && !prefersReducedMotion && (
+          <>
+            <motion.div
+              className="absolute left-1/4 top-0 h-[650px] w-[650px] -translate-x-1/2 rounded-full bg-purple-600/[0.08] blur-[140px]"
+              style={{ x: springX, y: springY }}
+              animate={{ y: [0, -28, 6, 0], scale: [1, 1.08, 1.02, 1], rotate: [0, 4, -2, 0] }}
+              transition={{ duration: 16, repeat: Infinity, ease: liquidEase }}
+            />
+            <motion.div
+              className="absolute right-1/4 top-1/3 h-[500px] w-[500px] translate-x-1/2 rounded-full bg-fuchsia-600/[0.07] blur-[140px]"
+              animate={{ y: [0, -34, 8, 0], x: [0, 18, -10, 0], scale: [1, 1.12, 1.04, 1], rotate: [0, -5, 3, 0], opacity: [0.07, 0.12, 0.08, 0.07] }}
+              transition={{ duration: 19, repeat: Infinity, ease: liquidEase, delay: 1.2 }}
+            />
+            <motion.div
+              className="absolute left-1/2 bottom-0 h-[400px] w-[400px] -translate-x-1/2 rounded-full bg-violet-600/[0.06] blur-[120px]"
+              animate={{ y: [0, -24, 10, 0], x: [0, -16, 8, 0], scale: [1, 1.14, 1.05, 1], rotate: [0, 6, -3, 0] }}
+              transition={{ duration: 22, repeat: Infinity, ease: liquidEase, delay: 2.5 }}
+            />
+            <FloatingParticles />
+          </>
+        )}
       </div>
 
       {/* ══════════════ HERO — Cinematic Dark Section ══════════════ */}
@@ -1092,11 +1100,13 @@ export default function Home() {
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.9, ease }}
       >
-        <motion.div
-          className="pointer-events-none absolute -right-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-violet-500/[0.05] blur-[100px]"
-          animate={{ scale: [1, 1.18, 1], opacity: [0.05, 0.09, 0.05] }}
-          transition={{ duration: 8, repeat: Infinity, ease: liquidEase }}
-        />
+        {!isMobile && !prefersReducedMotion && (
+          <motion.div
+            className="pointer-events-none absolute -right-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-violet-500/[0.05] blur-[100px]"
+            animate={{ scale: [1, 1.18, 1], opacity: [0.05, 0.09, 0.05] }}
+            transition={{ duration: 8, repeat: Infinity, ease: liquidEase }}
+          />
+        )}
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <SectionBadge color="border-violet-500/30 bg-violet-500/10 text-violet-400" icon={Target} label="How It Works" />
@@ -1163,7 +1173,7 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                   <motion.div
                     className="h-3 w-3 rounded-full bg-emerald-500"
-                    animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
+                    animate={isMobile || prefersReducedMotion ? undefined : { scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
                     transition={{ duration: 1.8, repeat: Infinity }}
                     style={{ boxShadow: "0 0 10px rgba(16,185,129,0.6)" }}
                   />
@@ -1267,11 +1277,13 @@ export default function Home() {
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.9, ease }}
       >
-        <motion.div
-          className="pointer-events-none absolute -left-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-fuchsia-500/[0.05] blur-[100px]"
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: liquidEase }}
-        />
+        {!isMobile && !prefersReducedMotion && (
+          <motion.div
+            className="pointer-events-none absolute -left-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-fuchsia-500/[0.05] blur-[100px]"
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 10, repeat: Infinity, ease: liquidEase }}
+          />
+        )}
         <div className="mx-auto max-w-7xl">
           <div className="mb-16 text-center">
             <SectionHeading className="mb-6">Invest In Your Grades</SectionHeading>

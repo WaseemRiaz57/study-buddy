@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ArrowRight, Sparkles } from "lucide-react";
 import {
   motion,
@@ -10,11 +11,14 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import ParticleNetwork from "./ParticleNetwork";
 import SplineBrain from "./SplineBrain";
 import { KineticHeadline } from "./KineticHeadline";
+
+const ParticleNetwork = dynamic(() => import("./ParticleNetwork"), {
+  ssr: false,
+});
 
 const liquidEase = [0.16, 1, 0.3, 1] as const;
 
@@ -24,8 +28,9 @@ export default function HeroSection() {
   const latestPointerRef = useRef({ x: 0, y: 0 });
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(768, true);
   const prefersReducedMotion = useReducedMotion();
+  const [enableDesktopEffects, setEnableDesktopEffects] = useState(false);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
@@ -42,7 +47,15 @@ export default function HeroSection() {
   const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-2.8, 2.8]), { stiffness: 55, damping: 22 });
 
   useEffect(() => {
-    if (isMobile || prefersReducedMotion) return;
+    const desktopQuery = window.matchMedia("(min-width: 768px) and (pointer: fine)");
+    if (!desktopQuery.matches || prefersReducedMotion) return;
+
+    const timer = window.setTimeout(() => setEnableDesktopEffects(true), 220);
+    return () => window.clearTimeout(timer);
+  }, [prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!enableDesktopEffects || isMobile || prefersReducedMotion) return;
 
     const handlePointerMove = (event: PointerEvent) => {
       latestPointerRef.current = {
@@ -62,7 +75,7 @@ export default function HeroSection() {
       window.removeEventListener("pointermove", handlePointerMove);
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
     };
-  }, [isMobile, mouseX, mouseY, prefersReducedMotion]);
+  }, [enableDesktopEffects, isMobile, mouseX, mouseY, prefersReducedMotion]);
 
   return (
     <section
@@ -76,11 +89,13 @@ export default function HeroSection() {
         <div className="absolute bottom-[-28%] right-[-8%] h-[34rem] w-[34rem] rounded-full bg-cyan-300/[0.08] blur-[130px] dark:bg-cyan-500/[0.07]" />
       </div>
 
-      <ParticleNetwork id="hero-particles" density={38} className="z-0 opacity-45" />
+      {enableDesktopEffects && (
+        <ParticleNetwork id="hero-particles" density={38} className="z-0 opacity-45" />
+      )}
 
       <motion.div
         className="pointer-events-none absolute inset-x-0 top-[23%] z-[1] select-none overflow-hidden font-mono text-[clamp(4rem,13vw,12rem)] font-medium uppercase leading-none tracking-[-0.08em] text-violet-950/[0.018] dark:text-white/[0.02]"
-        style={{ y: prefersReducedMotion ? 0 : backdropY }}
+        style={{ y: isMobile || prefersReducedMotion ? 0 : backdropY }}
         aria-hidden="true"
       >
         <div className="whitespace-nowrap">STUDY · CONNECT · GROW</div>
@@ -88,9 +103,12 @@ export default function HeroSection() {
 
       <motion.div
         className="absolute inset-0 z-[5] flex items-center justify-center"
-        style={{ y: prefersReducedMotion ? 0 : brainY, opacity: heroOpacity }}
+        style={{ y: isMobile || prefersReducedMotion ? 0 : brainY, opacity: isMobile ? 1 : heroOpacity }}
       >
-        <SplineBrain className="h-[min(66vw,620px)] w-[min(66vw,620px)] opacity-30 dark:opacity-32" />
+        <SplineBrain
+          allowInteractive={enableDesktopEffects}
+          className="h-[min(88vw,620px)] w-[min(88vw,620px)] opacity-25 dark:opacity-30 sm:h-[min(66vw,620px)] sm:w-[min(66vw,620px)]"
+        />
       </motion.div>
 
       <motion.div
@@ -119,7 +137,7 @@ export default function HeroSection() {
           id="studybuddy-hero-heading"
           line1="Studying made social."
           line2="Success made certain."
-          className="max-w-4xl text-balance text-[clamp(3rem,7vw,6.45rem)] font-semibold leading-[0.94] tracking-[-0.06em] text-[#17151d] dark:text-white"
+          className="max-w-4xl text-balance text-[clamp(2.65rem,7vw,6.45rem)] font-semibold leading-[0.94] tracking-[-0.06em] text-[#17151d] dark:text-white"
         />
 
         <motion.p
