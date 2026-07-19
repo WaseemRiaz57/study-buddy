@@ -5,12 +5,12 @@ import {
   useReducedMotion,
   useInView,
   useSpring,
+  useMotionValue,
   useScroll,
   useTransform,
   AnimatePresence,
   Variants,
 } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -34,7 +34,6 @@ import {
 import { memo, useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSession } from "next-auth/react";
-import { Reveal } from "@/components/landing/Reveal";
 import { PRICING_PLANS, calculateYearlyPrice, formatPlanPrice, getYearlyTotal } from "@/lib/pricingConfig";
 import HeroSection from "@/components/landing/hero/HeroSection";
 import PremiumFinalCTA from "@/components/landing/PremiumFinalCTA";
@@ -83,7 +82,7 @@ function cleanReviewComment(comment: string) {
 
 function getReviewRoleMeta(role: string) {
   const normalizedRole = String(role || "student").toLowerCase();
-  const isMentor = normalizedRole === "teacher" || normalizedRole === "mentor";
+  const isMentor = normalizedRole !== "student" && normalizedRole !== "admin";
 
   return {
     label: isMentor ? "Mentor" : "Student",
@@ -110,7 +109,7 @@ const features: Feature[] = [
   { icon: Brain,        title: "AI Content Generator",  description: "Generate comprehensive notes, summaries, and quizzes from any topic in seconds.", glow: "purple", badge: "Most Used", badgeColor: "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30" },
   { icon: Trophy,       title: "Gamified Challenges",   description: "Earn XP, badges, and climb leaderboards through interactive quizzes and streaks.", glow: "yellow", badge: "Popular", badgeColor: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30" },
   { icon: Users,        title: "Live Study Rooms",      description: "Join virtual rooms to collaborate with peers in real-time with video and chat.", glow: "blue" },
-  { icon: Store,        title: "Mentor Marketplace",   description: "Find expert tutors or sell your own high-quality study materials.", glow: "emerald", badge: "New", badgeColor: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  { icon: Store,        title: "Mentor Marketplace",   description: "Find expert mentors or sell your own high-quality study materials.", glow: "emerald", badge: "New", badgeColor: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
   { icon: Clock,        title: "Focus Room",            description: "Distraction-free environment with Pomodoro timer, ambient sounds, and deep-work tracking.", glow: "pink" },
   { icon: MessageSquare,title: "Community Forums",      description: "Ask questions, share insights, and engage with thousands of motivated learners.", glow: "violet" },
   { icon: BookOpen,     title: "Resource Hub",          description: "A shared digital library of notes, PDFs, and guides rated by the community.", glow: "sky" },
@@ -213,7 +212,7 @@ const FloatingParticles = memo(function FloatingParticles() {
             x: isMobile ? [0, 0, 0] : [0, p.driftX, 0],
             opacity: [0.1, 0.45, 0.1],
           }}
-          transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: liquidEase }}
         />
       ))}
     </div>
@@ -388,7 +387,7 @@ function CinematicLayer({
 // ============================================================================
 function SectionHeading({ children, className = "" }: { children: string; className?: string }) {
   return (
-    <h2 className={`text-4xl md:text-5xl font-bold text-foreground ${className}`}>
+    <h2 className={`text-balance text-4xl font-semibold tracking-[-0.045em] text-foreground md:text-6xl ${className}`}>
       <SplitText text={children} />
     </h2>
   );
@@ -417,7 +416,7 @@ function AnimatedDivider() {
       whileInView={{ scaleX: 1, opacity: 1 }}
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 1.1, ease }}
-      className="mx-auto h-px w-full max-w-2xl bg-[#7C3AED]   "
+      className="mx-auto h-px w-full max-w-5xl origin-center bg-gradient-to-r from-transparent via-violet-500/35 to-transparent"
     />
   );
 }
@@ -440,16 +439,17 @@ const StatCard = memo(function StatCard({
 
   useEffect(() => {
     if (!isInView) return;
-    const steps = 60;
-    const inc = target / steps;
-    let cur = 0;
-    const t = setInterval(() => {
-      cur += inc;
-      if (cur >= target) { setCount(target); clearInterval(t); }
-      else setCount(Math.floor(cur));
-    }, 2000 / steps);
-    return () => clearInterval(t);
-  }, [isInView, target]);
+    const startedAt = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const progress = Math.min((now - startedAt) / 1500, 1);
+      const eased = 1 - Math.pow(1 - progress, 4);
+      setCount(isFractionStat ? Number((target * eased).toFixed(1)) : Math.floor(target * eased));
+      if (progress < 1) frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [isFractionStat, isInView, target]);
 
   return (
     <motion.div
@@ -459,8 +459,7 @@ const StatCard = memo(function StatCard({
       viewport={{ once: true, margin: "-100px" }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: index * 0.15 }}
       whileHover={{ y: -6, scale: 1.04 }}
-      className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card/50 p-6 md:p-8
-                 hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/[0.05] transition-all duration-300"
+      className="landing-glass flex flex-col items-center justify-center rounded-[1.6rem] p-6 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-violet-500/25 md:p-8"
     >
       <motion.div
         className="mb-3 rounded-xl bg-purple-500/10 p-3"
@@ -469,10 +468,10 @@ const StatCard = memo(function StatCard({
       >
         <Icon className="h-5 w-5 text-purple-400" />
       </motion.div>
-      <div className="mb-1 text-3xl md:text-4xl font-black text-foreground tabular-nums drop-shadow-lg">
+      <div className="mb-1 text-3xl font-semibold tabular-nums tracking-[-0.05em] text-foreground md:text-4xl">
         {count}{suffix}
       </div>
-      <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground drop-shadow-md">{label}</div>
+      <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">{label}</div>
     </motion.div>
   );
 });
@@ -494,9 +493,7 @@ const FeatureCard = memo(function FeatureCard({ feature, index }: { feature: Fea
       animate={inView ? "visible" : "hidden"}
       whileHover={{ y: -8, scale: 1.02 }}
       transition={{ type: "spring", stiffness: 50, damping: 15 }}
-      className="group relative overflow-hidden rounded-2xl border border-border bg-card/50 p-7
-                 hover:border-foreground/20 hover:bg-card hover:shadow-xl hover:shadow-purple-500/[0.05]
-                 transition-colors duration-300 cursor-pointer"
+      className={`landing-glass group relative cursor-pointer overflow-hidden rounded-[1.75rem] p-7 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-violet-500/25 hover:bg-[var(--landing-panel-strong)] ${index === 0 || index === 5 ? "lg:col-span-2" : ""}`}
     >
       {/* Shine sweep on hover */}
       <div className="pointer-events-none absolute inset-0 -translate-x-full bg-white/20 opacity-0 transition-all duration-700 group-hover:translate-x-full group-hover:opacity-100 dark:bg-white/5" />
@@ -515,7 +512,7 @@ const FeatureCard = memo(function FeatureCard({ feature, index }: { feature: Fea
       <motion.div
         className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-full ring-2 ${g.ring} ${g.bg}`}
         whileHover={{ rotate: 360, scale: 1.1 }}
-        transition={{ duration: 0.55, ease: "easeInOut" }}
+        transition={{ duration: 0.7, ease }}
       >
         <Icon className={`h-5 w-5 ${g.icon}`} />
       </motion.div>
@@ -535,9 +532,9 @@ function AnimatedProgressBar({ pct, color = " " }: { pct: number; color?: string
   return (
     <div ref={ref} className="h-2 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
       <motion.div
-        className={`h-full rounded-full bg-[#7C3AED] ${color}`}
-        initial={{ width: 0 }}
-        animate={inView ? { width: `${pct}%` } : {}}
+        className={`h-full origin-left rounded-full bg-[#7C3AED] ${color}`}
+        initial={{ scaleX: 0 }}
+        animate={inView ? { scaleX: pct / 100 } : { scaleX: 0 }}
         transition={{ duration: 1.3, ease, delay: 0.35 }}
       />
     </div>
@@ -564,12 +561,12 @@ const PricingCard = memo(function PricingCard({
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       whileHover={{ y: -10, scale: 1.025 }}
-      className={`relative flex flex-col rounded-2xl border p-8 h-full cursor-pointer transition-all duration-300 ${
+      className={`landing-glass relative flex h-full cursor-pointer flex-col rounded-[1.8rem] p-8 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         plan.highlight
-          ? "border-purple-500/60 bg-purple-50 dark:bg-purple-950/20 shadow-[0_0_50px_rgba(140,48,232,0.18)]"
+          ? "border-violet-500/45 bg-violet-50/70 shadow-[0_30px_90px_-45px_rgba(124,58,237,.55)] dark:bg-violet-950/20"
           : hovered
-          ? "border-purple-400/50 bg-purple-50/40 dark:bg-purple-950/10 shadow-[0_0_35px_rgba(140,48,232,0.10)]"
-          : "border-border bg-card/50"
+          ? "border-violet-400/35 bg-violet-50/35 dark:bg-violet-950/10"
+          : ""
       }`}
     >
       <AnimatePresence>
@@ -651,11 +648,7 @@ const PricingCard = memo(function PricingCard({
           <Link
             href={targetHref}
             prefetch={true}
-            className={`block w-full rounded-xl py-3.5 text-center text-sm font-bold transition-all duration-300 ${
-              isActive
-                ? "bg-purple-600 text-white shadow-lg shadow-purple-500/25 hover:bg-purple-700 hover:shadow-xl"
-                : "border border-border bg-card text-foreground hover:bg-muted"
-            }`}
+            className={`${isActive ? "landing-button-primary" : "landing-button-secondary"} landing-button-centered w-full`}
           >
             {plan.ctaText}
           </Link>
@@ -674,12 +667,24 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
   testimonials: PublicReview[];
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const isMobile = useIsMobile();
+  const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (prefersReducedMotion || isPaused || testimonials.length <= 1) return;
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % testimonials.length);
+    }, 4800);
+
+    return () => window.clearInterval(timer);
+  }, [isPaused, prefersReducedMotion, testimonials.length]);
 
   if (testimonials.length === 0) {
     return (
       <div className="mx-auto max-w-xl px-6 py-8 text-center">
-        <div className="rounded-2xl border border-border bg-card/60 p-8 text-sm text-muted-foreground">
+        <div className="landing-glass rounded-[1.6rem] p-8 text-sm text-muted-foreground">
           Approved community reviews will appear here soon.
         </div>
       </div>
@@ -695,8 +700,14 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
   };
 
   return (
-    <div className="relative mx-auto flex min-h-[430px] w-full max-w-5xl items-center justify-center overflow-hidden px-4 py-10">
-      <div className="absolute inset-x-0 top-1/2 mx-auto h-px max-w-3xl bg-[#7C3AED]/20" />
+    <div
+      className="relative mx-auto flex min-h-[430px] w-full max-w-5xl items-center justify-center overflow-hidden px-4 py-10"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocusCapture={() => setIsPaused(true)}
+      onBlurCapture={() => setIsPaused(false)}
+    >
+      <div className="absolute inset-x-0 top-1/2 mx-auto h-px max-w-3xl bg-violet-500/15" />
       <AnimatePresence mode="popLayout">
         {testimonials.map((review, index) => {
           const offset =
@@ -745,30 +756,31 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
               }
               exit={{ opacity: 0, scale: 0.84 }}
               transition={{ type: "spring", stiffness: 260, damping: 28 }}
-              className={`absolute flex h-[350px] w-[min(88vw,420px)] flex-col justify-between rounded-3xl border p-7 shadow-2xl ${
+              className={`absolute flex h-[350px] w-[min(88vw,420px)] flex-col justify-between rounded-[1.8rem] border p-7 transition-colors duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                 isActive
-                  ? "border-violet-400/40 bg-violet-700 text-white shadow-violet-700/30"
-                  : "border-border bg-card/70 text-foreground shadow-black/5 backdrop-blur-xl"
+                  ? "border-violet-500/20 bg-white/90 text-foreground shadow-[0_32px_90px_-48px_rgba(109,40,217,.48)] backdrop-blur-xl dark:border-violet-300/15 dark:bg-[#17131f]"
+                  : "border-violet-950/[0.06] bg-violet-50/55 text-foreground shadow-[0_24px_70px_-46px_rgba(76,29,149,.22)] backdrop-blur-xl dark:border-white/[0.07] dark:bg-white/[0.035]"
               }`}
               aria-label={`Review from ${review.user.name}`}
+              aria-hidden={!isActive}
             >
               <div>
-                <div className="mb-5 flex gap-1 text-yellow-300">
+                <motion.div
+                  className="mb-5 flex gap-1 text-violet-500 dark:text-violet-300"
+                  animate={!prefersReducedMotion && isActive ? { y: [0, -3, 0] } : { y: 0 }}
+                  transition={{ duration: 4.8, repeat: Infinity, ease }}
+                >
                   {Array.from({ length: Math.max(1, Math.min(5, review.rating)) }).map((_, j) => (
                     <Star key={j} size={16} fill="currentColor" />
                   ))}
-                </div>
-                <p
-                  className={`text-base italic leading-relaxed ${
-                    isActive ? "text-white/90" : "text-muted-foreground"
-                  }`}
-                >
+                </motion.div>
+                <p className="text-base italic leading-relaxed text-slate-600 dark:text-slate-300">
                   {cleanedComment}
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] text-xs font-bold text-white ring-2 ring-white/20">
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-violet-600 text-xs font-bold text-white ring-2 ring-violet-500/15 dark:bg-violet-400 dark:text-violet-950">
                   {review.user.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -781,17 +793,11 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
                   )}
                 </div>
                 <div>
-                  <div className={isActive ? "text-sm font-bold text-white" : "text-sm font-bold text-foreground"}>
+                  <div className="text-sm font-bold text-foreground">
                     {review.user.name}
                   </div>
                   <div
-                    className={`text-xs ${
-                      isActive
-                        ? roleMeta.className
-                        : roleMeta.label === "Mentor"
-                          ? "text-[#7C3AED]"
-                          : "text-gray-500 dark:text-gray-400"
-                    }`}
+                    className={`text-xs ${roleMeta.label === "Mentor" ? "text-violet-600 dark:text-violet-300" : "text-slate-500 dark:text-slate-400"}`}
                   >
                     {roleMeta.label}
                   </div>
@@ -813,8 +819,8 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
             key={review.id}
             type="button"
             onClick={() => setActiveIndex(index)}
-            className={`h-2 rounded-md transition-all ${
-              index === activeIndex ? "w-8 bg-[#7C3AED]" : "w-2 bg-muted-foreground/30"
+            className={`h-2 rounded-md transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              index === activeIndex ? "w-8 bg-violet-600 dark:bg-violet-300" : "w-2 bg-violet-950/15 dark:bg-white/20"
             }`}
             aria-label={`Show review ${index + 1}`}
             aria-current={index === activeIndex}
@@ -825,17 +831,19 @@ const TestimonialsMarquee = memo(function TestimonialsMarquee({
       <button
         type="button"
         onClick={() => move(-1)}
-        className="absolute left-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg border border-border bg-background/80 font-bold text-[#7C3AED] shadow-lg backdrop-blur transition-colors hover:bg-[#7C3AED] hover:text-white md:flex"
+        className="absolute left-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-violet-950/10 bg-white/75 text-[0px] text-violet-700 backdrop-blur-xl transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-x-1 hover:border-violet-500/30 hover:bg-violet-100 dark:border-white/10 dark:bg-white/[0.055] dark:text-violet-300 dark:hover:bg-violet-400/10 md:flex"
         aria-label="Previous testimonial"
       >
+        <ArrowRight className="h-4 w-4 rotate-180" strokeWidth={1.5} aria-hidden="true" />
         ‹
       </button>
       <button
         type="button"
         onClick={() => move(1)}
-        className="absolute right-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg border border-border bg-background/80 font-bold text-[#7C3AED] shadow-lg backdrop-blur transition-colors hover:bg-[#7C3AED] hover:text-white md:flex"
+        className="absolute right-2 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-violet-950/10 bg-white/75 text-[0px] text-violet-700 backdrop-blur-xl transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:translate-x-1 hover:border-violet-500/30 hover:bg-violet-100 dark:border-white/10 dark:bg-white/[0.055] dark:text-violet-300 dark:hover:bg-violet-400/10 md:flex"
         aria-label="Next testimonial"
       >
+        <ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
         ›
       </button>
     </div>
@@ -851,8 +859,11 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [isYearly, setIsYearly] = useState(false);
   const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>(fallbackPricingPlans);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [testimonials, setTestimonials] = useState<PublicReview[]>([]);
+  const backgroundMouseX = useMotionValue(0);
+  const backgroundMouseY = useMotionValue(0);
+  const backgroundFrameRef = useRef<number | null>(null);
+  const latestBackgroundPointer = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     let active = true;
@@ -911,23 +922,34 @@ export default function Home() {
 
   useEffect(() => {
     if (isMobile || prefersReducedMotion) return;
-    const onMove = (e: MouseEvent) => setMousePos({
-      x: (e.clientX / window.innerWidth - 0.5) * 2,
-      y: (e.clientY / window.innerHeight - 0.5) * 2,
-    });
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
-  }, [isMobile, prefersReducedMotion]);
+    const onMove = (event: PointerEvent) => {
+      latestBackgroundPointer.current = {
+        x: (event.clientX / window.innerWidth - 0.5) * 60,
+        y: (event.clientY / window.innerHeight - 0.5) * 40,
+      };
+      if (backgroundFrameRef.current !== null) return;
+      backgroundFrameRef.current = window.requestAnimationFrame(() => {
+        backgroundMouseX.set(latestBackgroundPointer.current.x);
+        backgroundMouseY.set(latestBackgroundPointer.current.y);
+        backgroundFrameRef.current = null;
+      });
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      if (backgroundFrameRef.current !== null) window.cancelAnimationFrame(backgroundFrameRef.current);
+    };
+  }, [backgroundMouseX, backgroundMouseY, isMobile, prefersReducedMotion]);
 
-  const springX = useSpring(mousePos.x * 30, { stiffness: 40, damping: 20 });
-  const springY = useSpring(mousePos.y * 20, { stiffness: 40, damping: 20 });
+  const springX = useSpring(backgroundMouseX, { stiffness: 40, damping: 20 });
+  const springY = useSpring(backgroundMouseY, { stiffness: 40, damping: 20 });
 
   return (
-    <div className="landing-page relative min-h-screen w-full overflow-x-hidden bg-background text-foreground font-sans">
+    <div className="landing-page relative min-h-screen w-full overflow-x-hidden">
 
       {/* ── BACKGROUND ORBS — liquid floating effect ── */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0 bg-background" />
+        <div className="absolute inset-0 bg-[var(--landing-canvas)]" />
         <motion.div
           className="absolute left-1/4 top-0 h-[650px] w-[650px] -translate-x-1/2 rounded-full bg-purple-600/[0.08] blur-[140px]"
           style={{ x: springX, y: springY }}
@@ -951,28 +973,32 @@ export default function Home() {
       <HeroSection />
 
       {/* Stats — sits just below the hero, uses existing page theme */}
-      <section className="relative w-full px-4 py-16 sm:px-6 lg:px-8">
+      <motion.section
+        className="relative w-full px-4 py-24 sm:px-6 md:py-32 lg:px-8"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.9, ease }}
+      >
         <CinematicLayer className="mx-auto max-w-5xl" intensity={0.8} dim={false}>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {stats.map((s, i) => <StatCard key={i} {...s} index={i} />)}
           </div>
         </CinematicLayer>
-      </section>
+      </motion.section>
 
       <AnimatedDivider />
 
       {/* ══════════════ PROBLEM ══════════════ */}
-      <section className="relative w-full overflow-x-hidden px-6 py-20 md:py-28">
+      <motion.section
+        className="relative w-full overflow-x-hidden px-4 py-24 sm:px-6 md:py-36"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.9, ease }}
+      >
         {/* Subtle animated grid */}
-        <motion.div
-          className="pointer-events-none absolute inset-0 opacity-[0.015]"
-          style={{
-            backgroundImage: "none",
-            backgroundSize: "60px 60px",
-          }}
-          animate={{ backgroundPosition: ["0px 0px", "60px 60px", "0px 0px"] }}
-          transition={{ duration: 24, repeat: Infinity, ease: liquidEase }}
-        />
+        <div className="landing-grid pointer-events-none absolute inset-0" aria-hidden="true" />
         <div className="mx-auto max-w-6xl">
           <div className="mb-14 text-center">
             <SectionBadge color="border-red-500/30 bg-red-500/10 text-red-400" icon={Flame} label="The Old Way" />
@@ -1001,7 +1027,7 @@ export default function Home() {
                 key={i}
                 variants={fluidChild}
                 whileHover={{ y: -8, scale: 1.02 }}
-                className="rounded-2xl border border-red-500/10 bg-red-500/[0.03] p-7 hover:border-red-500/25 hover:shadow-lg hover:shadow-red-500/[0.04] transition-all duration-300 h-full"
+                className="landing-glass h-full rounded-[1.7rem] p-7 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-red-500/20"
               >
                 <motion.div
                   className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-full ring-2 ring-red-500/40 bg-red-500/10"
@@ -1015,12 +1041,19 @@ export default function Home() {
             ))}
           </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       <AnimatedDivider />
 
       {/* ══════════════ FEATURES ══════════════ */}
-      <section id="features" className="relative w-full overflow-x-hidden px-6 py-20 md:py-28">
+      <motion.section
+        id="features"
+        className="relative w-full overflow-x-hidden px-4 py-24 sm:px-6 md:py-36"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.9, ease }}
+      >
         <div className="mx-auto max-w-7xl">
           <div className="mb-16 text-center">
             <SectionBadge color="border-purple-500/30 bg-purple-500/10 text-purple-400" icon={Zap} label="Core Features" />
@@ -1046,16 +1079,23 @@ export default function Home() {
             </motion.div>
           </CinematicLayer>
         </div>
-      </section>
+      </motion.section>
 
       <AnimatedDivider />
 
       {/* ══════════════ WORKFLOW ══════════════ */}
-      <section id="workflow" className="relative w-full overflow-x-hidden px-6 py-20 md:py-28 bg-muted/40 border-y border-border">
+      <motion.section
+        id="workflow"
+        className="relative w-full overflow-x-hidden border-y border-black/[0.06] bg-black/[0.018] px-4 py-24 dark:border-white/[0.07] dark:bg-white/[0.018] sm:px-6 md:py-36"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.9, ease }}
+      >
         <motion.div
           className="pointer-events-none absolute -right-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-violet-500/[0.05] blur-[100px]"
           animate={{ scale: [1, 1.18, 1], opacity: [0.05, 0.09, 0.05] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 8, repeat: Infinity, ease: liquidEase }}
         />
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
@@ -1084,7 +1124,7 @@ export default function Home() {
                 >
                   <div className="flex flex-col items-center">
                     <motion.div
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 font-mono text-sm font-bold transition-all duration-300 group-hover:bg-purple-500/25 group-hover:border-purple-500/50"
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-purple-500/20 bg-purple-500/10 font-mono text-sm font-bold text-purple-400 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:border-purple-500/50 group-hover:bg-purple-500/25"
                       whileHover={{ scale: 1.15, rotate: 6 }}
                     >
                       {step.step}
@@ -1117,7 +1157,7 @@ export default function Home() {
               viewport={{ once: true, margin: "-100px" }}
               transition={{ type: "spring", stiffness: 50, damping: 15, delay: 0.2 }}
               whileHover={{ y: -6 }}
-              className="rounded-[1.75rem] border border-border bg-card/60 p-8 shadow-2xl shadow-purple-500/[0.06] backdrop-blur-sm"
+              className="landing-glass rounded-[1.9rem] p-8"
             >
               <div className="mb-8 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -1195,12 +1235,18 @@ export default function Home() {
             </motion.div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       <AnimatedDivider />
 
       {/* ══════════════ TESTIMONIALS ══════════════ */}
-      <section className="relative w-full overflow-x-hidden py-20 md:py-28">
+      <motion.section
+        className="relative w-full overflow-x-hidden py-24 md:py-36"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.9, ease }}
+      >
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-12 text-center">
             <SectionBadge color="border-yellow-500/30 bg-yellow-500/10 text-yellow-400" icon={Star} label="Reviews" />
@@ -1208,16 +1254,23 @@ export default function Home() {
           </div>
         </div>
         <TestimonialsMarquee testimonials={testimonials} />
-      </section>
+      </motion.section>
 
       <AnimatedDivider />
 
       {/* ══════════════ PRICING ══════════════ */}
-      <section id="pricing" className="relative w-full overflow-x-hidden px-6 py-20 md:py-28 bg-muted/40 border-y border-border">
+      <motion.section
+        id="pricing"
+        className="relative w-full overflow-x-hidden border-y border-black/[0.06] bg-black/[0.018] px-4 py-24 dark:border-white/[0.07] dark:bg-white/[0.018] sm:px-6 md:py-36"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.9, ease }}
+      >
         <motion.div
           className="pointer-events-none absolute -left-40 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-fuchsia-500/[0.05] blur-[100px]"
           animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 10, repeat: Infinity, ease: liquidEase }}
         />
         <div className="mx-auto max-w-7xl">
           <div className="mb-16 text-center">
@@ -1266,7 +1319,7 @@ export default function Home() {
             </motion.div>
           </CinematicLayer>
         </div>
-      </section>
+      </motion.section>
 
       <AnimatedDivider />
 
@@ -1275,4 +1328,3 @@ export default function Home() {
     </div>
   );
 }
-

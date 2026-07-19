@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import { resolve } from "node:path";
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -43,9 +44,20 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Spline ships modern modules that need to pass through Next's compiler.
+  // Keep Next's default conditionNames so ESM imports and CommonJS require()
+  // calls resolve the correct package export for their dependency type.
   transpilePackages: ["@splinetool/react-spline"],
   webpack: (config) => {
-    config.resolve.conditionNames = ["import", "module", "..."];
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      // react-spline 4.1 only exposes an `import` condition. Resolve this one
+      // package explicitly instead of forcing ESM conditions on CommonJS code.
+      "@splinetool/react-spline$": resolve(
+        process.cwd(),
+        "node_modules/@splinetool/react-spline/dist/react-spline.js"
+      ),
+    };
     return config;
   },
   allowedDevOrigins: ["waseem-study-app.loca.lt"],

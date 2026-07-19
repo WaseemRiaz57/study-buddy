@@ -1,32 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { useMotionValue, useReducedMotion, useSpring, useTransform, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Sparkles } from "lucide-react";
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from "framer-motion";
+import { useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import ParticleNetwork from "./ParticleNetwork";
 import SplineBrain from "./SplineBrain";
-import { FloatingGlassCards } from "./FloatingGlassCards";
+import { KineticHeadline } from "./KineticHeadline";
 
-/**
- * Premium immersive hero: particle network + kinetic typography + 3D glass brain + floating cards.
- * Three layers per the Vanguard_UI_Architect directive.
- */
+const liquidEase = [0.16, 1, 0.3, 1] as const;
+
 export default function HeroSection() {
-  const isMobile = useIsMobile();
-  const prefersReducedMotion = useReducedMotion();
-
-  // Mouse tracking for parallax layers
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const [mounted, setMounted] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
   const frameRef = useRef<number | null>(null);
   const latestPointerRef = useRef({ x: 0, y: 0 });
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const isMobile = useIsMobile();
+  const prefersReducedMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const brainY = useSpring(useTransform(scrollYProgress, [0, 1], [0, 96]), {
+    stiffness: 70,
+    damping: 24,
+    mass: 0.6,
+  });
+  const backdropY = useTransform(scrollYProgress, [0, 1], [0, -150]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.82, 1], [1, 0.88, 0]);
+  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [2.4, -2.4]), { stiffness: 55, damping: 22 });
+  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-2.8, 2.8]), { stiffness: 55, damping: 22 });
 
   useEffect(() => {
     if (isMobile || prefersReducedMotion) return;
@@ -36,9 +49,7 @@ export default function HeroSection() {
         x: event.clientX / window.innerWidth - 0.5,
         y: event.clientY / window.innerHeight - 0.5,
       };
-
       if (frameRef.current !== null) return;
-
       frameRef.current = window.requestAnimationFrame(() => {
         mouseX.set(latestPointerRef.current.x);
         mouseY.set(latestPointerRef.current.y);
@@ -47,134 +58,101 @@ export default function HeroSection() {
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
-
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
     };
-  }, [isMobile, prefersReducedMotion, mouseX, mouseY]);
-
-  // Kinetic headline: subtle 3D rotation driven by cursor
-  const rotateX = useSpring(
-    useTransform(mouseY, [-0.5, 0.5], [3, -3]),
-    { stiffness: 50, damping: 20 }
-  );
-  const rotateY = useSpring(
-    useTransform(mouseX, [-0.5, 0.5], [-3, 3]),
-    { stiffness: 50, damping: 20 }
-  );
-
-  // Scroll-driven entrance
-  const sectionVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as const, staggerChildren: 0.15 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 40, filter: "blur(8px)" },
-    visible: {
-      opacity: 1,
-      y: 0,
-      filter: "blur(0px)",
-      transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] as const },
-    },
-  };
+  }, [isMobile, mouseX, mouseY, prefersReducedMotion]);
 
   return (
     <section
-      className="relative isolate flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#faf9fc] dark:bg-[#050505] px-5 py-24 sm:px-8"
+      ref={sectionRef}
+      className="relative isolate flex min-h-[100dvh] items-center overflow-hidden border-b border-black/[0.06] bg-[#f7f7f5] px-4 py-24 dark:border-white/[0.07] dark:bg-[#07070a] sm:px-6 lg:px-8"
       aria-labelledby="studybuddy-hero-heading"
     >
-      {/* ── Layer 0: Radial mesh gradient orbs ── */}
+      <div className="landing-grid pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
-        <div className="absolute -left-[20%] top-[10%] h-[500px] w-[500px] rounded-full bg-violet-500/[0.08] blur-[120px] dark:bg-violet-500/[0.12] dark:blur-[140px]" />
-        <div className="absolute -right-[15%] top-[30%] h-[400px] w-[400px] rounded-full bg-emerald-500/[0.05] blur-[100px] dark:bg-emerald-500/[0.08] dark:blur-[120px]" />
-        <div className="absolute bottom-[5%] left-[40%] h-[350px] w-[350px] -translate-x-1/2 rounded-full bg-fuchsia-500/[0.06] blur-[110px] dark:bg-fuchsia-500/[0.09] dark:blur-[130px]" />
+        <div className="absolute left-1/2 top-[42%] h-[52rem] w-[52rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-400/[0.12] blur-[130px] dark:bg-violet-600/[0.16]" />
+        <div className="absolute bottom-[-28%] right-[-8%] h-[34rem] w-[34rem] rounded-full bg-cyan-300/[0.08] blur-[130px] dark:bg-cyan-500/[0.07]" />
       </div>
 
-      {/* ── Layer 1: Particle network ── */}
-      <ParticleNetwork />
+      <ParticleNetwork id="hero-particles" density={38} className="z-0 opacity-45" />
 
-      {/* ── Layer 2: 3D Brain (centerpiece) ── */}
-      <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
-        <SplineBrain className="h-[500px] w-[500px] md:h-[600px] md:w-[600px] opacity-60 dark:opacity-50" />
-      </div>
-
-      {/* ── Layer 3: Parallax floating cards ── */}
-      {mounted && <FloatingGlassCards mouseX={mouseX} mouseY={mouseY} isMobile={isMobile} />}
-
-      {/* ── Foreground: Kinetic typography + CTAs ── */}
       <motion.div
-        className="relative z-20 mx-auto max-w-4xl text-center"
-        variants={sectionVariants}
+        className="pointer-events-none absolute inset-x-0 top-[23%] z-[1] select-none overflow-hidden font-mono text-[clamp(4rem,13vw,12rem)] font-medium uppercase leading-none tracking-[-0.08em] text-violet-950/[0.018] dark:text-white/[0.02]"
+        style={{ y: prefersReducedMotion ? 0 : backdropY }}
+        aria-hidden="true"
+      >
+        <div className="whitespace-nowrap">STUDY · CONNECT · GROW</div>
+      </motion.div>
+
+      <motion.div
+        className="absolute inset-0 z-[5] flex items-center justify-center"
+        style={{ y: prefersReducedMotion ? 0 : brainY, opacity: heroOpacity }}
+      >
+        <SplineBrain className="h-[min(66vw,620px)] w-[min(66vw,620px)] opacity-30 dark:opacity-32" />
+      </motion.div>
+
+      <motion.div
+        className="relative z-20 mx-auto flex w-full max-w-5xl flex-col items-center text-center"
         initial="hidden"
         animate="visible"
-        style={{ perspective: 1000 }}
+        variants={{
+          hidden: {},
+          visible: { transition: { staggerChildren: 0.13, delayChildren: 0.08 } },
+        }}
+        style={{
+          perspective: 1100,
+          rotateX: isMobile || prefersReducedMotion ? 0 : rotateX,
+          rotateY: isMobile || prefersReducedMotion ? 0 : rotateY,
+        }}
       >
-        <motion.div variants={itemVariants}>
-          <div className="mb-6 inline-flex rounded-full border border-violet-200/60 bg-violet-100/50 px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-300">
-            ✨ Free Forever
-          </div>
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.85, ease: liquidEase } } }}
+          className="mb-7 inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-white/65 px-3.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-700 shadow-[0_12px_40px_-24px_rgba(124,58,237,.55)] backdrop-blur-xl dark:border-violet-300/15 dark:bg-white/[0.055] dark:text-violet-300"
+        >
+          <Sparkles className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
+          Free Forever
         </motion.div>
 
-        <motion.h1
+        <KineticHeadline
           id="studybuddy-hero-heading"
-          className="text-balance text-5xl font-black leading-[1.02] tracking-[-0.04em] sm:text-6xl md:text-7xl"
-          variants={itemVariants}
-          style={{
-            rotateX: isMobile || prefersReducedMotion ? 0 : rotateX,
-            rotateY: isMobile || prefersReducedMotion ? 0 : rotateY,
-            transformStyle: "preserve-3d",
-          }}
-        >
-          <span className="block text-slate-900 dark:text-white">
-            Studying made social.
-          </span>
-          <span className="block bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-300 bg-clip-text text-transparent dark:from-violet-400 dark:via-fuchsia-400 dark:to-violet-200">
-            Success made certain.
-          </span>
-        </motion.h1>
+          line1="Studying made social."
+          line2="Success made certain."
+          className="max-w-4xl text-balance text-[clamp(3rem,7vw,6.45rem)] font-semibold leading-[0.94] tracking-[-0.06em] text-[#17151d] dark:text-white"
+        />
 
         <motion.p
-          className="mx-auto mt-8 max-w-2xl text-pretty text-lg leading-relaxed text-slate-600 dark:text-slate-400"
-          variants={itemVariants}
+          className="mx-auto mt-8 max-w-2xl text-pretty text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-lg"
+          variants={{ hidden: { opacity: 0, y: 28 }, visible: { opacity: 1, y: 0, transition: { duration: 0.9, ease: liquidEase } } }}
         >
           Where learning meets innovation. Build knowledge, connect with mentors, and achieve your goals in a community that never stops growing.
         </motion.p>
 
         <motion.div
-          className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
-          variants={itemVariants}
+          className="mt-10 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row"
+          variants={{ hidden: { opacity: 0, y: 28 }, visible: { opacity: 1, y: 0, transition: { duration: 0.9, ease: liquidEase } } }}
         >
-          {/* Primary CTA — Double-Bezel Button-in-Button */}
-          <Link
-            href="/dashboard/study-rooms"
-            className="group inline-flex h-14 items-center gap-3 rounded-full bg-violet-600 pl-8 pr-2 text-base font-semibold text-white shadow-lg shadow-violet-500/25 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-violet-500 hover:shadow-xl hover:shadow-violet-500/30 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:bg-violet-600 dark:hover:bg-violet-500"
-          >
+          <Link href="/dashboard/study-rooms" className="landing-button-primary group w-full sm:w-auto">
             Begin a session
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0.5 group-hover:-translate-y-[1px] group-hover:bg-white/25 group-hover:scale-105">
-              <ArrowRight className="h-4 w-4" />
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-white/14 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:scale-105">
+              <ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
             </span>
           </Link>
-          {/* Secondary CTA */}
-          <Link
-            href="/dashboard"
-            className="inline-flex h-14 items-center gap-3 rounded-full border border-slate-200/80 bg-white/70 px-8 text-base font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:w-auto dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
-          >
+          <Link href="/dashboard" className="landing-button-secondary w-full sm:w-auto">
             View dashboard
           </Link>
         </motion.div>
 
         <motion.p
-          className="mt-6 text-sm font-medium text-slate-500 dark:text-slate-400"
-          variants={itemVariants}
+          className="mt-6 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400"
+          variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.8, delay: 0.2 } } }}
         >
           No credit card required · Free forever plan
         </motion.p>
       </motion.div>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-32 bg-gradient-to-t from-[#f7f7f5] to-transparent dark:from-[#07070a]" aria-hidden="true" />
     </section>
   );
 }

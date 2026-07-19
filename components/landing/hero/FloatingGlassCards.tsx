@@ -1,7 +1,7 @@
 "use client";
 
-import { memo, useEffect } from "react";
-import { useReducedMotion, useSpring, useMotionValue, motion } from "framer-motion";
+import { memo } from "react";
+import { motion, MotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import {
   Brain,
   FileText,
@@ -68,7 +68,7 @@ const GLASS_CARDS: GlassCardData[] = [
             </div>
           ))}
         </div>
-        <button className="mt-1 w-full rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 py-1.5 text-[10px] font-bold text-white shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 transition-shadow duration-500">
+        <button tabIndex={-1} className="mt-1 w-full rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 py-1.5 text-[10px] font-bold text-white shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 transition-shadow duration-500">
           Browse All Mentors →
         </button>
       </article>
@@ -210,35 +210,40 @@ const GlassCard = memo(function GlassCard({
   mouseX,
   mouseY,
   isMobile,
+  mode,
 }: {
   card: GlassCardData;
-  mouseX: ReturnType<typeof useMotionValue<number>>;
-  mouseY: ReturnType<typeof useMotionValue<number>>;
+  mouseX: MotionValue<number>;
+  mouseY: MotionValue<number>;
   isMobile: boolean;
+  mode: "hero" | "cta";
 }) {
   const prefersReducedMotion = useReducedMotion();
   const parallaxStrength = isMobile || prefersReducedMotion ? 0 : card.depth;
-  const x = useSpring(useMotionValue(mouseX.get() * -parallaxStrength * 18), { stiffness: 45, damping: 22, mass: 0.8 });
-  const y = useSpring(useMotionValue(mouseY.get() * -parallaxStrength * 12), { stiffness: 45, damping: 22, mass: 0.8 });
-
-  useEffect(() => {
-    x.set(mouseX.get() * -parallaxStrength * 18);
-    y.set(mouseY.get() * -parallaxStrength * 12);
-  }, [mouseX, mouseY, parallaxStrength, x, y]);
+  const rawX = useTransform(mouseX, (value) => value * -parallaxStrength * 22);
+  const rawY = useTransform(mouseY, (value) => value * -parallaxStrength * 16);
+  const x = useSpring(rawX, { stiffness: 52, damping: 24, mass: 0.72 });
+  const y = useSpring(rawY, { stiffness: 52, damping: 24, mass: 0.72 });
+  const ctaPosition = {
+    "book-mentor": "top-[10%] left-[2%]",
+    "ai-notes": "top-[14%] right-[2%]",
+    "focus-room": "bottom-[8%] left-[7%]",
+    "live-session": "bottom-[9%] right-[6%]",
+  }[card.id];
 
   return (
     <motion.div
-      className={`absolute ${card.position} z-20 w-[180px] md:w-[220px]`}
+      className={`absolute ${mode === "cta" ? ctaPosition : card.position} z-20 w-[196px] 2xl:w-[224px]`}
       style={{ x, y, willChange: "transform" }}
     >
       <div
-        className={`animate-[float_${6 + card.floatDelay}s_ease-in-out_infinite]`}
+        className="animate-[float_8s_cubic-bezier(0.16,1,0.3,1)_infinite]"
         style={{ animationDelay: `${card.floatDelay}s` }}
       >
         {/* Outer shell — Double-Bezel */}
-        <div className={`rounded-[1.5rem] p-[3px] border border-white/20 bg-gradient-to-br from-white/10 to-white/[0.02] dark:border-white/10 dark:from-white/5 dark:to-white/[0.01] shadow-[0_16px_45px_rgba(0,0,0,0.06)] ${card.glowColor} dark:shadow-[0_16px_45px_rgba(0,0,0,0.2)]`}>
+        <div className={`rounded-[1.65rem] border border-black/[0.06] bg-white/25 p-1 shadow-[0_24px_70px_-28px_rgba(28,24,40,0.28)] dark:border-white/10 dark:bg-white/[0.025] ${card.glowColor} dark:shadow-[0_26px_80px_-32px_rgba(0,0,0,0.85)]`}>
           {/* Inner core — glassmorphism */}
-          <div className="rounded-[calc(1.5rem-3px)] border border-white/30 bg-white/60 p-3.5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03] shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]">
+          <div className="rounded-[calc(1.65rem-4px)] border border-white/60 bg-white/72 p-3.5 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] dark:border-white/[0.08] dark:bg-[#111018]/72 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
             <div className="relative z-10">{card.content}</div>
           </div>
         </div>
@@ -252,18 +257,18 @@ export const FloatingGlassCards = memo(function FloatingGlassCards({
   mouseX,
   mouseY,
   isMobile,
+  mode = "hero",
 }: {
-  mouseX: ReturnType<typeof useMotionValue<number>>;
-  mouseY: ReturnType<typeof useMotionValue<number>>;
+  mouseX: MotionValue<number>;
+  mouseY: MotionValue<number>;
   isMobile: boolean;
+  mode?: "hero" | "cta";
 }) {
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-10"
+      className="pointer-events-none absolute inset-0 z-10 hidden xl:block"
       style={{ perspective: 1200 }}
-      aria-hidden="false"
-      role="region"
-      aria-label="StudyBuddy feature previews"
+      aria-hidden="true"
     >
       {GLASS_CARDS.map((card) => (
         <GlassCard
@@ -272,6 +277,7 @@ export const FloatingGlassCards = memo(function FloatingGlassCards({
           mouseX={mouseX}
           mouseY={mouseY}
           isMobile={isMobile}
+          mode={mode}
         />
       ))}
     </div>

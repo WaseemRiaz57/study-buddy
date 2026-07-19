@@ -19,10 +19,12 @@ export function KineticHeadline({
   line1,
   line2,
   className = "",
+  id,
 }: {
   line1: string;
   line2: string;
   className?: string;
+  id?: string;
 }) {
   const prefersReducedMotion = useReducedMotion();
 
@@ -46,7 +48,7 @@ export function KineticHeadline({
 
   if (prefersReducedMotion) {
     return (
-      <h1 className={className} aria-label={`${line1} ${line2}`}>
+      <h1 id={id} className={className} aria-label={`${line1} ${line2}`}>
         <span className="block">{line1}</span>
         <span className="block bg-gradient-to-r from-purple-600 to-purple-400 text-transparent bg-clip-text pb-1">{line2}</span>
       </h1>
@@ -55,6 +57,7 @@ export function KineticHeadline({
 
   return (
     <motion.h1
+      id={id}
       className={className}
       aria-label={`${line1} ${line2}`}
       style={{ perspective: 1000 }}
