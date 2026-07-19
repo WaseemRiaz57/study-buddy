@@ -269,14 +269,14 @@ export default function RegisterPage() {
 
   return (
     <main className="auth-page min-h-[100dvh] w-full bg-background text-foreground transition-colors duration-300 lg:grid lg:h-[100dvh] lg:min-h-0 lg:grid-cols-[3fr_2fr] lg:overflow-hidden">
-      <div className="relative hidden h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F5F2FC] dark:bg-[#09070F] lg:block">
+      <div className="relative hidden h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F7F5FC] dark:bg-[#09070F] lg:block">
         <Image
           src="/Signup_light.png"
           alt="StudyBuddy signup learning journey"
           fill
           priority
           sizes="60vw"
-          className="object-contain object-center dark:hidden"
+          className="object-cover object-[50%_48%] dark:hidden"
         />
         <Image
           src="/Signup_dark.png"
@@ -284,7 +284,7 @@ export default function RegisterPage() {
           fill
           priority
           sizes="60vw"
-          className="hidden object-contain object-center dark:block"
+          className="hidden object-cover object-[50%_48%] dark:block"
         />
       </div>
 

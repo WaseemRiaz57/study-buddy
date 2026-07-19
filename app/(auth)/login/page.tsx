@@ -81,14 +81,14 @@ function LoginContent() {
 
   return (
     <main className="auth-page min-h-[100dvh] w-full bg-background text-foreground lg:grid lg:h-[100dvh] lg:min-h-0 lg:grid-cols-[3fr_2fr] lg:overflow-hidden">
-      <div className="relative hidden h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F5F2FC] dark:bg-[#09070F] lg:block">
+      <div className="relative hidden h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F7F5FC] dark:bg-[#09070F] lg:block">
         <Image
           src="/Login_light.png"
           alt="StudyBuddy login workspace"
           fill
           priority
           sizes="60vw"
-          className="object-contain object-center dark:hidden"
+          className="object-cover object-center dark:hidden"
         />
         <Image
           src="/Login_dark.png"
@@ -96,7 +96,7 @@ function LoginContent() {
           fill
           priority
           sizes="60vw"
-          className="hidden object-contain object-center dark:block"
+          className="hidden object-cover object-center dark:block"
         />
       </div>
 
