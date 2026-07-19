@@ -15,7 +15,7 @@ function serializeSettings(settings: any) {
   return {
     id: String(settings._id),
     platformName: settings.platformName || "StudyBuddy",
-    platformLogo: settings.platformLogo || "",
+    platformLogo: "/logo.png",
     supportEmail: settings.supportEmail || "support@studybuddy.io",
     allowNewSignups: Boolean(settings.allowNewSignups),
     maintenanceMode: Boolean(settings.maintenanceMode),
@@ -79,7 +79,7 @@ export async function PATCH(request: Request) {
     const body = await request.json().catch(() => ({}));
     const update = {
       platformName: String(body.platformName || "StudyBuddy").trim().slice(0, 100),
-      platformLogo: String(body.platformLogo || "").trim(),
+      platformLogo: "/logo.png",
       supportEmail: String(body.supportEmail || "support@studybuddy.io")
         .trim()
         .toLowerCase()

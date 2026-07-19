@@ -20,7 +20,7 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
     },
     platformLogo: {
       type: String,
-      default: "",
+      default: "/logo.png",
     },
     supportEmail: {
       type: String,

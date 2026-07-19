@@ -581,7 +581,7 @@ export default function MentorManagementPage() {
                         ? `${filteredMentors.length} active mentors`
                         : `${filteredApplications.length} pending applications`}
                 </span>
-                <span>StudyBuddy Admin · Mentor Panel</span>
+                <span>Admin · Mentor Panel</span>
             </div>
 
             {reviewModal && (

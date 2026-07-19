@@ -509,7 +509,7 @@ export default function ChallengesManagementPage() {
         <span>
           {challenges.length} challenges · {stats.activeChallenges} active
         </span>
-        <span>StudyBuddy Admin · Challenges Panel</span>
+        <span>Admin · Challenges Panel</span>
       </div>
 
       {modalMode !== null ? (

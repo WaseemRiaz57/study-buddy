@@ -35,6 +35,7 @@ import {
   Moon,
   ChevronDown,
 } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useTheme } from "next-themes";
 import {
   useSidebarBadges,
@@ -431,7 +432,7 @@ export default function AdminLayout({
         {/* Mobile header */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-white/10">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={22} className="text-primary shrink-0" />
+            <BrandLogo size="mark" />
             <span className="font-bold text-lg tracking-wide text-foreground dark:text-white">
               Admin Panel
             </span>
@@ -501,7 +502,7 @@ export default function AdminLayout({
               isCollapsed ? "justify-center" : ""
             }`}
           >
-            <ShieldCheck size={22} className="text-primary shrink-0" />
+            <BrandLogo size="mark" />
             {!isCollapsed && (
               <span className="font-bold text-lg tracking-wide text-foreground dark:text-white whitespace-nowrap">
                 Admin Panel

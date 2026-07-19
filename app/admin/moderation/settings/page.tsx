@@ -218,7 +218,7 @@ export default function AutoModSettingsPage() {
 
       <div className="flex items-center justify-between pb-4 text-xs text-muted-foreground">
         <span>Changes are saved when you click Save.</span>
-        <span>StudyBuddy Admin · Auto-Mod Configuration</span>
+        <span>Admin · Auto-Mod Configuration</span>
       </div>
     </div>
   );

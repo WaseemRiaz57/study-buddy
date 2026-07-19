@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
     Settings,
     Shield,
@@ -103,7 +104,6 @@ function SectionCard({
 
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 export default function PlatformSettingsPage() {
-    const logoInputRef = useRef<HTMLInputElement>(null);
     const [mounted, setMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -111,7 +111,6 @@ export default function PlatformSettingsPage() {
 
     // General
     const [platformName, setPlatformName] = useState("StudyBuddy");
-    const [platformLogo, setPlatformLogo] = useState("");
     const [supportEmail, setSupportEmail] = useState("support@studybuddy.io");
     const [allowSignups, setAllowSignups] = useState(true);
 
@@ -148,7 +147,6 @@ export default function PlatformSettingsPage() {
 
                 const settings = data?.settings || {};
                 setPlatformName(settings.platformName || "StudyBuddy");
-                setPlatformLogo(settings.platformLogo || "");
                 setSupportEmail(settings.supportEmail || "support@studybuddy.io");
                 setAllowSignups(Boolean(settings.allowNewSignups));
                 setMaintenanceMode(Boolean(settings.maintenanceMode));
@@ -183,7 +181,6 @@ export default function PlatformSettingsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     platformName,
-                    platformLogo,
                     supportEmail,
                     allowNewSignups: allowSignups,
                     maintenanceMode,
@@ -204,24 +201,6 @@ export default function PlatformSettingsPage() {
         } finally {
             setIsSaving(false);
         }
-    };
-
-    const handleLogoSelected = (file?: File) => {
-        if (!file) return;
-
-        if (!file.type.startsWith("image/")) {
-            toast.error("Please select an image file.");
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            setPlatformLogo(String(reader.result || ""));
-        };
-        reader.onerror = () => {
-            toast.error("Failed to read the selected image.");
-        };
-        reader.readAsDataURL(file);
     };
 
     if (!mounted) {
@@ -278,56 +257,13 @@ export default function PlatformSettingsPage() {
                 {/* Platform Logo */}
                 <SettingRow
                     label="Platform Logo"
-                    description="Upload the logo that appears on your marketing site and in the app header."
+                    description="The official StudyBuddy logo used across the marketing site and application."
                 >
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-[#7C3AED] flex items-center justify-center text-xs font-semibold text-white shadow-sm shadow-purple-500/30 dark:shadow-purple-500/20 overflow-hidden">
-                            {platformLogo ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                    src={platformLogo}
-                                    alt="Platform logo preview"
-                                    className="h-full w-full object-cover"
-                                />
-                            ) : (
-                                "SB"
-                            )}
-                        </div>
-                        <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <input
-                                    ref={logoInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(event) =>
-                                        handleLogoSelected(event.target.files?.[0])
-                                    }
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => logoInputRef.current?.click()}
-                                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#7C3AED] text-white hover:opacity-90 transition-colors"
-                                >
-                                    Upload Logo
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPlatformLogo("");
-                                        if (logoInputRef.current) {
-                                            logoInputRef.current.value = "";
-                                        }
-                                    }}
-                                    className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/[0.04] transition-colors"
-                                >
-                                    Remove
-                                </button>
-                            </div>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                                PNG or SVG, at least 256×256px. This logo will be used across the website.
-                            </p>
-                        </div>
+                        <BrandLogo size="lockup" className="h-12 w-12" />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Managed from <code className="font-mono text-[11px]">/public/logo.png</code>
+                        </p>
                     </div>
                 </SettingRow>
 
@@ -530,7 +466,7 @@ export default function PlatformSettingsPage() {
                 <span>
                     Last updated: {lastUpdated ? new Date(lastUpdated).toLocaleString() : "Not saved yet"}
                 </span>
-                <span>StudyBuddy Admin · Platform Settings</span>
+                <span>Admin · Platform Settings</span>
             </div>
         </div>
     );

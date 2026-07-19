@@ -16,8 +16,6 @@ const PAGE_CACHE = \`\${CACHE_PREFIX}-pages-\${CACHE_VERSION}\`;
 const STATIC_ASSETS = [
   "/manifest.json",
   "/favicon.ico",
-  "/icon-192x192.png",
-  "/icon-512x512.png",
   "/logo.png"
 ];
 

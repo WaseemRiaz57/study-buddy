@@ -241,7 +241,7 @@ export default function AppealsManagementPage() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>Showing {displayedAppeals.length} appeals</span>
-        <span>StudyBuddy Admin · Appeals Panel</span>
+        <span>Admin · Appeals Panel</span>
       </div>
 
       {reviewModal && (

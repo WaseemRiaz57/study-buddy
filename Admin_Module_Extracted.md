@@ -840,7 +840,7 @@ export default function ChallengesManagementPage() {
                 <span>
                     {challenges.length} challenges · {activeCount} active
                 </span>
-                <span>StudyBuddy Admin · Challenges Panel</span>
+                <span>Admin · Challenges Panel</span>
             </div>
 
             {/* ════════ CREATE / EDIT MODAL ════════ */}
@@ -5005,7 +5005,7 @@ export default function LeaderboardControlPage() {
                     {timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} ·{" "}
                     {role.charAt(0).toUpperCase() + role.slice(1)}
                 </span>
-                <span>StudyBuddy Admin · Leaderboard Panel</span>
+                <span>Admin · Leaderboard Panel</span>
             </div>
 
             {/* ════════ EDIT XP MODAL ════════ */}
@@ -5686,7 +5686,7 @@ export default function MentorManagementPage() {
                         ? `${filteredMentors.length} active mentors`
                         : `${filteredApplications.length} pending applications`}
                 </span>
-                <span>StudyBuddy Admin · Mentor Panel</span>
+                <span>Admin · Mentor Panel</span>
             </div>
 
             {/* ════════ APPLICATION REVIEW MODAL ════════ */}
@@ -6257,7 +6257,7 @@ export default function AppealsManagementPage() {
                 <span>
                     Showing {displayedAppeals.length} of {MOCK_APPEALS.length} appeals
                 </span>
-                <span>StudyBuddy Admin · Appeals Panel</span>
+                <span>Admin · Appeals Panel</span>
             </div>
 
             {/* ════════ REVIEW MODAL ════════ */}
@@ -7010,7 +7010,7 @@ export default function ReportsQueuePage() {
           Showing {filtered.length} of{" "}
           {REPORTS.filter((r) => r.status === activeTab).length} reports
         </span>
-        <span>StudyBuddy Admin · Last synced just now</span>
+        <span>Admin · Last synced just now</span>
       </div>
     </div>
   );
@@ -7375,7 +7375,7 @@ export default function AutoModSettingsPage() {
             {/* ════════ FOOTER ════════ */}
             <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pb-4">
                 <span>Changes are saved immediately when you click Save.</span>
-                <span>StudyBuddy Admin · Auto-Mod Configuration</span>
+                <span>Admin · Auto-Mod Configuration</span>
             </div>
         </div>
     );
@@ -7817,7 +7817,7 @@ export default function StrikesWarningsPage() {
                 <span>
                     Showing {filteredUsers.length} of {MOCK_USERS.length} users
                 </span>
-                <span>StudyBuddy Admin · Moderation Panel</span>
+                <span>Admin · Moderation Panel</span>
             </div>
 
             {/* ════════ STRIKE HISTORY MODAL ════════ */}
@@ -8401,7 +8401,7 @@ export default function MonetizationPage() {
                 <span>
                     {PLANS.length} plans · {TRANSACTIONS.length} recent transactions
                 </span>
-                <span>StudyBuddy Admin · Monetization Panel</span>
+                <span>Admin · Monetization Panel</span>
             </div>
 
             {/* ════════ EDIT PLAN MODAL ════════ */}
@@ -8899,7 +8899,7 @@ export default function NotificationsManagerPage() {
         <span>
           {SENT_NOTIFICATIONS.length} campaigns sent · {avgOpenRate}% avg engagement
         </span>
-        <span>StudyBuddy Admin · Notifications Panel</span>
+        <span>Admin · Notifications Panel</span>
       </div>
 
       {/* ════════ COMPOSE MODAL ════════ */}
@@ -9736,7 +9736,7 @@ export default function PlatformSettingsPage() {
             {/* ════════ FOOTER ════════ */}
             <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
                 <span>Last updated: Feb 24, 2026 · 5:58 AM</span>
-                <span>StudyBuddy Admin · Platform Settings</span>
+                <span>Admin · Platform Settings</span>
             </div>
         </div>
     );
@@ -10083,4 +10083,3 @@ export default function UserManagementPage() {
   );
 }
 ```
-

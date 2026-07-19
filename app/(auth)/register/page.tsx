@@ -309,11 +309,8 @@ export default function RegisterPage() {
         className="glass-panel relative mx-auto w-full max-w-[460px] overflow-hidden rounded-2xl bg-card/80 p-4 shadow-xl sm:p-5"
       >
         <header className="mb-4 text-center">
-          <div className="mb-3 inline-flex items-center gap-1.5 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 backdrop-blur-xl">
-            <BrandLogo size="lockup" />
-            <span className="text-xl font-black tracking-tight text-[#7C3AED]">
-              StudyBuddy
-            </span>
+          <div className="mb-3 inline-flex items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 p-3 backdrop-blur-xl">
+            <BrandLogo size="lockup" className="h-12 w-12" />
           </div>
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">
             {step === 1 ? "Choose Your Path" : "Verify Your Email"}

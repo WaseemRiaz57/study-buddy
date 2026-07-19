@@ -317,7 +317,7 @@ export default function ReportsQueuePage() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>Showing {filtered.length} reports</span>
-        <span>StudyBuddy Admin · Last synced live</span>
+        <span>Admin · Last synced live</span>
       </div>
 
       {actionTarget && (

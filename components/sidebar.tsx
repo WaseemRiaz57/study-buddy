@@ -221,12 +221,10 @@ export function Sidebar({
           }`}
           aria-label={!mobile && isCollapsed ? "Expand sidebar" : "Dashboard"}
         >
-          <BrandLogo size={!mobile && isCollapsed ? "mark" : "lockup"} />
-          {(mobile || !isCollapsed) && (
-            <span className="whitespace-nowrap text-[28px] font-extrabold leading-none tracking-tight text-[#7C3AED]">
-              StudyBuddy
-            </span>
-          )}
+          <BrandLogo
+            size={!mobile && isCollapsed ? "mark" : "lockup"}
+            className={mobile || !isCollapsed ? "h-12 w-12" : ""}
+          />
         </Link>
 
         {mobile ? (

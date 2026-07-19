@@ -503,7 +503,7 @@ export default function NotificationsManagerPage() {
         <span>
           {totalCampaigns} campaigns sent · {avgOpenRate}% avg engagement
         </span>
-        <span>StudyBuddy Admin · Notifications Panel</span>
+        <span>Admin · Notifications Panel</span>
       </div>
 
       {/* ════════ COMPOSE MODAL ════════ */}

@@ -247,7 +247,7 @@ export default function StrikesWarningsPage() {
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>Showing {filteredLogs.length} active penalties</span>
-        <span>StudyBuddy Admin · Moderation Panel</span>
+        <span>Admin · Moderation Panel</span>
       </div>
 
       {(historyModal || revokeTarget) && (

@@ -557,7 +557,7 @@ export default function LeaderboardControlPage() {
           Showing {filteredUsers.length} of {leaderboardData.length} users ·{" "}
           {titleCase(timeframe)} · {titleCase(role)}
         </span>
-        <span>StudyBuddy Admin · Leaderboard Panel</span>
+        <span>Admin · Leaderboard Panel</span>
       </div>
 
       {modal?.kind === "edit" && (

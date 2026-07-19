@@ -7,6 +7,12 @@ import User from "@/models/User";
 
 export const runtime = "nodejs";
 
+const siteUrl = (
+  process.env.NEXTAUTH_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+).replace(/\/$/, "");
+const brandLogoUrl = `${siteUrl}/logo.png`;
+
 function normalizeEmail(email: unknown): string {
   return String(email || "").trim().toLowerCase();
 }
@@ -41,7 +47,7 @@ function buildResetEmailHtml(otp: string) {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px; background:#ffffff; border:1px solid #ddd6fe; border-radius:18px; overflow:hidden;">
                 <tr>
                   <td style="padding:32px 32px 14px 32px; text-align:center;">
-                    <div style="font-size:28px; font-weight:800; color:#7C3AED;">StudyBuddy</div>
+                    <img src="${brandLogoUrl}" alt="StudyBuddy" width="64" height="64" style="display:block; width:64px; height:64px; margin:0 auto; object-fit:contain;" />
                   </td>
                 </tr>
                 <tr>

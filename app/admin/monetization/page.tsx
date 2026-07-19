@@ -728,7 +728,7 @@ export default function MonetizationPage() {
                 <span>
                     {plansToDisplay.length} plans · {transactions.length} recent transactions
                 </span>
-                <span>StudyBuddy Admin · Monetization Panel</span>
+                <span>Admin · Monetization Panel</span>
             </div>
 
             {/* ════════ EDIT PLAN MODAL ════════ */}

@@ -9,11 +9,10 @@ export default function AboutPage() {
           <Link
             href="/"
             prefetch={true}
-            className="mb-8 inline-flex items-center gap-2"
+            className="mb-8 inline-flex items-center"
             aria-label="Go to StudyBuddy home"
           >
-            <BrandLogo size="mark" className="h-12 w-12" />
-            <span className="text-2xl font-bold text-[#7C3AED]">StudyBuddy</span>
+            <BrandLogo size="mark" className="h-14 w-14" />
           </Link>
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#7C3AED]">
             About Us
