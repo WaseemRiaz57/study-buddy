@@ -84,7 +84,7 @@ function LoginContent() {
       <div className="relative hidden h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F7F5FC] dark:bg-[#09070F] lg:block">
         <Image
           src="/Login_light.png"
-          alt="StudyBuddy login workspace"
+          alt="StudyBuddy focused learning workspace"
           fill
           priority
           sizes="60vw"
@@ -92,7 +92,7 @@ function LoginContent() {
         />
         <Image
           src="/Login_dark.png"
-          alt="StudyBuddy login workspace"
+          alt="StudyBuddy focused learning workspace"
           fill
           priority
           sizes="60vw"
