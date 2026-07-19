@@ -26,8 +26,13 @@ const socialLinks = [
 export function Footer() {
   const pathname = usePathname();
   
-  // Hide footer on dashboard and admin routes
-  if (pathname?.startsWith("/dashboard") || pathname?.startsWith("/admin")) {
+  // Authentication routes own the entire viewport with their split-screen layout.
+  if (
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/register")
+  ) {
     return null;
   }
 

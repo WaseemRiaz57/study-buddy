@@ -231,7 +231,7 @@ export default function RegisterPage() {
 
     return (
       <label
-        className={`relative cursor-pointer p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-3 group sm:p-6 ${
+        className={`group relative flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 p-3 text-center transition-all duration-300 ${
           isSelected
             ? `${primaryColor} ${shadowColor} scale-[1.02]`
             : `border-border/50 ${hoverColor} hover:bg-slate-50 dark:hover:bg-white/5 opacity-70 hover:opacity-100`
@@ -246,42 +246,49 @@ export default function RegisterPage() {
           className="sr-only"
         />
         {isSelected && (
-          <div className={`absolute top-3 right-3 ${checkColor}`}>
-            <CheckCircle size={20} fill="currentColor" className="text-white dark:text-black" />
+          <div className={`absolute right-2 top-2 ${checkColor}`}>
+            <CheckCircle size={16} fill="currentColor" className="text-white dark:text-black" />
           </div>
         )}
         <div
-          className={`p-4 rounded-full transition-colors ${
+          className={`rounded-full p-3 transition-colors ${
             isSelected
               ? iconBg
               : "bg-slate-100 dark:bg-white/10 text-slate-500 group-hover:text-primary"
           }`}
         >
-          <Icon size={28} />
+          <Icon size={22} />
         </div>
         <div>
-          <h3 className="font-bold text-lg">{title}</h3>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>
+          <h3 className="text-base font-bold">{title}</h3>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{description}</p>
         </div>
       </label>
     );
   };
 
   return (
-    <main className="auth-page min-h-screen w-full flex bg-background text-foreground transition-colors duration-300 lg:grid lg:grid-cols-2">
-      <div className="relative hidden h-full w-full bg-muted lg:block">
+    <main className="auth-page min-h-[100dvh] w-full bg-background text-foreground transition-colors duration-300 lg:grid lg:h-[100dvh] lg:min-h-0 lg:grid-cols-[3fr_2fr] lg:overflow-hidden">
+      <div className="relative hidden h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F5F2FC] dark:bg-[#09070F] lg:block">
         <Image
-          src="/register.png"
-          alt="Join Community"
+          src="/Signup_light.png"
+          alt="StudyBuddy signup learning journey"
           fill
-          className="object-cover"
           priority
-          sizes="50vw"
+          sizes="60vw"
+          className="object-contain object-center dark:hidden"
         />
-        <div className="absolute inset-0 bg-white/10 dark:bg-slate-950/20" />
+        <Image
+          src="/Signup_dark.png"
+          alt="StudyBuddy signup learning journey"
+          fill
+          priority
+          sizes="60vw"
+          className="hidden object-contain object-center dark:block"
+        />
       </div>
 
-      <section className="relative flex w-full items-center justify-center overflow-hidden bg-background p-4 sm:p-8 lg:p-12">
+      <section className="relative min-h-[100dvh] w-full overflow-y-auto bg-white dark:bg-[#09070F] lg:h-[100dvh] lg:min-h-0">
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent-mint/10 rounded-full blur-[120px]" />
@@ -290,34 +297,36 @@ export default function RegisterPage() {
       <BackButton
         href="/"
         label="Back to home"
-        className="absolute left-4 top-4 z-20 sm:left-8 sm:top-8"
+        className="absolute left-4 top-4 z-20 lg:left-6 lg:top-5"
       />
+
+      <div className="flex min-h-full w-full justify-center px-5 py-6 sm:px-8 lg:px-7 xl:px-10">
 
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="glass-panel mx-auto w-full max-w-2xl rounded-[2rem] p-5 sm:p-8 md:p-12 shadow-2xl relative overflow-hidden bg-card/80 backdrop-blur-xl"
+        className="glass-panel relative mx-auto w-full max-w-[460px] overflow-hidden rounded-2xl bg-card/80 p-4 shadow-xl sm:p-5"
       >
-        <header className="mb-8 text-center">
-          <div className="mb-5 inline-flex items-center gap-1.5 rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 backdrop-blur-xl">
+        <header className="mb-4 text-center">
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 backdrop-blur-xl">
             <BrandLogo size="lockup" />
-            <span className="text-2xl font-black tracking-tight text-[#7C3AED]">
+            <span className="text-xl font-black tracking-tight text-[#7C3AED]">
               StudyBuddy
             </span>
           </div>
-          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-bold mb-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">
             {step === 1 ? "Choose Your Path" : "Verify Your Email"}
           </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+          <h1 className="text-3xl font-bold text-foreground xl:text-4xl">
             {step === 1 ? "Join StudyBuddy as..." : "Enter your code"}
           </h1>
         </header>
 
-        <form onSubmit={handleRegister} className="space-y-8 min-h-[620px]">
+        <form onSubmit={handleRegister} className="space-y-3">
           {step === 1 ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 {(Object.keys(roleConfig) as Array<"student" | "teacher">).map((key) => {
                   const config = roleConfig[key];
                   return (
@@ -332,8 +341,8 @@ export default function RegisterPage() {
                 })}
               </div>
 
-              <div className="space-y-4 pt-6 border-t border-border/50">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3 border-t border-border/50 pt-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="relative group">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors group-focus-within:text-primary" />
                     <input
@@ -342,7 +351,7 @@ export default function RegisterPage() {
                       aria-label="First name"
                       required
                       value={formData.firstName}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                      className="w-full rounded-xl border border-border bg-background/50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
                       onChange={(e) =>
                         setFormData({ ...formData, firstName: e.target.value })
                       }
@@ -355,7 +364,7 @@ export default function RegisterPage() {
                       aria-label="Last name"
                       required
                       value={formData.lastName}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                      className="w-full rounded-xl border border-border bg-background/50 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
                       onChange={(e) =>
                         setFormData({ ...formData, lastName: e.target.value })
                       }
@@ -371,7 +380,7 @@ export default function RegisterPage() {
                     aria-label="Email address"
                     required
                     value={formData.email}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                    className="w-full rounded-xl border border-border bg-background/50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
@@ -384,7 +393,7 @@ export default function RegisterPage() {
                     aria-label="Create password"
                     required
                     value={formData.password}
-                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                    className="w-full rounded-xl border border-border bg-background/50 py-2.5 pl-10 pr-12 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
                     onChange={(e) => {
                       const password = e.target.value;
                       setFormData({ ...formData, password });
@@ -419,7 +428,7 @@ export default function RegisterPage() {
                     value={formData.confirmPassword}
                     aria-invalid={Boolean(passwordError)}
                     aria-describedby={passwordError ? "confirm-password-error" : undefined}
-                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-border bg-background/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/50 text-sm"
+                    className="w-full rounded-xl border border-border bg-background/50 py-2.5 pl-10 pr-12 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
                     onChange={(e) => {
                       const confirmPassword = e.target.value;
                       setFormData({ ...formData, confirmPassword });
@@ -455,10 +464,10 @@ export default function RegisterPage() {
               </div>
             </>
           ) : (
-            <div className="space-y-6 pt-6 border-t border-border/50">
-              <div className="flex flex-col items-center text-center gap-3 rounded-2xl border border-border/50 bg-background/40 px-6 py-8">
-                <div className="rounded-full bg-primary/10 p-4 text-primary">
-                  <ShieldCheck size={32} />
+            <div className="space-y-3 border-t border-border/50 pt-3">
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-border/50 bg-background/40 px-5 py-5 text-center">
+                <div className="rounded-full bg-primary/10 p-3 text-primary">
+                  <ShieldCheck size={28} />
                 </div>
                 <p className="text-sm text-muted-foreground">
                   We sent a 6-digit verification code to
@@ -477,7 +486,7 @@ export default function RegisterPage() {
                   autoComplete="one-time-code"
                   required
                   value={otp}
-                  className="w-full px-4 py-4 rounded-xl border border-border bg-background/50 text-center text-2xl font-bold tracking-[0.45em] focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/30"
+                  className="w-full rounded-xl border border-border bg-background/50 px-4 py-3 text-center text-2xl font-bold tracking-[0.45em] outline-none transition-all placeholder:text-muted-foreground/30 focus:border-primary focus:ring-2 focus:ring-primary/20"
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 />
               </div>
@@ -513,7 +522,7 @@ export default function RegisterPage() {
                 type="button"
                 disabled={isLoading}
                 onClick={() => setStep(1)}
-                className="w-full rounded-xl border border-border bg-background px-6 py-3 text-sm font-bold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                className="w-full rounded-xl border border-border bg-background px-6 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
               >
                 Edit details
               </button>
@@ -523,7 +532,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 ${roleConfig[role].buttonBg}`}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-bold text-white shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 ${roleConfig[role].buttonBg}`}
           >
             {isLoading ? (
               <>
@@ -539,7 +548,7 @@ export default function RegisterPage() {
 
           {step === 1 && (
             <>
-              <div className="relative py-2 mt-4">
+              <div className="relative py-1">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-border/50" />
                 </div>
@@ -554,7 +563,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={handleGoogleRegister}
                 disabled={isLoading}
-                className="flex w-full mt-2 items-center justify-center gap-3 rounded-xl border border-border bg-background px-6 py-4 text-sm font-bold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-background px-6 py-3 text-sm font-bold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path
@@ -579,7 +588,7 @@ export default function RegisterPage() {
             </>
           )}
 
-          <div className="text-center text-sm text-muted-foreground mt-4">
+          <div className="mt-1 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link href="/login" className="text-primary hover:underline font-bold">
               Log in
@@ -587,6 +596,7 @@ export default function RegisterPage() {
           </div>
         </form>
       </motion.div>
+      </div>
       </section>
     </main>
   );

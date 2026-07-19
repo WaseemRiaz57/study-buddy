@@ -80,20 +80,27 @@ function LoginContent() {
   };
 
   return (
-    <main className="auth-page min-h-screen w-full flex bg-background text-foreground lg:grid lg:grid-cols-2">
-      <div className="relative hidden h-full w-full bg-muted lg:block">
+    <main className="auth-page min-h-[100dvh] w-full bg-background text-foreground lg:grid lg:h-[100dvh] lg:min-h-0 lg:grid-cols-[3fr_2fr] lg:overflow-hidden">
+      <div className="relative hidden h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F5F2FC] dark:bg-[#09070F] lg:block">
         <Image
-          src="/login.png"
-          alt="Login Focus"
+          src="/Login_light.png"
+          alt="StudyBuddy login workspace"
           fill
-          className="object-cover"
           priority
-          sizes="50vw"
+          sizes="60vw"
+          className="object-contain object-center dark:hidden"
         />
-        <div className="absolute inset-0 bg-white/10 dark:bg-slate-950/20" />
+        <Image
+          src="/Login_dark.png"
+          alt="StudyBuddy login workspace"
+          fill
+          priority
+          sizes="60vw"
+          className="hidden object-contain object-center dark:block"
+        />
       </div>
 
-      <section className="relative flex w-full items-center justify-center overflow-hidden bg-background p-4 sm:p-8 lg:p-12">
+      <section className="relative min-h-[100dvh] w-full overflow-y-auto bg-white dark:bg-[#09070F] lg:h-[100dvh] lg:min-h-0">
       
       {/* Animated Background Glows */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -127,18 +134,20 @@ function LoginContent() {
       <BackButton
         href="/"
         label="Back to home"
-        className="absolute left-4 top-4 z-20 sm:left-8 sm:top-8"
+        className="absolute left-4 top-4 z-20 lg:left-6 lg:top-5"
       />
+
+      <div className="flex min-h-full w-full items-center justify-center px-5 py-8 sm:px-8 lg:px-7 xl:px-10">
 
       <motion.div
         initial="initial"
         animate="animate"
         variants={staggerContainer}
-        className="w-full max-w-md"
+        className="w-full max-w-[460px]"
       >
         {/* Header Section */}
-        <motion.header variants={fadeInUp} className="mb-8 text-center">
-          <motion.div variants={scaleIn} className="mb-6 inline-flex">
+        <motion.header variants={fadeInUp} className="mb-4 text-center">
+          <motion.div variants={scaleIn} className="mb-3 inline-flex">
             <motion.div
               className="relative"
               whileHover={prefersReducedMotion ? {} : { 
@@ -148,9 +157,9 @@ function LoginContent() {
               transition={{ duration: 0.5 }}
             >
               <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
-              <div className="relative flex items-center gap-1.5 rounded-2xl border border-primary/20 bg-primary/10 px-5 py-4 backdrop-blur-xl">
+              <div className="relative flex items-center gap-1.5 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 backdrop-blur-xl">
                 <BrandLogo size="lockup" />
-                <span className="text-2xl font-black tracking-tight text-[#7C3AED]">
+                <span className="text-xl font-black tracking-tight text-[#7C3AED]">
                   StudyBuddy
                 </span>
               </div>
@@ -159,14 +168,14 @@ function LoginContent() {
 
           <motion.p
             variants={fadeInUp}
-            className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-bold mb-4"
+            className="mb-2 text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground"
           >
             Welcome Back, Scholar
           </motion.p>
           
           <motion.h1
             variants={fadeInUp}
-            className="text-4xl font-black tracking-tight sm:text-5xl mb-3"
+            className="mb-2 text-3xl font-black tracking-tight xl:text-4xl"
           >
             Enter Your{" "}
             <span className="text-primary">
@@ -176,7 +185,7 @@ function LoginContent() {
           
           <motion.p
             variants={fadeInUp}
-            className="text-base text-muted-foreground max-w-sm mx-auto"
+            className="mx-auto max-w-sm text-sm text-muted-foreground"
           >
             Resume your learning journey and reconnect with your study community
           </motion.p>
@@ -185,17 +194,17 @@ function LoginContent() {
         {/* Form Card */}
         <motion.div
           variants={scaleIn}
-          className="relative overflow-hidden rounded-3xl border border-border/50 bg-card p-5 backdrop-blur-xl shadow-2xl sm:p-8"
+          className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-4 shadow-xl sm:p-5"
         >
           <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
 
-          <form className="relative space-y-6" onSubmit={handleSubmit}>
+          <form className="relative space-y-3" onSubmit={handleSubmit}>
             {/* Error Message */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-4"
+                className="flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-3"
               >
                 <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
                 <p className="text-sm text-red-600 dark:text-red-400 font-medium">{error}</p>
@@ -218,7 +227,7 @@ function LoginContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="w-full rounded-2xl border border-border bg-background/50 pl-12 pr-4 py-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50 disabled:opacity-50"
+                className="w-full rounded-xl border border-border bg-background/50 py-3 pl-11 pr-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50 disabled:opacity-50"
                 />
               </div>
             </motion.div>
@@ -247,7 +256,7 @@ function LoginContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="w-full rounded-2xl border border-border bg-background/50 pl-12 pr-12 py-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50 disabled:opacity-50"
+                className="w-full rounded-xl border border-border bg-background/50 py-3 pl-11 pr-12 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50 disabled:opacity-50"
                 />
                 <button
                   type="button"
@@ -272,7 +281,7 @@ function LoginContent() {
                 disabled={isLoading}
                 whileHover={prefersReducedMotion || isLoading ? {} : { scale: 1.02 }}
                 whileTap={prefersReducedMotion || isLoading ? {} : { scale: 0.98 }}
-                className="group relative w-full overflow-hidden rounded-2xl bg-primary px-6 py-4 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group relative w-full overflow-hidden rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="relative flex items-center justify-center gap-2">
                   {isLoading ? (
@@ -296,7 +305,7 @@ function LoginContent() {
             </motion.div>
 
             {/* Divider for Social Login */}
-            <motion.div variants={fadeInUp} className="relative py-2">
+            <motion.div variants={fadeInUp} className="relative py-1">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-border" />
               </div>
@@ -315,7 +324,7 @@ function LoginContent() {
                 disabled={isLoading}
                 whileHover={prefersReducedMotion || isLoading ? {} : { scale: 1.02 }}
                 whileTap={prefersReducedMotion || isLoading ? {} : { scale: 0.98 }}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background px-6 py-4 text-sm font-bold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-background px-6 py-3 text-sm font-bold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -328,7 +337,7 @@ function LoginContent() {
             </motion.div>
 
             {/* Register Link */}
-            <motion.div variants={fadeInUp} className="text-center pt-2">
+            <motion.div variants={fadeInUp} className="pt-1 text-center">
               <Link 
                 href="/register" 
                 className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors group"
@@ -342,7 +351,7 @@ function LoginContent() {
         {/* Footer Note */}
         <motion.p
           variants={fadeInUp}
-          className="mt-8 text-center text-xs text-muted-foreground"
+          className="mt-4 text-center text-xs text-muted-foreground"
         >
           By continuing, you agree to StudyBuddy&apos;s{" "}
           <Link href="/terms" className="text-primary hover:underline font-semibold">
@@ -354,6 +363,7 @@ function LoginContent() {
           </Link>
         </motion.p>
       </motion.div>
+      </div>
       </section>
     </main>
   );
