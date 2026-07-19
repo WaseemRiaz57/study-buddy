@@ -9,8 +9,9 @@ async function getBuildId() {
 }
 
 const buildId = await getBuildId();
+const cacheVersion = `${buildId}-brand-v2`;
 const swSource = `const CACHE_PREFIX = "studybuddy";
-const CACHE_VERSION = ${JSON.stringify(buildId)};
+const CACHE_VERSION = ${JSON.stringify(cacheVersion)};
 const STATIC_CACHE = \`\${CACHE_PREFIX}-static-\${CACHE_VERSION}\`;
 const PAGE_CACHE = \`\${CACHE_PREFIX}-pages-\${CACHE_VERSION}\`;
 const STATIC_ASSETS = [

@@ -1,12 +1,12 @@
 "use client";
 
 import { Menu, X, Moon, Sun, User, Settings } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react"; // 👈 NextAuth import
-import { BrandLogo } from "@/components/BrandLogo";
 
 const navItems: Array<{ href: string; label: string }> = [];
 
@@ -67,7 +67,15 @@ export function Navbar() {
           className="flex items-center"
           aria-label="StudyBuddy home"
         >
-          <BrandLogo size="lockup" className="h-12 w-12" />
+          <Image
+            src="/logo.png"
+            alt="StudyBuddy"
+            width={48}
+            height={48}
+            priority
+            className="block h-10 w-10 object-contain"
+            style={{ background: "transparent" }}
+          />
         </Link>
 
         {/* Mobile Menu Button */}
