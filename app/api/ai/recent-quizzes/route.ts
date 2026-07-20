@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import Quiz from "@/models/Quiz";
+import { isMentorRole } from "@/lib/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
     }
 
     const role = normalizeRole(session.user.role);
-    if (role !== "teacher" && role !== "mentor") {
+    if (!isMentorRole(role)) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 

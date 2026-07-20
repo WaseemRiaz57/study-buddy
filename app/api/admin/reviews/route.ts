@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isMentorRole } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
@@ -30,7 +31,7 @@ async function requireAdmin() {
 
 function formatRole(role: unknown) {
   const normalized = String(role || "student").toLowerCase();
-  if (normalized === "teacher" || normalized === "mentor") return "Mentor";
+  if (isMentorRole(normalized)) return "Mentor";
   if (normalized === "admin") return "Admin";
   return "Student";
 }

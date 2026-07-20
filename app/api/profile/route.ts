@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isMentorRole } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
@@ -66,7 +67,7 @@ const emptyMentorProfile = {
 
 function normalizeRole(role: unknown) {
   const normalized = String(role ?? "").toLowerCase();
-  return normalized === "teacher" || normalized === "mentor" ? "mentor" : normalized;
+  return isMentorRole(normalized) ? "mentor" : normalized;
 }
 
 function normalizeString(value: unknown, maxLength?: number) {

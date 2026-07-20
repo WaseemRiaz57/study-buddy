@@ -112,7 +112,7 @@ export default function StudyBuddyPage() {
   const [publicProfileUserId, setPublicProfileUserId] = useState<string | null>(null);
 
   // Session tracking for the handshake
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [, setActiveSessionId] = useState<string | null>(null);
 
   const [matchedPeerData, setMatchedPeerData] = useState({
     userId: "",
@@ -127,8 +127,8 @@ export default function StudyBuddyPage() {
   const [acceptedRoomId, setAcceptedRoomId] = useState<string | null>(null);
   const [isCancellingActiveSession, setIsCancellingActiveSession] =
     useState(false);
-  const [respondingRequestId, setRespondingRequestId] = useState<string | null>(null);
-  const [respondingAction, setRespondingAction] = useState<"accept" | "decline" | null>(null);
+  const [, setRespondingRequestId] = useState<string | null>(null);
+  const [, setRespondingAction] = useState<"accept" | "decline" | null>(null);
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -702,17 +702,6 @@ export default function StudyBuddyPage() {
   };
 
   // ─── Close / Reset ───
-  const handleClose = () => {
-    stopStatusPolling();
-    setView("dashboard");
-    setSearchData({ subject: "", topic: "" });
-    setMatchedPeerData({ userId: "", name: "", image: "", tags: [] });
-    setMatchedListing(null);
-    setMatchmakingStatus("searching");
-    setActiveSessionId(null);
-    pendingRequestIdRef.current = null;
-  };
-
   const handleCancelLoading = () => {
     stopStatusPolling();
     setView("dashboard");

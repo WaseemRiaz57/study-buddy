@@ -161,17 +161,7 @@ const softSpring = { type: "spring", stiffness: 58, damping: 18, mass: 0.9 } as 
 const liquidSpring = { type: "spring", stiffness: 90, damping: 14, mass: 0.85 } as const;
 
 // Stagger parent — drives staggerChildren for section grids
-const stagger: Variants = {
-  hidden: {},
-  show:   { transition: { staggerChildren: 0.15, delayChildren: 0.05 } },
-};
-
 // Cinematic 3D word flip — rotateX up from behind, soft spring settle
-const wordFlip3D: Variants = {
-  hidden: { opacity: 0, y: 44, rotateX: -70 },
-  show:   { opacity: 1, y: 0,  rotateX: 0, transition: liquidSpring },
-};
-
 // Children variant used inside staggered grids (Features, Hero text, CTA)
 const fluidChild: Variants = {
   hidden:  { opacity: 0, y: 30 },
@@ -400,16 +390,6 @@ function SectionHeading({ children, className = "" }: { children: string; classN
 // ============================================================================
 // FADE-OUT GRADIENT TEXT
 // ============================================================================
-function FadeOutGradientText({ children }: { children: React.ReactNode }) {
-  return (
-    <span
-      className="bg-gradient-to-r from-purple-700 to-purple-300 bg-clip-text text-transparent"
-    >
-      {children}
-    </span>
-  );
-}
-
 // ============================================================================
 // ANIMATED DIVIDER
 // ============================================================================
@@ -549,8 +529,8 @@ function AnimatedProgressBar({ pct, color = " " }: { pct: number; color?: string
 // PRICING CARD
 // ============================================================================
 const PricingCard = memo(function PricingCard({
-  plan, isYearly, index, isMobile, session
-}: { plan: PricingPlan; isYearly: boolean; index: number; isMobile: boolean; session: any }) {
+  plan, isYearly, index, session
+}: { plan: PricingPlan; isYearly: boolean; index: number; session: any }) {
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
   const pkr   = isYearly ? plan.yearlyPkr   : plan.monthlyPkr;
   const [hovered, setHovered] = useState(false);
@@ -1326,7 +1306,7 @@ export default function Home() {
               variants={fluidParent}
             >
               {pricingPlans.map((plan, i) => (
-                <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} isMobile={isMobile} session={session} />
+                <PricingCard key={plan.title} plan={plan} isYearly={isYearly} index={i} session={session} />
               ))}
             </motion.div>
           </CinematicLayer>

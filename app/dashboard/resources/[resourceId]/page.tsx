@@ -16,7 +16,6 @@ import {
   Calendar,
   Flag,
   Share2,
-  ThumbsUp,
   MessageSquare,
   LockKeyhole,
   Loader2,

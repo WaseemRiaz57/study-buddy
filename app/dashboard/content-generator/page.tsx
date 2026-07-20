@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { useSession } from "next-auth/react";
+import { isMentorRole } from "@/lib/roles";
 import { toast } from "sonner";
 import {
   AlignLeft,
@@ -119,11 +120,6 @@ const historyTypeStyles: Record<TabId, { bg: string; text: string; Icon: LucideI
   summarizer: { bg: "bg-blue-100 dark:bg-blue-500/20", text: "text-blue-600 dark:text-blue-400", Icon: AlignLeft },
   quiz: { bg: "bg-purple-100 dark:bg-purple-500/20", text: "text-[#7C3AED]", Icon: BrainCircuit },
 };
-
-function isMentorRole(role: unknown) {
-  const normalized = String(role || "").toLowerCase();
-  return normalized === "teacher" || normalized === "mentor";
-}
 
 function formatRelativeTime(isoDate: string) {
   const date = new Date(isoDate).getTime();

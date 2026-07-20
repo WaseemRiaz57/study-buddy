@@ -229,8 +229,8 @@ export default function BadgesPage() {
   const completionPercentage = stats.completionPercentage;
 
   return (
-    <div className="min-h-screen bg-[#f7f6f8] dark:bg-[#191121] transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="min-h-screen bg-background transition-colors">
+      <div className="app-page space-y-6">
         {/* ── Hero Section ──────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -240,7 +240,7 @@ export default function BadgesPage() {
         >
           {/* Title */}
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
               Badge of Honor
             </h1>
             <p className="mt-1 text-muted-foreground text-sm sm:text-base">
@@ -250,13 +250,13 @@ export default function BadgesPage() {
           </div>
 
           {/* Progress Card */}
-          <div className="glass-panel rounded-2xl p-6 space-y-4">
+          <div className="glass-panel space-y-4 rounded-2xl p-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-4">
                 {/* Avatar */}
                 <div className="relative">
-                  <div className="h-14 w-14 rounded-2xl bg-[#7C3AED]   flex items-center justify-center shadow-lg">
-                    <Award size={28} className="text-white" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#7C3AED] shadow-lg">
+                    <Award size={24} className="text-white" />
                   </div>
                   <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-yellow-400 border-2 border-white dark:border-[#191121] flex items-center justify-center">
                     <Crown size={10} className="text-yellow-800" />
@@ -386,7 +386,7 @@ export default function BadgesPage() {
           variants={stagger}
           initial="initial"
           animate="animate"
-          className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5"
+          className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
         >
           <AnimatePresence mode="popLayout">
             {isLoading ? (
@@ -422,14 +422,13 @@ function BadgeCard({ badge }: { badge: BadgeItem }) {
       variants={fadeUp}
       layout
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="break-inside-avoid"
+      className="min-w-0 h-full"
     >
       <div
         className={`
-          group relative rounded-2xl border p-5 transition-all duration-300
+          group relative h-full min-w-0 overflow-hidden rounded-2xl border p-4 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
           bg-card/80 dark:bg-white/[0.04] ${config.border}
-          backdrop-blur-md
-          ${isLocked ? "opacity-60 grayscale" : `${config.glow} hover:-translate-y-2 hover:scale-[1.01]`}
+          ${isLocked ? "opacity-60 grayscale" : `${config.glow} hover:-translate-y-1`}
         `}
       >
         {/* Locked Overlay */}

@@ -6,17 +6,14 @@ import { BrandLogo } from "@/components/BrandLogo";
 import {
     Settings,
     Shield,
-    Database,
     Globe,
     Save,
-    Server,
     Key,
     AlertTriangle,
     Eye,
     EyeOff,
     RefreshCw,
     Mail,
-    UserPlus,
     Lock,
     Loader2,
 } from "lucide-react";

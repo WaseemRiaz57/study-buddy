@@ -10,7 +10,6 @@ import {
     Edit,
     Check,
     Settings,
-    ArrowRight,
     X,
     Sparkles,
     Crown,

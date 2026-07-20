@@ -380,16 +380,16 @@ export default function AdminLayout({
   }, [pathname, session?.user?.role, setBadges, status]);
 
   if (!mounted || status === "loading") {
-    return <div className="min-h-screen bg-slate-50 dark:bg-[#0f0a16]" />;
+    return <div className="min-h-screen bg-background" />;
   }
 
   if (status === "unauthenticated") {
-    return <div className="min-h-screen bg-slate-50 dark:bg-[#0f0a16]" />;
+    return <div className="min-h-screen bg-background" />;
   }
 
   if (String(session?.user?.role || "").toUpperCase() !== "ADMIN") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-center dark:bg-[#0f0a16]">
+      <main className="flex min-h-screen items-center justify-center bg-background px-6 text-center">
         <section className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-[#1a0f26]">
           <ShieldCheck size={36} className="mx-auto text-[#7C3AED]" />
           <h1 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">
@@ -410,7 +410,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="h-screen w-full bg-slate-50 dark:bg-[#0f0a16] overflow-hidden flex">
+    <div className="app-shell flex h-dvh w-full overflow-hidden bg-background">
       {/* ── Mobile overlay ── */}
       {mobileOpen && (
         <div

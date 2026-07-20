@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
+import { isMentorRole } from "@/lib/roles";
 import { connectMongoDB } from "@/lib/mongodb";
 import MentorSession from "@/models/MentorSession";
 
@@ -24,7 +25,7 @@ export async function GET() {
 
     const userRole = String(session.user.role ?? "").toLowerCase();
 
-    if (userRole !== "teacher" && userRole !== "mentor") {
+    if (!isMentorRole(userRole)) {
       return NextResponse.json(
         { message: "Forbidden. This feature is only available to Mentors." },
         { status: 403 }
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
 
     const userRole = String(session.user.role ?? "").toLowerCase();
 
-    if (userRole !== "teacher" && userRole !== "mentor") {
+    if (!isMentorRole(userRole)) {
       return NextResponse.json(
         { message: "Forbidden. This feature is only available to Mentors." },
         { status: 403 }

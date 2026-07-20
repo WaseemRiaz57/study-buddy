@@ -21,7 +21,7 @@ export interface PublicUserProfile {
   name: string;
   image: string;
   profileImage?: string;
-  role: "student" | "mentor" | "teacher";
+  role: "student" | "mentor";
   bio: string;
   xp: number;
   level: number;
@@ -127,7 +127,7 @@ export default function PublicProfileModal({
   }, [profile]);
 
   const image = profile?.profileImage || profile?.image || "";
-  const roleLabel = profile?.role === "teacher" ? "mentor" : profile?.role;
+  const roleLabel = profile?.role;
   const numericGiftAmount = Number(giftAmount);
   const canGift = Number.isInteger(numericGiftAmount) && numericGiftAmount > 0;
 

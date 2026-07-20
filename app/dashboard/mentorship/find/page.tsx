@@ -367,17 +367,7 @@ export default function MentorshipPage() {
         throw new Error(data?.message || "Could not book this session.");
       }
 
-      const xpResponse = await fetch("/api/progress/xp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ xp: 50 }),
-      });
-
-      if (!xpResponse.ok) {
-        toast.warning("Session booked, but XP could not be awarded yet.");
-      } else {
-        toast.success("Session booked! +50 XP awarded.");
-      }
+      toast.success("Session booked! +50 XP awarded.");
 
       setSelectedMentor(null);
       setBookingSuccessMessage("Your request has been sent to the mentor!");

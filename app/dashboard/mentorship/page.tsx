@@ -90,7 +90,6 @@ function formatSessionTime(value: string) {
   });
 }
 
-const SESSION_WINDOW_MS = 60 * 60 * 1000;
 
 function getSessionStartTime(session: StudentSession) {
   return session.actualStartTime || session.startTime || session.scheduledAt;
@@ -567,4 +566,3 @@ export default function MentorshipActivitiesHub() {
     </div>
   );
 }
-

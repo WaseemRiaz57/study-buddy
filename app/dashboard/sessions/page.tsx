@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -17,9 +18,10 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import ReviewModal from "@/components/mentorship/ReviewModal";
 import { UserAvatar } from "@/components/mentorship/UserAvatar";
 import { useGamificationStore } from "@/store/useGamificationStore";
+
+const ReviewModal = dynamic(() => import("@/components/mentorship/ReviewModal"));
 
 type SessionStatus =
   | "pending"
@@ -528,6 +530,7 @@ function ReceiptModal({
             <iframe
               src={receipt}
               title="Payment receipt PDF"
+              sandbox=""
               className="h-[60vh] w-full rounded-xl border border-slate-200 bg-white"
             />
           ) : (
@@ -620,7 +623,7 @@ export default function SessionsPage() {
   const { data: authSession, status: authStatus } = useSession();
   const addReward = useGamificationStore((state) => state.addReward);
   const userRole = String(authSession?.user?.role ?? "").toLowerCase();
-  const isMentorDashboardRole = userRole === "mentor" || userRole === "teacher";
+  const isMentorDashboardRole = userRole === "mentor";
   const [sessions, setSessions] = useState<DashboardSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -991,7 +994,7 @@ export default function SessionsPage() {
             <Loader2 className="h-4 w-4 animate-spin text-[#7C3AED]" />
             Loading sessions...
           </div>
-        ) : userRole !== "student" && userRole !== "teacher" && userRole !== "mentor" ? (
+        ) : userRole !== "student" && userRole !== "mentor" ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500 dark:border-slate-800 dark:bg-surface-dark">
             Sessions are available for student and mentor accounts.
           </div>

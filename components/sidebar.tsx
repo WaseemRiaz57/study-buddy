@@ -45,23 +45,23 @@ interface NavGroup {
 }
 
 const buildNavItems = (isCommunity: boolean, plan: string): NavItem[] => [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", roles: ["STUDENT", "TEACHER", "MENTOR"] },
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", roles: ["STUDENT", "MENTOR"] },
   { icon: FileText, label: "Notes Generator", href: "/dashboard/content-generator", roles: ["STUDENT"], badge: "AI" },
-  { icon: ClipboardList, label: "Quiz Generator", href: "/dashboard/content-generator", roles: ["TEACHER", "MENTOR"], badge: "AI" },
-  { icon: Library, label: "Resource Hub", href: "/dashboard/resources", roles: ["STUDENT", "TEACHER", "MENTOR"] },
-  { icon: Users, label: "My Students", href: "/dashboard/my-students", roles: ["TEACHER", "MENTOR"] },
-  { icon: CalendarCheck, label: "Sessions", href: "/dashboard/sessions", roles: ["TEACHER", "MENTOR"] },
+  { icon: ClipboardList, label: "Quiz Generator", href: "/dashboard/content-generator", roles: ["MENTOR"], badge: "AI" },
+  { icon: Library, label: "Resource Hub", href: "/dashboard/resources", roles: ["STUDENT", "MENTOR"] },
+  { icon: Users, label: "My Students", href: "/dashboard/my-students", roles: ["MENTOR"] },
+  { icon: CalendarCheck, label: "Sessions", href: "/dashboard/sessions", roles: ["MENTOR"] },
   { icon: UserPlus, label: "Study with Buddy", href: "/dashboard/study-buddy", roles: ["STUDENT"] },
   { icon: GraduationCap, label: "Mentorship", href: "/dashboard/mentorship", roles: ["STUDENT"] },
-  { icon: Video, label: "Study Rooms", href: "/dashboard/study-rooms", roles: ["STUDENT", "TEACHER", "MENTOR"] },
-  { icon: Headphones, label: "Focus Rooms", href: "/dashboard/focus-rooms", roles: ["STUDENT", "TEACHER", "MENTOR"] },
-  { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", roles: ["STUDENT", "TEACHER", "MENTOR"] },
-  { icon: Swords, label: "Challenges", href: "/dashboard/challenges", roles: ["STUDENT", "TEACHER", "MENTOR"] },
-  { icon: Award, label: "Badges", href: "/dashboard/badges", roles: ["STUDENT", "TEACHER", "MENTOR"] },
-  { icon: MessageSquare, label: "Community", href: "/dashboard/community", roles: ["STUDENT", "TEACHER", "MENTOR"] },
-  { icon: DollarSign, label: "Earnings", href: "/dashboard/earnings", roles: ["TEACHER", "MENTOR"], locked: isCommunity },
-  ...(plan === "FREE" ? [{ icon: Sparkles, label: "Upgrade to Pro", href: "/dashboard/upgrade", roles: ["STUDENT", "TEACHER", "MENTOR"] as Role[], badge: "NEW" }] : []),
-  ...(plan === "PRO" ? [{ icon: Sparkles, label: "Upgrade to Elite", href: "/dashboard/upgrade", roles: ["STUDENT", "TEACHER", "MENTOR"] as Role[], badge: "NEW" }] : []),
+  { icon: Video, label: "Study Rooms", href: "/dashboard/study-rooms", roles: ["STUDENT", "MENTOR"] },
+  { icon: Headphones, label: "Focus Rooms", href: "/dashboard/focus-rooms", roles: ["STUDENT", "MENTOR"] },
+  { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", roles: ["STUDENT", "MENTOR"] },
+  { icon: Swords, label: "Challenges", href: "/dashboard/challenges", roles: ["STUDENT", "MENTOR"] },
+  { icon: Award, label: "Badges", href: "/dashboard/badges", roles: ["STUDENT", "MENTOR"] },
+  { icon: MessageSquare, label: "Community", href: "/dashboard/community", roles: ["STUDENT", "MENTOR"] },
+  { icon: DollarSign, label: "Earnings", href: "/dashboard/earnings", roles: ["MENTOR"], locked: isCommunity },
+  ...(plan === "FREE" ? [{ icon: Sparkles, label: "Upgrade to Pro", href: "/dashboard/upgrade", roles: ["STUDENT", "MENTOR"] as Role[], badge: "NEW" }] : []),
+  ...(plan === "PRO" ? [{ icon: Sparkles, label: "Upgrade to Elite", href: "/dashboard/upgrade", roles: ["STUDENT", "MENTOR"] as Role[], badge: "NEW" }] : []),
 ];
 
 function itemMatches(item: NavItem, href: string) {
@@ -166,7 +166,7 @@ export function Sidebar({
   const storePlan = useUserStore((state) => state.plan);
   const role = initialRole || storeRole;
   const plan = initialPlan || storePlan;
-  const isMentorRole = role === "TEACHER" || role === "MENTOR";
+  const isMentorRole = role === "MENTOR";
 
   const filteredNavItems = buildNavItems(plan === "FREE" || plan === "COMMUNITY", plan).filter((item) => {
     if (!item.roles.includes(role)) return false;

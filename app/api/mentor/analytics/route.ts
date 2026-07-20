@@ -4,13 +4,9 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import MentorReview from "@/models/MentorReview";
+import { isMentorRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
-
-function isMentorRole(role: unknown) {
-  const normalizedRole = String(role || "").toLowerCase();
-  return normalizedRole === "teacher" || normalizedRole === "mentor";
-}
 
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());

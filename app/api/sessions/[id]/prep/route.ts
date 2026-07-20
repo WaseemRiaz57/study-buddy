@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import MentorSession from "@/models/MentorSession";
+import { isTrustedCloudinaryUrl } from "@/lib/upload-security";
 
 const MAX_GOALS = 20;
 const MAX_GOAL_LENGTH = 300;
@@ -33,7 +34,10 @@ function normalizeAttachments(attachments: unknown) {
         name: String(item?.name ?? "").trim().slice(0, 200),
       };
     })
-    .filter((attachment) => attachment.url && attachment.name);
+    .filter(
+      (attachment) =>
+        attachment.name && isTrustedCloudinaryUrl(attachment.url)
+    );
 
   return normalizedAttachments.length === attachments.length
     ? normalizedAttachments

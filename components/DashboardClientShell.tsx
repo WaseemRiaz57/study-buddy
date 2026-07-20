@@ -1,16 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
-import ReviewModal from "@/components/mentorship/ReviewModal";
 import { Sidebar } from "@/components/sidebar";
-import { StudyBuddyRealtimeRequests } from "@/components/study-buddy/StudyBuddyRealtimeRequests";
 import { useActiveTimeReward } from "@/hooks/useActiveTimeReward";
 import { useOfflinePresence } from "@/hooks/useOfflinePresence";
 import { useGamificationStore } from "@/store/useGamificationStore";
 import { type Plan, type Role, useUserStore } from "@/store/useUserStore";
+
+const ReviewModal = dynamic(() => import("@/components/mentorship/ReviewModal"));
+const StudyBuddyRealtimeRequests = dynamic(() =>
+  import("@/components/study-buddy/StudyBuddyRealtimeRequests").then(
+    (module) => module.StudyBuddyRealtimeRequests
+  )
+);
 
 interface DashboardClientShellProps {
   children: React.ReactNode;
@@ -41,7 +47,7 @@ export function DashboardClientShell({
   useOfflinePresence();
   useActiveTimeReward();
 
-  const isMentorRole = initialRole === "TEACHER" || initialRole === "MENTOR";
+  const isMentorRole = initialRole === "MENTOR";
   const isMentorRestricted = isMentorRole && mentorAccessStatus !== "approved";
   const isSettingsRoute = pathname.startsWith("/dashboard/settings");
   const shouldBlockContent = isMentorRestricted && !isSettingsRoute;
@@ -123,7 +129,7 @@ export function DashboardClientShell({
   }, [setInitialGamificationData]);
 
   return (
-    <div className="relative flex h-screen overflow-hidden bg-background">
+    <div className="app-shell relative flex h-dvh overflow-hidden bg-background">
       <div className="hidden md:flex">
         <Sidebar initialRole={initialRole} initialPlan={initialPlan} />
       </div>
@@ -150,7 +156,7 @@ export function DashboardClientShell({
 
       <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto transition-all duration-300">
         <DashboardTopbar onOpenSidebar={() => setMobileSidebarOpen(true)} />
-        <div className="mx-auto w-full max-w-screen-2xl pb-20">
+        <div className="mx-auto w-full max-w-screen-2xl pb-16">
           {isMentorRestricted && (
             <section
               aria-label="Mentor account access status"

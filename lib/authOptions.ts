@@ -9,6 +9,7 @@ import { randomBytes } from "crypto";
 import { hashPassword, isPasswordHash, verifyPassword } from "@/lib/password";
 import Session from "@/models/Session";
 import { getRequestNetworkInfo, parseUserAgent } from "@/lib/security";
+import { normalizeDatabaseRole, normalizeSessionRole } from "@/lib/roles";
 
 declare module "next-auth" {
   interface Session {
@@ -34,18 +35,6 @@ declare module "next-auth/jwt" {
     /** Device-session id; mirrors a row in the Session collection. */
     sid?: string;
   }
-}
-
-function normalizeRole(role: unknown): Role {
-  const r = String(role).toUpperCase();
-  if (r === "ADMIN") return "ADMIN";
-  if (r === "TEACHER" || r === "MENTOR") return "MENTOR";
-  return "STUDENT";
-}
-
-function normalizeSignupRole(role: unknown): "student" | "mentor" {
-  const normalized = String(role).toLowerCase();
-  return normalized === "teacher" || normalized === "mentor" ? "mentor" : "student";
 }
 
 function normalizeSubscriptionPlan(plan: unknown): "FREE" | "PRO" | "ELITE" {
@@ -117,7 +106,7 @@ export const authOptions: NextAuthOptions = {
           id: String(user._id),
           name: user.name,
           email: user.email,
-          role: normalizeRole(user.role),
+          role: normalizeSessionRole(user.role),
         };
       },
     }),
@@ -134,7 +123,7 @@ export const authOptions: NextAuthOptions = {
 
           if (!userExists) {
             const cookieStore = await cookies();
-            const intendedRole = normalizeSignupRole(
+            const intendedRole = normalizeDatabaseRole(
               cookieStore.get("intended_role")?.value
             );
 
@@ -168,7 +157,7 @@ export const authOptions: NextAuthOptions = {
             token.email = dbUser.email;
             token.name = dbUser.name;
             token.image = dbUser.image ?? null;
-            token.role = normalizeRole(dbUser.role);
+            token.role = normalizeSessionRole(dbUser.role);
             token.subscriptionPlan = normalizeSubscriptionPlan(
               (dbUser as any).subscriptionPlan || (dbUser as any).plan
             );
@@ -194,8 +183,8 @@ export const authOptions: NextAuthOptions = {
 
             if (Object.prototype.hasOwnProperty.call(sessionUser, "role")) {
               token.role = session.user.role
-                ? normalizeRole(session.user.role)
-                : normalizeRole(token.role);
+                ? normalizeSessionRole(session.user.role)
+                : normalizeSessionRole(token.role);
             }
           }
         } catch (error) {
@@ -212,7 +201,7 @@ export const authOptions: NextAuthOptions = {
           token.email = dbUser.email;
           token.name = dbUser.name;
           token.image = dbUser.image ?? null;
-          token.role = normalizeRole(dbUser.role);
+          token.role = normalizeSessionRole(dbUser.role);
           token.subscriptionPlan = normalizeSubscriptionPlan(
             (dbUser as any).subscriptionPlan || (dbUser as any).plan
           );
@@ -224,7 +213,7 @@ export const authOptions: NextAuthOptions = {
           token.email = user.email;
           token.name = user.name;
           token.image = user.image ?? null;
-          token.role = normalizeRole((user as { role?: unknown }).role);
+          token.role = normalizeSessionRole((user as { role?: unknown }).role);
           token.subscriptionPlan = "FREE";
           token.accountStatus = "active";
         }
@@ -267,7 +256,7 @@ export const authOptions: NextAuthOptions = {
             token.email = dbUser.email;
             token.name = dbUser.name;
             token.image = dbUser.image ?? token.image ?? null;
-            token.role = normalizeRole(dbUser.role);
+            token.role = normalizeSessionRole(dbUser.role);
             token.subscriptionPlan = normalizeSubscriptionPlan(
               (dbUser as any).subscriptionPlan || (dbUser as any).plan
             );
@@ -279,7 +268,7 @@ export const authOptions: NextAuthOptions = {
           console.error("Error refreshing account status:", error);
         }
       }
-      token.role = normalizeRole(token.role);
+      token.role = normalizeSessionRole(token.role);
       token.subscriptionPlan = normalizeSubscriptionPlan(token.subscriptionPlan);
       token.accountStatus = normalizeAccountStatus(token.accountStatus);
       return token;
@@ -291,7 +280,7 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email ?? null;
         session.user.name = token.name ?? null;
         session.user.image = token.image ?? null;
-        session.user.role = normalizeRole(token.role);
+        session.user.role = normalizeSessionRole(token.role);
         session.user.subscriptionPlan = normalizeSubscriptionPlan(token.subscriptionPlan);
         session.user.accountStatus = normalizeAccountStatus(token.accountStatus);
       }
@@ -316,4 +305,3 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
-

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/authOptions";
 import { awardUser } from "@/lib/gamificationEngine";
 import { trackProgress } from "@/lib/challengeTracker";
 import { connectMongoDB } from "@/lib/mongodb";
+import { isMentorRole, LEGACY_MENTOR_SESSION_METRIC } from "@/lib/roles";
 import {
   emitSessionCompleted,
   emitUserNotification,
@@ -16,11 +17,7 @@ import User from "@/models/User";
 
 function isAllowedRole(role: unknown) {
   const normalizedRole = String(role ?? "").toLowerCase();
-  return (
-    normalizedRole === "teacher" ||
-    normalizedRole === "mentor" ||
-    normalizedRole === "admin"
-  );
+  return isMentorRole(normalizedRole) || normalizedRole === "admin";
 }
 
 export async function PATCH(
@@ -67,7 +64,7 @@ export async function PATCH(
     };
     const userRole = String(session.user.role ?? "").toLowerCase();
 
-    if (userRole === "teacher" || userRole === "mentor") {
+    if (isMentorRole(userRole)) {
       sessionQuery.mentorId = session.user.id;
     }
 
@@ -81,7 +78,7 @@ export async function PATCH(
     }
 
     if (
-      (userRole === "teacher" || userRole === "mentor") &&
+      isMentorRole(userRole) &&
       !existingSession.mentorJoinedAt
     ) {
       return NextResponse.json(
@@ -96,7 +93,7 @@ export async function PATCH(
     const mentorSession = await existingSession.save();
 
     const rateSource =
-      userRole === "teacher" || userRole === "mentor"
+      isMentorRole(userRole)
         ? mentorProfile
         : await MentorProfile.findOne({ userId: mentorSession.mentorId })
             .select("hourlyRate")
@@ -112,7 +109,7 @@ export async function PATCH(
       .lean();
     const mentorName = mentorUser?.name || "your mentor";
 
-    const [updatedMentorProfile, studentReward, mentorReward, teacherSessionProgress] = await Promise.all([
+    const [updatedMentorProfile, studentReward, mentorReward, mentorSessionProgress] = await Promise.all([
       MentorProfile.findOneAndUpdate(
         { userId: mentorSession.mentorId },
         {
@@ -124,7 +121,8 @@ export async function PATCH(
       awardUser(String(mentorSession.studentId), "COMPLETED_SESSION"),
       awardUser(String(mentorSession.mentorId), "MENTOR_SESSION_COMPLETE"),
       Promise.all([
-        trackProgress(String(mentorSession.studentId), "teacher_session", 1),
+        trackProgress(String(mentorSession.studentId), "mentor_session", 1),
+        trackProgress(String(mentorSession.studentId), LEGACY_MENTOR_SESSION_METRIC, 1),
         trackProgress(String(mentorSession.studentId), "completed_session", 1),
       ]).then((results) => results.flat()),
     ]);
@@ -168,7 +166,7 @@ export async function PATCH(
         studentXp: studentReward.profile.xp,
         studentCoins: studentReward.profile.coins,
         studentStreak: studentReward.profile.streak,
-        challengeProgress: teacherSessionProgress,
+        challengeProgress: mentorSessionProgress,
       },
       reward: mentorReward,
     });

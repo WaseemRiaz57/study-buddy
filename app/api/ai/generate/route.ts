@@ -21,6 +21,7 @@ import AIContent from "@/models/AIContent";
 import AINote from "@/models/AINote";
 import Quiz from "@/models/Quiz";
 import UsageCounter from "@/models/UsageCounter";
+import { isMentorRole } from "@/lib/roles";
 // @ts-expect-error - pdf-parse-fork ships CommonJS types that do not line up with this Next.js build.
 import pdf from "pdf-parse-fork";
 
@@ -44,15 +45,6 @@ type GenerateRequestPayload = {
   numberOfQuestions?: number;
   uploadedText?: string;
 };
-
-function normalizeRole(role: unknown) {
-  return String(role || "student").trim().toLowerCase();
-}
-
-function isMentorRole(role: unknown) {
-  const normalized = normalizeRole(role);
-  return normalized === "teacher" || normalized === "mentor";
-}
 
 function titleFromText(value: string, fallback: string) {
   const heading = value.match(/^#\s+(.+)$/m)?.[1]?.trim();

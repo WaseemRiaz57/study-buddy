@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
+import { isMentorRole } from "@/lib/roles";
 import { connectMongoDB } from "@/lib/mongodb";
 import {
   MENTOR_SESSION_ACTIVE_STATUS,
@@ -30,9 +31,9 @@ export async function POST(
     }
 
     const userRole = String(session.user.role ?? "").toLowerCase();
-    const isMentorRole = userRole === "mentor" || userRole === "teacher";
+    const hasMentorRole = isMentorRole(userRole);
 
-    if (!isMentorRole) {
+    if (!hasMentorRole) {
       return NextResponse.json(
         { message: "Forbidden. Only Mentors can start a session." },
         { status: 403 }

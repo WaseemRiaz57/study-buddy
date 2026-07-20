@@ -61,8 +61,7 @@ interface PostCardProps {
 /*  Role badge (local helper)                                          */
 /* ------------------------------------------------------------------ */
 function RoleBadge({ role }: { role: string }) {
-  const rawRole = String(role || "student").toLowerCase();
-  const normalizedRole = rawRole === "teacher" ? "mentor" : rawRole;
+  const normalizedRole = String(role || "student").toLowerCase();
   const styles: Record<string, string> = {
     mentor:
       "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",

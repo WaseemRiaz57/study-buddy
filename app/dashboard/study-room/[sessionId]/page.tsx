@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, use, useCallback } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -115,7 +115,6 @@ export default function BuddySessionPage({
           >
             <ActiveSession
               mode={mode}
-              sessionId={sessionId}
               peer={peer}
               subject={subject}
               seconds={seconds}
@@ -154,7 +153,6 @@ export default function BuddySessionPage({
 
 function ActiveSession({
   mode,
-  sessionId,
   peer,
   subject,
   seconds,
@@ -163,7 +161,6 @@ function ActiveSession({
   onEndSession,
 }: {
   mode: "chat" | "video";
-  sessionId: string;
   peer: PeerInfo;
   subject: string;
   seconds: number;
@@ -313,7 +310,7 @@ function ActiveSession({
                     bg-white border-slate-200
                     dark:bg-[#0f0a16] dark:border-white/5"
                 >
-                  <ChatPanel peer={peer} currentUser={currentUser} />
+                  <ChatPanel peer={peer} />
                 </motion.aside>
               )}
             </AnimatePresence>
@@ -420,7 +417,7 @@ function ActiveSession({
               className="flex-1 flex flex-col rounded-2xl glass-panel relative overflow-hidden shadow-2xl
                 border-slate-200 dark:border-white/10"
             >
-              <ChatPanel peer={peer} currentUser={currentUser} />
+              <ChatPanel peer={peer} />
             </main>
           </div>
         )}
@@ -505,13 +502,7 @@ function VideoGrid({
 //  CHAT PANEL
 // ════════════════════════════════════════════════════════════════════
 
-function ChatPanel({
-  peer,
-  currentUser,
-}: {
-  peer: PeerInfo;
-  currentUser: PeerInfo;
-}) {
+function ChatPanel({ peer }: { peer: PeerInfo }) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: "sys-1", sender: "system", text: "Session started", time: "" },
     {

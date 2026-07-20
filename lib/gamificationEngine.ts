@@ -5,6 +5,7 @@ import Notification from "@/models/Notification";
 import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
 import UserProgress from "@/models/UserProgress";
+import { isMentorRole } from "@/lib/roles";
 
 export type GamificationActionType =
   | "COMPLETED_SESSION"
@@ -12,6 +13,7 @@ export type GamificationActionType =
   | "FOCUS_ROOM_COMPLETE"
   | "STUDY_BUDDY_COMPLETE"
   | "MENTOR_SESSION_COMPLETE"
+  | "BOOKED_MENTOR_SESSION"
   | "CREATED_POST"
   | "CREATED_COMMENT"
   | "DAILY_LOGIN"
@@ -29,6 +31,7 @@ export const REWARD_DICTIONARY: Record<GamificationActionType, RewardDefinition>
   FOCUS_ROOM_COMPLETE: { xp: 10, coins: 0 },
   STUDY_BUDDY_COMPLETE: { xp: 20, coins: 10 },
   MENTOR_SESSION_COMPLETE: { xp: 50, coins: 20 },
+  BOOKED_MENTOR_SESSION: { xp: 50, coins: 0 },
   CREATED_POST: { xp: 15, coins: 0 },
   CREATED_COMMENT: { xp: 5, coins: 1 },
   DAILY_LOGIN: { xp: 5, coins: 5 },
@@ -84,10 +87,7 @@ function applyStreakMultiplier(reward: RewardDefinition, nextStreak: number) {
 }
 
 function getProfileModelForRole(role: unknown) {
-  const normalizedRole = String(role || "student").toLowerCase();
-  return normalizedRole === "teacher" || normalizedRole === "mentor"
-    ? MentorProfile
-    : StudentProfile;
+  return isMentorRole(role) ? MentorProfile : StudentProfile;
 }
 
 async function syncUserProgress({

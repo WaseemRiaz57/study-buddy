@@ -5,14 +5,8 @@ import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
 import { normalizeSubscriptionPlan } from "@/lib/pricingConfig";
 import MentorProfile from "@/models/MentorProfile";
-import { type Plan, type Role } from "@/store/useUserStore";
-
-function normalizeRole(role: unknown): Role {
-  const normalized = String(role || "").toLowerCase();
-  if (normalized === "admin") return "ADMIN";
-  if (normalized === "teacher" || normalized === "mentor") return "TEACHER";
-  return "STUDENT";
-}
+import { type Plan } from "@/store/useUserStore";
+import { normalizeSessionRole } from "@/lib/roles";
 
 function normalizePlan(plan: unknown): Plan {
   const normalized = normalizeSubscriptionPlan(plan);
@@ -32,11 +26,11 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const initialRole = normalizeRole(session.user.role);
+  const initialRole = normalizeSessionRole(session.user.role);
   const initialPlan = normalizePlan(session.user.subscriptionPlan);
   let mentorAccessStatus: "approved" | "pending" | "not_submitted" = "approved";
 
-  if (initialRole === "TEACHER" || initialRole === "MENTOR") {
+  if (initialRole === "MENTOR") {
     await connectMongoDB();
 
     const mentorProfile = await MentorProfile.findOne({

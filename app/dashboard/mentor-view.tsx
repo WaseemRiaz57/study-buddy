@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
@@ -615,7 +614,6 @@ export function MentorDashboard() {
               {!isRequestsLoading && requests.map((request, i) => {
                 const student = getStudentDetails(request);
                 const studentName = student.name || "Student";
-                const initials = getInitials(studentName) || "ST";
                 const acceptingKey = `${request._id}-accepted`;
                 const decliningKey = `${request._id}-declined`;
                 const isResponding = respondingActionKey.startsWith(`${request._id}-`);

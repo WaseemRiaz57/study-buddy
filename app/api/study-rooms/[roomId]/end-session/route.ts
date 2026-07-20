@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
+import { isMentorRole } from "@/lib/roles";
 import { closeStudyRoomAndPersistDuration } from "@/lib/study-room-lifecycle";
 import {
   escapeStudyRoomRegex,
@@ -30,7 +31,7 @@ async function endSession(
     }
 
     const userRole = String(session?.user?.role || "").toLowerCase();
-    if (userRole !== "teacher" && userRole !== "mentor") {
+    if (!isMentorRole(userRole)) {
       return NextResponse.json(
         { message: "Forbidden: only Mentors can end sessions" },
         { status: 403 }

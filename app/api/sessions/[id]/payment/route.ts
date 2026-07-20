@@ -14,7 +14,7 @@ function normalizeReceipt(value: unknown) {
     return null;
   }
 
-  if (!receipt.startsWith("data:image/") && !receipt.startsWith("data:application/pdf")) {
+  if (!/^data:(?:image\/(?:png|jpeg|webp)|application\/pdf);base64,[a-z0-9+/=\s]+$/i.test(receipt)) {
     return null;
   }
 

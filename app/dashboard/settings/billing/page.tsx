@@ -6,7 +6,6 @@ import {
   Crown,
   ArrowRight,
   CheckCircle2,
-  CreditCard,
   Receipt,
   Download,
   Coins,

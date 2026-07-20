@@ -22,9 +22,9 @@ import { BrandLogo } from "@/components/BrandLogo";
 import BackButton from "@/components/ui/BackButton";
 
 interface RoleCardProps {
-  role: "student" | "teacher";
-  selectedRole: "student" | "teacher";
-  onSelect: (role: "student" | "teacher") => void;
+  role: "student" | "mentor";
+  selectedRole: "student" | "mentor";
+  onSelect: (role: "student" | "mentor") => void;
   title: string;
   description: string;
   icon: ElementType;
@@ -36,7 +36,7 @@ interface RoleCardProps {
 }
 
 export default function RegisterPage() {
-  const [role, setRole] = useState<"student" | "teacher">("student");
+  const [role, setRole] = useState<"student" | "mentor">("student");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -65,8 +65,8 @@ export default function RegisterPage() {
       iconBg: "bg-primary text-white",
       checkColor: "text-primary",
     },
-    teacher: {
-      title: "Teacher",
+    mentor: {
+      title: "Mentor",
       description: "I want to guide others, host sessions, and earn.",
       icon: Sparkles,
       primaryColor: "border-[#7C3AED] bg-[#7C3AED]/5",
@@ -324,7 +324,7 @@ export default function RegisterPage() {
           {step === 1 ? (
             <>
               <div className="grid grid-cols-2 gap-3">
-                {(Object.keys(roleConfig) as Array<"student" | "teacher">).map((key) => {
+                {(Object.keys(roleConfig) as Array<"student" | "mentor">).map((key) => {
                   const config = roleConfig[key];
                   return (
                     <RoleCard

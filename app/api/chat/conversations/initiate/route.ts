@@ -47,12 +47,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Initiate conversation error:", error);
     return NextResponse.json(
-      {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to initiate conversation.",
-      },
+      { message: "Failed to initiate conversation." },
       { status: 500 }
     );
   }

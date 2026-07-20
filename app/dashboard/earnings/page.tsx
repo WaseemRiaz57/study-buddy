@@ -4,27 +4,14 @@ import { useState } from "react";
 import Link from "next/link"; // <-- Link import kiya gaya hai
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Wallet,
-  Clock,
   TrendingUp,
   ChevronDown,
   ChevronRight,
   ArrowUpRight,
-  DollarSign,
   Star,
-  Calendar,
   FileText,
-  Download,
-  Filter,
-  Search,
-  Copy,
-  CheckCircle,
-  ExternalLink,
-  Landmark,
-  Shield,
   Sparkles,
   Nfc,
-  CreditCard,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -500,7 +487,7 @@ function DetailCell({ label, value, highlight }: { label: string; value: string;
 /* ------------------------------------------------------------------ */
 
 export default function EarningsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Transaction["status"]>("all");
 
   const filtered = TRANSACTIONS.filter((tx) => {

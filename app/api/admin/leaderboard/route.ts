@@ -11,7 +11,7 @@ import User from "@/models/User";
 export const dynamic = "force-dynamic";
 
 type Timeframe = "weekly" | "monthly" | "all-time";
-type AdminRoleFilter = "students" | "teachers" | "mentors" | "all";
+type AdminRoleFilter = "students" | "mentors" | "all";
 
 function isAdminRole(role: unknown) {
   return String(role ?? "").toLowerCase() === "admin";
@@ -35,12 +35,10 @@ function normalizeRole(value: string | null): AdminRoleFilter {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "students" || normalized === "student") return "students";
   if (
-    normalized === "teachers" ||
-    normalized === "teacher" ||
     normalized === "mentors" ||
     normalized === "mentor"
   ) {
-    return "teachers";
+    return "mentors";
   }
   return "all";
 }
@@ -133,7 +131,7 @@ export async function GET(request: Request) {
       );
     }
 
-    if (role === "teachers" || role === "all") {
+    if (role === "mentors" || role === "all") {
       profileQueries.push(
         MentorProfile.find({})
           .select("userId xp weeklyXP monthlyXP streak")

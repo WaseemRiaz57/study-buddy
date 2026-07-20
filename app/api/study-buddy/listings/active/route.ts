@@ -34,7 +34,7 @@ function getErrorDetails(error: unknown) {
 
     return {
       name: error.name,
-      message: error.message,
+      message: "Failed to fetch active listings.",
       code,
     };
   }

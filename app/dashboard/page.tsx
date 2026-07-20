@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { useUserStore } from "@/store/useUserStore";
-import { ProductTour } from "@/components/ProductTour";
 import { StudentDashboard } from "./student-view";
 import { MentorDashboard } from "./mentor-view";
 import DashboardLoading from "./loading";
 import { Megaphone, X } from "lucide-react";
+
+const ProductTour = dynamic(() =>
+  import("@/components/ProductTour").then((module) => module.ProductTour)
+);
 
 type DashboardAnnouncement = {
   id: string;

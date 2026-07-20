@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import {
   ArrowUp,
@@ -125,9 +126,12 @@ function Avatar({
   const content = (
     <>
       {scholar.avatar ? (
-        <img
+        <Image
           src={scholar.avatar}
           alt={scholar.name}
+          width={96}
+          height={96}
+          sizes="(max-width: 640px) 80px, 96px"
           className="h-full w-full object-cover"
         />
       ) : (
@@ -178,7 +182,7 @@ function PodiumCard({
       {...slideUp}
       transition={{ delay, duration: 0.55, ease: "easeOut" }}
       whileHover={{ y: -6 }}
-      className={`group flex flex-col items-center ${orderClass}`}
+      className={`group min-w-0 flex flex-col items-center ${orderClass}`}
     >
       <div className="relative mb-2">
         <Avatar
@@ -205,19 +209,19 @@ function PodiumCard({
       <button
         type="button"
         onClick={() => onProfileClick(scholar.userId)}
-        className={`text-sm font-semibold transition-colors hover:text-[#7C3AED] ${isWinner ? "text-yellow-600 dark:text-yellow-300" : "text-foreground"}`}
+        className={`max-w-full truncate px-1 text-xs font-semibold transition-colors hover:text-[#7C3AED] sm:text-sm ${isWinner ? "text-yellow-600 dark:text-yellow-300" : "text-foreground"}`}
       >
         {scholar.name}
       </button>
 
       <div
-        className={`mt-3 flex w-24 flex-col items-center justify-start rounded-t-2xl border pt-5 backdrop-blur-xl transition-shadow duration-300 sm:w-32 ${heights[index]} ${
+        className={`mt-3 flex w-full max-w-24 flex-col items-center justify-start rounded-t-2xl border pt-4 transition-shadow duration-300 sm:max-w-32 sm:pt-5 ${heights[index]} ${
           isWinner
             ? "border-yellow-400/30 bg-yellow-500/10 shadow-[0_0_40px_-10px_rgba(255,215,0,0.25)]"
             : "border-border bg-white/60 dark:bg-white/[0.06]"
         }`}
       >
-        <span className={`text-3xl font-extrabold sm:text-4xl ${isWinner ? "text-yellow-500" : "text-[#7C3AED]"}`}>
+        <span className={`text-2xl font-extrabold sm:text-3xl ${isWinner ? "text-yellow-500" : "text-[#7C3AED]"}`}>
           #{scholar.rank}
         </span>
         <span className="mt-1 font-mono text-xs text-muted-foreground">
@@ -279,14 +283,14 @@ export default function LeaderboardPage() {
 
   return (
     <div className="relative min-h-screen bg-background pb-28 text-foreground transition-colors duration-300">
-      <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+      <div className="app-page relative z-10 max-w-5xl">
         <motion.header {...slideUp} transition={{ duration: 0.45 }} className="mb-10 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-muted px-4 py-1.5 text-xs text-muted-foreground dark:border-white/10 dark:bg-white/[0.05]">
             <BookOpen className="h-3.5 w-3.5 text-[#7C3AED]" />
             Live Scholar Rankings
           </div>
 
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
             <Trophy className="mr-2 inline h-8 w-8 -mt-1 text-yellow-500" />
             Global leaderboard
           </h1>
@@ -325,7 +329,7 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <>
-            <section className="mb-12 flex items-end justify-center gap-3 sm:gap-8">
+            <section className="mb-10 grid grid-cols-3 items-end gap-1 sm:gap-6">
               {topThree.map((scholar, index) => (
                 <PodiumCard
                   key={scholar.userId}
@@ -403,7 +407,7 @@ export default function LeaderboardPage() {
         >
           <div className="border-t border-border bg-background/90 shadow-[0_-6px_30px_rgba(0,0,0,0.08)] backdrop-blur-2xl dark:border-white/[0.08] dark:bg-[#0f0a16]/90">
             <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <div className="relative">
                   <Avatar
                     scholar={currentUser}
@@ -414,8 +418,8 @@ export default function LeaderboardPage() {
                     {currentUser.rank}
                   </span>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-foreground sm:text-sm">
                     Your Rank: <span className="text-[#7C3AED]">#{currentUser.rank}</span>
                   </p>
                   <p className="font-mono text-xs text-muted-foreground">
@@ -450,7 +454,7 @@ export default function LeaderboardPage() {
                     {currentUser.streak}d
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <div className="hidden items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 sm:flex">
                   <ArrowUp className="h-3.5 w-3.5" />
                   <span>{currentUser.coins.toLocaleString()}</span>
                 </div>

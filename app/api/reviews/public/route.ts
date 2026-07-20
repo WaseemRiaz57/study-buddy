@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isMentorRole } from "@/lib/roles";
 import { connectMongoDB } from "@/lib/mongodb";
 import Review from "@/models/Review";
 
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 function normalizePublicRole(role: unknown) {
   const normalized = String(role || "student").toLowerCase();
-  if (normalized === "teacher" || normalized === "mentor") return "mentor";
+  if (isMentorRole(normalized)) return "mentor";
   return "student";
 }
 

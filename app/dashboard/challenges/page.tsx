@@ -64,7 +64,6 @@ type LeaderboardEntry = {
   rank: number;
 };
 
-const PURPLE = "#7C3AED";
 
 const stagger = {
   hidden: { opacity: 0 },

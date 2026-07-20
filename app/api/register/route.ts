@@ -3,14 +3,10 @@ import User from "@/models/User";
 import { NextResponse } from "next/server";
 import { hashPassword } from "@/lib/password";
 import Otp from "@/models/Otp";
+import { normalizeDatabaseRole } from "@/lib/roles";
 
 function normalizeEmail(email: unknown): string {
   return String(email || "").trim().toLowerCase();
-}
-
-function normalizeRole(role: unknown): "student" | "mentor" {
-  const normalized = String(role).toLowerCase();
-  return normalized === "teacher" || normalized === "mentor" ? "mentor" : "student";
 }
 
 export async function POST(req: Request) {
@@ -20,7 +16,7 @@ export async function POST(req: Request) {
     const normalizedEmail = normalizeEmail(email);
     const normalizedPassword = String(password || "");
     const normalizedConfirmPassword = String(confirmPassword || "");
-    const normalizedRole = normalizeRole(role);
+    const normalizedRole = normalizeDatabaseRole(role);
     const normalizedOtp = String(otp || "").trim();
 
     if (normalizedName.length < 2 || normalizedName.length > 80) {

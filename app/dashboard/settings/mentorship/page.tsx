@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
@@ -23,19 +22,6 @@ import {
   Zap,
 } from "lucide-react";
 import BackButton from "@/components/ui/BackButton";
-
-const SUBJECT_OPTIONS = [
-  "React",
-  "Calculus",
-  "Physics",
-  "History",
-  "Literature",
-  "Biology",
-  "Economics",
-  "Art History",
-  "Design",
-  "Career Prep",
-];
 
 const DAYS = [
   "Monday",

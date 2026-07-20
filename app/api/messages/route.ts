@@ -147,12 +147,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Messages GET error:", error);
     return NextResponse.json(
-      {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to load messages.",
-      },
+      { message: "Failed to load messages." },
       { status: 500 }
     );
   }
@@ -295,12 +290,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Messages POST error:", error);
     return NextResponse.json(
-      {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to send message.",
-      },
+      { message: "Failed to send message." },
       { status: 500 }
     );
   }
@@ -351,10 +341,7 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error("Messages DELETE error:", error);
     return NextResponse.json(
-      {
-        message:
-          error instanceof Error ? error.message : "Failed to clear chat.",
-      },
+      { message: "Failed to clear chat." },
       { status: 500 }
     );
   }
@@ -413,10 +400,7 @@ export async function PATCH(request: Request) {
   } catch (error) {
     console.error("Messages PATCH error:", error);
     return NextResponse.json(
-      {
-        message:
-          error instanceof Error ? error.message : "Failed to update chat.",
-      },
+      { message: "Failed to update chat." },
       { status: 500 }
     );
   }

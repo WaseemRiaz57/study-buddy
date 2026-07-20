@@ -5,6 +5,7 @@ import MentorProfile from "@/models/MentorProfile";
 import StudentProfile from "@/models/StudentProfile";
 import User from "@/models/User";
 import UserProgress from "@/models/UserProgress";
+import { isMentorRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -30,15 +31,11 @@ export async function GET(
       return NextResponse.json({ message: "User not found." }, { status: 404 });
     }
 
-    const normalizedRole =
-      String(user.role || "").toLowerCase() === "teacher" ||
-      String(user.role || "").toLowerCase() === "mentor"
-        ? "teacher"
-        : "student";
+    const normalizedRole = isMentorRole(user.role) ? "mentor" : "student";
 
-    const ProfileModel = normalizedRole === "teacher" ? MentorProfile : StudentProfile;
+    const ProfileModel = normalizedRole === "mentor" ? MentorProfile : StudentProfile;
     const profileSelect =
-      normalizedRole === "teacher"
+      normalizedRole === "mentor"
         ? "bio headline subjects xp subscriptionTier academicLevel rating totalReviews status"
         : "bio headline interestedSubjects xp subscriptionTier academicLevel";
 
@@ -64,7 +61,7 @@ export async function GET(
     const badges = [
       (profile as any)?.subscriptionTier,
       (profile as any)?.academicLevel,
-      normalizedRole === "teacher" ? "Mentor" : null,
+      normalizedRole === "mentor" ? "Mentor" : null,
       (profile as any)?.status === "approved" ? "Verified" : null,
     ]
       .map((badge) => String(badge || "").trim())

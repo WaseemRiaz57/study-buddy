@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Clock, FileText, Sparkles, Zap, Target, CheckSquare, Brain, Timer, Star, BookMarked, Lock, ArrowRight, Users, ClipboardList } from "lucide-react";
 import { MinimalTodoList } from "@/components/focus/MinimalTodoList";
-import ReviewModal from "@/components/mentorship/ReviewModal";
+
+const ReviewModal = dynamic(() => import("@/components/mentorship/ReviewModal"));
 
 const fadeIn = {
   initial: { opacity: 0, y: 10 },
@@ -392,21 +394,21 @@ export function StudentDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       {/* MAIN CONTENT */}
-      <main className="max-w-7xl mx-auto p-6 md:p-8 space-y-8" aria-label="Student dashboard">
+      <main className="app-page space-y-6" aria-label="Student dashboard">
         
         {/* HERO SECTION */}
-        <div className="tour-dashboard-overview grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="tour-dashboard-overview grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
           
           {/* Level Progress Card */}
-          <motion.div {...fadeIn} className="tour-gamification md:col-span-2 relative overflow-hidden glass-panel rounded-[2rem] p-8 group">
+          <motion.div {...fadeIn} className="tour-gamification glass-panel group relative min-w-0 overflow-hidden rounded-3xl p-5 sm:p-6 lg:col-span-2">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full -mr-20 -mt-20 blur-[80px] group-hover:bg-primary/30 transition-all duration-700" />
             
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="relative z-10 flex min-w-0 flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
               <div className="flex-1">
                 <span className="inline-block text-primary font-bold text-xs uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full mb-4">
                   Progress Milestone
                 </span>
-                <h2 className="text-3xl md:text-4xl font-black mb-3 text-foreground tracking-tight">
+                <h2 className="mb-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
                   Level {gamificationStats.level} is in motion!
                 </h2>
                 <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
@@ -422,7 +424,7 @@ export function StudentDashboard() {
                 </p>
                 <Link
                   href={resumeItem?.href || "/dashboard/content-generator"}
-                  className="mt-8 inline-flex items-center gap-2 bg-primary text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/30 hover:bg-purple-700 hover:shadow-primary/40 hover:-translate-y-1 transition-all"
+                  className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-primary py-2 pl-5 pr-2 font-bold text-white shadow-lg shadow-primary/20 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-purple-700"
                   aria-label={
                     resumeItem
                       ? `Resume ${resumeItem.title}`
@@ -430,13 +432,13 @@ export function StudentDashboard() {
                   }
                 >
                   <span>{resumeButtonLabel}</span>
-                  <ArrowRight size={18} />
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15"><ArrowRight size={16} /></span>
                 </Link>
               </div>
 
               {/* Circular Progress */}
-              <div className="relative w-40 h-40 flex-shrink-0">
-                <svg className="w-full h-full transform -rotate-90">
+              <div className="relative h-28 w-28 shrink-0 self-center sm:h-32 sm:w-32" aria-label={`${Math.round(levelProgressPct)}% progress to the next level`}>
+                <svg viewBox="0 0 160 160" className="h-full w-full -rotate-90 overflow-visible" role="img">
                   <circle className="text-muted-foreground/10" cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="10" />
                   <motion.circle 
                     initial={{ strokeDashoffset: levelCircleCircumference }}
@@ -454,7 +456,7 @@ export function StudentDashboard() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-5xl font-black text-foreground tracking-tighter">
+                  <span className="text-3xl font-black tracking-tighter text-foreground sm:text-4xl">
                     {gamificationStats.level}
                   </span>
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Level</span>

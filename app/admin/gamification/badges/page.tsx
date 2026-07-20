@@ -9,7 +9,6 @@ import {
   Loader2,
   Plus,
   Star,
-  Target,
   Trash2,
   X,
   Zap,

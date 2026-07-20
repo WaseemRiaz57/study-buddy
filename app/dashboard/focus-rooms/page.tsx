@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Play, Pause, RotateCcw, Settings, CloudRain, Coffee, Radio, Plus, Trash2,
-  Music, CheckCircle2, Circle, Sparkles, Flame, Check, BarChart3, X // 👈 X import add kiya
+  Music, Flame, Check, BarChart3, X
 } from "lucide-react";
 import {
   Bar,
@@ -446,7 +446,7 @@ export default function FocusRoomsPage() {
         setTasks((p) => p.filter(t => t._id !== tempId));
         toast.error("Failed to save task.");
       }
-    } catch (error) {
+    } catch {
       setTasks((p) => p.filter(t => t._id !== tempId));
       toast.error("Network error while saving task.");
     }
@@ -474,7 +474,7 @@ export default function FocusRoomsPage() {
         setTasks((p) => p.filter((t) => t._id !== task._id));
         toast.success("Mentor assignment completed.");
       }
-    } catch (error) {
+    } catch {
       setTasks((p) => p.map((t) => (t._id === task._id ? { ...t, done: task.done } : t)));
       toast.error("Network error while updating task.");
     }
@@ -496,7 +496,7 @@ export default function FocusRoomsPage() {
         setTasks(snapshot);
         toast.error("Failed to delete task.");
       }
-    } catch (error) {
+    } catch {
       setTasks(snapshot);
       toast.error("Network error while deleting task.");
     }

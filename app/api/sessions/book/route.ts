@@ -7,6 +7,7 @@ import { emitUserNotification } from "@/lib/study-room-socket";
 import MentorSession from "@/models/MentorSession";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
+import { awardUser } from "@/lib/gamificationEngine";
 
 const MIN_DURATION_MINUTES = 15;
 const MAX_DURATION_MINUTES = 240;
@@ -132,10 +133,19 @@ export async function POST(request: Request) {
 
     emitUserNotification(String(mentorId), notification.toObject());
 
+    const reward = await awardUser(
+      session.user.id,
+      "BOOKED_MENTOR_SESSION"
+    ).catch((rewardError) => {
+      console.error("Session booking reward error:", rewardError);
+      return null;
+    });
+
     return NextResponse.json(
       {
         message: "Session booked successfully!",
         session: bookedSession,
+        reward,
       },
       { status: 201 }
     );

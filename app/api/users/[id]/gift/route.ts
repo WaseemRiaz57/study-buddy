@@ -7,6 +7,7 @@ import { connectMongoDB } from "@/lib/mongodb";
 import MentorProfile from "@/models/MentorProfile";
 import Notification from "@/models/Notification";
 import StudentProfile from "@/models/StudentProfile";
+import { isMentorRole } from "@/lib/roles";
 import User from "@/models/User";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +15,7 @@ export const dynamic = "force-dynamic";
 const MAX_GIFT_AMOUNT = 100000;
 
 function getProfileModel(role: unknown) {
-  const normalizedRole = String(role || "").toLowerCase();
-  return normalizedRole === "teacher" || normalizedRole === "mentor"
-    ? MentorProfile
-    : StudentProfile;
+  return isMentorRole(role) ? MentorProfile : StudentProfile;
 }
 
 export async function POST(
