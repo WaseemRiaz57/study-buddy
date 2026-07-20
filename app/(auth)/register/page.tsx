@@ -537,7 +537,7 @@ export default function RegisterPage() {
                 {step === 1 ? "Sending Code..." : "Verifying..."}
               </>
             ) : step === 1 ? (
-              `Send Code
+              "Send Code"
             ) : (
               "Verify and Create Account"
             )}
