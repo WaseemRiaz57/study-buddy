@@ -237,7 +237,7 @@
   .app-page {
     width: min(100%, 80rem);
     margin-inline: auto;
-    padding: 1.25rem 1rem 4rem;
+    padding: 1rem;
   }
 
   .app-shell :is(main, section, article, aside, header, footer, div) {
@@ -266,11 +266,11 @@
   }
 
   @media (min-width: 640px) {
-    .app-page { padding-inline: 1.5rem; }
+    .app-page { padding-inline: 1rem; }
   }
 
   @media (min-width: 1024px) {
-    .app-page { padding: 1.75rem 2rem 4rem; }
+    .app-page { padding: 1rem; }
   }
 
   @media (min-width: 768px) {

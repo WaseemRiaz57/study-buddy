@@ -379,28 +379,29 @@ export default function ContentGeneratorPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-slate-50/70 dark:bg-slate-950">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#f8f7fb] dark:bg-slate-950">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-purple-500/20 blur-[120px] dark:bg-purple-600/20" />
-      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 md:py-12 lg:px-8">
+      <div className="relative mx-auto max-w-7xl px-4 py-4 sm:px-5 lg:px-6">
         <motion.header
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="mb-10 text-center md:mb-12"
+          className="mb-4 text-center"
         >
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#7C3AED]">AI Studio</p>
-          <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white md:text-5xl">
+          <p className="mb-2 bg-gradient-to-r from-[#7C3AED] to-purple-400 bg-clip-text text-xs font-extrabold uppercase tracking-[0.22em] text-transparent">AI Studio</p>
+          <h1 className="mb-1 text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white md:text-3xl">
             {isMentor ? "Quiz Generator" : "Notes Generator"}
           </h1>
-          <p className="mx-auto max-w-2xl text-base text-text-muted dark:text-slate-400 md:text-lg">
+          <p className="mx-auto max-w-2xl text-sm text-text-muted dark:text-slate-400">
             {isMentor
               ? "Generate MCQ quizzes, source-aware summaries, and study resources."
               : "Generate polished notes, source-aware summaries, and study guides."}
           </p>
         </motion.header>
 
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-12">
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5 lg:col-span-5">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 lg:grid-cols-12">
+          <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-purple-950/[0.06] dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20 lg:col-span-5">
+            <div className="pointer-events-none absolute right-0 top-0 h-36 w-36 rounded-bl-full bg-purple-500/[0.055] dark:bg-purple-500/[0.08]" />
             <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950/70">
               {availableTabs.map((tab) => {
                 const Icon = tab.icon;
@@ -411,9 +412,9 @@ export default function ContentGeneratorPage() {
                     key={tab.id}
                     type="button"
                     onClick={() => handleTabChange(tab.id)}
-                    className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
+                    className={`relative flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
                       isActive
-                        ? "bg-[#7C3AED] text-white shadow-sm"
+                        ? "bg-purple-50 text-[#7C3AED] shadow-sm ring-1 ring-purple-200 dark:bg-purple-500/15 dark:ring-purple-500/25"
                         : "text-text-muted hover:bg-white hover:text-[#7C3AED] dark:text-slate-400 dark:hover:bg-slate-800"
                     }`}
                   >
@@ -431,9 +432,9 @@ export default function ContentGeneratorPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className="pt-6"
+                className="relative pt-4"
               >
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {activeTab === "notes" && (
                     <>
                       <InputField
@@ -548,7 +549,7 @@ export default function ContentGeneratorPage() {
                           max={20}
                           value={quizCount}
                           onChange={(event) => setQuizCount(Math.min(20, Math.max(1, Number(event.target.value) || 1)))}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-text-main outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                         />
                       </div>
                       <FileDropZone
@@ -568,12 +569,12 @@ export default function ContentGeneratorPage() {
               </motion.div>
             </AnimatePresence>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <button
                 type="button"
                 onClick={() => void handleGenerate()}
                 disabled={isGenerating || status === "loading"}
-                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#7C3AED]/20 transition-all hover:bg-purple-700 hover:shadow-purple-500/30 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7C3AED] to-purple-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-[#7C3AED]/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-purple-500/35 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <CurrentGenerateIcon size={18} />}
                 {isGenerating ? "Generating..." : currentTab.generateLabel}
@@ -699,7 +700,7 @@ function ResultPreview({
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35 }}
-      className="flex min-h-[520px] flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+      className="flex min-h-[430px] flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-purple-950/[0.06] dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20"
     >
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/50">
         <h3 className="flex items-center gap-2 font-bold text-text-main dark:text-white">
@@ -870,15 +871,15 @@ function RecentCreations({ items }: { items: RecentCreationItem[] }) {
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.15 }}
-      className="mx-auto mt-12 max-w-6xl md:mt-16"
+      className="mx-auto mt-5 max-w-6xl"
     >
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-text-main dark:text-white">Recent Creations</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-bold text-text-main dark:text-white">Recent Creations</h2>
         <button className="flex items-center gap-1 text-sm font-semibold text-[#7C3AED] transition-colors hover:text-purple-700">
           View All <ArrowRight size={14} />
         </button>
       </div>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((item) => {
           const style = historyTypeStyles[item.type] ?? historyTypeStyles.notes;
           const Icon = style.Icon;
@@ -886,7 +887,7 @@ function RecentCreations({ items }: { items: RecentCreationItem[] }) {
           return (
             <article
               key={item._id}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-[#7C3AED]/40 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+              className="group rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[#7C3AED]/40 hover:shadow-lg hover:shadow-purple-950/[0.07] dark:border-slate-800 dark:bg-slate-900 dark:hover:shadow-black/20"
             >
               <div className="mb-3 flex items-start justify-between">
                 <div className={`rounded-lg p-2 ${style.bg} ${style.text}`}>
@@ -897,7 +898,7 @@ function RecentCreations({ items }: { items: RecentCreationItem[] }) {
                   {formatRelativeTime(item.createdAt)}
                 </span>
               </div>
-              <h3 className="mb-1 truncate font-bold text-text-main dark:text-white">
+              <h3 className="mb-1 truncate font-bold text-text-main transition-colors group-hover:text-[#7C3AED] dark:text-white">
                 {item.title}
               </h3>
               <p className="line-clamp-2 text-sm text-text-muted dark:text-slate-400">
@@ -937,7 +938,7 @@ function FormatSelector({
             key={option.value}
             type="button"
             onClick={() => onChange(option.value)}
-            className={`min-h-[44px] rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`min-h-9 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
               value === option.value
                 ? "border-[#7C3AED] bg-[#7C3AED] text-white"
                 : "border-slate-200 bg-white text-text-muted hover:border-[#7C3AED] hover:text-[#7C3AED] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400"
@@ -978,7 +979,7 @@ function InputField({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-text-main outline-none transition-all placeholder:text-slate-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-text-main outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-purple-500 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-950"
       />
     </div>
   );
@@ -1007,7 +1008,7 @@ function SelectField({
           id={id}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+          className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-text-main outline-none transition-all focus:border-transparent focus:bg-white focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-950"
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
@@ -1050,7 +1051,7 @@ function TextAreaField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-text-main outline-none transition-all placeholder:text-slate-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-text-main outline-none transition-all placeholder:text-slate-400 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-purple-500 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-950"
       />
     </div>
   );
@@ -1157,7 +1158,7 @@ function FileDropZone({
           setIsDragging(false);
           void handleFile(event.dataTransfer.files?.[0]);
         }}
-        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+        className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed p-3 text-center transition-colors ${
           isDragging
             ? "border-[#7C3AED] bg-[#7C3AED]/10"
             : "border-slate-300 bg-slate-50/70 hover:border-[#7C3AED]/50 hover:bg-[#7C3AED]/5 dark:border-slate-700 dark:bg-slate-950/50"

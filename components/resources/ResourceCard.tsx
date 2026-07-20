@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   FileText,
@@ -23,7 +25,7 @@ export interface Resource {
   fileType: "PDF" | "DOC" | "XLS" | "IMG" | "OTHER";
   rating: number;
   author: string;
-  authorAvatar: string;
+  authorImage: string;
   downloads: number;
   price: number;
   isUnlocked: boolean;
@@ -59,10 +61,14 @@ export default function ResourceCard({
 }) {
   const { icon: TypeIcon, bg: iconBg, text: iconText } = FILE_ICON_MAP[resource.fileType] ?? FILE_ICON_MAP.OTHER;
   const isPaidLocked = resource.price > 0 && !resource.isUnlocked;
+  const [authorImageFailed, setAuthorImageFailed] = useState(false);
+  const authorImageSrc = !authorImageFailed && resource.authorImage
+    ? resource.authorImage
+    : "/default-user-avatar.svg";
 
   return (
     <article
-      className="group relative h-full cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#7C3AED]/25 hover:shadow-lg hover:shadow-purple-500/5 dark:border-white/10 dark:bg-white/5"
+      className="group relative h-full cursor-pointer rounded-xl border border-slate-200 bg-white p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#7C3AED]/25 hover:shadow-lg hover:shadow-purple-500/5 dark:border-white/10 dark:bg-white/5"
     >
       <Link
         href={`/dashboard/resources/${resource.id}`}
@@ -72,11 +78,11 @@ export default function ResourceCard({
         <span className="sr-only">View {resource.title}</span>
       </Link>
       {/* Document preview */}
-      <div className={`relative mb-4 flex h-24 items-center justify-center overflow-hidden rounded-xl border border-current/5 ${iconBg} ${iconText}`}>
+      <div className={`relative mb-3 flex h-16 items-center justify-center overflow-hidden rounded-lg border border-current/5 ${iconBg} ${iconText}`}>
         <div aria-hidden="true" className="absolute -right-5 -top-8 h-24 w-24 rounded-full border-[16px] border-current opacity-[0.06]" />
         <div aria-hidden="true" className="absolute -bottom-10 -left-6 h-24 w-24 rounded-full bg-current opacity-[0.05]" />
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 shadow-sm ring-1 ring-current/10 dark:bg-slate-950/35">
-          <TypeIcon size={28} aria-hidden="true" />
+        <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-sm ring-1 ring-current/10 dark:bg-slate-950/35">
+          <TypeIcon size={22} aria-hidden="true" />
         </div>
         <span className="absolute bottom-2.5 left-3 text-[10px] font-black uppercase tracking-[0.16em]">
           {resource.fileType}
@@ -100,9 +106,15 @@ export default function ResourceCard({
       {/* Footer: author + downloads */}
       <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-white/5 dark:text-slate-400">
         <div className="flex items-center gap-2">
-          <span className="w-6 h-6 rounded-full bg-[#7C3AED]/10 dark:bg-[#7C3AED]/20 text-[#7C3AED] text-[10px] font-bold flex items-center justify-center">
-            {resource.authorAvatar}
-          </span>
+          <Image
+            src={authorImageSrc}
+            alt={`${resource.author} profile picture`}
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10"
+            onError={() => setAuthorImageFailed(true)}
+            unoptimized={authorImageSrc.startsWith("data:")}
+          />
           <span className="max-w-24 truncate">By {resource.author}</span>
         </div>
 
@@ -120,7 +132,7 @@ export default function ResourceCard({
         </div>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-2">
         {isPaidLocked ? (
           <button
             type="button"
@@ -129,13 +141,13 @@ export default function ResourceCard({
               onUnlock?.(resource);
             }}
             disabled={isUnlocking}
-            className="relative z-20 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
+            className="relative z-20 flex w-full items-center justify-center gap-2 rounded-lg bg-[#7C3AED] px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LockKeyhole size={15} />
             {isUnlocking ? "Unlocking..." : `Unlock for ${resource.price} Coins`}
           </button>
         ) : (
-          <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition-colors group-hover:border-[#7C3AED]/40 group-hover:text-[#7C3AED] dark:border-white/10 dark:text-slate-300">
+          <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 transition-colors group-hover:border-[#7C3AED]/40 group-hover:text-[#7C3AED] dark:border-white/10 dark:text-slate-300">
             <Download size={15} />
             View Resource
           </div>

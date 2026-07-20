@@ -515,12 +515,12 @@ export default function FocusRoomsPage() {
         <div className="absolute -bottom-[10%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-mint-whisper dark:bg-purple-900/20 blur-[100px]" />
       </div>
 
-      <div className="px-4 md:px-10 pt-8 pb-24 max-w-6xl mx-auto">
-        <section className="flex flex-col items-center justify-center mb-16 relative">
-          <h1 className="text-3xl md:text-5xl font-bold text-text-main dark:text-white mb-2 text-center tracking-tight">
+      <main className="mx-auto max-w-6xl px-4 pb-16 pt-4 md:px-6" aria-labelledby="focus-room-heading">
+        <section className="relative mb-5 flex flex-col items-center justify-center">
+          <h1 id="focus-room-heading" className="mb-1 text-center text-2xl font-bold tracking-tight text-text-main dark:text-white md:text-3xl">
             Current Focus
           </h1>
-          <div className="mb-10 flex w-full max-w-md flex-col items-center gap-2">
+          <div className="mb-3 flex w-full max-w-sm flex-col items-center gap-1">
             <label
               htmlFor="active-focus-task"
               className="text-xs font-bold uppercase tracking-[0.18em] text-[#7C3AED]"
@@ -531,7 +531,7 @@ export default function FocusRoomsPage() {
               id="active-focus-task"
               value={selectedFocusTaskId}
               onChange={(event) => setSelectedFocusTaskId(event.target.value)}
-              className="min-h-[44px] w-full rounded-2xl border border-white/60 bg-white/70 px-4 py-2 text-center text-sm font-semibold text-text-main outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+              className="min-h-[38px] w-full rounded-xl border border-white/60 bg-white/70 px-3 py-1.5 text-center text-sm font-semibold text-text-main outline-none transition-colors focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
             >
               <option value="">Select a task from To-Do</option>
               {openFocusTasks.map((task) => (
@@ -542,7 +542,7 @@ export default function FocusRoomsPage() {
             </select>
           </div>
 
-          <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center mb-12">
+          <div className="relative mb-3 flex h-48 w-48 items-center justify-center md:h-56 md:w-56">
             <div
               className={`absolute inset-0 rounded-full transition-all duration-700
                 ${isRunning
@@ -559,7 +559,7 @@ export default function FocusRoomsPage() {
             </svg>
 
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-6xl md:text-8xl font-light tracking-tighter text-text-main dark:text-white drop-shadow-sm font-mono">
+              <span className="font-mono text-4xl font-light tracking-tighter text-text-main drop-shadow-sm dark:text-white md:text-5xl">
                 {minutesDisplay}:{secondsDisplay}
               </span>
               <span className="text-sm text-primary/60 dark:text-purple-400/60 uppercase tracking-[0.2em] mt-2">
@@ -568,10 +568,10 @@ export default function FocusRoomsPage() {
             </div>
           </div>
 
-          <div className="flex gap-6 items-center">
+          <div className="flex items-center gap-3">
             <button
               onClick={resetTimer}
-              className="w-14 h-14 rounded-full bg-white/60 dark:bg-white/[0.06] hover:bg-white dark:hover:bg-white/10 text-text-muted dark:text-slate-400 hover:text-primary flex items-center justify-center transition-all shadow-[0_8px_32px_rgba(140,48,232,0.1)] border border-white/50 dark:border-white/10"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/50 bg-white/60 text-text-muted shadow-[0_8px_32px_rgba(140,48,232,0.1)] transition-all hover:bg-white hover:text-primary dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-400 dark:hover:bg-white/10"
             >
               <RotateCcw size={20} />
             </button>
@@ -579,7 +579,7 @@ export default function FocusRoomsPage() {
             <button
               onClick={toggleTimer}
               disabled={timeLeft === 0}
-              className={`h-16 px-10 rounded-2xl font-semibold text-lg flex items-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed
+              className={`flex h-11 items-center gap-2 rounded-xl px-6 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40
                 ${isRunning
                   ? "bg-primary/10 dark:bg-white/10 hover:bg-primary/20 dark:hover:bg-white/15 text-primary dark:text-white shadow-sm"
                   : "bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-1"
@@ -595,20 +595,20 @@ export default function FocusRoomsPage() {
                 setDraftFocusDuration(focusDuration);
                 setShowSettings(true);
               }}
-              className="w-14 h-14 rounded-full bg-white/60 dark:bg-white/[0.06] hover:bg-white dark:hover:bg-white/10 text-text-muted dark:text-slate-400 hover:text-primary flex items-center justify-center transition-all shadow-[0_8px_32px_rgba(140,48,232,0.1)] border border-white/50 dark:border-white/10"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/50 bg-white/60 text-text-muted shadow-[0_8px_32px_rgba(140,48,232,0.1)] transition-all hover:bg-white hover:text-primary dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-400 dark:hover:bg-white/10"
             >
               <Settings size={20} />
             </button>
           </div>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3" aria-label="Focus room tools">
           
           <MinimalTodoList />
 
-          <div className="glass-panel bg-white/60 dark:bg-white/[0.03] rounded-2xl p-6 hover-tilt flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-text-main dark:text-white">Upcoming Tasks</h3>
+          <div className="glass-panel flex flex-col rounded-2xl bg-white/60 p-4 hover-tilt dark:bg-white/[0.03]">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-bold text-text-main dark:text-white">Upcoming Tasks</h2>
               <button 
                 onClick={() => {
                   if (!newTask.trim()) {
@@ -707,11 +707,11 @@ export default function FocusRoomsPage() {
             </form>
           </div>
 
-          <div className="flex flex-col gap-6">
-            <div className="glass-panel bg-white/40 dark:bg-white/[0.03] rounded-2xl p-5 hover-tilt border border-white/60 dark:border-white/[0.08]">
-              <div className="flex items-center gap-2 mb-4">
+          <div className="flex flex-col gap-3">
+            <section className="glass-panel rounded-2xl border border-white/60 bg-white/40 p-4 hover-tilt dark:border-white/[0.08] dark:bg-white/[0.03]" aria-labelledby="ambient-sounds-heading">
+              <div className="mb-3 flex items-center gap-2">
                 <Music size={16} className="text-primary dark:text-purple-400" />
-                <h4 className="font-bold text-text-main dark:text-white text-sm">Ambient Sounds</h4>
+                <h2 id="ambient-sounds-heading" className="text-sm font-bold text-text-main dark:text-white">Ambient Sounds</h2>
               </div>
 
               <div className="space-y-3">
@@ -744,16 +744,16 @@ export default function FocusRoomsPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
 
-            <div className="glass-panel bg-white/40 dark:bg-white/[0.03] rounded-2xl p-6 hover-tilt flex-1 border border-white/60 dark:border-white/[0.08] flex flex-col justify-center">
-              <div className="flex items-center gap-2 mb-4">
+            <section className="glass-panel flex flex-1 flex-col justify-center rounded-2xl border border-white/60 bg-white/40 p-4 hover-tilt dark:border-white/[0.08] dark:bg-white/[0.03]" aria-labelledby="weekly-focus-heading">
+              <div className="mb-2 flex items-center gap-2">
                 <BarChart3 size={16} className="text-primary dark:text-purple-400" />
-                <h3 className="font-bold text-text-main dark:text-white">Weekly Focus</h3>
+                <h2 id="weekly-focus-heading" className="text-sm font-bold text-text-main dark:text-white">Weekly Focus</h2>
               </div>
 
               {isLoadingWeeklyFocus ? (
-                <div className="flex min-h-[300px] items-end gap-2" aria-label="Loading weekly focus chart">
+                <div className="flex min-h-[150px] items-end gap-2" aria-label="Loading weekly focus chart">
                   {DEFAULT_WEEKLY_DATA.map((day, index) => (
                     <div key={`${day.label}-${index}`} className="flex-1">
                       <div
@@ -764,8 +764,8 @@ export default function FocusRoomsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="min-h-[300px] w-full" aria-label="Weekly focus minutes chart">
-                  <ResponsiveContainer width="100%" height={300}>
+                <div className="min-h-[150px] w-full" aria-label="Weekly focus minutes chart">
+                  <ResponsiveContainer width="100%" height={150}>
                     <BarChart data={weeklyFocusData} margin={{ top: 8, right: 0, left: -28, bottom: 0 }}>
                       <XAxis
                         dataKey="day"
@@ -803,10 +803,10 @@ export default function FocusRoomsPage() {
                   weeklyFocusData.reduce((total, day) => total + day.minutes, 0)
                 )} minutes focused this week.
               </p>
-            </div>
+            </section>
           </div>
         </section>
-      </div>
+      </main>
 
       <footer className="fixed bottom-0 left-0 w-full glass-panel border-t border-white/60 dark:border-white/[0.06] py-3 px-6 z-40 backdrop-blur-xl bg-white/80 dark:bg-white/[0.03]">
         <div className="flex items-center gap-4 w-full max-w-6xl mx-auto">

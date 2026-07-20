@@ -526,16 +526,16 @@ export function MentorDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       {/* MAIN CONTENT */}
-      <main className="app-page mx-auto min-w-0 max-w-screen-2xl space-y-5" aria-label="Mentor dashboard">
+      <main className="app-page mx-auto min-w-0 max-w-screen-2xl space-y-3" aria-label="Mentor dashboard">
         
         {/* Welcome Section */}
-        <section className="tour-dashboard-overview min-w-0 space-y-4" aria-labelledby="mentor-dashboard-heading">
+        <section className="tour-dashboard-overview min-w-0 space-y-3" aria-labelledby="mentor-dashboard-heading">
           <header className="flex min-w-0 items-end justify-between gap-4">
             <div className="min-w-0">
-              <h1 id="mentor-dashboard-heading" className="mb-1 truncate text-xl font-bold text-foreground">
+              <h1 id="mentor-dashboard-heading" className="truncate text-lg font-bold text-foreground">
                 {status === "loading" ? "Welcome back" : `Welcome back, ${mentorName}`}
               </h1>
-              <p className="text-muted-foreground">You have {requests.length} new session requests and a payout ready.</p>
+              <p className="text-sm text-muted-foreground">You have {requests.length} new session requests and a payout ready.</p>
               <p className="text-xs text-muted-foreground mt-1">Role: {mentorRole}</p>
             </div>
             <div className="hidden shrink-0 text-right sm:block">
@@ -545,9 +545,9 @@ export function MentorDashboard() {
           </header>
 
           {/* Impact Stats */}
-          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
-            <motion.article {...fadeIn} className="glass-panel min-w-0 rounded-2xl border-l-4 border-l-blue-500 p-4">
-              <p className="text-sm text-muted-foreground mb-2">Total Students Taught</p>
+          <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-3">
+            <motion.article {...fadeIn} className="glass-panel min-w-0 rounded-xl border-l-4 border-l-blue-500 p-3">
+              <p className="mb-1 text-xs text-muted-foreground">Total Students Taught</p>
               <div className="flex min-w-0 items-center gap-3">
                 <span className="text-xl font-black tabular-nums text-blue-500">
                   {statValue(stats.uniqueStudentsTaught)}
@@ -555,8 +555,8 @@ export function MentorDashboard() {
               </div>
             </motion.article>
 
-            <motion.article {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel min-w-0 rounded-2xl border-l-4 border-l-purple-500 p-4">
-              <p className="text-sm text-muted-foreground mb-2">Upcoming Sessions</p>
+            <motion.article {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel min-w-0 rounded-xl border-l-4 border-l-purple-500 p-3">
+              <p className="mb-1 text-xs text-muted-foreground">Upcoming Sessions</p>
               <div className="flex min-w-0 items-center gap-3">
                 <span className="text-xl font-black tabular-nums text-purple-500">
                   {statValue(stats.upcomingSessions)}
@@ -564,8 +564,8 @@ export function MentorDashboard() {
               </div>
             </motion.article>
 
-            <motion.article {...fadeIn} transition={{ delay: 0.2 }} className="glass-panel min-w-0 rounded-2xl border-l-4 border-l-yellow-500 p-4">
-              <p className="text-sm text-muted-foreground mb-2">Mentor Rating</p>
+            <motion.article {...fadeIn} transition={{ delay: 0.2 }} className="glass-panel min-w-0 rounded-xl border-l-4 border-l-yellow-500 p-3">
+              <p className="mb-1 text-xs text-muted-foreground">Mentor Rating</p>
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span className="text-xl font-black tabular-nums text-yellow-500">{displayRating}<span className="text-base font-light text-muted-foreground/50">/5</span></span>
                 <div className="flex shrink-0 text-yellow-500">
@@ -584,10 +584,10 @@ export function MentorDashboard() {
         </section>
 
         {/* Main Grid */}
-        <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-12">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-3 xl:grid-cols-12">
           
           {/* LEFT: Session Requests */}
-          <section className="min-w-0 space-y-4 xl:col-span-4" aria-labelledby="session-requests-heading">
+          <section className="min-w-0 space-y-3 xl:col-span-4" aria-labelledby="session-requests-heading">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <h2 id="session-requests-heading" className="flex min-w-0 items-center gap-2 text-lg font-bold text-foreground">
                 <Clock className="text-[#7C3AED]" size={20} />
@@ -597,7 +597,7 @@ export function MentorDashboard() {
             </div>
 
             {/* Request Cards */}
-            <div className="min-w-0 space-y-3">
+            <div className="min-w-0 space-y-2 xl:max-h-[24rem] xl:overflow-y-auto xl:pr-1">
               {isRequestsLoading && (
                 <div className="glass-panel p-5 rounded-2xl text-sm text-muted-foreground flex items-center gap-2">
                   <Loader2 size={16} className="animate-spin text-primary" />
@@ -625,7 +625,7 @@ export function MentorDashboard() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + i * 0.1 }}
-                    className={`glass-panel min-w-0 cursor-pointer rounded-2xl p-4 transition-all hover:border-primary/30 ${
+                    className={`glass-panel min-w-0 cursor-pointer rounded-xl p-3 transition-all hover:border-primary/30 ${
                       isInstantRequest ? "border-[#7C3AED]/50 ring-1 ring-[#7C3AED]/20" : ""
                     }`}
                     onClick={() => handleOpenRequest(request)}
@@ -636,7 +636,7 @@ export function MentorDashboard() {
                         URGENT: INSTANT SESSION
                       </div>
                     )}
-                    <div className="mb-4 flex min-w-0 items-start gap-3">
+                    <div className="mb-3 flex min-w-0 items-start gap-3">
                       <UserAvatar
                         name={studentName}
                         imageUrl={student.image || null}
@@ -667,7 +667,7 @@ export function MentorDashboard() {
                           handleRespond(request._id, "accepted");
                         }}
                         disabled={isResponding}
-                        className="flex-1 py-2.5 bg-[#7C3AED] text-white text-sm font-bold rounded-lg hover:bg-purple-700 transition-all shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#7C3AED] py-2 text-xs font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {respondingActionKey === acceptingKey ? <Loader2 size={14} className="animate-spin" /> : null}
                         Accept
@@ -678,7 +678,7 @@ export function MentorDashboard() {
                           handleRespond(request._id, "declined");
                         }}
                         disabled={isResponding}
-                        className="px-4 py-2.5 border border-slate-300 bg-transparent text-muted-foreground text-sm font-bold rounded-lg hover:bg-slate-100 hover:text-slate-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 dark:border-slate-700 dark:hover:bg-white/5"
+                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-transparent px-3 py-2 text-xs font-bold text-muted-foreground transition-all hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:hover:bg-white/5"
                       >
                         {respondingActionKey === decliningKey ? <Loader2 size={14} className="animate-spin" /> : null}
                         Decline
@@ -705,7 +705,7 @@ export function MentorDashboard() {
                   return (
                     <article
                       key={mentorSession._id}
-                      className="glass-panel min-w-0 rounded-2xl p-4"
+                    className="glass-panel min-w-0 rounded-xl p-3"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold text-foreground">
@@ -729,7 +729,7 @@ export function MentorDashboard() {
           </section>
 
           {/* MIDDLE: Performance Chart */}
-          <section className="min-w-0 space-y-4 xl:col-span-5" aria-labelledby="performance-heading">
+          <section className="min-w-0 space-y-3 xl:col-span-5" aria-labelledby="performance-heading">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <h2 id="performance-heading" className="flex min-w-0 items-center gap-2 text-lg font-bold text-foreground">
                 <BarChart3 className="text-blue-500" size={20} />
@@ -741,8 +741,8 @@ export function MentorDashboard() {
               </select>
             </div>
 
-            <motion.article {...fadeIn} transition={{ delay: 0.4 }} className="glass-panel flex min-h-[340px] min-w-0 flex-col rounded-2xl p-4 sm:p-5">
-              <div className="mb-5 flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <motion.article {...fadeIn} transition={{ delay: 0.4 }} className="glass-panel flex min-h-[250px] min-w-0 flex-col rounded-xl p-4">
+              <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">Avg. Student Score</p>
                   <p className="text-xl font-bold tabular-nums text-foreground">
@@ -822,7 +822,7 @@ export function MentorDashboard() {
           </section>
 
           {/* RIGHT: Earnings & Actions */}
-          <aside className="min-w-0 space-y-4 xl:col-span-3" aria-labelledby="earnings-heading">
+          <aside className="min-w-0 space-y-3 xl:col-span-3" aria-labelledby="earnings-heading">
             <div className="flex min-w-0 items-center justify-between">
               <h2 id="earnings-heading" className="flex min-w-0 items-center gap-2 text-lg font-bold text-foreground">
                 <Wallet className="text-blue-500" size={20} />
@@ -830,8 +830,8 @@ export function MentorDashboard() {
               </h2>
             </div>
 
-            <motion.article {...fadeIn} transition={{ delay: 0.5 }} className="glass-panel min-w-0 rounded-2xl p-4 sm:p-5">
-              <div className="mb-4 min-w-0">
+            <motion.article {...fadeIn} transition={{ delay: 0.5 }} className="glass-panel min-w-0 rounded-xl p-3">
+              <div className="mb-3 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Total Earnings</p>
                 <div className="flex min-w-0 flex-wrap items-baseline gap-1">
                   <span className="min-w-0 text-xl font-black tabular-nums text-foreground">
@@ -841,18 +841,18 @@ export function MentorDashboard() {
                 </div>
               </div>
 
-              <div className="mb-4 min-w-0 space-y-3">
-                <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 pb-3 text-sm">
+              <div className="mb-3 min-w-0 space-y-2">
+                <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 pb-2 text-xs">
                   <span className="text-muted-foreground">Next Payout</span>
                   <span className="font-bold text-foreground">{earnings.nextPayout}</span>
                 </div>
-                <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 pb-3 text-sm">
+                <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 pb-2 text-xs">
                   <span className="text-muted-foreground">Gold Balance</span>
                   <div className="flex items-center gap-1 font-bold text-yellow-600 dark:text-yellow-400">
                     <Coins size={14} /> {earnings.balance.toLocaleString()}
                   </div>
                 </div>
-                <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
+                <div className="flex min-w-0 items-center justify-between gap-3 text-xs">
                   <span className="text-muted-foreground">Platform Fees</span>
                   <span className="font-bold text-muted-foreground">-${earnings.fees.toFixed(2)}</span>
                 </div>
@@ -867,9 +867,9 @@ export function MentorDashboard() {
             </motion.article>
 
             {/* Quick Actions */}
-            <div className="space-y-4">
+            <div className="space-y-2">
               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quick Actions</h4>
-              <div className="grid min-w-0 grid-cols-2 gap-3">
+              <div className="grid min-w-0 grid-cols-2 gap-2">
                 <button className="glass-panel group flex min-w-0 flex-col items-center gap-2 rounded-xl p-3 transition-all hover:border-blue-500/50 hover:bg-blue-500/5">
                   <Calendar className="text-blue-500 group-hover:scale-110 transition-transform" size={20} />
                   <span className="text-xs font-bold text-foreground">Reschedule</span>
@@ -881,11 +881,11 @@ export function MentorDashboard() {
               </div>
             </div>
 
-            <div className="tour-ai-studio space-y-4">
+            <div className="tour-ai-studio space-y-2">
               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 Recent Quiz Generations
               </h4>
-              <div className="glass-panel min-w-0 rounded-2xl p-4">
+              <div className="glass-panel min-w-0 rounded-xl p-3">
                 {isRecentQuizzesLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 size={14} className="animate-spin text-[#7C3AED]" />
@@ -929,9 +929,9 @@ export function MentorDashboard() {
       </main>
 
       {/* FOOTER */}
-      <footer className="mt-8 border-t border-border/50 px-4 py-6">
+      <footer className="mt-3 border-t border-border/50 px-4 py-2">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="mb-1 flex items-center justify-center gap-2">
             <div className="w-6 h-6 bg-primary/10 rounded flex items-center justify-center">
               <BookOpen className="text-primary" size={14} />
             </div>

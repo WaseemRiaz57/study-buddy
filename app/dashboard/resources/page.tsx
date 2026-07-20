@@ -50,6 +50,7 @@ interface ApiResource {
   createdAt: string;
   uploadedBy?: {
     name?: string;
+    image?: string;
   };
   price?: number;
   isUnlocked?: boolean;
@@ -66,13 +67,6 @@ function normalizeFileType(input: string): FileType {
   if (type.includes("XLS") || type.includes("SHEET")) return "XLS";
   if (type.includes("IMG") || type.includes("IMAGE") || type.includes("PNG") || type.includes("JPEG") || type.includes("JPG")) return "IMG";
   return "OTHER";
-}
-
-function getInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (!words.length) return "U";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return `${words[0][0]}${words[1][0]}`.toUpperCase();
 }
 
 /* ------------------------------------------------------------------ */
@@ -118,7 +112,7 @@ export default function ResourcesPage() {
           fileType: normalizeFileType(item.fileType),
           rating: Number(item.averageRating ?? item.rating ?? 0),
           author,
-          authorAvatar: getInitials(author),
+          authorImage: item.uploadedBy?.image?.trim() || "",
           downloads: item.downloadCount ?? 0,
           price: Math.max(0, Number(item.price || 0)),
           isUnlocked: Boolean(item.isUnlocked || Number(item.price || 0) === 0),
@@ -192,12 +186,12 @@ export default function ResourcesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 dark:bg-[#0f0c13] sm:p-6">
+    <main className="min-h-screen bg-slate-50 p-4 dark:bg-[#0f0c13]" aria-labelledby="resource-hub-heading">
       {/* ---- Header ---- */}
       <motion.header
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end"
+        className="mb-3 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end"
       >
         <div>
           <div className="flex items-center gap-2 text-[#7C3AED] mb-1">
@@ -206,7 +200,7 @@ export default function ResourcesPage() {
               Digital Library
             </span>
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          <h1 id="resource-hub-heading" className="text-2xl font-bold text-slate-900 dark:text-white">
             Resource Hub
           </h1>
         </div>
@@ -225,7 +219,7 @@ export default function ResourcesPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="mb-5 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900 sm:flex-row"
+        className="mb-3 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900 sm:flex-row"
       >
         {/* Search */}
         <div className="flex min-h-[44px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">

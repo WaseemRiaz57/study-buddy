@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>StudyBuddy AI Studio</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#8c30e8",
+                        "primary-dark": "#7020c0",
+                        "primary-light": "#a65ef0",
+                        "background-light": "#f7f6f8",
+                        "background-dark": "#191121",
+                        "neutral-50": "#fbf9fd",
+                        "neutral-100": "#f5f0fa",
+                        "neutral-200": "#ebe1f5",
+                        "neutral-300": "#dcc6ed",
+                        "neutral-600": "#6c587c",
+                        "neutral-800": "#372c42",
+                        "neutral-900": "#1f1826",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for text areas */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background-color: #dcc6ed;
+            border-radius: 20px;
+        }
+        /* Gradient text utility */
+        .text-gradient {
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-image: linear-gradient(to right, #8c30e8, #c084fc);
+        }
+        
+        /* Shimmer effect for loading */
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        .animate-shimmer {
+            animation: shimmer 2s infinite linear;
+            background: linear-gradient(to right, #f7f6f8 4%, #ebe1f5 25%, #f7f6f8 36%);
+            background-size: 1000px 100%;
+        }
+
+        /* Glass effect for active tab */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-neutral-800 font-display min-h-screen flex flex-col transition-colors duration-300">
+<!-- Navbar -->
+<nav class="sticky top-0 z-50 w-full glass-panel border-b border-neutral-200 shadow-sm">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-16 items-center">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+<span class="material-icons text-xl">school</span>
+</div>
+<span class="font-bold text-xl tracking-tight text-neutral-900">StudyBuddy</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-neutral-100 text-neutral-600">
+<span class="material-icons">notifications_none</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-pink-400 overflow-hidden ring-2 ring-white cursor-pointer">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Portrait of a user" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_afd09Es-dEnr--JVJ6_pg3f68eO1N4hxVmGh4Anj1GReXaDJfLAmOjQgpz4M07ySHJr22vHXku0APS9IPUNSt470BtHFfUSAO4g2G221aeCzehM2xGjMtbirH2kaH4DQXO8YysBbj3CnM0KJEUA_SQ4r_28Sij0MHVOExSpO2i_rxPsP_tveXUhWPWg9S2pYVW24ekKIfO_rkN5-nuuwb9Iacd4QZKLVrzFy3bPUj59DPEIY45JwSKHCrTN-GLpjYEwRmVb9_FU"/>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+<!-- Header -->
+<header class="text-center mb-12 relative">
+<!-- Decorative background elements -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-32 bg-primary/10 blur-[100px] -z-10 rounded-full"></div>
+<h1 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
+<span class="text-gradient">AI Studio</span>
+</h1>
+<p class="text-lg md:text-xl text-neutral-600 max-w-2xl mx-auto">
+                Generate Notes, Summaries, and Quizzes instantly with our advanced AI engine.
+            </p>
+</header>
+<div class="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Panel: Controls -->
+<div class="lg:col-span-7 space-y-6">
+<!-- Tab Navigation -->
+<div class="bg-white rounded-xl p-1.5 shadow-sm border border-neutral-200 flex space-x-1">
+<button class="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20">
+<span class="flex items-center justify-center gap-2">
+<span class="material-icons text-sm">edit_note</span>
+                            Smart Notes
+                        </span>
+</button>
+<button class="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 transition-all duration-200">
+<span class="flex items-center justify-center gap-2">
+<span class="material-icons text-sm">summarize</span>
+                            Summarizer
+                        </span>
+</button>
+<button class="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 transition-all duration-200">
+<span class="flex items-center justify-center gap-2">
+<span class="material-icons text-sm">quiz</span>
+                            Quiz Builder
+                        </span>
+</button>
+</div>
+<!-- Input Module: Smart Notes (Active) -->
+<div class="bg-white rounded-2xl shadow-lg border border-neutral-100 p-6 md:p-8 relative overflow-hidden group">
+<!-- Subtle pattern bg -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -z-0"></div>
+<div class="relative z-10 space-y-6">
+<div>
+<label class="block text-sm font-semibold text-neutral-700 mb-2" for="topic">Topic or Concept</label>
+<input class="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none placeholder-neutral-400 text-neutral-800" id="topic" placeholder="e.g. Quantum Mechanics, The French Revolution" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-semibold text-neutral-700 mb-2" for="detail">Detail Level</label>
+<div class="relative">
+<select class="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none text-neutral-800 appearance-none cursor-pointer" id="detail">
+<option value="brief">Brief Overview</option>
+<option selected="" value="standard">Standard Explanation</option>
+<option value="comprehensive">Comprehensive Deep Dive</option>
+</select>
+<span class="material-icons absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none">expand_more</span>
+</div>
+</div>
+<div>
+<label class="block text-sm font-semibold text-neutral-700 mb-2" for="context">Additional Context (Optional)</label>
+<textarea class="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none placeholder-neutral-400 text-neutral-800 resize-none" id="context" placeholder="Add specific keywords or focus areas..." rows="3"></textarea>
+</div>
+<!-- Format Options -->
+<div>
+<span class="block text-sm font-semibold text-neutral-700 mb-3">Output Format</span>
+<div class="flex gap-3">
+<label class="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-medium transition-colors">
+<input checked="" class="hidden" name="format" type="radio"/>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                                     Bullet Points
+                                 </label>
+<label class="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-200 bg-white text-neutral-600 text-sm font-medium hover:bg-neutral-50 transition-colors">
+<input class="hidden" name="format" type="radio"/>
+<span class="w-2 h-2 rounded-full bg-neutral-300"></span>
+                                     Paragraphs
+                                 </label>
+</div>
+</div>
+</div>
+</div>
+<!-- Generate Action -->
+<button class="w-full group relative overflow-hidden rounded-xl bg-gradient-to-r from-primary to-[#a65ef0] p-4 text-white shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0">
+<div class="absolute inset-0 bg-white/20 group-hover:bg-white/10 transition-colors"></div>
+<div class="relative flex items-center justify-center gap-2 font-bold text-lg">
+<span class="material-icons animate-pulse">auto_awesome</span>
+                        Generate Smart Notes
+                    </div>
+</button>
+</div>
+<!-- Right Panel: Output / Preview -->
+<div class="lg:col-span-5 flex flex-col h-full">
+<div class="bg-white rounded-2xl shadow-lg border border-neutral-100 flex flex-col h-full overflow-hidden relative">
+<!-- Header -->
+<div class="px-6 py-4 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+<h3 class="font-bold text-neutral-800 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-green-400"></span>
+                            Result Preview
+                        </h3>
+<div class="flex gap-2">
+<button class="p-1.5 text-neutral-400 hover:text-primary transition-colors" title="Copy">
+<span class="material-icons text-sm">content_copy</span>
+</button>
+<button class="p-1.5 text-neutral-400 hover:text-primary transition-colors" title="Download">
+<span class="material-icons text-sm">download</span>
+</button>
+</div>
+</div>
+<!-- Content Area -->
+<div class="flex-grow p-6 overflow-y-auto bg-white relative">
+<!-- Placeholder State (Hidden when content exists) -->
+<!-- 
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-neutral-400 p-8 text-center">
+                            <span class="material-icons text-6xl mb-4 text-neutral-200">history_edu</span>
+                            <p class="font-medium">Ready to create.</p>
+                            <p class="text-sm">Select a tool and start generating content.</p>
+                        </div> 
+                        -->
+<!-- Generated Content Example -->
+<div class="prose prose-sm prose-purple max-w-none">
+<h2 class="text-xl font-bold text-neutral-900 mb-4">Quantum Mechanics: The Basics</h2>
+<div class="bg-primary/5 border-l-4 border-primary p-3 rounded-r-lg mb-4">
+<p class="text-sm text-neutral-700 m-0"><strong>Key Takeaway:</strong> Physics at the scale of atoms and subatomic particles differs significantly from classical mechanics.</p>
+</div>
+<h3 class="text-lg font-semibold text-neutral-800 mt-4 mb-2">1. Wave-Particle Duality</h3>
+<p class="text-neutral-600 leading-relaxed mb-3">
+                                Matter and light exhibit behaviors of both waves and particles. This is famously demonstrated by the <strong>double-slit experiment</strong>.
+                            </p>
+<ul class="list-disc pl-5 space-y-1 text-neutral-600 mb-4">
+<li>Photons act like particles (discrete packets of energy).</li>
+<li>Photons create interference patterns like waves.</li>
+</ul>
+<h3 class="text-lg font-semibold text-neutral-800 mt-4 mb-2">2. Uncertainty Principle</h3>
+<p class="text-neutral-600 leading-relaxed mb-3">
+                                Formulated by Heisenberg, it states you cannot simultaneously know the exact position and momentum of a particle.
+                            </p>
+</div>
+</div>
+<!-- Bottom fade for scrolling indication -->
+<div class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+</div>
+</div>
+</div>
+<!-- History Section (Below Fold) -->
+<section class="mt-16 max-w-7xl mx-auto">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-2xl font-bold text-neutral-900">Recent Creations</h2>
+<button class="text-sm text-primary hover:text-primary-dark font-medium flex items-center gap-1">
+                    View All <span class="material-icons text-sm">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="group bg-white rounded-xl p-5 shadow-sm border border-neutral-200 hover:shadow-md transition-all cursor-pointer">
+<div class="flex items-start justify-between mb-3">
+<div class="p-2 rounded-lg bg-blue-100 text-blue-600">
+<span class="material-icons text-xl">summarize</span>
+</div>
+<span class="text-xs font-medium text-neutral-400">2h ago</span>
+</div>
+<h3 class="font-bold text-neutral-800 mb-1 group-hover:text-primary transition-colors">The Great Gatsby Summary</h3>
+<p class="text-sm text-neutral-500 line-clamp-2">A concise summary focusing on the themes of wealth, class, and the American Dream...</p>
+</div>
+<!-- Card 2 -->
+<div class="group bg-white rounded-xl p-5 shadow-sm border border-neutral-200 hover:shadow-md transition-all cursor-pointer">
+<div class="flex items-start justify-between mb-3">
+<div class="p-2 rounded-lg bg-purple-100 text-primary">
+<span class="material-icons text-xl">quiz</span>
+</div>
+<span class="text-xs font-medium text-neutral-400">Yesterday</span>
+</div>
+<h3 class="font-bold text-neutral-800 mb-1 group-hover:text-primary transition-colors">Organic Chemistry Quiz</h3>
+<p class="text-sm text-neutral-500 line-clamp-2">15 questions covering functional groups, nomenclature, and reaction mechanisms.</p>
+</div>
+<!-- Card 3 -->
+<div class="group bg-white rounded-xl p-5 shadow-sm border border-neutral-200 hover:shadow-md transition-all cursor-pointer">
+<div class="flex items-start justify-between mb-3">
+<div class="p-2 rounded-lg bg-emerald-100 text-emerald-600">
+<span class="material-icons text-xl">edit_note</span>
+</div>
+<span class="text-xs font-medium text-neutral-400">3d ago</span>
+</div>
+<h3 class="font-bold text-neutral-800 mb-1 group-hover:text-primary transition-colors">Machine Learning Basics</h3>
+<p class="text-sm text-neutral-500 line-clamp-2">Introduction to supervised vs unsupervised learning, neural networks, and backpropagation.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Simple Footer -->
+<footer class="border-t border-neutral-200 bg-white mt-12 py-8">
+<div class="container mx-auto px-4 text-center text-neutral-500 text-sm">
+<p>© 2023 StudyBuddy AI. All rights reserved.</p>
+</div>
+</footer>
+</body></html>
