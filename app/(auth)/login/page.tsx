@@ -156,10 +156,13 @@ function LoginContent() {
               }}
               transition={{ duration: 0.5 }}
             >
-              <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
-              <div className="relative flex items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 p-3 backdrop-blur-xl">
-                <BrandLogo size="lockup" className="h-12 w-12" />
-              </div>
+              <Link
+                href="/"
+                aria-label="StudyBuddy home"
+                className="relative inline-flex rounded-2xl border border-primary/20 bg-background/80 px-4 py-3 shadow-sm backdrop-blur-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
+              >
+                <BrandLogo />
+              </Link>
             </motion.div>
           </motion.div>
 

@@ -12,7 +12,7 @@ export default function CareersPage() {
             className="mb-8 inline-flex items-center"
             aria-label="Go to StudyBuddy home"
           >
-            <BrandLogo size="mark" className="h-14 w-14" />
+            <BrandLogo />
           </Link>
           <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#7C3AED]">
             Careers

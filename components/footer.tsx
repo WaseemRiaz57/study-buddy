@@ -41,9 +41,13 @@ export function Footer() {
       <div className="mx-auto w-full max-w-7xl px-6 py-12">
         <div className="grid gap-12 md:grid-cols-3">
           <div>
-            <div className="flex items-center">
-              <BrandLogo size="mark" className="h-12 w-12" />
-            </div>
+            <Link
+              href="/"
+              aria-label="StudyBuddy home"
+              className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
+            >
+              <BrandLogo />
+            </Link>
             <p className="mt-4 text-sm text-slate-600 dark:text-gray-400">
               Leveling up the way students learn and collaborate globally.
             </p>

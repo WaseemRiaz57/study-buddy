@@ -257,9 +257,9 @@ export default function PlatformSettingsPage() {
                     description="The official StudyBuddy logo used across the marketing site and application."
                 >
                     <div className="flex items-center gap-4">
-                        <BrandLogo size="lockup" className="h-12 w-12" />
+                        <BrandLogo />
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Managed from <code className="font-mono text-[11px]">/public/logo.png</code>
+                            Managed from the shared <code className="font-mono text-[11px]">BrandLogo</code> component
                         </p>
                     </div>
                 </SettingRow>

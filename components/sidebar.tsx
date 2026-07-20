@@ -27,7 +27,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import Image from "next/image";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useUserStore, type Plan, type Role } from "@/store/useUserStore";
 
 interface NavItem {
@@ -221,21 +221,7 @@ export function Sidebar({
           }`}
           aria-label={!mobile && isCollapsed ? "Expand sidebar" : "StudyBuddy dashboard"}
         >
-          <Image
-            src="/logo.png"
-            alt=""
-            width={40}
-            height={40}
-            priority
-            className="h-10 w-10 shrink-0 object-contain"
-            style={{ background: "transparent" }}
-          />
-          {(mobile || !isCollapsed) && (
-            <span className="whitespace-nowrap text-xl font-extrabold tracking-[-0.03em]">
-              <span className="text-[#121018] dark:text-[#F8F7FB]">Study</span>
-              <span className="text-[#7C2AFF] dark:text-[#962BFF]">Buddy</span>
-            </span>
-          )}
+          <BrandLogo size={mobile || !isCollapsed ? "lockup" : "mark"} />
         </Link>
 
         {mobile ? (
