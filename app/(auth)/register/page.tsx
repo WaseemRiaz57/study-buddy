@@ -316,7 +316,7 @@ export default function RegisterPage() {
             {step === 1 ? "Choose Your Path" : "Verify Your Email"}
           </p>
           <h1 className="text-3xl font-bold text-foreground xl:text-4xl">
-            {step === 1 ? "Join StudyBuddy as..." : "Enter your code"}
+            {step === 1 ? "Join StudyBuddy as" : "Enter your code"}
           </h1>
         </header>
 
