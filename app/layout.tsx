@@ -109,8 +109,8 @@ export const metadata: Metadata = {
     site: "@studybuddy",
   },
   icons: {
-    icon: [{ url: "/favicon.ico", type: "image/x-icon" }],
-    shortcut: [{ url: "/favicon.ico", type: "image/x-icon" }],
+    icon: "/logo.png",
+    shortcut: "/logo.png",
     apple: [{ url: "/logo.png", type: "image/png" }],
   },
 };

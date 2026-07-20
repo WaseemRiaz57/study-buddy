@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getSession, signIn } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState, Suspense } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -62,15 +62,8 @@ function LoginContent() {
         // Ab backend se aane wala asli error show hoga
         setError(result.error);
       } else if (result?.ok) {
-        const session = await getSession();
-        const role = String(session?.user?.role || "").toUpperCase();
-
-        if (role === "ADMIN") {
-            router.push("/admin");
-        } else {
-            router.push(callbackUrl);
-        }
         router.refresh();
+        router.push("/dashboard");
       }
     } catch {
       setError("An unexpected error occurred.");

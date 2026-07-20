@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu, X, Moon, Sun, User, Settings } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
@@ -8,7 +9,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react"; // 👈 NextAuth import
 import { BrandLogo } from "@/components/BrandLogo";
 
-const navItems: Array<{ href: string; label: string }> = [];
+const navItems: Array<{ href: string; label: string }> = [
+  { href: "/#features", label: "Features" },
+  { href: "/#workflow", label: "How it Works" },
+  { href: "/dashboard/mentorship/find", label: "Find a Mentor" },
+  { href: "/#pricing", label: "Pricing" },
+];
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -59,7 +65,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl transition-colors">
+    <nav aria-label="Primary navigation" className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl transition-colors">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
         {/* Logo */}
         <Link 
@@ -103,7 +109,7 @@ export function Navbar() {
         </button>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex md:items-center md:gap-8">
+        <div className="hidden items-center gap-8 md:absolute md:left-1/2 md:flex md:-translate-x-1/2">
           {navItems.map((item, index) => (
             <motion.div
               key={item.href}
@@ -113,7 +119,7 @@ export function Navbar() {
             >
               <Link
                 href={item.href}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary relative group"
+                className="group relative text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 {item.label}
                 <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all group-hover:w-full" />
@@ -148,9 +154,11 @@ export function Navbar() {
               >
                  {/* Agar Google Image hai toh yahan image lag sakti hai, warna default user icon */}
                  {profileImage ? (
-                   <img
+                   <Image
                      src={profileImage}
                      alt={`${session?.user?.name || "User"} profile picture`}
+                     width={32}
+                     height={32}
                      className="size-full rounded-full object-cover"
                      referrerPolicy="no-referrer"
                      onError={() => setAvatarFailed(true)}

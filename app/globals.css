@@ -465,6 +465,29 @@ input[type=range].mentor-slider::-webkit-slider-runnable-track {
   scrollbar-color: #334155 transparent;
 }
 
+.premium-scrollbar {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(124 58 237 / 0.45) transparent;
+}
+
+.premium-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.premium-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.premium-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgb(124 58 237 / 0.38);
+}
+
+.premium-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(124 58 237 / 0.62);
+}
+
 /* ── Landing page: guarantee zero horizontal overflow from 3D / liquid motion ── */
 .landing-page {
   overflow-x: clip;

@@ -624,7 +624,7 @@ export default function ContentGeneratorPage() {
                 <IconButton label="Download" onClick={handleDownload} Icon={Download} disabled={!hasResult} />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="premium-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
               <ResultBody
                 isLoading={isGenerating}
                 hasResult={hasResult}
@@ -700,7 +700,7 @@ function ResultPreview({
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35 }}
-      className="flex min-h-[430px] flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-purple-950/[0.06] dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20"
+      className="flex h-[min(60vh,36rem)] min-h-[430px] max-h-[60vh] flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-purple-950/[0.06] dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20"
     >
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/50">
         <h3 className="flex items-center gap-2 font-bold text-text-main dark:text-white">
@@ -721,7 +721,7 @@ function ResultPreview({
           <IconButton label="Download" onClick={onDownload} Icon={Download} disabled={!hasResult} />
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="premium-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
         <ResultBody
           isLoading={isLoading}
           hasResult={hasResult}
