@@ -142,8 +142,9 @@ export function MessageChatButton() {
       {isOpen && (
         <section
           role="dialog"
+          aria-modal="false"
           aria-label="Messages chat"
-          className="absolute right-0 top-full z-[80] mt-2 w-[calc(100vw-1.5rem)] max-w-[430px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#191121]"
+          className="absolute right-0 top-full z-[80] mt-2 flex h-[min(85vh,760px)] max-h-[calc(100dvh-5rem)] w-[calc(100vw-1.5rem)] max-w-[430px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#191121]"
         >
           <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
             <div>
@@ -163,7 +164,9 @@ export function MessageChatButton() {
               <X size={18} aria-hidden="true" />
             </button>
           </div>
-          <MessagesPanel variant="popover" />
+          <div className="min-h-0 flex-1">
+            <MessagesPanel variant="popover" />
+          </div>
         </section>
       )}
     </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Search, SlidersHorizontal, Clock3, Radio, Plus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import PublicProfileModal from "@/components/PublicProfileModal";
 import CreateRoomModal from "@/components/study-room/CreateRoomModal";
 import { useGamificationStore } from "@/store/useGamificationStore";
@@ -146,17 +147,17 @@ export default function StudyRoomsPage() {
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#4fd1c5]/5 rounded-full blur-[120px]" />
         </div>
 
-        <div className="mx-auto max-w-7xl flex flex-col gap-8 relative z-10">
+        <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-5">
           
           {/* ── HEADER SECTION (Updated) ── */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
                 <span className="text-[#7C3AED]">
                   Study Groups
                 </span>
               </h1>
-              <p className="text-slate-500 dark:text-gray-400 text-lg font-light">
+              <p className="text-sm text-slate-500 dark:text-gray-400 md:text-base">
                 Connect with peers, find your focus flow.
               </p>
             </div>
@@ -222,7 +223,7 @@ export default function StudyRoomsPage() {
           {joinError ? <p className="text-sm text-red-500">{joinError}</p> : null}
 
           {/* ── ROOM GRID (Cleaned) ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <section aria-label="Live study rooms" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 
             {!isLoadingRooms && roomsError ? (
               <div className="col-span-full rounded-2xl p-6 text-center border border-slate-200 bg-white text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-gray-300">
@@ -250,36 +251,38 @@ export default function StudyRoomsPage() {
             {activeRooms.map((room) => (
               <article
                 key={room._id}
-                onClick={() => router.push(`/dashboard/study-rooms/${room.roomId}`)}
-                className="group cursor-pointer relative flex flex-col p-5 h-64 rounded-2xl transition-all duration-300 hover:-translate-y-1
-                  bg-white border border-slate-200 shadow-sm hover:shadow-md
+                className="group relative flex min-h-[288px] flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-0.5
+                  bg-white border border-slate-200 shadow-sm hover:border-[#7C3AED]/25 hover:shadow-md
                   dark:bg-white/5 dark:border-white/10 dark:hover:border-[#4fd1c5]/30 dark:shadow-none backdrop-blur-md"
               >
-                {/* Live Badge */}
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${room.isLive ? "bg-teal-500 dark:bg-[#4fd1c5] animate-pulse" : "bg-slate-400 dark:bg-gray-500"}`} />
-                    <span className={`text-xs font-bold tracking-wide uppercase inline-flex items-center gap-1 ${room.isLive ? "text-teal-600 dark:text-[#4fd1c5]" : "text-slate-500 dark:text-gray-400"}`}>
-                      <Radio size={12} />
-                      {room.isLive ? "Live" : "Ended"}
-                    </span>
+                <Link
+                  href={`/dashboard/study-rooms/${room.roomId}`}
+                  aria-label={`Join ${room.topic}`}
+                  className="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/60"
+                >
+                  <span className="sr-only">Join {room.topic}</span>
+                </Link>
+
+                {/* Visual cover */}
+                <div className="relative h-32 shrink-0 overflow-hidden bg-gradient-to-br from-violet-600 via-[#7C3AED] to-indigo-950 dark:from-violet-800 dark:via-purple-950 dark:to-slate-950">
+                  <div aria-hidden="true" className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:24px_24px]" />
+                  <div aria-hidden="true" className="absolute -bottom-14 -right-8 h-36 w-36 rounded-full border-[24px] border-white/10" />
+                  <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-slate-950/55 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-md">
+                    <span className={`h-2 w-2 rounded-full ${room.isLive ? "animate-pulse bg-teal-300" : "bg-slate-400"}`} />
+                    <Radio size={11} aria-hidden="true" />
+                    {room.isLive ? "Live" : "Ended"}
                   </div>
+                  <span className="absolute bottom-3 left-3 rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-semibold tracking-wider text-white/90 backdrop-blur-md">
+                    {room.roomId}
+                  </span>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 line-clamp-2">{room.topic}</h3>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    <span className="px-2 py-1 rounded-md text-xs font-medium
-                      bg-slate-100 text-slate-600 border border-slate-200
-                      dark:bg-white/5 dark:text-white/70 dark:border-white/10">
-                      {room.roomId}
-                    </span>
-                  </div>
-                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <h2 className="line-clamp-2 text-lg font-bold text-slate-900 transition-colors group-hover:text-[#7C3AED] dark:text-white">{room.topic}</h2>
 
                 {/* Footer */}
-                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
+                <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 dark:border-white/5">
                   <div className="text-xs font-medium text-slate-500 dark:text-gray-300 truncate pr-3">
                     Host:{" "}
                     {room.hostId ? (
@@ -290,7 +293,7 @@ export default function StudyRoomsPage() {
                           event.stopPropagation();
                           setPublicProfileUserId(room.hostId);
                         }}
-                        className="inline-flex max-w-[120px] items-center gap-1.5 truncate align-middle font-semibold text-[#7C3AED] hover:underline"
+                        className="relative z-20 inline-flex max-w-[120px] items-center gap-1.5 truncate align-middle font-semibold text-[#7C3AED] hover:underline"
                       >
                         {room.hostImage && (
                           <img
@@ -310,9 +313,10 @@ export default function StudyRoomsPage() {
                     {room.participantsCount}/{room.capacity}
                   </div>
                 </div>
+                </div>
               </article>
             ))}
-          </div>
+          </section>
         </div>
       </main>
 

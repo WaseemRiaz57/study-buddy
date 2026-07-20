@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   FileText,
   FileImage,
@@ -57,44 +57,53 @@ export default function ResourceCard({
   onUnlock?: (resource: Resource) => void;
   isUnlocking?: boolean;
 }) {
-  const router = useRouter();
   const { icon: TypeIcon, bg: iconBg, text: iconText } = FILE_ICON_MAP[resource.fileType] ?? FILE_ICON_MAP.OTHER;
   const isPaidLocked = resource.price > 0 && !resource.isUnlocked;
 
   return (
     <article
-      onClick={() => router.push(`/dashboard/resources/${resource.id}`)}
-      className="group relative cursor-pointer bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/5"
+      className="group relative h-full cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#7C3AED]/25 hover:shadow-lg hover:shadow-purple-500/5 dark:border-white/10 dark:bg-white/5"
     >
-      {/* Top row: icon + rating */}
-      <div className="flex justify-between items-start mb-4">
-        <div className={`w-14 h-14 rounded-xl ${iconBg} flex items-center justify-center ${iconText}`}>
-          <TypeIcon size={28} />
+      <Link
+        href={`/dashboard/resources/${resource.id}`}
+        aria-label={`View ${resource.title}`}
+        className="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/60"
+      >
+        <span className="sr-only">View {resource.title}</span>
+      </Link>
+      {/* Document preview */}
+      <div className={`relative mb-4 flex h-24 items-center justify-center overflow-hidden rounded-xl border border-current/5 ${iconBg} ${iconText}`}>
+        <div aria-hidden="true" className="absolute -right-5 -top-8 h-24 w-24 rounded-full border-[16px] border-current opacity-[0.06]" />
+        <div aria-hidden="true" className="absolute -bottom-10 -left-6 h-24 w-24 rounded-full bg-current opacity-[0.05]" />
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 shadow-sm ring-1 ring-current/10 dark:bg-slate-950/35">
+          <TypeIcon size={28} aria-hidden="true" />
         </div>
-
-        <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 rounded-lg text-amber-600 dark:text-amber-400 text-xs font-bold">
+        <span className="absolute bottom-2.5 left-3 text-[10px] font-black uppercase tracking-[0.16em]">
+          {resource.fileType}
+        </span>
+        <div className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-lg bg-white/85 px-2 py-1 text-xs font-bold text-amber-600 shadow-sm dark:bg-slate-950/70 dark:text-amber-400">
           <Star size={12} fill="currentColor" />
           {resource.rating.toFixed(1)}
         </div>
       </div>
 
       {/* Subject + Title */}
-      <div className="mb-4">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#7C3AED]">
+      <div className="mb-3">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#7C3AED]">
           {resource.subject}
         </span>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1 line-clamp-2 group-hover:text-[#7C3AED] transition-colors">
+        <h3 className="mt-1 line-clamp-2 text-base font-bold text-slate-900 transition-colors group-hover:text-[#7C3AED] dark:text-white">
           {resource.title}
         </h3>
       </div>
 
       {/* Footer: author + downloads */}
-      <div className="pt-4 border-t border-slate-100 dark:border-white/5 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
+      <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-white/5 dark:text-slate-400">
         <div className="flex items-center gap-2">
           <span className="w-6 h-6 rounded-full bg-[#7C3AED]/10 dark:bg-[#7C3AED]/20 text-[#7C3AED] text-[10px] font-bold flex items-center justify-center">
             {resource.authorAvatar}
           </span>
-          <span>By {resource.author}</span>
+          <span className="max-w-24 truncate">By {resource.author}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -111,7 +120,7 @@ export default function ResourceCard({
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         {isPaidLocked ? (
           <button
             type="button"
@@ -120,7 +129,7 @@ export default function ResourceCard({
               onUnlock?.(resource);
             }}
             disabled={isUnlocking}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
+            className="relative z-20 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#6D28D9] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LockKeyhole size={15} />
             {isUnlocking ? "Unlocking..." : `Unlock for ${resource.price} Coins`}

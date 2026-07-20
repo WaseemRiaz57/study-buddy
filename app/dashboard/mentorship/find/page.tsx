@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Zap,
   X,
 } from "lucide-react";
 import BookingModal, { type Mentor } from "@/components/mentorship/BookingModal";
@@ -164,13 +165,13 @@ function MentorCard({
   }
 
   return (
-    <motion.div
+    <motion.article
       layout
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ type: "spring", stiffness: 260, damping: 22, delay: index * 0.05 }}
-      className="group relative flex flex-col h-full rounded-2xl p-6
+      className="group relative flex flex-col h-full rounded-2xl p-5
         bg-white/75 dark:bg-white/[0.05] backdrop-blur-lg
         border border-gray-200/50 dark:border-white/10
         shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02),0_2px_4px_-1px_rgba(0,0,0,0.02)]
@@ -188,10 +189,10 @@ function MentorCard({
       </Link>
 
       {/* Top row: Avatar + Rating */}
-      <div className="relative flex justify-between items-start mb-4">
+      <div className="relative flex justify-between items-start mb-3">
         {/* Avatar */}
         <div className="relative">
-          <div className="w-20 h-20 rounded-full p-[3px] bg-white dark:bg-white/10 shadow-sm">
+          <div className="h-16 w-16 rounded-full bg-white p-[3px] shadow-sm dark:bg-white/10">
             <div className="flex w-full h-full items-center justify-center rounded-full bg-[#7C3AED] text-white font-bold text-xl">
               {mentor.avatar ? (
                 <img
@@ -206,7 +207,7 @@ function MentorCard({
           </div>
           {/* Status dot */}
           <div
-            className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-white dark:border-[#0f0a16] z-10 ${
+            className={`absolute bottom-0.5 right-0.5 z-10 h-4 w-4 rounded-full border-2 border-white dark:border-[#0f0a16] ${
               mentor.available
                 ? "bg-[#7C3AED] shadow-[0_0_0_0_rgba(124,58,237,0.35)] animate-pulse"
                 : "bg-gray-300 dark:bg-gray-600"
@@ -229,8 +230,8 @@ function MentorCard({
       </div>
 
       {/* Name, Role, Bio */}
-      <div className="mb-4">
-        <h3 className="text-xl font-bold text-text-main dark:text-white mb-1 group-hover:text-primary transition-colors">
+      <div className="mb-3">
+        <h3 className="mb-1 text-lg font-bold text-text-main transition-colors group-hover:text-primary dark:text-white">
           {mentor.name}
         </h3>
         <p className="text-sm text-primary font-medium mb-1">{mentor.role}</p>
@@ -240,11 +241,11 @@ function MentorCard({
       </div>
 
       {/* Tags */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="mb-4 flex flex-wrap gap-1.5">
         {mentor.tags.slice(0, 4).map((tag) => (
           <span
             key={tag}
-            className="px-3 py-1 bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-slate-300 text-xs rounded-full font-medium"
+            className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-white/[0.08] dark:text-slate-300"
           >
             {tag}
           </span>
@@ -267,7 +268,8 @@ function MentorCard({
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-purple-600/20 transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isInstantConnecting && <Loader2 size={16} className="animate-spin" />}
-            ⚡ Instant Connect
+            <Zap size={15} aria-hidden="true" />
+            Instant Connect
           </button>
           <button
             onClick={handleBookClick}
@@ -277,7 +279,7 @@ function MentorCard({
           </button>
         </div>
       </div>
-    </motion.div>
+    </motion.article>
   );
 }
 
@@ -448,53 +450,53 @@ export default function MentorshipPage() {
         style={{ backgroundColor: "var(--background)" }}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 relative z-10">
+      <main className="relative z-10 mx-auto max-w-7xl px-4 py-5 sm:px-6 md:py-7 lg:px-8">
         <BackButton
           href="/dashboard/mentorship"
           label="Back to mentorship home"
-          className="mb-8 border border-gray-200 bg-white/80 shadow-sm dark:border-white/10 dark:bg-white/[0.05]"
+          className="mb-4 border border-gray-200 bg-white/80 shadow-sm dark:border-white/10 dark:bg-white/[0.05]"
         />
         {/* ── Header & Search ── */}
-        <div className="text-center mb-12 relative">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight relative z-10 text-text-main dark:text-white">
+        <header className="relative mb-5 text-center">
+          <h1 className="relative z-10 mb-2 text-3xl font-bold tracking-tight text-text-main dark:text-white md:text-4xl">
             Find Your Mentor
           </h1>
-          <p className="text-gray-500 dark:text-slate-400 text-lg mb-8 max-w-2xl mx-auto relative z-10">
+          <p className="relative z-10 mx-auto mb-4 max-w-2xl text-sm leading-6 text-gray-500 dark:text-slate-400 md:text-base">
             Connect with Ivy League scholars and industry experts to accelerate your learning journey.
           </p>
 
           {/* Search bar */}
-          <div className="max-w-2xl mx-auto relative z-20">
+          <div className="relative z-20 mx-auto max-w-3xl">
             <div className="relative group">
-              <div className="relative flex items-center bg-white/70 dark:bg-white/[0.06] backdrop-blur-xl rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] dark:shadow-none border border-white/50 dark:border-white/10 p-2">
-                <Search size={22} className="text-gray-400 dark:text-slate-500 ml-3" />
+              <div className="relative flex items-center rounded-2xl border border-gray-200/80 bg-white/80 p-1.5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06] dark:shadow-none">
+                <Search size={19} className="ml-3 text-gray-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search by subject, name, or university..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-transparent border-none focus:ring-0 text-text-main dark:text-white placeholder-gray-400 dark:placeholder-slate-500 text-lg py-3 px-4 outline-none"
+                  className="w-full border-none bg-transparent px-3 py-2.5 text-sm text-text-main outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-slate-500 md:text-base"
                 />
                 <button
                   type="button"
                   aria-label="Open mentor filters"
-                  className="bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 text-gray-600 dark:text-slate-400 rounded-xl p-3 transition-colors shrink-0"
+                  className="shrink-0 rounded-xl bg-gray-100 p-2.5 text-gray-600 transition-colors hover:bg-gray-200 dark:bg-white/10 dark:text-slate-400 dark:hover:bg-white/15"
                 >
                   <SlidersHorizontal size={20} />
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </header>
 
         {/* ── Filter pills ── */}
-        <div className="flex overflow-x-auto scrollbar-none space-x-3 mb-10 pb-2 px-1 items-center justify-start md:justify-center">
+        <nav aria-label="Mentor subjects" className="scrollbar-none mb-6 flex items-center justify-start gap-2 overflow-x-auto px-1 pb-1 md:justify-center">
           {FILTERS.map((f) => (
             <button
               key={f.id}
               onClick={() => setActiveFilter(f.id)}
               className={`
-                whitespace-nowrap px-6 py-2.5 rounded-full font-medium text-sm transition-all
+                min-h-[40px] whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all
                 ${
                   activeFilter === f.id
                     ? "bg-primary text-white shadow-[0_0_20px_rgba(140,48,232,0.15)] border border-primary/20 hover:scale-105 transform"
@@ -505,7 +507,7 @@ export default function MentorshipPage() {
               {f.label}
             </button>
           ))}
-        </div>
+        </nav>
 
         {/* ── Mentor Grid ── */}
         {isLoadingMentors ? (
@@ -520,7 +522,7 @@ export default function MentorshipPage() {
         ) : (
           <motion.div
             layout
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+            className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           >
             <AnimatePresence mode="popLayout">
               {filtered.map((mentor, i) => (

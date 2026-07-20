@@ -192,12 +192,12 @@ export default function ResourcesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0f0c13] p-6 md:p-8">
+    <main className="min-h-screen bg-slate-50 p-4 dark:bg-[#0f0c13] sm:p-6">
       {/* ---- Header ---- */}
-      <motion.div
+      <motion.header
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8"
+        className="mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end"
       >
         <div>
           <div className="flex items-center gap-2 text-[#7C3AED] mb-1">
@@ -206,26 +206,26 @@ export default function ResourcesPage() {
               Digital Library
             </span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
             Resource Hub
           </h1>
         </div>
 
         <button
           onClick={() => setIsUploadOpen(true)}
-          className="flex items-center gap-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-purple-500/20 transition-colors"
+          className="flex min-h-[44px] items-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-2.5 font-bold text-white shadow-md shadow-purple-500/15 transition-colors hover:bg-[#6D28D9]"
         >
           <Plus size={18} />
           Upload Resource
         </button>
-      </motion.div>
+      </motion.header>
 
       {/* ---- Search & Filters bar ---- */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="mb-8 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900 sm:flex-row"
+        className="mb-5 flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900 sm:flex-row"
       >
         {/* Search */}
         <div className="flex min-h-[44px] flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
@@ -306,7 +306,7 @@ export default function ResourcesPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
           {filtered.map((resource, index) => (
             <motion.div
@@ -344,7 +344,7 @@ export default function ResourcesPage() {
           );
         }}
       />
-    </div>
+    </main>
   );
 }
 

@@ -1090,7 +1090,7 @@ export function MessagesPanel({ variant = "page" }: MessagesPanelProps) {
     <main
       className={
         isPopover
-          ? "relative flex h-[min(72vh,640px)] min-h-[520px] w-full overflow-hidden bg-background text-foreground dark:bg-[#191121]"
+          ? "relative flex h-full min-h-0 w-full overflow-hidden bg-background text-foreground dark:bg-[#191121]"
           : "relative h-screen overflow-hidden bg-background text-foreground dark:bg-[#191121]"
       }
       aria-label={isPopover ? "Messages chat popover" : "Messages"}
@@ -1240,7 +1240,7 @@ export function MessagesPanel({ variant = "page" }: MessagesPanelProps) {
         )}
 
         {showChatPane && (
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <header className="flex shrink-0 items-center justify-between border-b border-border bg-white/80 px-4 py-3 backdrop-blur-xl dark:bg-white/5 md:px-6">
             {activeConversation ? (
               <div className="flex items-center gap-3">
@@ -1369,7 +1369,7 @@ export function MessagesPanel({ variant = "page" }: MessagesPanelProps) {
             </div>
           </header>
 
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 md:px-6">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 md:px-6">
             {isLoadingMessages ? (
               <div className="flex h-full items-center justify-center">
                 <Loader2 className="animate-spin text-[#7C3AED]" size={26} />
