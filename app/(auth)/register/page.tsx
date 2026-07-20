@@ -537,7 +537,7 @@ export default function RegisterPage() {
                 {step === 1 ? "Sending Code..." : "Verifying..."}
               </>
             ) : step === 1 ? (
-              `Send Code as ${roleConfig[role].title}`
+              `Send Code
             ) : (
               "Verify and Create Account"
             )}
