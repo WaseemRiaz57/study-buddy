@@ -379,16 +379,18 @@ export default function ContentGeneratorPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 md:py-12 lg:px-8">
+    <div className="relative min-h-screen overflow-x-hidden bg-slate-50/70 dark:bg-slate-950">
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-purple-500/20 blur-[120px] dark:bg-purple-600/20" />
+      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 md:py-12 lg:px-8">
         <motion.header
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="mb-10 text-center"
+          className="mb-10 text-center md:mb-12"
         >
-          <h1 className="mb-4 text-4xl font-extrabold tracking-tight md:text-5xl">
-            <span className="text-[#7C3AED]">{isMentor ? "Quiz Generator" : "Notes Generator"}</span>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#7C3AED]">AI Studio</p>
+          <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white md:text-5xl">
+            {isMentor ? "Quiz Generator" : "Notes Generator"}
           </h1>
           <p className="mx-auto max-w-2xl text-base text-text-muted dark:text-slate-400 md:text-lg">
             {isMentor
@@ -398,8 +400,8 @@ export default function ContentGeneratorPage() {
         </motion.header>
 
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-12">
-          <section className="space-y-6 lg:col-span-7">
-            <div className="glass-panel flex rounded-xl p-1.5">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5 lg:col-span-5">
+            <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950/70">
               {availableTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -411,8 +413,8 @@ export default function ContentGeneratorPage() {
                     onClick={() => handleTabChange(tab.id)}
                     className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
                       isActive
-                        ? "bg-[#7C3AED] text-white"
-                        : "text-text-muted hover:bg-[#7C3AED]/10 hover:text-[#7C3AED] dark:text-slate-400"
+                        ? "bg-[#7C3AED] text-white shadow-sm"
+                        : "text-text-muted hover:bg-white hover:text-[#7C3AED] dark:text-slate-400 dark:hover:bg-slate-800"
                     }`}
                   >
                     <Icon size={16} />
@@ -429,7 +431,7 @@ export default function ContentGeneratorPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className="glass-panel rounded-2xl p-5 md:p-7"
+                className="pt-6"
               >
                 <div className="space-y-6">
                   {activeTab === "notes" && (
@@ -546,7 +548,7 @@ export default function ContentGeneratorPage() {
                           max={20}
                           value={quizCount}
                           onChange={(event) => setQuizCount(Math.min(20, Math.max(1, Number(event.target.value) || 1)))}
-                          className="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                         />
                       </div>
                       <FileDropZone
@@ -566,12 +568,12 @@ export default function ContentGeneratorPage() {
               </motion.div>
             </AnimatePresence>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={() => void handleGenerate()}
                 disabled={isGenerating || status === "loading"}
-                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#7C3AED]/20 transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-[#7C3AED]/20 transition-all hover:bg-purple-700 hover:shadow-purple-500/30 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <CurrentGenerateIcon size={18} />}
                 {isGenerating ? "Generating..." : currentTab.generateLabel}
@@ -588,7 +590,7 @@ export default function ContentGeneratorPage() {
             </div>
           </section>
 
-          <section className="flex flex-col lg:col-span-5">
+          <section className="flex flex-col lg:col-span-7">
             <ResultPreview
               isLoading={isGenerating}
               hasResult={hasResult}
@@ -697,9 +699,9 @@ function ResultPreview({
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35 }}
-      className="glass-panel flex min-h-[420px] flex-1 flex-col overflow-hidden rounded-2xl"
+      className="flex min-h-[520px] flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/50">
         <h3 className="flex items-center gap-2 font-bold text-text-main dark:text-white">
           <span className={`h-2 w-2 rounded-full ${hasResult ? "bg-green-500" : isLoading ? "animate-pulse bg-amber-400" : "bg-slate-300 dark:bg-slate-600"}`} />
           Result Preview
@@ -728,7 +730,7 @@ function ResultPreview({
         />
       </div>
       {hasResult && (
-        <div className="border-t border-slate-200 p-4 dark:border-white/[0.06]">
+        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
           <button
             type="button"
             onClick={onReset}
@@ -868,7 +870,7 @@ function RecentCreations({ items }: { items: RecentCreationItem[] }) {
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.15 }}
-      className="mx-auto mt-14 max-w-6xl"
+      className="mx-auto mt-12 max-w-6xl md:mt-16"
     >
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-text-main dark:text-white">Recent Creations</h2>
@@ -876,7 +878,7 @@ function RecentCreations({ items }: { items: RecentCreationItem[] }) {
           View All <ArrowRight size={14} />
         </button>
       </div>
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((item) => {
           const style = historyTypeStyles[item.type] ?? historyTypeStyles.notes;
           const Icon = style.Icon;
@@ -884,7 +886,7 @@ function RecentCreations({ items }: { items: RecentCreationItem[] }) {
           return (
             <article
               key={item._id}
-              className="glass-panel rounded-xl p-5 transition-all hover:-translate-y-1 hover:border-[#7C3AED]/40 hover:shadow-md"
+              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-[#7C3AED]/40 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
             >
               <div className="mb-3 flex items-start justify-between">
                 <div className={`rounded-lg p-2 ${style.bg} ${style.text}`}>
@@ -905,7 +907,7 @@ function RecentCreations({ items }: { items: RecentCreationItem[] }) {
           );
         })}
         {items.length === 0 && (
-          <div className="glass-panel rounded-xl p-6 text-center text-text-muted dark:text-slate-400 md:col-span-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-text-muted shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 sm:col-span-2 xl:col-span-3">
             Your generated content will appear here.
           </div>
         )}
@@ -938,7 +940,7 @@ function FormatSelector({
             className={`min-h-[44px] rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
               value === option.value
                 ? "border-[#7C3AED] bg-[#7C3AED] text-white"
-                : "border-slate-200 bg-white text-text-muted hover:border-[#7C3AED] hover:text-[#7C3AED] dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400"
+                : "border-slate-200 bg-white text-text-muted hover:border-[#7C3AED] hover:text-[#7C3AED] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400"
             }`}
           >
             {option.label}
@@ -976,7 +978,7 @@ function InputField({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-text-main outline-none transition-all placeholder:text-slate-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
       />
     </div>
   );
@@ -1005,7 +1007,7 @@ function SelectField({
           id={id}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full appearance-none rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
@@ -1048,7 +1050,7 @@ function TextAreaField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full resize-none rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-text-main outline-none transition-all focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-text-main outline-none transition-all placeholder:text-slate-400 focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED] disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
       />
     </div>
   );
@@ -1158,7 +1160,7 @@ function FileDropZone({
         className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
           isDragging
             ? "border-[#7C3AED] bg-[#7C3AED]/10"
-            : "border-slate-300 bg-white/5 hover:border-[#7C3AED]/50 hover:bg-[#7C3AED]/5 dark:border-white/15"
+            : "border-slate-300 bg-slate-50/70 hover:border-[#7C3AED]/50 hover:bg-[#7C3AED]/5 dark:border-slate-700 dark:bg-slate-950/50"
         }`}
       >
         {isReading ? (
