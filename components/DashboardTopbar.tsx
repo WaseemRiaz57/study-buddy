@@ -34,7 +34,12 @@ export function DashboardTopbar({
   const { resolvedTheme, setTheme } = useTheme();
   const { data: session, status } = useSession();
   const { role } = useUserStore();
+  const [mounted, setMounted] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [storeOpen, setStoreOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
@@ -271,7 +276,7 @@ export function DashboardTopbar({
             className="group relative min-h-[44px] min-w-[44px] rounded-lg p-3 transition-colors hover:bg-[#7C3AED]/10"
             aria-label="Toggle theme"
           >
-            {resolvedTheme === "dark" ? (
+            {mounted && resolvedTheme === "dark" ? (
               <Sun
                 className="text-muted-foreground transition-colors group-hover:text-[#7C3AED]"
                 size={20}
