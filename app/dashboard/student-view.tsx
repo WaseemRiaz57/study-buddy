@@ -394,23 +394,23 @@ export function StudentDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       {/* MAIN CONTENT */}
-      <main className="app-page space-y-6" aria-label="Student dashboard">
+      <main className="app-page min-w-0 space-y-5" aria-label="Student dashboard">
         
         {/* HERO SECTION */}
         <div className="tour-dashboard-overview grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
           
           {/* Level Progress Card */}
-          <motion.div {...fadeIn} className="tour-gamification glass-panel group relative min-w-0 overflow-hidden rounded-3xl p-5 sm:p-6 lg:col-span-2">
+          <motion.div {...fadeIn} className="tour-gamification glass-panel group relative min-w-0 overflow-hidden rounded-2xl p-4 sm:p-5 lg:col-span-2">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full -mr-20 -mt-20 blur-[80px] group-hover:bg-primary/30 transition-all duration-700" />
             
             <div className="relative z-10 flex min-w-0 flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <span className="inline-block text-primary font-bold text-xs uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full mb-4">
                   Progress Milestone
                 </span>
-                <h2 className="mb-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
+                <h1 className="mb-2 text-xl font-black tracking-tight text-foreground">
                   Level {gamificationStats.level} is in motion!
-                </h2>
+                </h1>
                 <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
                   You have earned{" "}
                   <span className="text-foreground font-bold">
@@ -437,7 +437,7 @@ export function StudentDashboard() {
               </div>
 
               {/* Circular Progress */}
-              <div className="relative h-28 w-28 shrink-0 self-center sm:h-32 sm:w-32" aria-label={`${Math.round(levelProgressPct)}% progress to the next level`}>
+              <div className="relative h-24 w-24 shrink-0 self-center sm:h-28 sm:w-28" aria-label={`${Math.round(levelProgressPct)}% progress to the next level`}>
                 <svg viewBox="0 0 160 160" className="h-full w-full -rotate-90 overflow-visible" role="img">
                   <circle className="text-muted-foreground/10" cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="10" />
                   <motion.circle 
@@ -456,7 +456,7 @@ export function StudentDashboard() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-black tracking-tighter text-foreground sm:text-4xl">
+                  <span className="text-xl font-black tracking-tighter text-foreground">
                     {gamificationStats.level}
                   </span>
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Level</span>
@@ -466,7 +466,7 @@ export function StudentDashboard() {
           </motion.div>
 
           {/* Next Session Card */}
-          <motion.div {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel rounded-[2rem] p-6 bg-[#7C3AED]   border border-primary/10 flex flex-col justify-between relative overflow-hidden">
+          <motion.div {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel relative flex min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-primary/10 bg-[#7C3AED] p-4 sm:p-5">
             <div className="absolute inset-0 bg-primary/5 opacity-0 hover:opacity-100 transition-opacity" />
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-4">
@@ -509,14 +509,14 @@ export function StudentDashboard() {
                     Waiting for Mentor to start...
                   </p>
                   <div className="flex gap-2">
-                    <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
-                      <span className="block text-2xl font-black text-foreground">
+                    <div className="min-w-0 flex-1 rounded-xl border border-border/50 bg-background/50 px-3 py-2 text-center backdrop-blur-md">
+                      <span className="block text-xl font-black text-foreground">
                         {completedSessionsCount}
                       </span>
                       <span className="text-[10px] font-bold text-muted-foreground">DONE</span>
                     </div>
-                    <div className="bg-background/50 backdrop-blur-md px-3 py-2 rounded-xl border border-border/50 flex-1 text-center">
-                      <span className="block text-2xl font-black text-foreground">
+                    <div className="min-w-0 flex-1 rounded-xl border border-border/50 bg-background/50 px-3 py-2 text-center backdrop-blur-md">
+                      <span className="block text-xl font-black text-foreground">
                         {mentorSessions.length}
                       </span>
                       <span className="text-[10px] font-bold text-muted-foreground">TOTAL</span>
@@ -529,12 +529,12 @@ export function StudentDashboard() {
         </div>
 
         {/* SECTION 2: QUESTS & NOTES */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-3">
           
           {/* Daily Quests */}
-          <motion.div {...fadeIn} transition={{ delay: 0.2 }} className="space-y-6">
+          <motion.section {...fadeIn} transition={{ delay: 0.2 }} className="min-w-0 space-y-4" aria-labelledby="daily-quests-heading">
             <div className="flex items-center justify-between px-1">
-              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <h2 id="daily-quests-heading" className="flex min-w-0 items-center gap-2 text-xl font-bold text-foreground">
                  Daily Quests <Target className="text-primary" size={20} />
               </h2>
               <button
@@ -552,10 +552,10 @@ export function StudentDashboard() {
                   {pendingAssignments.map((assignment) => (
                     <div
                       key={assignment.id}
-                      className="flex items-center justify-between p-4 glass-panel rounded-2xl hover:border-[#7C3AED]/50 transition-all"
+                      className="glass-panel flex min-w-0 items-center justify-between gap-3 rounded-2xl p-4 transition-all hover:border-[#7C3AED]/50"
                     >
                       <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/10">
                           <ClipboardList className="text-[#7C3AED]" size={20} />
                         </div>
                         <div className="min-w-0">
@@ -657,16 +657,16 @@ export function StudentDashboard() {
                 </div>
               )}
             </div>
-          </motion.div>
+          </motion.section>
 
           {/* AI Notes Carousel - SCROLLBAR HIDDEN */}
-          <motion.div {...fadeIn} transition={{ delay: 0.3 }} className="tour-ai-studio xl:col-span-2 space-y-6">
+          <motion.section {...fadeIn} transition={{ delay: 0.3 }} className="tour-ai-studio min-w-0 space-y-4 xl:col-span-2" aria-labelledby="recent-ai-notes-heading">
             <div className="tour-focus-room">
               <MinimalTodoList compact />
             </div>
 
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <div className="flex min-w-0 items-center justify-between gap-3 px-1">
+              <h2 id="recent-ai-notes-heading" className="flex min-w-0 items-center gap-2 text-xl font-bold text-foreground">
                 Recent AI Notes <Sparkles className="text-primary" size={20} />
               </h2>
               <button className="flex items-center gap-1 text-primary text-sm font-bold hover:gap-2 transition-all">
@@ -674,13 +674,13 @@ export function StudentDashboard() {
               </button>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="-mx-4 flex min-w-0 gap-3 overflow-x-auto px-4 pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {recentNotes.map((note) => {
                 const meta = noteTypeMeta[note.type];
                 const Icon = meta.icon;
                 return (
-                <div key={note._id} className="min-w-[260px] glass-panel rounded-[1.5rem] p-5 hover:-translate-y-2 transition-all cursor-pointer group relative overflow-hidden">
-                  <div className={`aspect-[4/3] rounded-2xl mb-4 overflow-hidden relative bg-[#7C3AED] ${meta.gradient} flex items-center justify-center shadow-inner`}>
+                <article key={note._id} className="glass-panel group relative w-48 shrink-0 cursor-pointer overflow-hidden rounded-2xl p-4 transition-all hover:-translate-y-1">
+                  <div className={`relative mb-3 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-[#7C3AED] shadow-inner ${meta.gradient}`}>
                     <div className="absolute inset-0 bg-black/10" />
                     <Icon className="text-white/60 group-hover:scale-110 transition-transform duration-500" size={48} />
                   </div>
@@ -693,23 +693,23 @@ export function StudentDashboard() {
                     </p>
                     <p className="text-[10px] font-bold text-muted-foreground">{formatRelativeTime(note.createdAt)}</p>
                   </div>
-                </div>
+                </article>
               )})}
               {recentNotes.length === 0 && (
-                <div className="min-w-[260px] glass-panel rounded-[1.5rem] p-5 text-sm text-muted-foreground">
+                <div className="glass-panel w-48 shrink-0 rounded-2xl p-4 text-sm text-muted-foreground">
                   Your latest AI notes will appear here.
                 </div>
               )}
             </div>
-          </motion.div>
+          </motion.section>
 
         </div>
 
         {/* SECTION 3: MENTORSHIP REVIEWS */}
-        <motion.div {...fadeIn} transition={{ delay: 0.4 }} className="space-y-5">
+        <motion.section {...fadeIn} transition={{ delay: 0.4 }} className="min-w-0 space-y-4" aria-labelledby="past-sessions-heading">
           <div className="flex flex-col gap-2 px-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <h2 id="past-sessions-heading" className="flex min-w-0 items-center gap-2 text-xl font-bold text-foreground">
                 Past Sessions <Star className="text-yellow-400" size={20} />
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -732,19 +732,19 @@ export function StudentDashboard() {
               {sessionLoadError}
             </div>
           ) : reviewableSessions.length === 0 ? (
-            <div className="glass-panel rounded-2xl p-6 text-sm text-muted-foreground">
+            <div className="glass-panel rounded-2xl p-4 text-sm text-muted-foreground">
               Past mentor sessions will show here once they are completed.
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
               {reviewableSessions.slice(0, 4).map((session) => {
                 const mentor = getMentor(session);
                 const mentorName = getMentorName(session);
 
                 return (
-                  <div
+                  <article
                     key={session._id}
-                    className="glass-panel rounded-2xl p-5 transition-all hover:border-primary/40"
+                    className="glass-panel min-w-0 rounded-2xl p-4 transition-all hover:border-primary/40"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 items-start gap-4">
@@ -794,12 +794,12 @@ export function StudentDashboard() {
                         </button>
                       )}
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
           )}
-        </motion.div>
+        </motion.section>
       </main>
 
       {selectedReviewSession && (

@@ -526,49 +526,49 @@ export function MentorDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       {/* MAIN CONTENT */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="app-page mx-auto min-w-0 max-w-screen-2xl space-y-5" aria-label="Mentor dashboard">
         
         {/* Welcome Section */}
-        <div className="tour-dashboard-overview mb-8">
-          <div className="flex items-end justify-between mb-6">
-            <div>
-              <h2 className="text-3xl font-bold text-foreground mb-1">
+        <section className="tour-dashboard-overview min-w-0 space-y-4" aria-labelledby="mentor-dashboard-heading">
+          <header className="flex min-w-0 items-end justify-between gap-4">
+            <div className="min-w-0">
+              <h1 id="mentor-dashboard-heading" className="mb-1 truncate text-xl font-bold text-foreground">
                 {status === "loading" ? "Welcome back" : `Welcome back, ${mentorName}`}
-              </h2>
+              </h1>
               <p className="text-muted-foreground">You have {requests.length} new session requests and a payout ready.</p>
               <p className="text-xs text-muted-foreground mt-1">Role: {mentorRole}</p>
             </div>
-            <div className="text-right hidden sm:block">
+            <div className="hidden shrink-0 text-right sm:block">
               <p className="text-sm text-muted-foreground">Local Time</p>
               <p className="text-lg font-medium text-foreground">10:42 AM, Oct 24</p>
             </div>
-          </div>
+          </header>
 
           {/* Impact Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <motion.div {...fadeIn} className="glass-panel p-6 rounded-2xl border-l-4 border-l-blue-500">
+          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3">
+            <motion.article {...fadeIn} className="glass-panel min-w-0 rounded-2xl border-l-4 border-l-blue-500 p-4">
               <p className="text-sm text-muted-foreground mb-2">Total Students Taught</p>
-              <div className="flex items-center gap-3">
-                <span className="text-4xl font-black text-blue-500">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="text-xl font-black tabular-nums text-blue-500">
                   {statValue(stats.uniqueStudentsTaught)}
                 </span>
               </div>
-            </motion.div>
+            </motion.article>
 
-            <motion.div {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel p-6 rounded-2xl border-l-4 border-l-purple-500">
+            <motion.article {...fadeIn} transition={{ delay: 0.1 }} className="glass-panel min-w-0 rounded-2xl border-l-4 border-l-purple-500 p-4">
               <p className="text-sm text-muted-foreground mb-2">Upcoming Sessions</p>
-              <div className="flex items-center gap-3">
-                <span className="text-4xl font-black text-purple-500">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="text-xl font-black tabular-nums text-purple-500">
                   {statValue(stats.upcomingSessions)}
                 </span>
               </div>
-            </motion.div>
+            </motion.article>
 
-            <motion.div {...fadeIn} transition={{ delay: 0.2 }} className="glass-panel p-6 rounded-2xl border-l-4 border-l-yellow-500">
+            <motion.article {...fadeIn} transition={{ delay: 0.2 }} className="glass-panel min-w-0 rounded-2xl border-l-4 border-l-yellow-500 p-4">
               <p className="text-sm text-muted-foreground mb-2">Mentor Rating</p>
-              <div className="flex items-center gap-3">
-                <span className="text-4xl font-black text-yellow-500">{displayRating}<span className="text-2xl text-muted-foreground/50 font-light">/5</span></span>
-                <div className="flex text-yellow-500">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="text-xl font-black tabular-nums text-yellow-500">{displayRating}<span className="text-base font-light text-muted-foreground/50">/5</span></span>
+                <div className="flex shrink-0 text-yellow-500">
                   {[1,2,3,4,5].map((i) => (
                     <Star
                       key={i}
@@ -579,25 +579,25 @@ export function MentorDashboard() {
                   ))}
                 </div>
               </div>
-            </motion.div>
+            </motion.article>
           </div>
-        </div>
+        </section>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-12">
           
           {/* LEFT: Session Requests */}
-          <div className="col-span-12 lg:col-span-4 space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          <section className="min-w-0 space-y-4 xl:col-span-4" aria-labelledby="session-requests-heading">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <h2 id="session-requests-heading" className="flex min-w-0 items-center gap-2 text-lg font-bold text-foreground">
                 <Clock className="text-[#7C3AED]" size={20} />
                 Session Requests
-              </h3>
+              </h2>
               <span className="px-2.5 py-1 bg-purple-100 text-[#7C3AED] text-xs font-bold rounded-full dark:bg-purple-500/15">{requests.length} NEW</span>
             </div>
 
             {/* Request Cards */}
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-3">
               {isRequestsLoading && (
                 <div className="glass-panel p-5 rounded-2xl text-sm text-muted-foreground flex items-center gap-2">
                   <Loader2 size={16} className="animate-spin text-primary" />
@@ -620,12 +620,12 @@ export function MentorDashboard() {
                 const isInstantRequest = request.type === "instant";
 
                 return (
-                  <motion.div 
+                  <motion.article
                     key={request._id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + i * 0.1 }}
-                    className={`glass-panel p-5 rounded-2xl hover:border-primary/30 transition-all cursor-pointer ${
+                    className={`glass-panel min-w-0 cursor-pointer rounded-2xl p-4 transition-all hover:border-primary/30 ${
                       isInstantRequest ? "border-[#7C3AED]/50 ring-1 ring-[#7C3AED]/20" : ""
                     }`}
                     onClick={() => handleOpenRequest(request)}
@@ -636,7 +636,7 @@ export function MentorDashboard() {
                         URGENT: INSTANT SESSION
                       </div>
                     )}
-                    <div className="flex items-start gap-4 mb-4">
+                    <div className="mb-4 flex min-w-0 items-start gap-3">
                       <UserAvatar
                         name={studentName}
                         imageUrl={student.image || null}
@@ -645,7 +645,7 @@ export function MentorDashboard() {
                       />
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-foreground truncate">{studentName}</h4>
-                        <p className="text-xs text-muted-foreground mb-2">{request.subject}</p>
+                        <p className="mb-2 truncate text-xs text-muted-foreground">{request.subject}</p>
                         <div className="flex flex-wrap gap-2">
                           <span className="text-[10px] px-2 py-0.5 bg-muted rounded font-bold uppercase text-muted-foreground">
                             {formatSessionTime(request.scheduledAt)}
@@ -655,12 +655,12 @@ export function MentorDashboard() {
                           </span>
                         </div>
                       </div>
-                      <span className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">
+                      <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-muted-foreground">
                         {formatRequestedTime(request.createdAt)}
                       </span>
                     </div>
                     
-                    <div className="flex gap-3">
+                    <div className="flex min-w-0 gap-2">
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -684,7 +684,7 @@ export function MentorDashboard() {
                         Decline
                       </button>
                     </div>
-                  </motion.div>
+                  </motion.article>
                 );
               })}
             </div>
@@ -703,9 +703,9 @@ export function MentorDashboard() {
                   const studentName = student.name || "Student";
 
                   return (
-                    <div
+                    <article
                       key={mentorSession._id}
-                      className="glass-panel rounded-2xl p-4"
+                      className="glass-panel min-w-0 rounded-2xl p-4"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold text-foreground">
@@ -721,31 +721,31 @@ export function MentorDashboard() {
                       >
                         Join Room
                       </Link>
-                    </div>
+                    </article>
                   );
                 })
               )}
             </div>
-          </div>
+          </section>
 
           {/* MIDDLE: Performance Chart */}
-          <div className="col-span-12 lg:col-span-5 space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          <section className="min-w-0 space-y-4 xl:col-span-5" aria-labelledby="performance-heading">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <h2 id="performance-heading" className="flex min-w-0 items-center gap-2 text-lg font-bold text-foreground">
                 <BarChart3 className="text-blue-500" size={20} />
                 Performance
-              </h3>
+              </h2>
               <select className="bg-transparent border-none text-xs font-bold text-muted-foreground focus:ring-0 cursor-pointer">
                 <option>This Week</option>
                 <option>Last Month</option>
               </select>
             </div>
 
-            <motion.div {...fadeIn} transition={{ delay: 0.4 }} className="glass-panel p-6 rounded-2xl min-h-[400px] flex flex-col">
-              <div className="flex items-center justify-between mb-8">
-                <div>
+            <motion.article {...fadeIn} transition={{ delay: 0.4 }} className="glass-panel flex min-h-[340px] min-w-0 flex-col rounded-2xl p-4 sm:p-5">
+              <div className="mb-5 flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">Avg. Student Score</p>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-xl font-bold tabular-nums text-foreground">
                     {isAnalyticsLoading
                       ? "..."
                       : `${analytics.avgStudentScore.toFixed(1)}%`}
@@ -761,7 +761,7 @@ export function MentorDashboard() {
                     )}
                   </p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex shrink-0 gap-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                     <span className="text-xs font-medium text-muted-foreground">Current</span>
@@ -818,63 +818,63 @@ export function MentorDashboard() {
                   <span key={`${point.label}-${i}`}>{point.label}</span>
                 ))}
               </div>
-            </motion.div>
-          </div>
+            </motion.article>
+          </section>
 
           {/* RIGHT: Earnings & Actions */}
-          <div className="col-span-12 lg:col-span-3 space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          <aside className="min-w-0 space-y-4 xl:col-span-3" aria-labelledby="earnings-heading">
+            <div className="flex min-w-0 items-center justify-between">
+              <h2 id="earnings-heading" className="flex min-w-0 items-center gap-2 text-lg font-bold text-foreground">
                 <Wallet className="text-blue-500" size={20} />
                 Earnings
-              </h3>
+              </h2>
             </div>
 
-            <motion.div {...fadeIn} transition={{ delay: 0.5 }} className="glass-panel p-6 rounded-2xl">
-              <div className="mb-6">
+            <motion.article {...fadeIn} transition={{ delay: 0.5 }} className="glass-panel min-w-0 rounded-2xl p-4 sm:p-5">
+              <div className="mb-4 min-w-0">
                 <p className="text-sm text-muted-foreground mb-1">Total Earnings</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-foreground">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-1">
+                  <span className="min-w-0 text-xl font-black tabular-nums text-foreground">
                     {isStatsLoading ? "$..." : `$${stats.totalEarnings.toFixed(2)}`}
                   </span>
                   <span className="text-sm font-medium text-muted-foreground">USD</span>
                 </div>
               </div>
 
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-center text-sm pb-4 border-b border-border/50">
+              <div className="mb-4 min-w-0 space-y-3">
+                <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 pb-3 text-sm">
                   <span className="text-muted-foreground">Next Payout</span>
                   <span className="font-bold text-foreground">{earnings.nextPayout}</span>
                 </div>
-                <div className="flex justify-between items-center text-sm pb-4 border-b border-border/50">
+                <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 pb-3 text-sm">
                   <span className="text-muted-foreground">Gold Balance</span>
                   <div className="flex items-center gap-1 font-bold text-yellow-600 dark:text-yellow-400">
                     <Coins size={14} /> {earnings.balance.toLocaleString()}
                   </div>
                 </div>
-                <div className="flex justify-between items-center text-sm">
+                <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
                   <span className="text-muted-foreground">Platform Fees</span>
                   <span className="font-bold text-muted-foreground">-${earnings.fees.toFixed(2)}</span>
                 </div>
               </div>
 
-              <button className="w-full py-4 bg-[#7C3AED]   text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+              <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#7C3AED] py-2.5 font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 hover:shadow-blue-500/40">
                 <CreditCard size={18} />
                 Request Payout
               </button>
               
               <p className="text-center text-[10px] text-muted-foreground mt-3">Funds usually arrive in 1-3 business days.</p>
-            </motion.div>
+            </motion.article>
 
             {/* Quick Actions */}
             <div className="space-y-4">
               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quick Actions</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <button className="flex flex-col items-center gap-2 glass-panel p-4 rounded-xl hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group">
+              <div className="grid min-w-0 grid-cols-2 gap-3">
+                <button className="glass-panel group flex min-w-0 flex-col items-center gap-2 rounded-xl p-3 transition-all hover:border-blue-500/50 hover:bg-blue-500/5">
                   <Calendar className="text-blue-500 group-hover:scale-110 transition-transform" size={20} />
                   <span className="text-xs font-bold text-foreground">Reschedule</span>
                 </button>
-                <button className="flex flex-col items-center gap-2 glass-panel p-4 rounded-xl hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group">
+                <button className="glass-panel group flex min-w-0 flex-col items-center gap-2 rounded-xl p-3 transition-all hover:border-purple-500/50 hover:bg-purple-500/5">
                   <FileText className="text-purple-500 group-hover:scale-110 transition-transform" size={20} />
                   <span className="text-xs font-bold text-foreground">Create Task</span>
                 </button>
@@ -885,7 +885,7 @@ export function MentorDashboard() {
               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 Recent Quiz Generations
               </h4>
-              <div className="glass-panel rounded-2xl p-4">
+              <div className="glass-panel min-w-0 rounded-2xl p-4">
                 {isRecentQuizzesLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 size={14} className="animate-spin text-[#7C3AED]" />
@@ -901,10 +901,10 @@ export function MentorDashboard() {
                       <Link
                         key={quiz.id}
                         href="/dashboard/content-generator"
-                        className="block rounded-xl border border-border/50 bg-background/50 p-3 transition-colors hover:border-[#7C3AED]/40 hover:bg-[#7C3AED]/5"
+                        className="block min-w-0 rounded-xl border border-border/50 bg-background/50 p-3 transition-colors hover:border-[#7C3AED]/40 hover:bg-[#7C3AED]/5"
                       >
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <p className="line-clamp-1 text-sm font-bold text-foreground">
+                        <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
+                          <p className="min-w-0 truncate text-sm font-bold text-foreground">
                             {quiz.title}
                           </p>
                           <span className="rounded-full bg-[#7C3AED]/10 px-2 py-0.5 text-[10px] font-bold uppercase text-[#7C3AED]">
@@ -924,12 +924,12 @@ export function MentorDashboard() {
                 )}
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </main>
 
       {/* FOOTER */}
-      <footer className="py-10 px-6 border-t border-border/50 mt-12">
+      <footer className="mt-8 border-t border-border/50 px-4 py-6">
         <div className="max-w-7xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="w-6 h-6 bg-primary/10 rounded flex items-center justify-center">

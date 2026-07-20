@@ -132,9 +132,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        <h2 className="text-lg font-black text-slate-950 dark:text-white">
+    <section className="min-w-0 space-y-3" aria-labelledby={`mentorship-${title.toLowerCase().replaceAll(" ", "-")}`}>
+      <div className="flex min-w-0 items-center gap-2">
+        <h2 id={`mentorship-${title.toLowerCase().replaceAll(" ", "-")}`} className="min-w-0 text-lg font-black text-slate-950 dark:text-white">
           {title}
         </h2>
         <span className="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-black text-[#7C3AED]">
@@ -164,8 +164,8 @@ function SessionCard({
   const showEndedBadge = expired && session.status !== "completed";
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-surface-dark">
-      <div className="flex items-start gap-4">
+    <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-surface-dark">
+      <div className="flex min-w-0 items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#7C3AED] text-sm font-black text-white">
           {mentor.image ? (
             <Image
@@ -182,7 +182,7 @@ function SessionCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <h3 className="truncate text-base font-black text-slate-950 dark:text-white">
                 {session.subject}
@@ -191,7 +191,7 @@ function SessionCard({
                 with {mentorName}
               </p>
             </div>
-            <span className="inline-flex rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-black text-[#7C3AED]">
+            <span className="inline-flex max-w-full shrink-0 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-black text-[#7C3AED]">
               {showEndedBadge ? "Session Ended" : statusLabel(session.status)}
             </span>
           </div>
@@ -212,7 +212,7 @@ function SessionCard({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="mt-4 flex min-w-0 flex-wrap gap-2">
         {showEndedBadge && (
           <span className="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-500">
             Session Ended
@@ -278,7 +278,7 @@ function SessionCard({
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-surface-dark">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-surface-dark">
       <Inbox className="mx-auto mb-3 h-8 w-8 text-[#7C3AED] opacity-30" />
       {label}
     </div>
@@ -407,13 +407,13 @@ export default function MentorshipActivitiesHub() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 p-4 md:p-8">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+      <main className="mx-auto flex w-full min-w-0 max-w-screen-2xl flex-col gap-6 p-4 md:p-5" aria-label="Mentorship activities dashboard">
+        <header className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <p className="text-sm font-black uppercase tracking-wide text-[#7C3AED]">
               Mentorship
             </p>
-            <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 dark:text-white">
+            <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950 dark:text-white">
               Activities Hub
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-500">
@@ -436,30 +436,30 @@ export default function MentorshipActivitiesHub() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-surface-dark">
+            <section className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3" aria-label="Mentorship activity summary">
+              <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-surface-dark">
                 <User className="mb-3 h-5 w-5 text-[#7C3AED]" />
-                <p className="text-2xl font-black text-slate-950 dark:text-white">
+                <p className="text-xl font-black text-slate-950 dark:text-white">
                   {groupedSessions.activeRequests.length}
                 </p>
                 <p className="text-sm text-slate-500">Active Requests</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-surface-dark">
+              </article>
+              <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-surface-dark">
                 <CreditCard className="mb-3 h-5 w-5 text-[#7C3AED]" />
-                <p className="text-2xl font-black text-slate-950 dark:text-white">
+                <p className="text-xl font-black text-slate-950 dark:text-white">
                   {groupedSessions.awaitingPayment.length}
                 </p>
                 <p className="text-sm text-slate-500">Awaiting Payment</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-surface-dark">
+              </article>
+              <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-surface-dark">
                 <CalendarCheck className="mb-3 h-5 w-5 text-[#7C3AED]" />
-                <p className="text-2xl font-black text-slate-950 dark:text-white">
+                <p className="text-xl font-black text-slate-950 dark:text-white">
                   {groupedSessions.upcomingSessions.length +
                     groupedSessions.pastSessions.length}
                 </p>
                 <p className="text-sm text-slate-500">Upcoming/Past Sessions</p>
-              </div>
-            </div>
+              </article>
+            </section>
 
             <Section
               title="Active Requests"
@@ -468,7 +468,7 @@ export default function MentorshipActivitiesHub() {
               {groupedSessions.activeRequests.length === 0 ? (
                 <EmptyState label="No active mentor requests." />
               ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
                   {groupedSessions.activeRequests.map((session) => (
                     <SessionCard
                       key={session._id}
@@ -489,7 +489,7 @@ export default function MentorshipActivitiesHub() {
               {groupedSessions.awaitingPayment.length === 0 ? (
                 <EmptyState label="No sessions are waiting on payment." />
               ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
                   {groupedSessions.awaitingPayment.map((session) => (
                     <SessionCard
                       key={session._id}
@@ -510,7 +510,7 @@ export default function MentorshipActivitiesHub() {
               {groupedSessions.upcomingSessions.length === 0 ? (
                 <EmptyState label="No verified sessions are ready to join." />
               ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
                   {groupedSessions.upcomingSessions.map((session) => (
                     <SessionCard
                       key={session._id}
@@ -531,7 +531,7 @@ export default function MentorshipActivitiesHub() {
               {groupedSessions.pastSessions.length === 0 ? (
                 <EmptyState label="Completed, declined, and expired sessions will appear here." />
               ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
                   {groupedSessions.pastSessions.map((session) => (
                     <SessionCard
                       key={session._id}
