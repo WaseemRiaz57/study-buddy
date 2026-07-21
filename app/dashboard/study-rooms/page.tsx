@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, SlidersHorizontal, Clock3, Radio, Plus, Users } from "lucide-react";
+import Image from "next/image";
+import { Search, SlidersHorizontal, Clock3, Radio, Plus, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import PublicProfileModal from "@/components/PublicProfileModal";
 import CreateRoomModal from "@/components/study-room/CreateRoomModal";
 import { useGamificationStore } from "@/store/useGamificationStore";
@@ -21,6 +23,25 @@ type Room = {
   isLive: boolean;
   isActive: boolean;
   status: string;
+  isHost: boolean;
+};
+
+type RoomFilter = "live" | "ended" | "mine";
+
+type ApiRoom = {
+  _id?: unknown;
+  title?: unknown;
+  topic?: unknown;
+  roomId?: unknown;
+  participantsCount?: unknown;
+  participantCount?: unknown;
+  participants?: unknown[];
+  maxParticipants?: unknown;
+  createdBy?: { _id?: unknown; name?: unknown; image?: unknown; profileImage?: unknown };
+  isLive?: unknown;
+  isActive?: unknown;
+  status?: unknown;
+  isHost?: unknown;
 };
 
 export default function StudyRoomsPage() {
@@ -28,6 +49,9 @@ export default function StudyRoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   const [roomsError, setRoomsError] = useState("");
+  const [roomFilter, setRoomFilter] = useState<RoomFilter>("live");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [deletingRoomId, setDeletingRoomId] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
@@ -54,7 +78,7 @@ export default function StudyRoomsPage() {
           ? payload
           : [];
 
-      const normalizedRooms: Room[] = rawRooms.map((room: any) => ({
+      const normalizedRooms: Room[] = rawRooms.map((room: ApiRoom) => ({
             _id: String(room._id),
             topic: String(room.title || room.topic || "Untitled Room"),
             roomId: String(room.roomId || ""),
@@ -77,13 +101,8 @@ export default function StudyRoomsPage() {
             ),
             isActive: room?.isActive === true,
             status: String(room?.status || ""),
-          })).filter(
-            (room: Room) =>
-              room.isLive &&
-              room.isActive &&
-              room.status === "active" &&
-              room.participantsCount > 0
-          );
+            isHost: room?.isHost === true,
+          }));
 
       setRooms(normalizedRooms);
     } catch (error) {
@@ -98,12 +117,23 @@ export default function StudyRoomsPage() {
     loadRooms();
   }, []);
 
-  const activeRooms = rooms.filter(
+  const liveRooms = rooms.filter(
     (room) =>
       room.isLive === true &&
       room.isActive === true &&
       room.status === "active" &&
       room.participantsCount > 0
+  );
+  const endedRooms = rooms.filter((room) => !room.isLive || room.status === "ended");
+  const myRooms = rooms.filter((room) => room.isHost);
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredRooms = (
+    roomFilter === "live" ? liveRooms : roomFilter === "ended" ? endedRooms : myRooms
+  ).filter((room) =>
+    !normalizedSearch ||
+    room.topic.toLowerCase().includes(normalizedSearch) ||
+    room.roomId.toLowerCase().includes(normalizedSearch) ||
+    room.hostName.toLowerCase().includes(normalizedSearch)
   );
 
   if (isLoadingRooms && rooms.length === 0 && !roomsError) {
@@ -134,6 +164,37 @@ export default function StudyRoomsPage() {
       setJoinError("Failed to join room.");
     } finally {
       setIsJoining(false);
+    }
+  };
+
+  const handleDeleteRoom = async (room: Room) => {
+    if (!room.isHost || deletingRoomId) return;
+
+    const confirmed = window.confirm(
+      `Delete "${room.topic}"?${room.isLive ? " This will end the active room for everyone." : ""}`
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeletingRoomId(room._id);
+      const response = await fetch(
+        `/api/study-rooms/${encodeURIComponent(room.roomId)}`,
+        { method: "DELETE" }
+      );
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to delete room.");
+      }
+
+      setRooms((currentRooms) =>
+        currentRooms.filter((currentRoom) => currentRoom._id !== room._id)
+      );
+      toast.success("Room deleted.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete room.");
+    } finally {
+      setDeletingRoomId("");
     }
   };
 
@@ -177,6 +238,8 @@ export default function StudyRoomsPage() {
             <div className="relative flex-1 group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 className="w-full h-12 rounded-xl pl-12 pr-4 transition-all
                   bg-white border border-slate-200 text-slate-900 placeholder-slate-400
                   dark:bg-white/5 dark:border-white/10 dark:text-white dark:placeholder-white/30
@@ -222,8 +285,37 @@ export default function StudyRoomsPage() {
           </div>
           {joinError ? <p className="text-sm text-red-500">{joinError}</p> : null}
 
+          <nav aria-label="Filter study rooms" className="flex w-full overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 dark:border-white/10 dark:bg-white/5">
+            {([
+              { id: "live" as const, label: "Live", count: liveRooms.length },
+              { id: "ended" as const, label: "Ended", count: endedRooms.length },
+              { id: "mine" as const, label: "My Rooms", count: myRooms.length },
+            ]).map((filter) => {
+              const isSelected = roomFilter === filter.id;
+
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setRoomFilter(filter.id)}
+                  aria-current={isSelected ? "page" : undefined}
+                  className={`inline-flex min-h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-bold transition-all ${
+                    isSelected
+                      ? "bg-[#7C3AED] text-white shadow-sm"
+                      : "text-slate-500 hover:bg-purple-50 hover:text-[#7C3AED] dark:text-slate-300 dark:hover:bg-white/5"
+                  }`}
+                >
+                  {filter.label}
+                  <span className={`rounded-md px-1.5 py-0.5 text-[10px] ${isSelected ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300"}`}>
+                    {filter.count}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
           {/* ── ROOM GRID (Cleaned) ── */}
-          <section aria-label="Live study rooms" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <section aria-label={`${roomFilter === "mine" ? "My" : roomFilter === "live" ? "Live" : "Ended"} study rooms`} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 
             {!isLoadingRooms && roomsError ? (
               <div className="col-span-full rounded-2xl p-6 text-center border border-slate-200 bg-white text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-gray-300">
@@ -242,26 +334,34 @@ export default function StudyRoomsPage() {
             {/* Note: Removed the "Create Card" from here */}
 
             {/* Room Cards */}
-            {!isLoadingRooms && !roomsError && activeRooms.length === 0 ? (
+            {!isLoadingRooms && !roomsError && filteredRooms.length === 0 ? (
               <div className="col-span-full rounded-2xl p-6 text-center border border-slate-200 bg-white text-slate-600 dark:bg-white/5 dark:border-white/10 dark:text-gray-300">
-                No live public rooms right now.
+                {normalizedSearch
+                  ? "No rooms match your search."
+                  : roomFilter === "live"
+                    ? "No live public rooms right now."
+                    : roomFilter === "ended"
+                      ? "No ended rooms yet."
+                      : "You have not created any rooms yet."}
               </div>
             ) : null}
 
-            {activeRooms.map((room) => (
+            {filteredRooms.map((room) => (
               <article
                 key={room._id}
                 className="group relative flex min-h-[288px] flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-0.5
                   bg-white border border-slate-200 shadow-sm hover:border-[#7C3AED]/25 hover:shadow-md
                   dark:bg-white/5 dark:border-white/10 dark:hover:border-[#4fd1c5]/30 dark:shadow-none backdrop-blur-md"
               >
-                <Link
-                  href={`/dashboard/study-rooms/${room.roomId}`}
-                  aria-label={`Join ${room.topic}`}
-                  className="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/60"
-                >
-                  <span className="sr-only">Join {room.topic}</span>
-                </Link>
+                {room.isLive && (
+                  <Link
+                    href={`/dashboard/study-rooms/${room.roomId}`}
+                    aria-label={`Join ${room.topic}`}
+                    className="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/60"
+                  >
+                    <span className="sr-only">Join {room.topic}</span>
+                  </Link>
+                )}
 
                 {/* Visual cover */}
                 <div className="relative h-32 shrink-0 overflow-hidden bg-gradient-to-br from-violet-600 via-[#7C3AED] to-indigo-950 dark:from-violet-800 dark:via-purple-950 dark:to-slate-950">
@@ -272,6 +372,22 @@ export default function StudyRoomsPage() {
                     <Radio size={11} aria-hidden="true" />
                     {room.isLive ? "Live" : "Ended"}
                   </div>
+                  {room.isHost && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void handleDeleteRoom(room);
+                      }}
+                      disabled={Boolean(deletingRoomId)}
+                      className="absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-slate-950/55 text-white backdrop-blur-md transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label={`Delete ${room.topic}`}
+                      title="Delete room"
+                    >
+                      <Trash2 size={14} aria-hidden="true" />
+                    </button>
+                  )}
                   <span className="absolute bottom-3 left-3 rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-semibold tracking-wider text-white/90 backdrop-blur-md">
                     {room.roomId}
                   </span>
@@ -296,9 +412,11 @@ export default function StudyRoomsPage() {
                         className="relative z-20 inline-flex max-w-[120px] items-center gap-1.5 truncate align-middle font-semibold text-[#7C3AED] hover:underline"
                       >
                         {room.hostImage && (
-                          <img
+                          <Image
                             src={room.hostImage}
                             alt={`${room.hostName} profile picture`}
+                            width={20}
+                            height={20}
                             className="h-5 w-5 rounded-full object-cover"
                           />
                         )}

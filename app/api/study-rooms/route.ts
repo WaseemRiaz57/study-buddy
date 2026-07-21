@@ -51,19 +51,13 @@ export async function GET() {
       }
     );
 
+    const currentUserId = String(session.user.id);
     const rooms = await StudyRoom.find({
-      status: "active",
-      isActive: true,
-      isLive: true,
-      $expr: {
-        $and: [
-          { $gt: [{ $size: { $ifNull: ["$participants", []] } }, 0] },
-          { $in: ["$createdBy", { $ifNull: ["$participants", []] }] },
-        ],
-      },
+      status: { $in: ["active", "ended"] },
     })
       .populate("createdBy", "name image profileImage")
       .sort({ createdAt: -1 })
+      .limit(100)
       .lean();
 
     return NextResponse.json({
@@ -72,9 +66,27 @@ export async function GET() {
         const participantCount = Array.isArray(room.participants)
           ? room.participants.length
           : 0;
+        const populatedHost = room.createdBy as unknown as
+          | { _id?: unknown }
+          | mongoose.Types.ObjectId;
+        const hostId = String(
+          populatedHost && typeof populatedHost === "object" && "_id" in populatedHost
+            ? populatedHost._id
+            : populatedHost || ""
+        );
+        const isLive = Boolean(
+          room.isLive === true &&
+            room.isActive === true &&
+            room.status === "active" &&
+            participantCount > 0
+        );
 
         return {
           ...room,
+          isLive,
+          isActive: isLive,
+          status: isLive ? "active" : "ended",
+          isHost: hostId === currentUserId,
           participantCount,
           participantsCount: participantCount,
         };

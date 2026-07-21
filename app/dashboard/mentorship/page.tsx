@@ -122,6 +122,22 @@ function statusLabel(status: SessionStatus) {
   return labels[status];
 }
 
+function statusBadgeClass(status: SessionStatus, showEndedBadge: boolean) {
+  if (showEndedBadge) {
+    return "border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/10 dark:text-slate-300";
+  }
+
+  if (status === "pending") {
+    return "border-purple-200 bg-purple-100/80 text-purple-700 dark:border-purple-500/25 dark:bg-purple-500/15 dark:text-purple-300";
+  }
+
+  if (status === "accepted" || status === "payment_pending") {
+    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300";
+  }
+
+  return "border-purple-200 bg-purple-50 text-[#7C3AED] dark:border-purple-500/25 dark:bg-purple-500/10 dark:text-purple-300";
+}
+
 function Section({
   title,
   count,
@@ -164,7 +180,7 @@ function SessionCard({
   const showEndedBadge = expired && session.status !== "completed";
 
   return (
-    <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-surface-dark">
+    <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-md dark:border-white/10 dark:bg-surface-dark dark:hover:border-purple-500/25">
       <div className="flex min-w-0 items-start gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#7C3AED] text-sm font-black text-white">
           {mentor.image ? (
@@ -191,7 +207,7 @@ function SessionCard({
                 with {mentorName}
               </p>
             </div>
-            <span className="inline-flex max-w-full shrink-0 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-black text-[#7C3AED]">
+            <span className={`inline-flex max-w-full shrink-0 rounded-full border px-3 py-1 text-xs font-black ${statusBadgeClass(session.status, showEndedBadge)}`}>
               {showEndedBadge ? "Session Ended" : statusLabel(session.status)}
             </span>
           </div>
@@ -220,7 +236,7 @@ function SessionCard({
         )}
 
         {!expired && session.status === "pending" && (
-          <span className="rounded-xl border border-purple-100 bg-purple-50 px-4 py-2.5 text-sm font-bold text-[#7C3AED]">
+          <span className="rounded-xl border border-purple-200 bg-purple-100/80 px-4 py-2.5 text-sm font-bold text-purple-700 dark:border-purple-500/25 dark:bg-purple-500/15 dark:text-purple-300">
             Awaiting Mentor Acceptance
           </span>
         )}
@@ -236,7 +252,7 @@ function SessionCard({
         )}
 
         {!expired && session.status === "payment_pending" && (
-          <span className="rounded-xl border border-purple-100 bg-purple-50 px-4 py-2.5 text-sm font-bold text-[#7C3AED]">
+          <span className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300">
             Verifying Payment...
           </span>
         )}
@@ -437,27 +453,26 @@ export default function MentorshipActivitiesHub() {
         ) : (
           <>
             <section className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-3" aria-label="Mentorship activity summary">
-              <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-surface-dark">
-                <User className="mb-3 h-5 w-5 text-[#7C3AED]" />
+              <article className="min-w-0 rounded-xl border-2 border-purple-100 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-purple-500/15 dark:bg-surface-dark">
+                <span className="mb-3 inline-flex rounded-lg bg-purple-100 p-2 text-[#7C3AED] dark:bg-purple-500/15"><User className="h-5 w-5" aria-hidden="true" /></span>
                 <p className="text-xl font-black text-slate-950 dark:text-white">
                   {groupedSessions.activeRequests.length}
                 </p>
                 <p className="text-sm text-slate-500">Active Requests</p>
               </article>
-              <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-surface-dark">
-                <CreditCard className="mb-3 h-5 w-5 text-[#7C3AED]" />
+              <article className="min-w-0 rounded-xl border-2 border-amber-100 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-amber-500/15 dark:bg-surface-dark">
+                <span className="mb-3 inline-flex rounded-lg bg-amber-100 p-2 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"><CreditCard className="h-5 w-5" aria-hidden="true" /></span>
                 <p className="text-xl font-black text-slate-950 dark:text-white">
                   {groupedSessions.awaitingPayment.length}
                 </p>
                 <p className="text-sm text-slate-500">Awaiting Payment</p>
               </article>
-              <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-surface-dark">
-                <CalendarCheck className="mb-3 h-5 w-5 text-[#7C3AED]" />
+              <article className="min-w-0 rounded-xl border-2 border-emerald-100 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-emerald-500/15 dark:bg-surface-dark">
+                <span className="mb-3 inline-flex rounded-lg bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"><CalendarCheck className="h-5 w-5" aria-hidden="true" /></span>
                 <p className="text-xl font-black text-slate-950 dark:text-white">
-                  {groupedSessions.upcomingSessions.length +
-                    groupedSessions.pastSessions.length}
+                  {groupedSessions.upcomingSessions.length}
                 </p>
-                <p className="text-sm text-slate-500">Upcoming/Past Sessions</p>
+                <p className="text-sm text-slate-500">Upcoming</p>
               </article>
             </section>
 
@@ -468,7 +483,7 @@ export default function MentorshipActivitiesHub() {
               {groupedSessions.activeRequests.length === 0 ? (
                 <EmptyState label="No active mentor requests." />
               ) : (
-                <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
                   {groupedSessions.activeRequests.map((session) => (
                     <SessionCard
                       key={session._id}

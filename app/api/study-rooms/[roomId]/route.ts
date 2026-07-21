@@ -6,6 +6,8 @@ import { connectDB } from "@/lib/connectDB";
 import { authOptions } from "@/lib/authOptions";
 import StudyRoom from "@/models/StudyRoom";
 import MentorSession from "@/models/MentorSession";
+import { clearStudyRoomRuntimeState } from "@/lib/redis";
+import { closeStudyRoomAndPersistDuration } from "@/lib/study-room-lifecycle";
 import {
   escapeStudyRoomRegex,
   getMentorSessionExpiresAt,
@@ -247,6 +249,62 @@ export async function GET(
     console.error("❌ Fetch study room details error:", error);
     return NextResponse.json(
       { message: "Failed to fetch room details" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ roomId: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    const requesterId = String(session?.user?.id || "").trim();
+
+    if (!requesterId) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const { roomId } = await params;
+    const normalizedRoomId = normalizeRoomId(roomId);
+
+    if (!normalizedRoomId) {
+      return NextResponse.json({ message: "roomId is required" }, { status: 400 });
+    }
+
+    await connectDB();
+
+    const room = await StudyRoom.findOne({
+      roomId: { $regex: `^${escapeRegex(normalizedRoomId)}$`, $options: "i" },
+    });
+
+    if (!room) {
+      return NextResponse.json({ message: "Room not found" }, { status: 404 });
+    }
+
+    if (String(room.createdBy) !== requesterId) {
+      return NextResponse.json(
+        { message: "Forbidden: only the room host can delete this room" },
+        { status: 403 }
+      );
+    }
+
+    if (room.isLive || room.isActive || room.status === "active") {
+      await closeStudyRoomAndPersistDuration(room.roomId, "manual");
+    }
+
+    await clearStudyRoomRuntimeState(room.roomId);
+    await StudyRoom.deleteOne({ _id: room._id, createdBy: room.createdBy });
+
+    return NextResponse.json({
+      message: "Room deleted successfully",
+      roomId: room.roomId,
+    });
+  } catch (error) {
+    console.error("Delete study room error:", error);
+    return NextResponse.json(
+      { message: "Failed to delete room" },
       { status: 500 }
     );
   }

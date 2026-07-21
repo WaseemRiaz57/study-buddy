@@ -399,8 +399,8 @@ export default function ContentGeneratorPage() {
           </p>
         </motion.header>
 
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 lg:grid-cols-12">
-          <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-purple-950/[0.06] dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20 lg:col-span-5">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-stretch gap-4 lg:grid-cols-12">
+          <section className="relative h-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-purple-950/[0.06] dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20 lg:col-span-5">
             <div className="pointer-events-none absolute right-0 top-0 h-36 w-36 rounded-bl-full bg-purple-500/[0.055] dark:bg-purple-500/[0.08]" />
             <div className="flex rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950/70">
               {availableTabs.map((tab) => {
@@ -591,7 +591,7 @@ export default function ContentGeneratorPage() {
             </div>
           </section>
 
-          <section className="flex flex-col lg:col-span-7">
+          <section className="flex h-full min-h-0 flex-col lg:col-span-7">
             <ResultPreview
               isLoading={isGenerating}
               hasResult={hasResult}
@@ -700,7 +700,7 @@ function ResultPreview({
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35 }}
-      className="flex h-[min(60vh,36rem)] min-h-[430px] max-h-[60vh] flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-purple-950/[0.06] dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20"
+      className="flex h-full min-h-[430px] flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg shadow-purple-950/[0.06] dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20 lg:min-h-0"
     >
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/50">
         <h3 className="flex items-center gap-2 font-bold text-text-main dark:text-white">

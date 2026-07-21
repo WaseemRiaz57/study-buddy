@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
@@ -83,6 +84,7 @@ export function DashboardTopbar({
 
   const xpForCurrentLevel = xp % 1000;
   const xpProgress = Math.min(100, Math.round((xpForCurrentLevel / 1000) * 100));
+  const currentUserLevel = Math.max(1, Number(level || 1));
 
   const fetchGamificationStats = useCallback(async () => {
     if (status !== "authenticated") return;
@@ -170,9 +172,11 @@ export function DashboardTopbar({
       <div className="relative">
         <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#7C3AED] font-bold text-white shadow-lg ring-2 ring-background ring-offset-2 ring-offset-[#7C3AED]/20">
           {userImage ? (
-            <img
+            <Image
               src={userImage}
               alt={fullName}
+              width={40}
+              height={40}
               className="h-full w-full object-cover"
               referrerPolicy="no-referrer"
               onError={() => setAvatarFailed(true)}
@@ -183,7 +187,7 @@ export function DashboardTopbar({
         </div>
         {role === "STUDENT" && (
           <div className="absolute -bottom-1 -right-1 rounded-md border border-background bg-yellow-400 px-1.5 py-0.5 text-[9px] font-black text-black shadow-sm">
-            {level}
+            {currentUserLevel}
           </div>
         )}
       </div>
@@ -300,7 +304,7 @@ export function DashboardTopbar({
                   {status === "loading" ? "Loading..." : `Welcome ${firstName}`}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {userEmail || `Level ${level}`}
+                  {userEmail || `Level ${currentUserLevel}`}
                 </p>
               </div>
               {avatarButton}

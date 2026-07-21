@@ -82,7 +82,7 @@ export default function FocusRoomsPage() {
   const activeTimerSecondsRef = useRef(focusDuration * 60);
 
   /* ---- XP & Progress State ---- */
-  const { stats, addReward } = useGamificationStore();
+  const { stats, addReward, refresh: refreshGamificationStats } = useGamificationStore();
   const userLevel = stats.level;
   const userXp = stats.xp;
   const focusTodoTasks = useFocusTodoStore((state) => state.tasks);
@@ -218,10 +218,9 @@ export default function FocusRoomsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [resTasks, resAssignments, resProgress] = await Promise.all([
+        const [resTasks, resAssignments] = await Promise.all([
           fetch("/api/tasks"),
           fetch("/api/student/assignments"),
-          fetch("/api/focus"),
         ]);
 
         let personalTasks: Task[] = [];
@@ -255,13 +254,7 @@ export default function FocusRoomsPage() {
 
         setTasks([...mentorAssignments, ...personalTasks]);
 
-        if (resProgress.ok) {
-          const data = await resProgress.json();
-          // The global gamification store will sync automatically, but we can set initial data if needed
-          useGamificationStore.getState().setInitialData(data.xp || 0, 0, { level: data.level || 1 });
-        } else {
-          toast.error("Failed to load XP progress.");
-        }
+        await refreshGamificationStats();
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Network error while loading data.");
@@ -270,7 +263,7 @@ export default function FocusRoomsPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [refreshGamificationStats]);
 
   /* ---- Timer & Session Logic ---- */
   const clearTimer = useCallback(() => {
