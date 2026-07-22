@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { UserAvatar } from "@/components/mentorship/UserAvatar";
 import { useGamificationStore } from "@/store/useGamificationStore";
+import { playNotificationSound } from "@/lib/playNotificationSound";
 
 const ReviewModal = dynamic(() => import("@/components/mentorship/ReviewModal"));
 
@@ -636,6 +637,8 @@ export default function SessionsPage() {
   const [reviewSession, setReviewSession] = useState<DashboardSession | null>(
     null
   );
+  const knownStatusesRef = useRef<Map<string, SessionStatus>>(new Map());
+  const hasLoadedSessionsRef = useRef(false);
   const [joinedSessionIds, setJoinedSessionIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -662,7 +665,45 @@ export default function SessionsPage() {
 
     async function fetchSessions() {
       try {
-        setIsLoading(true);
+        if (!hasLoadedSessionsRef.current) setIsLoading(true);
+
+        const applySessions = (nextSessions: DashboardSession[]) => {
+          if (hasLoadedSessionsRef.current) {
+            for (const nextSession of nextSessions) {
+              const previousStatus = knownStatusesRef.current.get(nextSession._id);
+              if (!previousStatus || previousStatus === nextSession.status) continue;
+
+              if (userRole === "student" && nextSession.status === "accepted") {
+                playNotificationSound();
+                toast.success("Mentor has accepted your session request!");
+              } else if (
+                userRole === "student" &&
+                nextSession.status === "payment_verified"
+              ) {
+                playNotificationSound();
+                toast.success("Payment successfully verified!");
+              } else if (
+                isMentorDashboardRole &&
+                nextSession.status === "payment_pending"
+              ) {
+                playNotificationSound();
+                toast.success("A payment receipt is ready for verification.");
+              } else if (
+                userRole === "student" &&
+                ["declined", "rejected"].includes(nextSession.status)
+              ) {
+                playNotificationSound();
+                toast.info("Your Mentor session request was declined.");
+              }
+            }
+          }
+
+          knownStatusesRef.current = new Map(
+            nextSessions.map((mentorSession) => [mentorSession._id, mentorSession.status])
+          );
+          hasLoadedSessionsRef.current = true;
+          if (isActive) setSessions(nextSessions);
+        };
 
         if (userRole === "student") {
           const response = await fetch("/api/sessions/student", {
@@ -674,7 +715,7 @@ export default function SessionsPage() {
             throw new Error(data?.message || "Failed to load student sessions.");
           }
 
-          if (isActive) setSessions(Array.isArray(data) ? data : []);
+          if (isActive) applySessions(Array.isArray(data) ? data : []);
           return;
         }
 
@@ -688,11 +729,11 @@ export default function SessionsPage() {
             throw new Error(data?.message || "Failed to load Mentor sessions.");
           }
 
-          if (isActive) setSessions(Array.isArray(data) ? data : []);
+          if (isActive) applySessions(Array.isArray(data) ? data : []);
           return;
         }
 
-        if (isActive) setSessions([]);
+        if (isActive) applySessions([]);
       } catch (error) {
         if (isActive) {
           toast.error(
@@ -730,13 +771,52 @@ export default function SessionsPage() {
       setRefreshTrigger((prev) => prev + 1);
     }
 
+    function handleSessionStatusChanged(event: Event) {
+      const payload = (event as CustomEvent).detail as
+        | { sessionId?: string; status?: SessionStatus }
+        | undefined;
+
+      if (payload?.sessionId && payload.status) {
+        knownStatusesRef.current.set(payload.sessionId, payload.status);
+        setSessions((currentSessions) =>
+          currentSessions.map((mentorSession) =>
+            mentorSession._id === payload.sessionId
+              ? { ...mentorSession, status: payload.status as SessionStatus }
+              : mentorSession
+          )
+        );
+      }
+
+      setRefreshTrigger((previous) => previous + 1);
+    }
+
     window.addEventListener("mentor-session-started", handleSessionStarted);
     window.addEventListener("student-session-invited", handleSessionInvited);
+    window.addEventListener("mentor-session-status-changed", handleSessionStatusChanged);
     return () => {
       window.removeEventListener("mentor-session-started", handleSessionStarted);
       window.removeEventListener("student-session-invited", handleSessionInvited);
+      window.removeEventListener("mentor-session-status-changed", handleSessionStatusChanged);
     };
   }, []);
+
+  const shouldPollSessionStatus = sessions.some((mentorSession) =>
+    userRole === "student"
+      ? ["pending", "payment_pending"].includes(mentorSession.status)
+      : isMentorDashboardRole
+        ? ["pending", "accepted", "payment_pending"].includes(mentorSession.status)
+        : false
+  );
+
+  useEffect(() => {
+    if (!shouldPollSessionStatus) return;
+
+    const interval = window.setInterval(() => {
+      setRefreshTrigger((previous) => previous + 1);
+    }, 7000);
+
+    return () => window.clearInterval(interval);
+  }, [shouldPollSessionStatus]);
 
   const [startingSessionId, setStartingSessionId] = useState("");
 
@@ -799,6 +879,7 @@ export default function SessionsPage() {
   }, [currentTime, sessions]);
 
   function updateSession(nextSession: DashboardSession) {
+    knownStatusesRef.current.set(nextSession._id, nextSession.status);
     setSessions((currentSessions) =>
       currentSessions.map((session) =>
         session._id === nextSession._id

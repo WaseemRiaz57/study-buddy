@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import PaymentModal, {
   type PaymentSession,
 } from "@/components/mentorship/PaymentModal";
 import ReviewModal from "@/components/mentorship/ReviewModal";
+import { playNotificationSound } from "@/lib/playNotificationSound";
 
 type SessionStatus =
   | "pending"
@@ -311,9 +312,14 @@ export default function MentorshipActivitiesHub() {
   const [reviewSession, setReviewSession] = useState<StudentSession | null>(
     null
   );
+  const knownStatusesRef = useRef<Map<string, SessionStatus>>(new Map());
+  const fetchInFlightRef = useRef(false);
 
-  const fetchSessions = useCallback(async (showLoading = true) => {
+  const fetchSessions = useCallback(async (showLoading = true, announceChanges = false) => {
+    if (fetchInFlightRef.current) return;
+
     try {
+      fetchInFlightRef.current = true;
       if (showLoading) setIsLoading(true);
       const response = await fetch("/api/sessions/student", {
         cache: "no-store",
@@ -324,14 +330,45 @@ export default function MentorshipActivitiesHub() {
         throw new Error(data?.message || "Could not load mentorship sessions.");
       }
 
-      setSessions(Array.isArray(data) ? data : []);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not load mentorship sessions."
+      const nextSessions = (Array.isArray(data) ? data : []) as StudentSession[];
+
+      if (announceChanges) {
+        for (const nextSession of nextSessions) {
+          const previousStatus = knownStatusesRef.current.get(nextSession._id);
+          if (!previousStatus || previousStatus === nextSession.status) continue;
+
+          if (nextSession.status === "accepted") {
+            playNotificationSound();
+            toast.success("Mentor has accepted your session request!");
+          } else if (nextSession.status === "payment_verified") {
+            playNotificationSound();
+            toast.success("Payment successfully verified!");
+          } else if (
+            nextSession.status === "declined" ||
+            nextSession.status === "rejected"
+          ) {
+            playNotificationSound();
+            toast.info("Your Mentor session request was declined.");
+          }
+        }
+      }
+
+      knownStatusesRef.current = new Map(
+        nextSessions.map((mentorSession) => [mentorSession._id, mentorSession.status])
       );
+      setSessions(nextSessions);
+    } catch (error) {
+      if (showLoading) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not load mentorship sessions."
+        );
+      } else {
+        console.error("Mentorship session refresh failed:", error);
+      }
     } finally {
+      fetchInFlightRef.current = false;
       if (showLoading) setIsLoading(false);
     }
   }, []);
@@ -347,17 +384,48 @@ export default function MentorshipActivitiesHub() {
   }, [fetchSessions]);
 
   useEffect(() => {
-    const refreshSessions = () => {
+    const refreshSessions = (event?: Event) => {
+      const detail = (event as CustomEvent | undefined)?.detail as
+        | { sessionId?: string; status?: SessionStatus }
+        | undefined;
+
+      if (detail?.sessionId && detail.status) {
+        knownStatusesRef.current.set(detail.sessionId, detail.status);
+        setSessions((currentSessions) =>
+          currentSessions.map((mentorSession) =>
+            mentorSession._id === detail.sessionId
+              ? { ...mentorSession, status: detail.status as SessionStatus }
+              : mentorSession
+          )
+        );
+      }
+
       void fetchSessions(false);
     };
 
     window.addEventListener("student-session-invited", refreshSessions);
     window.addEventListener("mentor-session-started", refreshSessions);
+    window.addEventListener("mentor-session-status-changed", refreshSessions);
     return () => {
       window.removeEventListener("student-session-invited", refreshSessions);
       window.removeEventListener("mentor-session-started", refreshSessions);
+      window.removeEventListener("mentor-session-status-changed", refreshSessions);
     };
   }, [fetchSessions]);
+
+  const hasPendingUpdate = sessions.some((mentorSession) =>
+    ["pending", "payment_pending"].includes(mentorSession.status)
+  );
+
+  useEffect(() => {
+    if (!hasPendingUpdate) return;
+
+    const interval = window.setInterval(() => {
+      void fetchSessions(false, true);
+    }, 7000);
+
+    return () => window.clearInterval(interval);
+  }, [fetchSessions, hasPendingUpdate]);
 
   const groupedSessions = useMemo(() => {
     const sorted = [...sessions].sort(
@@ -394,9 +462,11 @@ export default function MentorshipActivitiesHub() {
       return;
     }
 
+    const updatedSessionId = String(updatedSession._id);
+    knownStatusesRef.current.set(updatedSessionId, "payment_pending");
     setSessions((currentSessions) =>
       currentSessions.map((session) =>
-        session._id === String(updatedSession._id)
+        session._id === updatedSessionId
           ? {
               ...session,
               ...(updatedSession as StudentSession),

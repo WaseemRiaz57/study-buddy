@@ -137,6 +137,37 @@ export function NotificationBell() {
     socket.on("notification:new", (notification: any) => {
       playNotificationSound();
 
+      const metadata = notification?.metadata;
+      const sessionId = String(metadata?.sessionId || "").trim();
+      const sessionStatus = String(metadata?.status || "").trim();
+
+      if (
+        sessionId &&
+        ["accepted", "declined", "payment_pending", "payment_verified"].includes(
+          sessionStatus
+        )
+      ) {
+        window.dispatchEvent(
+          new CustomEvent("mentor-session-status-changed", {
+            detail: {
+              sessionId,
+              status: sessionStatus,
+              roomId: String(metadata?.roomId || ""),
+            },
+          })
+        );
+
+        if (sessionStatus === "accepted") {
+          toast.success("Mentor has accepted your session request!");
+        } else if (sessionStatus === "payment_pending") {
+          toast.success("A payment receipt is ready for verification.");
+        } else if (sessionStatus === "payment_verified") {
+          toast.success("Payment successfully verified!");
+        } else {
+          toast.info("Your Mentor session request was declined.");
+        }
+      }
+
       const nextNotification = {
         id: String(notification?._id || notification?.id || Date.now()),
         title: notification?.title || "Notification",

@@ -3,7 +3,9 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { connectMongoDB } from "@/lib/mongodb";
+import { emitUserNotification } from "@/lib/study-room-socket";
 import MentorSession from "@/models/MentorSession";
+import Notification from "@/models/Notification";
 
 const MAX_RECEIPT_LENGTH = 3 * 1024 * 1024;
 
@@ -84,6 +86,28 @@ export async function PATCH(
         { message: "Accepted session not found." },
         { status: 404 }
       );
+    }
+
+    const populatedMentor = mentorSession.mentorId as unknown as {
+      _id?: mongoose.Types.ObjectId;
+    };
+    const mentorId = String(populatedMentor?._id || mentorSession.mentorId);
+    try {
+      const notification = await Notification.create({
+        recipientId: mentorId,
+        senderId: session.user.id,
+        type: "system",
+        title: "Payment Receipt Submitted",
+        message: `${session.user.name || "A student"} submitted a payment receipt for ${mentorSession.subject}.`,
+        read: false,
+        metadata: {
+          sessionId: String(mentorSession._id),
+          status: "payment_pending",
+        },
+      });
+      emitUserNotification(mentorId, notification.toObject());
+    } catch (notificationError) {
+      console.error("Payment receipt notification error:", notificationError);
     }
 
     return NextResponse.json({

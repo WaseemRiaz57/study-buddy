@@ -4,7 +4,9 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/authOptions";
 import { isMentorRole } from "@/lib/roles";
 import { connectMongoDB } from "@/lib/mongodb";
+import { emitUserNotification } from "@/lib/study-room-socket";
 import MentorSession from "@/models/MentorSession";
+import Notification from "@/models/Notification";
 
 export async function PATCH(
   _request: Request,
@@ -60,6 +62,29 @@ export async function PATCH(
         { message: "Payment receipt pending verification not found." },
         { status: 404 }
       );
+    }
+
+    const populatedStudent = mentorSession.studentId as unknown as {
+      _id?: mongoose.Types.ObjectId;
+    };
+    const studentId = String(populatedStudent?._id || mentorSession.studentId);
+    try {
+      const notification = await Notification.create({
+        recipientId: studentId,
+        senderId: session.user.id,
+        type: "system",
+        title: "Payment Verified",
+        message: `Your payment for ${mentorSession.subject} was verified by your Mentor.`,
+        read: false,
+        metadata: {
+          sessionId: String(mentorSession._id),
+          status: "payment_verified",
+          roomId: String(mentorSession._id),
+        },
+      });
+      emitUserNotification(studentId, notification.toObject());
+    } catch (notificationError) {
+      console.error("Payment verification notification error:", notificationError);
     }
 
     return NextResponse.json({
