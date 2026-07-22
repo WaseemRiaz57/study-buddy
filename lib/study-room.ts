@@ -51,6 +51,7 @@ export async function startStudyRoom(
   }
 
   const room = await StudyRoom.create({
+    roomType: "buddy_session",
     topic: subject?.trim() || "General Study",
     roomId: roomCode,
     maxParticipants: 20,

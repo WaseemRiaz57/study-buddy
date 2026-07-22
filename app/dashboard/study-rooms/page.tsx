@@ -13,6 +13,7 @@ import StudyRoomsLoading from "@/app/study-rooms/loading";
 
 type Room = {
   _id: string;
+  roomType: "study_room";
   topic: string;
   roomId: string;
   participantsCount: number;
@@ -24,6 +25,7 @@ type Room = {
   isActive: boolean;
   status: string;
   isHost: boolean;
+  createdAt: string;
 };
 
 type RoomFilter = "live" | "ended" | "mine";
@@ -42,7 +44,20 @@ type ApiRoom = {
   isActive?: unknown;
   status?: unknown;
   isHost?: unknown;
+  roomType?: unknown;
+  createdAt?: unknown;
 };
+
+const LIVE_ROOM_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+function isWithinLiveWindow(createdAt: string): boolean {
+  const createdAtMs = Date.parse(createdAt);
+
+  return (
+    Number.isFinite(createdAtMs) &&
+    createdAtMs >= Date.now() - LIVE_ROOM_MAX_AGE_MS
+  );
+}
 
 export default function StudyRoomsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -78,8 +93,20 @@ export default function StudyRoomsPage() {
           ? payload
           : [];
 
-      const normalizedRooms: Room[] = rawRooms.map((room: ApiRoom) => ({
+      const normalizedRooms: Room[] = rawRooms
+        .filter((room: ApiRoom) => room.roomType === "study_room")
+        .map((room: ApiRoom) => {
+          const createdAt = String(room.createdAt || "");
+          const isLive = Boolean(
+            room.isLive === true &&
+              room.isActive === true &&
+              room.status === "active" &&
+              isWithinLiveWindow(createdAt)
+          );
+
+          return {
             _id: String(room._id),
+            roomType: "study_room",
             topic: String(room.title || room.topic || "Untitled Room"),
             roomId: String(room.roomId || ""),
             participantsCount:
@@ -94,15 +121,13 @@ export default function StudyRoomsPage() {
             hostName: String(room?.createdBy?.name || "Unknown Host"),
             hostId: String(room?.createdBy?._id || ""),
             hostImage: String(room?.createdBy?.profileImage || room?.createdBy?.image || ""),
-            isLive: Boolean(
-              room?.isLive === true &&
-                room?.isActive === true &&
-                room?.status === "active"
-            ),
-            isActive: room?.isActive === true,
-            status: String(room?.status || ""),
+            isLive,
+            isActive: isLive,
+            status: isLive ? "active" : "ended",
             isHost: room?.isHost === true,
-          }));
+            createdAt,
+          };
+        });
 
       setRooms(normalizedRooms);
     } catch (error) {
@@ -119,13 +144,21 @@ export default function StudyRoomsPage() {
 
   const liveRooms = rooms.filter(
     (room) =>
+      room.roomType === "study_room" &&
       room.isLive === true &&
       room.isActive === true &&
       room.status === "active" &&
-      room.participantsCount > 0
+      room.participantsCount > 0 &&
+      isWithinLiveWindow(room.createdAt)
   );
-  const endedRooms = rooms.filter((room) => !room.isLive || room.status === "ended");
-  const myRooms = rooms.filter((room) => room.isHost);
+  const endedRooms = rooms.filter(
+    (room) =>
+      room.roomType === "study_room" &&
+      (!room.isLive || room.status === "ended" || !isWithinLiveWindow(room.createdAt))
+  );
+  const myRooms = rooms.filter(
+    (room) => room.roomType === "study_room" && room.isHost
+  );
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const filteredRooms = (
     roomFilter === "live" ? liveRooms : roomFilter === "ended" ? endedRooms : myRooms

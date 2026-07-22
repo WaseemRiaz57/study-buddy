@@ -15,6 +15,31 @@ interface CreateStudyRoomBody {
   maxParticipants?: number;
 }
 
+const LIVE_ROOM_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// Records created before roomType was introduced are accepted only when they
+// do not match either of the legacy Mentor or Study Buddy identifiers.
+const genericStudyRoomFilter = {
+  $or: [
+    { roomType: "study_room" },
+    {
+      roomType: { $exists: false },
+      $nor: [
+        { roomId: /^[a-f\d]{24}$/i },
+        { title: /^Mentor Session$/i },
+        { title: /^Study Buddy Session$/i },
+      ],
+      // Both older generic rooms and Buddy rooms used the SB- prefix. Legacy
+      // Buddy creation always used capacity 20, while public rooms used their
+      // selected capacity, so keep only records that do not match that pair.
+      $or: [
+        { roomId: { $not: /^SB-/i } },
+        { maxParticipants: { $ne: 20 } },
+      ],
+    },
+  ],
+};
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -24,20 +49,53 @@ export async function GET() {
 
     await connectDB();
 
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - LIVE_ROOM_MAX_AGE_MS);
+
+    // A generic room cannot remain live indefinitely. Persist the transition
+    // so every consumer sees the same lifecycle state, not just this response.
     await StudyRoom.updateMany(
       {
-        status: "active",
-        isLive: true,
-        $or: [
+        $and: [
+          genericStudyRoomFilter,
           {
-            $expr: {
-              $eq: [{ $size: { $ifNull: ["$participants", []] } }, 0],
-            },
+            status: "active",
+            isLive: true,
+            createdAt: { $lt: oneDayAgo },
+          },
+        ],
+      },
+      {
+        $set: {
+          status: "ended",
+          isActive: false,
+          isLive: false,
+          closedAt: now,
+        },
+      }
+    );
+
+    await StudyRoom.updateMany(
+      {
+        $and: [
+          genericStudyRoomFilter,
+          {
+            status: "active",
+            isLive: true,
           },
           {
-            $expr: {
-              $not: [{ $in: ["$createdBy", { $ifNull: ["$participants", []] }] }],
-            },
+            $or: [
+              {
+                $expr: {
+                  $eq: [{ $size: { $ifNull: ["$participants", []] } }, 0],
+                },
+              },
+              {
+                $expr: {
+                  $not: [{ $in: ["$createdBy", { $ifNull: ["$participants", []] }] }],
+                },
+              },
+            ],
           },
         ],
       },
@@ -53,7 +111,10 @@ export async function GET() {
 
     const currentUserId = String(session.user.id);
     const rooms = await StudyRoom.find({
-      status: { $in: ["active", "ended"] },
+      $and: [
+        genericStudyRoomFilter,
+        { status: { $in: ["active", "ended"] } },
+      ],
     })
       .populate("createdBy", "name image profileImage")
       .sort({ createdAt: -1 })
@@ -78,11 +139,13 @@ export async function GET() {
           room.isLive === true &&
             room.isActive === true &&
             room.status === "active" &&
-            participantCount > 0
+            participantCount > 0 &&
+            room.createdAt >= oneDayAgo
         );
 
         return {
           ...room,
+          roomType: "study_room",
           isLive,
           isActive: isLive,
           status: isLive ? "active" : "ended",
@@ -146,9 +209,15 @@ export async function POST(request: NextRequest) {
 
     if (activeRoomLimit !== null) {
       const activeRooms = await StudyRoom.countDocuments({
-        createdBy: creatorObjectId,
-        isActive: true,
-        status: "active",
+        $and: [
+          genericStudyRoomFilter,
+          {
+            createdBy: creatorObjectId,
+            isActive: true,
+            status: "active",
+            createdAt: { $gte: new Date(Date.now() - LIVE_ROOM_MAX_AGE_MS) },
+          },
+        ],
       });
 
       if (activeRooms >= activeRoomLimit) {
@@ -163,6 +232,7 @@ export async function POST(request: NextRequest) {
 
     const room = await StudyRoom.create({
       roomId: normalizedRoomId,
+      roomType: "study_room",
       createdBy: creatorObjectId,
       title: normalizedTitle,
       participants: [creatorObjectId],

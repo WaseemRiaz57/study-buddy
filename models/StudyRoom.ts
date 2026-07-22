@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export type WaitingListStatus = "waiting" | "admitted" | "declined";
+export type StudyRoomType = "study_room" | "mentor_session" | "buddy_session";
 
 export interface IWaitingListEntry {
   userId: string;
@@ -10,6 +11,7 @@ export interface IWaitingListEntry {
 
 export interface IStudyRoom extends Document {
   roomId: string;
+  roomType: StudyRoomType;
   createdBy: mongoose.Types.ObjectId;
   title: string;
   participants: mongoose.Types.ObjectId[];
@@ -46,6 +48,13 @@ const StudyRoomSchema = new Schema<IStudyRoom>(
       type: [Schema.Types.ObjectId],
       ref: "User",
       default: [],
+    },
+    roomType: {
+      type: String,
+      enum: ["study_room", "mentor_session", "buddy_session"],
+      default: "study_room",
+      required: true,
+      index: true,
     },
     waitingList: {
       type: [
@@ -104,6 +113,7 @@ const StudyRoomSchema = new Schema<IStudyRoom>(
 );
 
 StudyRoomSchema.index({ isLive: 1, createdAt: -1 });
+StudyRoomSchema.index({ roomType: 1, status: 1, createdAt: -1 });
 StudyRoomSchema.index({ isActive: 1, status: 1, createdAt: -1 });
 StudyRoomSchema.index({ status: 1, participants: 1, createdAt: -1 });
 

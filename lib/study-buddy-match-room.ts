@@ -31,6 +31,7 @@ export async function createStudyBuddyMatchRoom({
 
   const room = await StudyRoom.create({
     roomId,
+    roomType: "buddy_session",
     createdBy: new mongoose.Types.ObjectId(hostId),
     title: subject || "Study Buddy Session",
     participants: [

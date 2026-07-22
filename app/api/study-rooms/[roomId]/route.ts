@@ -160,6 +160,7 @@ export async function GET(
 
       const newRoom = await StudyRoom.create({
         roomId: normalizedRoomId,
+        roomType: isMentorSessionRoom ? "mentor_session" : "buddy_session",
         createdBy: creatorId,
         title: isMentorSessionRoom ? "Mentor Session" : "Study Buddy Session",
         participants: [participantId],
