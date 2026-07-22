@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   Users,
   Search,
@@ -101,6 +102,7 @@ function planLabel(plan: string) {
 }
 
 export default function UserManagementPage() {
+  const requestConfirmation = useConfirmDialog();
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -185,11 +187,13 @@ export default function UserManagementPage() {
     status: "active" | "suspended"
   ) => {
     const isSuspending = status === "suspended";
-    const confirmed = window.confirm(
-      isSuspending
-        ? `Suspend ${user.name}? They will lose access until reactivated.`
-        : `Activate ${user.name}? They will regain account access.`
-    );
+    const confirmed = await requestConfirmation({
+      title: isSuspending ? "Suspend account?" : "Activate account?",
+      description: isSuspending
+        ? `${user.name} will lose access until an administrator reactivates the account.`
+        : `${user.name} will regain access to the account.`,
+      confirmLabel: isSuspending ? "Suspend account" : "Activate account",
+    });
 
     if (!confirmed) return;
 
@@ -220,9 +224,11 @@ export default function UserManagementPage() {
   };
 
   const handleDeleteUser = async (user: AdminUser) => {
-    const confirmed = window.confirm(
-      `Delete ${user.name}'s account? This action cannot be undone.`
-    );
+    const confirmed = await requestConfirmation({
+      title: "Delete account?",
+      description: `${user.name}'s account and associated access will be permanently removed. This cannot be undone.`,
+      confirmLabel: "Delete account",
+    });
 
     if (!confirmed) return;
 

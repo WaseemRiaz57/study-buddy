@@ -37,7 +37,6 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
       if (!session?.user?.id) {
         const message = "Could not identify the current user. Please sign in again.";
         setError(message);
-        alert(message);
         return;
       }
 
@@ -66,7 +65,6 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
           return;
         }
         setError(message);
-        alert(message);
         return;
       }
 
@@ -76,7 +74,6 @@ export default function CreateRoomModal({ isOpen, onClose, onCreated }: CreateRo
     } catch {
       const message = "Failed to create room. Please try again.";
       setError(message);
-      alert(message);
     } finally {
       setIsCreating(false);
     }

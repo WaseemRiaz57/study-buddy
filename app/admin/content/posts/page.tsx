@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   ChevronDown,
   Eye,
@@ -73,6 +74,7 @@ function formatDate(input: string | null) {
 }
 
 export default function CommunityPostsPage() {
+  const requestConfirmation = useConfirmDialog();
   const [posts, setPosts] = useState<AdminCommunityPost[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
@@ -171,7 +173,12 @@ export default function CommunityPostsPage() {
   };
 
   const deletePost = async (post: AdminCommunityPost) => {
-    if (!window.confirm(`Delete "${post.title}" and all of its comments?`)) {
+    const confirmed = await requestConfirmation({
+      title: "Delete post?",
+      description: `“${post.title}” and all of its comments will be permanently removed.`,
+      confirmLabel: "Delete post",
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -198,7 +205,12 @@ export default function CommunityPostsPage() {
 
   const handleBulkDelete = async () => {
     if (!selectedPosts.length) return;
-    if (!window.confirm(`Delete ${selectedPosts.length} selected posts and their comments?`)) {
+    const confirmed = await requestConfirmation({
+      title: `Delete ${selectedPosts.length} posts?`,
+      description: "The selected posts and all of their comments will be permanently removed.",
+      confirmLabel: "Delete posts",
+    });
+    if (!confirmed) {
       return;
     }
 

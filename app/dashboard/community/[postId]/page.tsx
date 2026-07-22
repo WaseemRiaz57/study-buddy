@@ -24,6 +24,7 @@ import {
 import PublicProfileModal from "@/components/PublicProfileModal";
 import ReportModal, { type ReportTarget } from "@/components/modals/ReportModal";
 import BackButton from "@/components/ui/BackButton";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Author {
   id: string;
@@ -171,6 +172,7 @@ function Avatar({
 }
 
 export default function PostDetailPage() {
+  const requestConfirmation = useConfirmDialog();
   const { data: session } = useSession();
   const router = useRouter();
   const params = useParams<{ postId: string }>();
@@ -531,7 +533,13 @@ export default function PostDetailPage() {
   };
 
   const deletePost = async () => {
-    if (!post || !window.confirm(`Delete "${post.title}"? This cannot be undone.`)) return;
+    if (!post) return;
+    const confirmed = await requestConfirmation({
+      title: "Delete post?",
+      description: `“${post.title}” will be permanently removed. This cannot be undone.`,
+      confirmLabel: "Delete post",
+    });
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/community/posts/${post.id}`, {

@@ -24,6 +24,7 @@ import FlagResourceModal from "@/components/resources/FlagResourceModal";
 import RateResourceModal from "@/components/resources/RateResourceModal";
 import { useGamificationStore } from "@/store/useGamificationStore";
 import BackButton from "@/components/ui/BackButton";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface ApiResource {
   _id: string;
@@ -102,6 +103,7 @@ function Stars({ rating }: { rating: number }) {
 /*  Page component                                                     */
 /* ------------------------------------------------------------------ */
 export default function ResourceDetailPage() {
+  const requestConfirmation = useConfirmDialog();
   const params = useParams();
   const resourceId = params.resourceId as string;
 
@@ -168,7 +170,12 @@ export default function ResourceDetailPage() {
   const handleUnlock = async () => {
     if (!resource) return;
 
-    if (!window.confirm(`Unlock "${resource.title}" for ${resource.price} coins?`)) {
+    const confirmed = await requestConfirmation({
+      title: "Unlock resource?",
+      description: `Unlock “${resource.title}” for ${resource.price} coins.`,
+      confirmLabel: "Unlock resource",
+    });
+    if (!confirmed) {
       return;
     }
 

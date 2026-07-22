@@ -4,6 +4,7 @@ import { ConditionalNavbar } from "@/components/conditional-navbar";
 import { Footer } from "@/components/footer";
 import { ThemeProvider } from "@/components/theme-provider";
 import AuthProvider from "@/components/auth-provider";
+import { ConfirmDialogProvider } from "@/components/ui/ConfirmDialog";
 import { Toaster } from "sonner"; // 👈 1. Sonner import kiya
 import "./globals.css";
 
@@ -157,11 +158,13 @@ export default function RootLayout({
       <body className={`${sans.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground antialiased`}>
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-            <ConditionalNavbar />
-            <div className="flex-1">{children}</div>
-            <Footer />
-            {/* 👇 2. Toaster component add kiya (theme aur colors ke sath) */}
-            <Toaster richColors position="top-right" theme="system" />
+            <ConfirmDialogProvider>
+              <ConditionalNavbar />
+              <div className="flex-1">{children}</div>
+              <Footer />
+              {/* 👇 2. Toaster component add kiya (theme aur colors ke sath) */}
+              <Toaster richColors position="top-right" theme="system" />
+            </ConfirmDialogProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

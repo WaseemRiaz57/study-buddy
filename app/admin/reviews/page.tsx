@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, Loader2, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type ReviewStatus = "pending" | "approved" | "rejected";
 
@@ -53,6 +54,7 @@ function initials(name: string) {
 }
 
 export default function AdminReviewsPage() {
+  const requestConfirmation = useConfirmDialog();
   const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -107,7 +109,12 @@ export default function AdminReviewsPage() {
   };
 
   const deleteReview = async (review: AdminReview) => {
-    if (!window.confirm(`Delete review from ${review.user.name}?`)) return;
+    const confirmed = await requestConfirmation({
+      title: "Delete review?",
+      description: `The review from ${review.user.name} will be permanently removed.`,
+      confirmLabel: "Delete review",
+    });
+    if (!confirmed) return;
 
     try {
       setBusyId(review.id);

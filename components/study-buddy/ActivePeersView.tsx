@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { BookOpen, Loader2, Plus, Send, Sparkles, Trash2, Users } from "lucide-react";
 
@@ -57,6 +58,7 @@ interface ActivePeersViewProps {
 }
 
 const ProfileAvatar = memo(function ProfileAvatar({ name, image }: { name: string; image?: string }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const initials =
     name
       .split(" ")
@@ -66,14 +68,46 @@ const ProfileAvatar = memo(function ProfileAvatar({ name, image }: { name: strin
       .join("") || "SB";
 
   return (
-    <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border-2 border-slate-100 bg-slate-100 dark:border-white/10 dark:bg-white/10">
-      {image ? (
-        <img src={image} alt={name} className="h-full w-full object-cover" />
+    <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full border-2 border-slate-100 bg-slate-100 dark:border-white/10 dark:bg-white/10">
+      {image && !imageFailed ? (
+        <Image
+          src={image}
+          alt={`${name} profile picture`}
+          fill
+          sizes="48px"
+          onError={() => setImageFailed(true)}
+          className="object-cover"
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-[#7C3AED] text-sm font-bold text-white">
           {initials}
         </div>
       )}
+    </div>
+  );
+});
+
+const BuddyCardHeader = memo(function BuddyCardHeader({
+  image,
+  alt,
+}: {
+  image?: string;
+  alt: string;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasProfileImage = Boolean(image && !imageFailed);
+
+  return (
+    <div className="relative h-32 w-full overflow-hidden bg-gradient-to-br from-violet-100 via-purple-50 to-sky-100 dark:from-violet-950/80 dark:via-slate-900 dark:to-sky-950/70">
+      <Image
+        src={hasProfileImage ? image! : "/logo.png"}
+        alt={hasProfileImage ? alt : "StudyBuddy learning space"}
+        fill
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        onError={() => setImageFailed(true)}
+        className={hasProfileImage ? "object-cover" : "object-contain p-7 opacity-75"}
+      />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-slate-950/25 via-transparent to-white/10" />
     </div>
   );
 });
@@ -179,13 +213,15 @@ function ActivePeersView({
                   const isCancelling = cancellingListingId === listing._id;
 
                   return (
-                    <motion.div
+                    <motion.article
                       key={listing._id}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#1a1524]"
+                      className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#7C3AED]/30 hover:shadow-lg hover:shadow-violet-950/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-violet-500/30 dark:hover:shadow-black/30"
                     >
+                      <BuddyCardHeader alt={`${listing.subject} study listing`} />
+                      <div className="p-5">
                       <div className="mb-4 flex items-start gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#7C3AED]/20 bg-[#7C3AED]/10 text-[#7C3AED]">
                           <BookOpen size={18} />
@@ -216,7 +252,8 @@ function ActivePeersView({
                         )}
                         Cancel Listing
                       </button>
-                    </motion.div>
+                      </div>
+                    </motion.article>
                   );
                 })}
               </div>
@@ -248,13 +285,18 @@ function ActivePeersView({
                   const isConnecting = connectingListingId === listing._id;
 
                   return (
-                    <motion.div
+                    <motion.article
                       key={listing._id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.06 }}
-                      className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-[#7C3AED]/50 hover:shadow-md dark:border-white/10 dark:bg-[#1a1524]"
+                      className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#7C3AED]/40 hover:shadow-lg hover:shadow-violet-950/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-violet-500/30 dark:hover:shadow-black/30"
                     >
+                      <BuddyCardHeader
+                        image={studentImage}
+                        alt={`${studentName} study profile`}
+                      />
+                      <div className="p-5">
                       <div className="mb-5 flex items-center gap-4">
                         {studentId ? (
                           <button
@@ -321,7 +363,8 @@ function ActivePeersView({
                         )}
                         Connect
                       </button>
-                    </motion.div>
+                      </div>
+                    </motion.article>
                   );
                 })}
               </div>
@@ -358,13 +401,15 @@ function ActivePeersView({
                   const peerId = peer.userId || "";
 
                   return (
-                    <motion.div
+                    <motion.article
                       key={peer.userId}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.04 }}
-                      className="min-w-[240px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-[#7C3AED]/50 hover:shadow-md dark:border-white/10 dark:bg-[#1a1524]"
+                      className="min-w-[260px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#7C3AED]/40 hover:shadow-lg hover:shadow-violet-950/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-violet-500/30 dark:hover:shadow-black/30"
                     >
+                      <BuddyCardHeader image={peer.image} alt={`${peerName} study profile`} />
+                      <div className="p-4">
                       <div className="mb-4 flex items-center gap-3">
                         <div className="relative">
                           {peerId ? (
@@ -432,7 +477,8 @@ function ActivePeersView({
                         )}
                         Ping
                       </button>
-                    </motion.div>
+                      </div>
+                    </motion.article>
                   );
                 })}
               </div>

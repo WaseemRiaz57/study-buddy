@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
     GraduationCap,
     Star,
@@ -104,6 +105,7 @@ function viewCertificate(certificate: string, index: number) {
 }
 
 export default function MentorManagementPage() {
+    const requestConfirmation = useConfirmDialog();
     const [mounted, setMounted] = useState(false);
     const [activeTab, setActiveTab] = useState<"active" | "pending">("active");
     const [searchQuery, setSearchQuery] = useState("");
@@ -206,9 +208,11 @@ export default function MentorManagementPage() {
     };
 
     const handleRevokeStatus = async (mentor: MentorRecord) => {
-        const confirmed = window.confirm(
-            `Revoke ${mentor.name}'s mentor status? Their public profile will be hidden.`
-        );
+        const confirmed = await requestConfirmation({
+            title: "Revoke Mentor status?",
+            description: `${mentor.name}'s Mentor profile will be hidden and their Mentor access will be suspended.`,
+            confirmLabel: "Revoke status",
+        });
 
         if (!confirmed) return;
 

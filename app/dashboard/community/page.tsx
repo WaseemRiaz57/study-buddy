@@ -11,6 +11,7 @@ import CommunitySidebar from "@/components/community/CommunitySidebar";
 import PublicProfileModal from "@/components/PublicProfileModal";
 import ReportModal, { type ReportTarget } from "@/components/modals/ReportModal";
 import { useGamificationStore } from "@/store/useGamificationStore";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const TOPIC_FILTERS = [
   "All",
@@ -53,6 +54,7 @@ interface PopularTag {
 }
 
 export default function CommunityFeedPage() {
+  const requestConfirmation = useConfirmDialog();
   const { data: session } = useSession();
   const addReward = useGamificationStore((state) => state.addReward);
   const [search, setSearch] = useState("");
@@ -231,7 +233,12 @@ export default function CommunityFeedPage() {
   };
 
   const deletePost = async (post: Post) => {
-    if (!window.confirm(`Delete "${post.title}"? This cannot be undone.`)) return;
+    const confirmed = await requestConfirmation({
+      title: "Delete post?",
+      description: `“${post.title}” will be permanently removed. This cannot be undone.`,
+      confirmLabel: "Delete post",
+    });
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/community/posts/${post.id}`, {

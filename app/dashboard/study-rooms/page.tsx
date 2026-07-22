@@ -10,6 +10,7 @@ import PublicProfileModal from "@/components/PublicProfileModal";
 import CreateRoomModal from "@/components/study-room/CreateRoomModal";
 import { useGamificationStore } from "@/store/useGamificationStore";
 import StudyRoomsLoading from "@/app/study-rooms/loading";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Room = {
   _id: string;
@@ -60,6 +61,7 @@ function isWithinLiveWindow(createdAt: string): boolean {
 }
 
 export default function StudyRoomsPage() {
+  const requestConfirmation = useConfirmDialog();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
@@ -203,9 +205,11 @@ export default function StudyRoomsPage() {
   const handleDeleteRoom = async (room: Room) => {
     if (!room.isHost || deletingRoomId) return;
 
-    const confirmed = window.confirm(
-      `Delete "${room.topic}"?${room.isLive ? " This will end the active room for everyone." : ""}`
-    );
+    const confirmed = await requestConfirmation({
+      title: "Delete study room?",
+      description: `“${room.topic}” will be permanently deleted.${room.isLive ? " The active room will end for everyone." : ""}`,
+      confirmLabel: "Delete room",
+    });
     if (!confirmed) return;
 
     try {

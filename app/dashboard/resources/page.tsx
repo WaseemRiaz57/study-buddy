@@ -17,6 +17,7 @@ import type { Resource } from "@/components/resources/ResourceCard";
 import RateResourceModal from "@/components/resources/RateResourceModal";
 import UploadResourceModal from "@/components/resources/UploadResourceModal";
 import ResourceHubLoading from "@/app/resource-hub/loading";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const SUBJECTS = [
   "All Subjects",
@@ -73,6 +74,7 @@ function normalizeFileType(input: string): FileType {
 /*  Page component                                                     */
 /* ------------------------------------------------------------------ */
 export default function ResourcesPage() {
+  const requestConfirmation = useConfirmDialog();
   const [search, setSearch] = useState("");
   const [subject, setSubject] = useState("All Subjects");
   const [sort, setSort] = useState("popular");
@@ -134,7 +136,12 @@ export default function ResourcesPage() {
   }, [search, subject]);
 
   const handleUnlockResource = async (resource: Resource) => {
-    if (!window.confirm(`Unlock "${resource.title}" for ${resource.price} coins?`)) {
+    const confirmed = await requestConfirmation({
+      title: "Unlock resource?",
+      description: `Unlock “${resource.title}” for ${resource.price} coins.`,
+      confirmLabel: "Unlock resource",
+    });
+    if (!confirmed) {
       return;
     }
 

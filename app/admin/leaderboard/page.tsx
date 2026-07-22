@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   AlertTriangle,
   ArrowDown,
@@ -103,6 +104,7 @@ function UserAvatar({ user }: { user: LeaderboardUser }) {
 }
 
 export default function LeaderboardControlPage() {
+  const requestConfirmation = useConfirmDialog();
   const [timeframe, setTimeframe] = useState<Timeframe>("weekly");
   const [role, setRole] = useState<Role>("students");
   const [searchQuery, setSearchQuery] = useState("");
@@ -213,7 +215,12 @@ export default function LeaderboardControlPage() {
   };
 
   const resetWeekly = async () => {
-    if (!window.confirm("Reset weekly XP for all leaderboard users?")) return;
+    const confirmed = await requestConfirmation({
+      title: "Reset weekly XP?",
+      description: "Weekly XP will be reset for every leaderboard user. This action cannot be undone.",
+      confirmLabel: "Reset XP",
+    });
+    if (!confirmed) return;
 
     try {
       setIsActionLoading(true);
