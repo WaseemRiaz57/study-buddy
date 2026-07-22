@@ -7,6 +7,9 @@ import MentorProfile from "@/models/MentorProfile";
 import MentorReview from "@/models/MentorReview";
 import MentorSession from "@/models/MentorSession";
 
+const DEFAULT_ACTIVITY_LIMIT = 30;
+const MAX_ACTIVITY_LIMIT = 50;
+
 function getPopulatedId(value: unknown) {
   if (value && typeof value === "object" && "_id" in value) {
     return String(value._id);
@@ -15,7 +18,17 @@ function getPopulatedId(value: unknown) {
   return String(value ?? "");
 }
 
-export async function GET() {
+function getActivityLimit(request: Request) {
+  const requestedLimit = Number(new URL(request.url).searchParams.get("limit"));
+
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
+    return DEFAULT_ACTIVITY_LIMIT;
+  }
+
+  return Math.min(requestedLimit, MAX_ACTIVITY_LIMIT);
+}
+
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -40,36 +53,46 @@ export async function GET() {
 
     await connectMongoDB();
 
+    const activityLimit = getActivityLimit(request);
+
     const mentorSessions = await MentorSession.find({
       $or: [
         { studentId: session.user.id },
         { students: session.user.id }
       ]
     })
-      .populate("mentorId", "name image email")
-      .populate("students", "name image email")
+      .select(
+        "mentorId subject scheduledAt duration type status roomId isSessionStarted actualStartTime createdAt updatedAt"
+      )
+      .populate("mentorId", "name image profileImage avatar")
       .sort({ scheduledAt: -1 })
+      .limit(activityLimit)
+      .maxTimeMS(8000)
       .lean();
 
     const sessionIds = mentorSessions.map((mentorSession) => mentorSession._id);
-    const reviewedSessionIds = await MentorReview.find({
-      sessionId: { $in: sessionIds },
-      studentId: session.user.id,
-    })
-      .select("sessionId")
-      .lean();
+    const mentorIds = [
+      ...new Set(mentorSessions.map((mentorSession) => getPopulatedId(mentorSession.mentorId))),
+    ];
+    const [reviewedSessionIds, mentorProfiles] = await Promise.all([
+      MentorReview.find({
+        sessionId: { $in: sessionIds },
+        studentId: session.user.id,
+      })
+        .select("sessionId")
+        .maxTimeMS(5000)
+        .lean(),
+      MentorProfile.find({
+        userId: { $in: mentorIds },
+      })
+        .select("userId bankName accountTitle accountNumber hourlyRate")
+        .maxTimeMS(5000)
+        .lean(),
+    ]);
 
     const reviewedBySessionId = new Set(
       reviewedSessionIds.map((review) => String(review.sessionId))
     );
-    const mentorIds = [
-      ...new Set(mentorSessions.map((mentorSession) => getPopulatedId(mentorSession.mentorId))),
-    ];
-    const mentorProfiles = await MentorProfile.find({
-      userId: { $in: mentorIds },
-    })
-      .select("userId bankName accountTitle accountNumber hourlyRate")
-      .lean();
     const mentorProfileByUserId = new Map(
       mentorProfiles.map((profile) => [String(profile.userId), profile])
     );

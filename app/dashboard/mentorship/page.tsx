@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
   CalendarCheck,
@@ -59,6 +60,37 @@ type StudentSession = {
   isSessionStarted?: boolean;
   actualStartTime?: string;
 };
+
+const ACTIVITY_FETCH_LIMIT = 30;
+const ACTIVITY_CACHE_TTL_MS = 30 * 1000;
+
+type CachedActivities = {
+  cachedAt: number;
+  sessions: StudentSession[];
+};
+
+const activitiesCache = new Map<string, CachedActivities>();
+
+function readActivitiesCache(userId: string): StudentSession[] | null {
+  if (!userId) return null;
+
+  const cached = activitiesCache.get(userId);
+  if (
+    !cached ||
+    Date.now() - cached.cachedAt > ACTIVITY_CACHE_TTL_MS
+  ) {
+    activitiesCache.delete(userId);
+    return null;
+  }
+
+  return cached.sessions;
+}
+
+function writeActivitiesCache(userId: string, sessions: StudentSession[]) {
+  if (!userId) return;
+
+  activitiesCache.set(userId, { cachedAt: Date.now(), sessions });
+}
 
 function getMentor(session: StudentSession): PopulatedMentor {
   return typeof session.mentorId === "object" && session.mentorId !== null
@@ -303,6 +335,8 @@ function EmptyState({ label }: { label: string }) {
 }
 
 export default function MentorshipActivitiesHub() {
+  const { data: authSession, status: authStatus } = useSession();
+  const currentUserId = String(authSession?.user?.id || "");
   const [sessions, setSessions] = useState<StudentSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -313,17 +347,34 @@ export default function MentorshipActivitiesHub() {
     null
   );
   const knownStatusesRef = useRef<Map<string, SessionStatus>>(new Map());
+  const sessionsRef = useRef<StudentSession[]>([]);
   const fetchInFlightRef = useRef(false);
 
+  const commitSessions = useCallback(
+    (nextSessions: StudentSession[]) => {
+      sessionsRef.current = nextSessions;
+      setSessions(nextSessions);
+      writeActivitiesCache(currentUserId, nextSessions);
+    },
+    [currentUserId]
+  );
+
   const fetchSessions = useCallback(async (showLoading = true, announceChanges = false) => {
-    if (fetchInFlightRef.current) return;
+    if (fetchInFlightRef.current || !currentUserId) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12000);
 
     try {
       fetchInFlightRef.current = true;
       if (showLoading) setIsLoading(true);
-      const response = await fetch("/api/sessions/student", {
-        cache: "no-store",
-      });
+      const response = await fetch(
+        `/api/sessions/student?limit=${ACTIVITY_FETCH_LIMIT}`,
+        {
+          cache: "no-store",
+          signal: controller.signal,
+        }
+      );
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
@@ -356,11 +407,13 @@ export default function MentorshipActivitiesHub() {
       knownStatusesRef.current = new Map(
         nextSessions.map((mentorSession) => [mentorSession._id, mentorSession.status])
       );
-      setSessions(nextSessions);
+      commitSessions(nextSessions);
     } catch (error) {
       if (showLoading) {
         toast.error(
-          error instanceof Error
+          error instanceof DOMException && error.name === "AbortError"
+            ? "Mentorship activity took too long to load. Please try again."
+            : error instanceof Error
             ? error.message
             : "Could not load mentorship sessions."
         );
@@ -368,10 +421,11 @@ export default function MentorshipActivitiesHub() {
         console.error("Mentorship session refresh failed:", error);
       }
     } finally {
+      window.clearTimeout(timeout);
       fetchInFlightRef.current = false;
       if (showLoading) setIsLoading(false);
     }
-  }, []);
+  }, [commitSessions, currentUserId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 60000);
@@ -380,8 +434,33 @@ export default function MentorshipActivitiesHub() {
   }, []);
 
   useEffect(() => {
-    void fetchSessions();
-  }, [fetchSessions]);
+    if (authStatus === "loading") return;
+
+    if (!currentUserId) return;
+
+    let active = true;
+    const cachedSessions = readActivitiesCache(currentUserId);
+    if (cachedSessions) {
+      sessionsRef.current = cachedSessions;
+      knownStatusesRef.current = new Map(
+        cachedSessions.map((mentorSession) => [mentorSession._id, mentorSession.status])
+      );
+      queueMicrotask(() => {
+        if (!active) return;
+        setSessions(cachedSessions);
+        setIsLoading(false);
+      });
+    }
+
+    const fetchTimer = window.setTimeout(() => {
+      void fetchSessions(!cachedSessions);
+    }, 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(fetchTimer);
+    };
+  }, [authStatus, currentUserId, fetchSessions]);
 
   useEffect(() => {
     const refreshSessions = (event?: Event) => {
@@ -391,8 +470,8 @@ export default function MentorshipActivitiesHub() {
 
       if (detail?.sessionId && detail.status) {
         knownStatusesRef.current.set(detail.sessionId, detail.status);
-        setSessions((currentSessions) =>
-          currentSessions.map((mentorSession) =>
+        commitSessions(
+          sessionsRef.current.map((mentorSession) =>
             mentorSession._id === detail.sessionId
               ? { ...mentorSession, status: detail.status as SessionStatus }
               : mentorSession
@@ -411,7 +490,7 @@ export default function MentorshipActivitiesHub() {
       window.removeEventListener("mentor-session-started", refreshSessions);
       window.removeEventListener("mentor-session-status-changed", refreshSessions);
     };
-  }, [fetchSessions]);
+  }, [commitSessions, fetchSessions]);
 
   const hasPendingUpdate = sessions.some((mentorSession) =>
     ["pending", "payment_pending"].includes(mentorSession.status)
@@ -456,6 +535,8 @@ export default function MentorshipActivitiesHub() {
       ),
     };
   }, [currentTime, sessions]);
+  const showActivityLoading =
+    authStatus === "loading" || (Boolean(currentUserId) && isLoading);
 
   function handlePaymentUploaded(updatedSession: unknown) {
     if (!updatedSession || typeof updatedSession !== "object" || !("_id" in updatedSession)) {
@@ -464,8 +545,8 @@ export default function MentorshipActivitiesHub() {
 
     const updatedSessionId = String(updatedSession._id);
     knownStatusesRef.current.set(updatedSessionId, "payment_pending");
-    setSessions((currentSessions) =>
-      currentSessions.map((session) =>
+    commitSessions(
+      sessionsRef.current.map((session) =>
         session._id === updatedSessionId
           ? {
               ...session,
@@ -480,8 +561,8 @@ export default function MentorshipActivitiesHub() {
   function handleReviewSubmitted() {
     if (!reviewSession) return;
 
-    setSessions((currentSessions) =>
-      currentSessions.map((session) =>
+    commitSessions(
+      sessionsRef.current.map((session) =>
         session._id === reviewSession._id
           ? { ...session, reviewSubmitted: true }
           : session
@@ -515,7 +596,7 @@ export default function MentorshipActivitiesHub() {
           </Link>
         </header>
 
-        {isLoading ? (
+        {showActivityLoading ? (
           <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-5 text-sm font-medium text-slate-500 dark:border-white/10 dark:bg-surface-dark">
             <Loader2 className="h-4 w-4 animate-spin text-[#7C3AED]" />
             Loading mentorship activity...
