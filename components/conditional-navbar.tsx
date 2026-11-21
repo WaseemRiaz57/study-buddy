@@ -11,7 +11,9 @@ export function ConditionalNavbar() {
   }
 
   // Hide global marketing navbar on app routes (dashboard & admin)
-  const isHidden = 
+  // "/" renders its own navigation (components/landing/LandingNav).
+  const isHidden =
+    pathname === "/" ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/admin") || 
     pathname.startsWith("/login") || 

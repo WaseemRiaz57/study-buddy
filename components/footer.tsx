@@ -27,7 +27,9 @@ export function Footer() {
   const pathname = usePathname();
   
   // Authentication routes own the entire viewport with their split-screen layout.
+  // The homepage renders its own footer (components/landing/Closing).
   if (
+    pathname === "/" ||
     pathname?.startsWith("/dashboard") ||
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/login") ||
