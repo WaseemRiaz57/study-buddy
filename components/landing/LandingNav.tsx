@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 
 const links = [
-  { href: "#session", label: "How a session works" },
-  { href: "#inside", label: "What's inside" },
-  { href: "#plans", label: "Plans" },
+  { href: "/#session", label: "How a session works" },
+  { href: "/#inside", label: "What's inside" },
+  { href: "/#plans", label: "Plans" },
   { href: "/dashboard/mentorship/find", label: "Find a mentor" },
 ];
 
@@ -60,7 +60,7 @@ export default function LandingNav() {
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-[background-color,border-color] duration-300 ${
         scrolled || open
-          ? "border-b border-[var(--lamp-rule)] bg-[rgb(15_20_32/0.86)] backdrop-blur-md"
+          ? "border-b border-[var(--lamp-rule)] bg-[rgb(15_20_32/0.97)]"
           : "border-b border-transparent"
       }`}
     >

@@ -1,51 +1,33 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState, Suspense } from "react";
-import { BrandLogo } from "@/components/BrandLogo";
-import BackButton from "@/components/ui/BackButton";
+import AuthFrame, { Divider, GoogleIcon } from "@/components/landing/AuthFrame";
+import PasswordInput from "@/components/landing/PasswordInput";
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 },
-};
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const scaleIn = {
-  initial: { opacity: 0, scale: 0.95 },
-  animate: { opacity: 1, scale: 1 },
-};
+// Only allow same-site relative paths as post-login destinations (no open redirect).
+function safeCallback(raw: string | null) {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/dashboard";
+  return raw;
+}
 
 function LoginContent() {
-  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
-  const prefersReducedMotion = useReducedMotion();
+  const callbackUrl = safeCallback(searchParams.get("callbackUrl"));
 
-  // 🔴 Google Login Handler
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     await signIn("google", { callbackUrl });
   };
 
-  // 📧 Email/Password Login Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -59,312 +41,96 @@ function LoginContent() {
       });
 
       if (result?.error) {
-        // Ab backend se aane wala asli error show hoga
+        // Backend se aane wala asli error show hota hai
         setError(result.error);
       } else if (result?.ok) {
         router.refresh();
-        router.push("/dashboard");
+        router.push(callbackUrl);
       }
     } catch {
-      setError("An unexpected error occurred.");
+      setError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <main className="auth-page min-h-[100dvh] w-full bg-background text-foreground lg:grid lg:h-[100dvh] lg:min-h-0 lg:grid-cols-[3fr_2fr] lg:overflow-hidden">
-      <div className="relative hidden h-[100dvh] min-h-0 w-full overflow-hidden bg-[#F7F5FC] dark:bg-[#09070F] lg:block">
-        <Image
-          src="/Login_light.png"
-          alt="StudyBuddy focused learning workspace"
-          fill
-          priority
-          sizes="60vw"
-          className="object-cover object-center dark:hidden"
-        />
-        <Image
-          src="/Login_dark.png"
-          alt="StudyBuddy focused learning workspace"
-          fill
-          priority
-          sizes="60vw"
-          className="hidden object-cover object-center dark:block"
-        />
-      </div>
+    <AuthFrame
+      aside={{
+        quote: "Pick up where you left off.",
+        note: "Your notes, rooms, streak and mentor bookings are waiting in your dashboard.",
+      }}
+    >
+      <h1 className="lamp-h2">Log in</h1>
+      <p className="mt-3 text-[var(--lamp-graphite)]">
+        New here?{" "}
+        <Link href="/register" className="lamp-link text-[var(--lamp-paper)]">
+          Create a free account
+        </Link>
+      </p>
 
-      <section className="relative min-h-[100dvh] w-full overflow-y-auto bg-white dark:bg-[#09070F] lg:h-[100dvh] lg:min-h-0">
-      
-      {/* Animated Background Glows */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <motion.div 
-          className="absolute left-1/4 top-1/4 h-[500px] w-[500px] rounded-full bg-primary/15 blur-[120px]"
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.15, 0.2, 0.15],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        <motion.div 
-          className="absolute right-1/4 bottom-1/4 h-[400px] w-[400px] rounded-full bg-primary/10 blur-[100px]"
-          animate={{
-            scale: [1, 1.15, 1],
-            opacity: [0.1, 0.15, 0.1],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
-      </div>
+      <form className="mt-10 space-y-5" onSubmit={handleSubmit}>
+        {error && (
+          <p role="alert" className="lamp-error rounded-[10px] border border-[var(--lamp-alert)]/40 bg-[var(--lamp-alert)]/10 px-4 py-3">
+            {error}
+          </p>
+        )}
 
-      <BackButton
-        href="/"
-        label="Back to home"
-        className="absolute left-4 top-4 z-20 lg:left-6 lg:top-5"
-      />
+        <div>
+          <label htmlFor="login-email" className="lamp-label">
+            Email
+          </label>
+          <input
+            id="login-email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="you@university.edu"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isLoading}
+            className="lamp-input"
+          />
+        </div>
 
-      <div className="flex min-h-full w-full items-center justify-center px-5 py-8 sm:px-8 lg:px-7 xl:px-10">
+        <div>
+          <div className="flex items-baseline justify-between">
+            <label htmlFor="login-password" className="lamp-label">
+              Password
+            </label>
+            <Link href="/forgot-password" className="lamp-link text-sm text-[var(--lamp-graphite)] hover:text-[var(--lamp-paper)]">
+              Forgot password?
+            </Link>
+          </div>
+          <PasswordInput
+            id="login-password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
 
-      <motion.div
-        initial="initial"
-        animate="animate"
-        variants={staggerContainer}
-        className="w-full max-w-[460px]"
-      >
-        {/* Header Section */}
-        <motion.header variants={fadeInUp} className="mb-4 text-center">
-          <motion.div variants={scaleIn} className="mb-3 inline-flex">
-            <motion.div
-              className="relative"
-              whileHover={prefersReducedMotion ? {} : { 
-                rotate: [0, -10, 10, -10, 0],
-                scale: 1.05
-              }}
-              transition={{ duration: 0.5 }}
-            >
-              <Link
-                href="/"
-                aria-label="StudyBuddy home"
-                className="relative inline-flex rounded-2xl border border-primary/20 bg-background/80 px-4 py-3 shadow-sm backdrop-blur-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
-              >
-                <BrandLogo />
-              </Link>
-            </motion.div>
-          </motion.div>
+        <button type="submit" disabled={isLoading} className="lamp-btn lamp-btn-primary w-full">
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {isLoading ? "Logging in…" : "Log in"}
+        </button>
 
-          <motion.p
-            variants={fadeInUp}
-            className="mb-2 text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground"
-          >
-            Welcome Back, Scholar
-          </motion.p>
-          
-          <motion.h1
-            variants={fadeInUp}
-            className="mb-2 text-3xl font-black tracking-tight xl:text-4xl"
-          >
-            Enter Your{" "}
-            <span className="text-primary">
-              Focus Space
-            </span>
-          </motion.h1>
-          
-          <motion.p
-            variants={fadeInUp}
-            className="mx-auto max-w-sm text-sm text-muted-foreground"
-          >
-            Resume your learning journey and reconnect with your study community
-          </motion.p>
-        </motion.header>
+        <Divider label="or" />
 
-        {/* Form Card */}
-        <motion.div
-          variants={scaleIn}
-          className="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-4 shadow-xl sm:p-5"
-        >
-          <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
-
-          <form className="relative space-y-3" onSubmit={handleSubmit}>
-            {/* Error Message */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-3"
-              >
-                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-600 dark:text-red-400 font-medium">{error}</p>
-              </motion.div>
-            )}
-
-            {/* Email Input */}
-            <motion.div variants={fadeInUp}>
-              <label className="block text-sm font-bold text-foreground mb-2">
-                Email Address
-              </label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
-                  <Mail className="h-5 w-5" strokeWidth={2} />
-                </div>
-                <input
-                  type="email"
-                  required
-                  placeholder="scholar@studybuddy.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                className="w-full rounded-xl border border-border bg-background/50 py-3 pl-11 pr-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50 disabled:opacity-50"
-                />
-              </div>
-            </motion.div>
-
-            {/* Password Input */}
-            <motion.div variants={fadeInUp}>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-bold text-foreground">
-                  Password
-                </label>
-                <Link 
-                  href="/forgot-password" 
-                  className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-                >
-                  Forgot?
-                </Link>
-              </div>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
-                  <Lock className="h-5 w-5" strokeWidth={2} />
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                className="w-full rounded-xl border border-border bg-background/50 py-3 pl-11 pr-12 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:bg-background placeholder:text-muted-foreground/50 disabled:opacity-50"
-                />
-                <button
-                  type="button"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" strokeWidth={2} />
-                  ) : (
-                    <Eye className="h-5 w-5" strokeWidth={2} />
-                  )}
-                </button>
-              </div>
-            </motion.div>
-
-            {/* Submit Button */}
-            <motion.div variants={fadeInUp}>
-              <motion.button
-                type="submit"
-                disabled={isLoading}
-                whileHover={prefersReducedMotion || isLoading ? {} : { scale: 1.02 }}
-                whileTap={prefersReducedMotion || isLoading ? {} : { scale: 0.98 }}
-                className="group relative w-full overflow-hidden rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span className="relative flex items-center justify-center gap-2">
-                  {isLoading ? (
-                    <>
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Signing in...
-                    </>
-                  ) : (
-                    <>
-                      Enter StudyBuddy
-                      <motion.div
-                        animate={prefersReducedMotion ? {} : { x: [0, 4, 0] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      >
-                        <ArrowLeft className="h-5 w-5 rotate-180" strokeWidth={2} />
-                      </motion.div>
-                    </>
-                  )}
-                </span>
-              </motion.button>
-            </motion.div>
-
-            {/* Divider for Social Login */}
-            <motion.div variants={fadeInUp} className="relative py-1">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-4 text-muted-foreground font-semibold">
-                  Or continue with
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Google Login Button */}
-            <motion.div variants={fadeInUp}>
-              <motion.button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                whileHover={prefersReducedMotion || isLoading ? {} : { scale: 1.02 }}
-                whileTap={prefersReducedMotion || isLoading ? {} : { scale: 0.98 }}
-                className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-background px-6 py-3 text-sm font-bold text-foreground transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
-                Google
-              </motion.button>
-            </motion.div>
-
-            {/* Register Link */}
-            <motion.div variants={fadeInUp} className="pt-1 text-center">
-              <Link 
-                href="/register" 
-                className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors group"
-              >
-                Create a free account
-              </Link>
-            </motion.div>
-          </form>
-        </motion.div>
-
-        {/* Footer Note */}
-        <motion.p
-          variants={fadeInUp}
-          className="mt-4 text-center text-xs text-muted-foreground"
-        >
-          By continuing, you agree to StudyBuddy&apos;s{" "}
-          <Link href="/terms" className="text-primary hover:underline font-semibold">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy" className="text-primary hover:underline font-semibold">
-            Privacy Policy
-          </Link>
-        </motion.p>
-      </motion.div>
-      </div>
-      </section>
-    </main>
+        <button type="button" onClick={handleGoogleSignIn} disabled={isLoading} className="lamp-btn lamp-btn-ghost w-full">
+          <GoogleIcon />
+          Continue with Google
+        </button>
+      </form>
+    </AuthFrame>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen w-full flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<div className="min-h-[100dvh]" />}>
       <LoginContent />
     </Suspense>
   );

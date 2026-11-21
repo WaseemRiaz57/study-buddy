@@ -1,7 +1,7 @@
 # StudyBuddy marketing design system — "Lamplight"
 
-The public marketing surface (homepage first, then About / Careers / other public pages)
-uses this system. The authenticated dashboard keeps its own UI for now.
+The public site (homepage, About, Careers, auth, account and profile pages) uses this
+system. The authenticated dashboard and admin keep their own UI for now.
 
 ## Idea
 
@@ -9,7 +9,7 @@ Studying at a desk late at night: dark blue-black ink, warm paper-white type, an
 fluorescent highlighter. The highlighter is the only saturated colour on the page and it
 always *means* something — the important line, the primary action, the current step.
 
-## Colour tokens (`app/landing.css`, scoped to `.lamp`)
+## Colour tokens (`app/lamp.css`, scoped to `.lamp`)
 
 | Token            | Hex                      | Role                                              |
 | ---------------- | ------------------------ | ------------------------------------------------- |
@@ -91,3 +91,19 @@ The pinned scroll story is desktop-only (`lg+`); below that it becomes a stacked
 Plain, specific, second person. Name features by what students do ("Turn a lecture PDF
 into notes"), not system terms. No made-up stats. No prices on the homepage — plan
 tiers describe limits; prices live in the upgrade flow.
+
+## Where things live
+
+- `app/lamp.css`: tokens and component classes (`lamp-btn`, `lamp-input`, `lamp-label`,
+  `lamp-panel`, `lamp-chip`, `lamp-row`, `lamp-hl`), loaded globally but scoped to `.lamp`.
+- `lib/lampFonts.ts`: Newsreader + Instrument Sans via `next/font`.
+- `app/(marketing)/layout.tsx`: public shell with nav, `<main>` and footer. Home, About,
+  Careers, mentor application status, scholar profiles and the 404 (via `[...missing]`).
+- `app/(auth)/layout.tsx`: Lamplight without nav/footer for login, register, forgot
+  password and account suspended.
+- `components/landing/`: `LandingNav`, `LampFooter`, `PageIntro` (inner-page opener),
+  `AuthFrame` (split auth layout, `GoogleIcon`, `Divider`), `PasswordInput` (show/hide
+  toggle), `NotFoundContent`, plus the homepage sections.
+
+New public page checklist: put it in `(marketing)`, open with `PageIntro`, use ruled rows
+(`lamp-row`) rather than card grids, and keep to one marker button per viewport.
