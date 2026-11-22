@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { Settings, User } from "lucide-react";
 
 const links = [
   { href: "/#session", label: "How a session works" },
@@ -13,8 +15,31 @@ const links = [
 
 export function Wordmark() {
   return (
-    <span className="lamp-serif text-[1.6rem] leading-none tracking-[-0.02em]">
-      StudyBuddy
+    <span className="inline-flex items-center gap-2.5">
+      <Image src="/logo.png" alt="" width={32} height={32} className="size-8 shrink-0 object-contain" aria-hidden="true" />
+      <span className="lamp-serif text-[1.6rem] leading-none tracking-[-0.02em]">StudyBuddy</span>
+    </span>
+  );
+}
+
+/** Signed-in avatar (Google photo when available), kept from the previous navbar. */
+function Avatar({ src, name }: { src?: string | null; name?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className="grid size-9 place-items-center overflow-hidden rounded-full border border-[var(--lamp-rule-strong)] bg-[var(--lamp-desk)] text-[var(--lamp-paper)]">
+      {src && !failed ? (
+        <Image
+          src={src}
+          alt={`${name || "User"} profile picture`}
+          width={36}
+          height={36}
+          className="size-full object-cover"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <User className="h-4 w-4" aria-hidden="true" />
+      )}
     </span>
   );
 }
@@ -22,7 +47,7 @@ export function Wordmark() {
 export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const signedIn = status === "authenticated";
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -88,6 +113,21 @@ export default function LandingNav() {
           <Link href={primary.href} className="lamp-btn lamp-btn-primary !min-h-[2.75rem] !px-5 text-[0.9rem]">
             {primary.label}
           </Link>
+          {signedIn && (
+            <>
+              <Link
+                href="/dashboard/settings"
+                aria-label="Open settings"
+                title="Settings"
+                className="grid size-9 place-items-center rounded-full text-[var(--lamp-graphite)] transition-colors hover:text-[var(--lamp-paper)]"
+              >
+                <Settings className="h-5 w-5" aria-hidden="true" />
+              </Link>
+              <Link href="/dashboard/settings" aria-label="Open profile settings" title="My profile">
+                <Avatar src={session?.user?.image} name={session?.user?.name} />
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -138,7 +178,12 @@ export default function LandingNav() {
             <Link href={primary.href} onClick={() => setOpen(false)} className="lamp-btn lamp-btn-primary w-full">
               {primary.label}
             </Link>
-            {!signedIn && (
+            {signedIn ? (
+              <Link href="/dashboard/settings" onClick={() => setOpen(false)} className="lamp-btn lamp-btn-ghost w-full">
+                <Avatar src={session?.user?.image} name={session?.user?.name} />
+                Settings and profile
+              </Link>
+            ) : (
               <Link href="/login" onClick={() => setOpen(false)} className="lamp-btn lamp-btn-ghost w-full">
                 Log in
               </Link>

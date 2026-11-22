@@ -371,7 +371,19 @@ html:has(.lamp) {
 
   /* --- Reduced motion ------------------------------------------------------ */
 
+  /* Hero brain (kept from the previous design): nodes glow in turn. */
+  .lamp .lamp-brain-node {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: lamp-node 3.4s ease-in-out var(--d, 0ms) infinite;
+  }
+  @keyframes lamp-node {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.35); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    .lamp .lamp-brain-node { animation: none !important; opacity: 0.8; }
     .lamp *,
     .lamp *::before,
     .lamp *::after {

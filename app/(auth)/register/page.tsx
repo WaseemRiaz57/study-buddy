@@ -171,6 +171,7 @@ export default function RegisterPage() {
         quote: "Your first study session is a few minutes away.",
         note: "Free plan, no card needed. Upload a lecture and get notes and a quiz before your coffee cools.",
       }}
+      image={{ src: "/Signup_dark.png", alt: "A student following a path past AI notes, mentor booking, a study buddy, the focus room and the forum towards a trophy" }}
     >
       <h1 className="lamp-h2">{step === 1 ? "Create your account" : "Check your email"}</h1>
       <p className="mt-3 text-[var(--lamp-graphite)]">

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Wordmark } from "./LandingNav";
 
@@ -7,36 +8,40 @@ import { Wordmark } from "./LandingNav";
  */
 export default function AuthFrame({
   aside,
+  image = { src: "/Login_dark.png", alt: "A student studying at a laptop with AI notes, a focus timer, a study room and a mentor session around them" },
   backHref = "/",
   backLabel = "Back to home",
   children,
 }: {
   aside: { quote: string; note: string };
+  /** Illustration from the previous design, shown behind the left panel. */
+  image?: { src: string; alt: string };
   backHref?: string;
   backLabel?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="min-h-[100dvh] lg:grid lg:grid-cols-[1.1fr_1fr]">
-      <aside className="relative hidden overflow-hidden border-r border-[var(--lamp-rule)] lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
+      <aside className="relative hidden overflow-hidden border-r border-[var(--lamp-rule)] lg:sticky lg:top-0 lg:h-[100dvh] lg:self-start lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
+        <Image src={image.src} alt={image.alt} fill priority sizes="55vw" className="object-cover object-center" />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -left-[15vw] -top-[15vw] h-[60vw] w-[60vw] rounded-full"
+          className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(closest-side, rgb(255 226 160 / 0.12), rgb(255 226 160 / 0.03) 55%, transparent)",
+              "linear-gradient(to bottom, rgb(15 20 32 / 0.7) 0%, rgb(15 20 32 / 0) 22%, rgb(15 20 32 / 0) 45%, rgb(15 20 32 / 0.85) 66%, rgb(15 20 32) 82%)",
           }}
         />
         <Link href="/" aria-label="StudyBuddy home" className="relative w-fit">
           <Wordmark />
         </Link>
         <div className="relative">
-          <p className="lamp-serif max-w-[16ch] text-[clamp(2.5rem,4.4vw,4.25rem)] leading-[1.02] tracking-[-0.02em]">
+          <p className="lamp-serif max-w-[18ch] text-[clamp(2.25rem,3.6vw,3.5rem)] leading-[1.04] tracking-[-0.02em]">
             {aside.quote}
           </p>
-          <p className="mt-6 max-w-[28rem] text-[var(--lamp-graphite)]">{aside.note}</p>
+          <p className="mt-5 max-w-[28rem] text-[var(--lamp-graphite)]">{aside.note}</p>
+          <p className="mt-10 text-sm text-[var(--lamp-graphite)]">Notes, rooms and mentors in one place.</p>
         </div>
-        <p className="relative text-sm text-[var(--lamp-graphite)]">Notes, rooms and mentors in one place.</p>
       </aside>
 
       <div className="flex min-h-[100dvh] flex-col px-5 py-6 sm:px-10">

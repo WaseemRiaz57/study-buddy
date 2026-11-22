@@ -1,5 +1,6 @@
 import Link from "next/link";
 import NotesSheet from "./NotesSheet";
+import NeuralBrain from "./NeuralBrain";
 
 const headline = ["Late-night study,", "with good", "company."];
 
@@ -15,6 +16,8 @@ export default function Hero() {
             "radial-gradient(closest-side, rgb(255 226 160 / 0.13), rgb(255 226 160 / 0.04) 55%, transparent)",
         }}
       />
+
+      <NeuralBrain className="pointer-events-none absolute left-1/2 top-[52%] -z-10 w-[min(92vw,52rem)] -translate-x-1/2 -translate-y-1/2 opacity-50" />
 
       <div className="lamp-wrap grid min-h-[calc(100svh-4.5rem)] grid-cols-1 items-center gap-14 py-14 lg:grid-cols-12 lg:gap-8 lg:py-20">
         <div className="lg:col-span-7">
