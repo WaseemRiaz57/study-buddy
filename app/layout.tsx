@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
-import { ConditionalNavbar } from "@/components/conditional-navbar";
-import { Footer } from "@/components/footer";
 import { ThemeProvider } from "@/components/theme-provider";
 import AuthProvider from "@/components/auth-provider";
 import { ConfirmDialogProvider } from "@/components/ui/ConfirmDialog";
 import { Toaster } from "sonner"; // 👈 1. Sonner import kiya
 import "./globals.css";
+// Lamplight public-site styles; every rule is scoped under .lamp.
+import "./lamp.css";
 
 const sans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -155,13 +155,11 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body className={`${sans.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground antialiased`}>
+      <body className={`${sans.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} flex min-h-screen flex-col overflow-x-clip bg-background text-foreground antialiased`}>
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
             <ConfirmDialogProvider>
-              <ConditionalNavbar />
               <div className="flex-1">{children}</div>
-              <Footer />
               {/* 👇 2. Toaster component add kiya (theme aur colors ke sath) */}
               <Toaster richColors position="top-right" theme="system" />
             </ConfirmDialogProvider>
